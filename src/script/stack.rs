@@ -5,7 +5,7 @@ use num_traits::Zero;
 /// Pops a bool off the stack
 #[inline]
 pub fn pop_bool(stack: &mut Vec<Vec<u8>>) -> Result<bool> {
-    if stack.len() == 0 {
+    if stack.is_empty() {
         let msg = "Cannot pop bool, empty stack".to_string();
         return Err(Error::ScriptError(msg));
     }
@@ -21,7 +21,7 @@ pub fn pop_bool(stack: &mut Vec<Vec<u8>>) -> Result<bool> {
 /// Pops a pre-genesis number off the stack
 #[inline]
 pub fn pop_num(stack: &mut Vec<Vec<u8>>) -> Result<i32> {
-    if stack.len() == 0 {
+    if stack.is_empty() {
         let msg = "Cannot pop num, empty stack".to_string();
         return Err(Error::ScriptError(msg));
     }
@@ -38,7 +38,7 @@ pub fn pop_num(stack: &mut Vec<Vec<u8>>) -> Result<i32> {
 /// Pops a bigint number off the stack
 #[inline]
 pub fn pop_bigint(stack: &mut Vec<Vec<u8>>) -> Result<BigInt> {
-    if stack.len() == 0 {
+    if stack.is_empty() {
         let msg = "Cannot pop bigint, empty stack".to_string();
         return Err(Error::ScriptError(msg));
     }
@@ -49,11 +49,11 @@ pub fn pop_bigint(stack: &mut Vec<Vec<u8>>) -> Result<BigInt> {
 /// Converts a stack item to a bool
 #[inline]
 pub fn decode_bool(s: &[u8]) -> bool {
-    if s.len() == 0 {
+    if s.is_empty() {
         return false;
     }
-    for i in 0..s.len() - 1 {
-        if s[i] != 0 {
+    for item in s.iter().take(s.len() - 1) {
+        if *item != 0 {
             return true;
         }
     }
@@ -66,13 +66,13 @@ pub fn decode_num(s: &[u8]) -> Result<i64> {
     let mut val = match s.len() {
         0 => return Ok(0),
         1 => (s[0] & 127) as i64,
-        2 => (((s[1] & 127) as i64) << 8) + ((s[0] as i64) << 0),
-        3 => (((s[2] & 127) as i64) << 16) + ((s[1] as i64) << 8) + ((s[0] as i64) << 0),
+        2 => (((s[1] & 127) as i64) << 8) + (s[0] as i64) ,
+        3 => (((s[2] & 127) as i64) << 16) + ((s[1] as i64) << 8) + (s[0] as i64),
         4 => {
             (((s[3] & 127) as i64) << 24)
                 + ((s[2] as i64) << 16)
                 + ((s[1] as i64) << 8)
-                + ((s[0] as i64) << 0)
+                + (s[0] as i64)
         }
         _ => {
             for i in 4..s.len() - 1 {
@@ -86,7 +86,7 @@ pub fn decode_num(s: &[u8]) -> Result<i64> {
             ((s[3] as i64) << 24)
                 + ((s[2] as i64) << 16)
                 + ((s[1] as i64) << 8)
-                + ((s[0] as i64) << 0)
+                + (s[0] as i64)
         }
     };
     if s[s.len() - 1] & 128 != 0 {
@@ -111,13 +111,13 @@ pub fn encode_num(val: i64) -> Result<Vec<u8>> {
         Ok(vec![(posval >> 0) as u8, ((posval >> 8) as u8) | negmask])
     } else if posval < 8388608 {
         Ok(vec![
-            (posval >> 0) as u8,
+            (posval) as u8,
             (posval >> 8) as u8,
             ((posval >> 16) as u8) | negmask,
         ])
     } else {
         Ok(vec![
-            (posval >> 0) as u8,
+            (posval) as u8,
             (posval >> 8) as u8,
             (posval >> 16) as u8,
             ((posval >> 24) as u8) | negmask,
@@ -129,7 +129,7 @@ pub fn encode_num(val: i64) -> Result<Vec<u8>> {
 #[inline]
 pub fn decode_bigint(s: &mut [u8]) -> BigInt {
     let len = s.len();
-    if s.len() == 0 {
+    if s.is_empty() {
         return BigInt::zero();
     }
     let mut sign = Sign::Plus;
@@ -137,7 +137,7 @@ pub fn decode_bigint(s: &mut [u8]) -> BigInt {
         sign = Sign::Minus;
     }
     s[len - 1] &= !0x80;
-    BigInt::from_bytes_le(sign, &s)
+    BigInt::from_bytes_le(sign, s)
 }
 
 /// Converts a big int number to a stack item

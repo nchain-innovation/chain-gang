@@ -824,13 +824,13 @@ pub fn next_op(i: usize, script: &[u8]) -> usize {
             if i + 3 > script.len() {
                 return script.len();
             }
-            i + 3 + ((script[i + 1] as usize) << 0) + ((script[i + 2] as usize) << 8)
+            i + 3 + (script[i + 1] as usize) + ((script[i + 2] as usize) << 8)
         }
         OP_PUSHDATA4 => {
             if i + 5 > script.len() {
                 return script.len();
             }
-            let len = ((script[i + 1] as usize) << 0)
+            let len = (script[i + 1] as usize)
                 + ((script[i + 2] as usize) << 8)
                 + ((script[i + 3] as usize) << 16)
                 + ((script[i + 4] as usize) << 24);
@@ -839,7 +839,7 @@ pub fn next_op(i: usize, script: &[u8]) -> usize {
         _ => i + 1,
     };
     let overflow = next > script.len();
-    return if overflow { script.len() } else { next };
+    if overflow { script.len() } else { next }
 }
 
 /// Skips over a branch of if/else and return the index of the next else or endif opcode

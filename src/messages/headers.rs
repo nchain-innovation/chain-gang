@@ -5,6 +5,8 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
+use std::cmp::Ordering;
+
 
 /// Collection of block headers
 #[derive(Default, PartialEq, Eq, Hash, Clone)]
@@ -49,12 +51,10 @@ impl fmt::Debug for Headers {
 
 /// Returns the hash for a header at a particular index utilizing prev_hash if possible
 pub fn header_hash(i: usize, headers: &Vec<BlockHeader>) -> Result<Hash256> {
-    if i + 1 < headers.len() {
-        return Ok(headers[i + 1].prev_hash);
-    } else if i + 1 == headers.len() {
-        return Ok(headers[i].hash());
-    } else {
-        return Err(Error::BadArgument("Index out of range".to_string()));
+    match headers.len().cmp(&(i + 1)) {
+        Ordering::Greater => Ok(headers[i + 1].prev_hash),
+        Ordering::Equal => Ok(headers[i].hash()),
+        Ordering::Less => Err(Error::BadArgument("Index out of range".to_string())),
     }
 }
 

@@ -86,7 +86,7 @@ impl MerkleBlock {
         } else if depth == tree_depth {
             *preorder_node += 1;
             let hash = self.consume_hash(hashes_used)?;
-            matches.push(hash.clone());
+            matches.push(hash);
             Ok(hash)
         } else {
             *preorder_node += 1;
@@ -115,7 +115,7 @@ impl MerkleBlock {
                     matches,
                 )?;
                 if left == right {
-                    return Err(Error::BadData("Duplicate transactions".to_string()));
+                    Err(Error::BadData("Duplicate transactions".to_string()))
                 } else {
                     let mut concat = Vec::with_capacity(64);
                     concat.extend_from_slice(&left.0);

@@ -67,13 +67,13 @@ impl Script {
             }
             256..=65535 => {
                 self.0.push(op_codes::OP_PUSHDATA2);
-                self.0.push((len >> 0) as u8);
+                self.0.push(len as u8);
                 self.0.push((len >> 8) as u8);
                 self.0.extend_from_slice(data);
             }
             _ => {
                 self.0.push(op_codes::OP_PUSHDATA4);
-                self.0.push((len >> 0) as u8);
+                self.0.push(len as u8);
                 self.0.push((len >> 8) as u8);
                 self.0.push((len >> 16) as u8);
                 self.0.push((len >> 24) as u8);
@@ -150,7 +150,7 @@ impl fmt::Debug for Script {
                 OP_PUSHDATA2 => {
                     ret.push_str("OP_PUSHDATA2 ");
                     if i + 3 <= script.len() {
-                        let len = ((script[i + 1] as usize) << 0) + ((script[i + 2] as usize) << 8);
+                        let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
                         ret.push_str(&format!("{} ", len));
                         if i + 3 + len <= script.len() {
                             ret.push_str(&hex::encode(&script[i + 3..i + 3 + len]));
@@ -164,7 +164,7 @@ impl fmt::Debug for Script {
                 OP_PUSHDATA4 => {
                     ret.push_str("OP_PUSHDATA4 ");
                     if i + 5 <= script.len() {
-                        let len = ((script[i + 1] as usize) << 0)
+                        let len = (script[i + 1] as usize)
                             + ((script[i + 2] as usize) << 8)
                             + ((script[i + 3] as usize) << 16)
                             + ((script[i + 4] as usize) << 24);
@@ -255,8 +255,8 @@ impl fmt::Debug for Script {
 
         // Add whatever is remaining if we exited early
         if i < script.len() {
-            for j in i..script.len() {
-                ret.push_str(&format!(" {}", script[j]));
+            for item in script.iter().skip(i) {
+                ret.push_str(&format!(" {}", item));
             }
         }
         ret.push_str("]");

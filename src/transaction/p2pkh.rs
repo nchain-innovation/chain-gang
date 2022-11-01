@@ -79,9 +79,9 @@ pub fn extract_pubkeyhash(lock_script: &[u8]) -> Result<Hash160> {
     if check_lock_script(lock_script) {
         let mut hash160 = Hash160([0; 20]);
         hash160.0.clone_from_slice(&lock_script[3..23]);
-        return Ok(hash160);
+        Ok(hash160)
     } else {
-        return Err(Error::BadData("Script is not a standard P2PKH".to_string()));
+        Err(Error::BadData("Script is not a standard P2PKH".to_string()))
     }
 }
 
