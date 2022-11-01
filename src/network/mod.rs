@@ -7,7 +7,7 @@
 //! ```no_run, rust
 //! use chain_gang::network::Network;
 //!
-//! for (ip, port) in Network::Mainnet.seed_iter() {
+//! for (ip, port) in Network:BSV_:Mainnet.seed_iter() {
 //!     println!("Seed node {:?}:{}", ip, port);
 //! }
 //! ```

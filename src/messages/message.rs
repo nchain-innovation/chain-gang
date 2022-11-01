@@ -340,7 +340,8 @@ impl Message {
         if header.payload_size > 0 {
             header.payload(reader)?;
         }
-        let command = String::from_utf8(header.command.to_vec()).unwrap_or_else(|_| "Unknown".to_string());
+        let command =
+            String::from_utf8(header.command.to_vec()).unwrap_or_else(|_| "Unknown".to_string());
         Ok(Message::Other(command))
     }
 

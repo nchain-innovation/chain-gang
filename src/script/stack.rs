@@ -66,7 +66,7 @@ pub fn decode_num(s: &[u8]) -> Result<i64> {
     let mut val = match s.len() {
         0 => return Ok(0),
         1 => (s[0] & 127) as i64,
-        2 => (((s[1] & 127) as i64) << 8) + (s[0] as i64) ,
+        2 => (((s[1] & 127) as i64) << 8) + (s[0] as i64),
         3 => (((s[2] & 127) as i64) << 16) + ((s[1] as i64) << 8) + (s[0] as i64),
         4 => {
             (((s[3] & 127) as i64) << 24)
@@ -83,10 +83,7 @@ pub fn decode_num(s: &[u8]) -> Result<i64> {
             if s[s.len() - 1] & 127 != 0 {
                 return Err(Error::ScriptError("Number too big".to_string()));
             }
-            ((s[3] as i64) << 24)
-                + ((s[2] as i64) << 16)
-                + ((s[1] as i64) << 8)
-                + (s[0] as i64)
+            ((s[3] as i64) << 24) + ((s[2] as i64) << 16) + ((s[1] as i64) << 8) + (s[0] as i64)
         }
     };
     if s[s.len() - 1] & 128 != 0 {
@@ -98,8 +95,7 @@ pub fn decode_num(s: &[u8]) -> Result<i64> {
 /// Converts a number to a 32-bit stack item
 #[inline]
 pub fn encode_num(val: i64) -> Result<Vec<u8>> {
-    //if val > 2147483647 || val < -2147483647 {
-    if !(-2147483647..2147483648).contains(&val) {
+    if !(-2147483647..=2147483647).contains(&val) {
         return Err(Error::ScriptError("Number out of range".to_string()));
     }
     let (posval, negmask) = if val < 0 { (-val, 128) } else { (val, 0) };

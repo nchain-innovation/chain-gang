@@ -56,7 +56,6 @@ impl<T> Default for Subject<T> {
     }
 }
 
-
 impl<T> Observer<T> for Subject<T> {
     fn next(&self, event: &T) {
         let mut any_to_remove = false;
@@ -110,7 +109,6 @@ pub struct Single<T: Sync + Send + Clone> {
     subject: Subject<T>,
     value: RwLock<Option<T>>,
 }
-
 
 impl<T: Sync + Send + Clone> Single<T> {
     /// Creates a new single with an empty set of observers

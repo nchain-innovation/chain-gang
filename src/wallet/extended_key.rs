@@ -62,10 +62,10 @@ impl ExtendedKey {
         {
             let mut c = Cursor::new(&mut extended_key.0 as &mut [u8]);
             match network {
-                Network::Mainnet => c
+                Network::BSV_Mainnet => c
                     .write_u32::<BigEndian>(MAINNET_PUBLIC_EXTENDED_KEY)
                     .unwrap(),
-                Network::Testnet | Network::STN => c
+                Network::BSV_Testnet | Network::BSV_STN => c
                     .write_u32::<BigEndian>(TESTNET_PUBLIC_EXTENDED_KEY)
                     .unwrap(),
             }
@@ -100,10 +100,10 @@ impl ExtendedKey {
         {
             let mut c = Cursor::new(&mut extended_key.0 as &mut [u8]);
             match network {
-                Network::Mainnet => c
+                Network::BSV_Mainnet => c
                     .write_u32::<BigEndian>(MAINNET_PRIVATE_EXTENDED_KEY)
                     .unwrap(),
-                Network::Testnet | Network::STN => c
+                Network::BSV_Testnet | Network::BSV_STN => c
                     .write_u32::<BigEndian>(TESTNET_PRIVATE_EXTENDED_KEY)
                     .unwrap(),
             }
@@ -129,9 +129,9 @@ impl ExtendedKey {
     pub fn network(&self) -> Result<Network> {
         let ver = self.version();
         if ver == MAINNET_PUBLIC_EXTENDED_KEY || ver == MAINNET_PRIVATE_EXTENDED_KEY {
-            Ok(Network::Mainnet)
+            Ok(Network::BSV_Mainnet)
         } else if ver == TESTNET_PUBLIC_EXTENDED_KEY || ver == TESTNET_PRIVATE_EXTENDED_KEY {
-            Ok(Network::Testnet)
+            Ok(Network::BSV_Testnet)
         } else {
             let msg = format!("Unknown extended key version {:?}", ver);
             Err(Error::BadData(msg))

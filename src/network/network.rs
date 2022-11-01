@@ -4,21 +4,22 @@ use crate::script::Script;
 use crate::util::{Error, Hash256, Result};
 use hex;
 
+#[allow(non_camel_case_types)]
 /// Network type
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Network {
-    Mainnet = 0,
-    Testnet = 1,
-    STN = 2,
+    BSV_Mainnet = 0,
+    BSV_Testnet = 1,
+    BSV_STN = 2,
 }
 
 impl Network {
     /// Converts an integer to a network type
     pub fn from_u8(x: u8) -> Result<Network> {
         match x {
-            x if x == Network::Mainnet as u8 => Ok(Network::Mainnet),
-            x if x == Network::Testnet as u8 => Ok(Network::Testnet),
-            x if x == Network::STN as u8 => Ok(Network::STN),
+            x if x == Network::BSV_Mainnet as u8 => Ok(Network::BSV_Mainnet),
+            x if x == Network::BSV_Testnet as u8 => Ok(Network::BSV_Testnet),
+            x if x == Network::BSV_STN as u8 => Ok(Network::BSV_STN),
             _ => {
                 let msg = format!("Unknown network type: {}", x);
                 Err(Error::BadArgument(msg))
@@ -29,25 +30,25 @@ impl Network {
     /// Returns the default TCP port
     pub fn port(&self) -> u16 {
         match self {
-            Network::Mainnet => 8333,
-            Network::Testnet => 18333,
-            Network::STN => 9333,
+            Network::BSV_Mainnet => 8333,
+            Network::BSV_Testnet => 18333,
+            Network::BSV_STN => 9333,
         }
     }
 
     /// Returns the magic bytes for the message headers
     pub fn magic(&self) -> [u8; 4] {
         match self {
-            Network::Mainnet => [0xe3, 0xe1, 0xf3, 0xe8],
-            Network::Testnet => [0xf4, 0xe5, 0xf3, 0xf4],
-            Network::STN => [0xfb, 0xce, 0xc4, 0xf9],
+            Network::BSV_Mainnet => [0xe3, 0xe1, 0xf3, 0xe8],
+            Network::BSV_Testnet => [0xf4, 0xe5, 0xf3, 0xf4],
+            Network::BSV_STN => [0xfb, 0xce, 0xc4, 0xf9],
         }
     }
 
     /// Returns the genesis block
     pub fn genesis_block(&self) -> Block {
         match self {
-            Network::Mainnet => {
+            Network::BSV_Mainnet => {
                 let header = BlockHeader {
                     version: 1,
                     prev_hash: Hash256([0; 32]),
@@ -82,7 +83,7 @@ impl Network {
                     txns: vec![tx],
                 }
             }
-            Network::Testnet | Network::STN => {
+            Network::BSV_Testnet | Network::BSV_STN => {
                 let header = BlockHeader {
                     version: 1,
                     prev_hash: Hash256([0; 32]),
@@ -123,11 +124,11 @@ impl Network {
     /// Returns the genesis block hash
     pub fn genesis_hash(&self) -> Hash256 {
         match self {
-            Network::Mainnet => {
+            Network::BSV_Mainnet => {
                 Hash256::decode("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f")
                     .unwrap()
             }
-            Network::Testnet | Network::STN => {
+            Network::BSV_Testnet | Network::BSV_STN => {
                 Hash256::decode("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943")
                     .unwrap()
             }
@@ -137,35 +138,35 @@ impl Network {
     /// Returns the version byte flag for P2PKH-type addresses
     pub fn addr_pubkeyhash_flag(&self) -> u8 {
         match self {
-            Network::Mainnet => 0x00,
-            Network::Testnet => 0x6f,
-            Network::STN => 0x6f,
+            Network::BSV_Mainnet => 0x00,
+            Network::BSV_Testnet => 0x6f,
+            Network::BSV_STN => 0x6f,
         }
     }
 
     /// Returns the version byte flag for P2SH-type addresses
     pub fn addr_script_flag(&self) -> u8 {
         match self {
-            Network::Mainnet => 0x05,
-            Network::Testnet => 0xc4,
-            Network::STN => 0xc4,
+            Network::BSV_Mainnet => 0x05,
+            Network::BSV_Testnet => 0xc4,
+            Network::BSV_STN => 0xc4,
         }
     }
 
     /// Returns a list of DNS seeds for finding initial nodes
     pub fn seeds(&self) -> Vec<String> {
         match self {
-            Network::Mainnet => vec![
+            Network::BSV_Mainnet => vec![
                 "seed.bitcoinsv.io".to_string(),
                 "seed.cascharia.com".to_string(),
                 "seed.satoshisvision.network".to_string(),
             ],
-            Network::Testnet => vec![
+            Network::BSV_Testnet => vec![
                 "testnet-seed.bitcoinsv.io".to_string(),
                 "testnet-seed.cascharia.com".to_string(),
                 "testnet-seed.bitcoincloud.net".to_string(),
             ],
-            Network::STN => vec!["stn-seed.bitcoinsv.io".to_string()],
+            Network::BSV_STN => vec!["stn-seed.bitcoinsv.io".to_string()],
         }
     }
 

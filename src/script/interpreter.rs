@@ -315,7 +315,7 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
                 check_stack_size(1, &stack)?;
                 let input_val = stack.pop().unwrap();
                 // Invert each byte in the input
-                let output_val:Vec<u8> = input_val.iter().map(|x| !x).collect();
+                let output_val: Vec<u8> = input_val.iter().map(|x| !x).collect();
                 stack.push(output_val);
             }
             OP_LSHIFT => {
@@ -838,7 +838,11 @@ pub fn next_op(i: usize, script: &[u8]) -> usize {
         _ => i + 1,
     };
     let overflow = next > script.len();
-    if overflow { script.len() } else { next }
+    if overflow {
+        script.len()
+    } else {
+        next
+    }
 }
 
 /// Skips over a branch of if/else and return the index of the next else or endif opcode

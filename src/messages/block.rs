@@ -71,14 +71,14 @@ impl Block {
 
         let mut has_coinbase = false;
         let require_sighash_forkid = match network {
-            Network::Mainnet => height >= BITCOIN_CASH_FORK_HEIGHT_MAINNET,
-            Network::Testnet => height >= BITCOIN_CASH_FORK_HEIGHT_TESTNET,
-            Network::STN => true,
+            Network::BSV_Mainnet => height >= BITCOIN_CASH_FORK_HEIGHT_MAINNET,
+            Network::BSV_Testnet => height >= BITCOIN_CASH_FORK_HEIGHT_TESTNET,
+            Network::BSV_STN => true,
         };
         let use_genesis_rules = match network {
-            Network::Mainnet => height >= GENESIS_UPGRADE_HEIGHT_MAINNET,
-            Network::Testnet => height >= GENESIS_UPGRADE_HEIGHT_TESTNET,
-            Network::STN => true,
+            Network::BSV_Mainnet => height >= GENESIS_UPGRADE_HEIGHT_MAINNET,
+            Network::BSV_Testnet => height >= GENESIS_UPGRADE_HEIGHT_TESTNET,
+            Network::BSV_STN => true,
         };
         for txn in self.txns.iter() {
             if !txn.coinbase() {

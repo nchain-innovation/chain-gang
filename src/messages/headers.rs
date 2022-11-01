@@ -2,11 +2,10 @@ use crate::messages::block_header::BlockHeader;
 use crate::messages::message::Payload;
 use crate::util::{var_int, Error, Hash256, Result, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
+use std::cmp::Ordering;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
-use std::cmp::Ordering;
-
 
 /// Collection of block headers
 #[derive(Default, PartialEq, Eq, Hash, Clone)]
