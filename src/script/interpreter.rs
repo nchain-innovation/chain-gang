@@ -313,11 +313,10 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
             }
             OP_INVERT => {
                 check_stack_size(1, &stack)?;
-                let mut v = stack.pop().unwrap();
-                for i in 0..v.len() {
-                    v[i] = !v[i];
-                }
-                stack.push(v);
+                let input_val = stack.pop().unwrap();
+                // Invert each byte in the input
+                let output_val:Vec<u8> = input_val.iter().map(|x| !x).collect();
+                stack.push(output_val);
             }
             OP_LSHIFT => {
                 check_stack_size(2, &stack)?;
