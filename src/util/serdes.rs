@@ -16,12 +16,12 @@ pub trait Serializable<T> {
 impl Serializable<[u8; 16]> for [u8; 16] {
     fn read(reader: &mut dyn Read) -> Result<[u8; 16]> {
         let mut d = [0; 16];
-        reader.read(&mut d)?;
+        reader.read_exact(&mut d)?;
         Ok(d)
     }
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
-        writer.write(self)?;
+        writer.write_all(self)?;
         Ok(())
     }
 }
@@ -29,12 +29,12 @@ impl Serializable<[u8; 16]> for [u8; 16] {
 impl Serializable<[u8; 32]> for [u8; 32] {
     fn read(reader: &mut dyn Read) -> Result<[u8; 32]> {
         let mut d = [0; 32];
-        reader.read(&mut d)?;
+        reader.read_exact(&mut d)?;
         Ok(d)
     }
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
-        writer.write(self)?;
+        writer.write_all(self)?;
         Ok(())
     }
 }

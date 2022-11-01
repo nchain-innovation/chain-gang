@@ -68,6 +68,12 @@ impl SigHashCache {
     }
 }
 
+impl Default for SigHashCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Generates a transaction digest for signing using BIP-143
 ///
 /// This is to be used for all tranasctions after the August 2017 fork.

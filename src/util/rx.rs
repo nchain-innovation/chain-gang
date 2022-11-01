@@ -50,6 +50,13 @@ impl<T> Subject<T> {
     }
 }
 
+impl<T> Default for Subject<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 impl<T> Observer<T> for Subject<T> {
     fn next(&self, event: &T) {
         let mut any_to_remove = false;
@@ -104,6 +111,7 @@ pub struct Single<T: Sync + Send + Clone> {
     value: RwLock<Option<T>>,
 }
 
+
 impl<T: Sync + Send + Clone> Single<T> {
     /// Creates a new single with an empty set of observers
     pub fn new() -> Single<T> {
@@ -111,6 +119,12 @@ impl<T: Sync + Send + Clone> Single<T> {
             subject: Subject::new(),
             value: RwLock::new(None),
         }
+    }
+}
+
+impl<T: Sync + Send + Clone> Default for Single<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

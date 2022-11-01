@@ -108,11 +108,11 @@ impl ExtendedKey {
                     .unwrap(),
             }
             c.write_u8(depth).unwrap();
-            c.write(parent_fingerprint).unwrap();
+            c.write_all(parent_fingerprint).unwrap();
             c.write_u32::<BigEndian>(index).unwrap();
-            c.write(chain_code).unwrap();
+            c.write_all(chain_code).unwrap();
             c.write_u8(0).unwrap();
-            c.write(private_key).unwrap();
+            c.write_all(private_key).unwrap();
         }
         Ok(extended_key)
     }
