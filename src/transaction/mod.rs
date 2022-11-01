@@ -5,11 +5,11 @@
 //! Sign a transaction:
 //!
 //! ```rust
-//! use sv::messages::{Tx, TxIn};
-//! use sv::transaction::generate_signature;
-//! use sv::transaction::p2pkh::{create_lock_script, create_unlock_script};
-//! use sv::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_NONE};
-//! use sv::util::{hash160};
+//! use chain_gang::messages::{Tx, TxIn};
+//! use chain_gang::transaction::generate_signature;
+//! use chain_gang::transaction::p2pkh::{create_lock_script, create_unlock_script};
+//! use chain_gang::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_NONE};
+//! use chain_gang::util::{hash160};
 //!
 //! // Use real values here
 //! let mut tx = Tx {

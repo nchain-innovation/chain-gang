@@ -54,7 +54,7 @@ impl Serializable<Reject> for Reject {
         reader.read(&mut reason_bytes)?;
         let reason = String::from_utf8(reason_bytes)?;
         let mut data = vec![];
-        if message == "block".to_string() || message == "tx".to_string() {
+        if message == *"block" || message == *"tx" {
             data = vec![0_u8; 32];
             reader.read(&mut data)?;
         }
@@ -68,10 +68,10 @@ impl Serializable<Reject> for Reject {
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
         var_int::write(self.message.as_bytes().len() as u64, writer)?;
-        writer.write(&self.message.as_bytes())?;
+        writer.write(self.message.as_bytes())?;
         writer.write_u8(self.code)?;
         var_int::write(self.reason.as_bytes().len() as u64, writer)?;
-        writer.write(&self.reason.as_bytes())?;
+        writer.write(self.reason.as_bytes())?;
         writer.write(&self.data)?;
         Ok(())
     }
@@ -91,7 +91,7 @@ impl Payload<Reject> for Reject {
 impl fmt::Debug for Reject {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut data_str = "".to_string();
-        if self.message == "block".to_string() || self.message == "tx".to_string() {
+        if self.message == *"block" || self.message == *"tx" {
             let mut data = Cursor::new(&self.data);
             data_str = Hash256::read(&mut data).unwrap().encode();
         }

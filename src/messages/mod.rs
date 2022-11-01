@@ -5,8 +5,8 @@
 //! Decode a network message
 //!
 //! ```rust
-//! use sv::messages::Message;
-//! use sv::network::Network;
+//! use chain_gang::messages::Message;
+//! use chain_gang::network::Network;
 //! use std::io::Cursor;
 //!
 //! let bytes = [
@@ -25,9 +25,9 @@
 //! Construct a transaction:
 //!
 //! ```rust
-//! use sv::messages::{OutPoint, Tx, TxIn, TxOut};
-//! use sv::transaction::p2pkh::{create_lock_script, create_unlock_script};
-//! use sv::util::{hash160, Hash256};
+//! use chain_gang::messages::{OutPoint, Tx, TxIn, TxOut};
+//! use chain_gang::transaction::p2pkh::{create_lock_script, create_unlock_script};
+//! use chain_gang::util::{hash160, Hash256};
 //!
 //! // Use real values here
 //! let signature = [0; 72];

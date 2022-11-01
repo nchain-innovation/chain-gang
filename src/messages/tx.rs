@@ -44,10 +44,10 @@ impl Tx {
         pregenesis_outputs: &HashSet<OutPoint>,
     ) -> Result<()> {
         // Make sure neither in or out lists are empty
-        if self.inputs.len() == 0 {
+        if self.inputs.is_empty() {
             return Err(Error::BadData("inputs empty".to_string()));
         }
-        if self.outputs.len() == 0 {
+        if self.outputs.is_empty() {
             return Err(Error::BadData("outputs empty".to_string()));
         }
 
@@ -144,9 +144,9 @@ impl Tx {
 
     /// Returns whether the transaction is the block reward
     pub fn coinbase(&self) -> bool {
-        return self.inputs.len() == 1
+        self.inputs.len() == 1
             && self.inputs[0].prev_output.hash == COINBASE_OUTPOINT_HASH
-            && self.inputs[0].prev_output.index == COINBASE_OUTPOINT_INDEX;
+            && self.inputs[0].prev_output.index == COINBASE_OUTPOINT_INDEX
     }
 }
 

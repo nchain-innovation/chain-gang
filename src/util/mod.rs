@@ -18,7 +18,7 @@ mod serdes;
 pub(crate) mod var_int;
 
 pub(crate) use self::bits::{lshift, rshift, Bits};
-#[allow(dead_code)]
+// #[allow(dead_code)]
 pub use self::bloom_filter::{
     BloomFilter, BLOOM_FILTER_MAX_FILTER_SIZE, BLOOM_FILTER_MAX_HASH_FUNCS,
 };

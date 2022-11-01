@@ -122,19 +122,19 @@ impl ExtendedKey {
         ((self.0[0] as u32) << 24)
             | ((self.0[1] as u32) << 16)
             | ((self.0[2] as u32) << 8)
-            | ((self.0[3] as u32) << 0)
+            | ((self.0[3] as u32))
     }
 
     /// Gets the network
     pub fn network(&self) -> Result<Network> {
         let ver = self.version();
         if ver == MAINNET_PUBLIC_EXTENDED_KEY || ver == MAINNET_PRIVATE_EXTENDED_KEY {
-            return Ok(Network::Mainnet);
+            Ok(Network::Mainnet)
         } else if ver == TESTNET_PUBLIC_EXTENDED_KEY || ver == TESTNET_PRIVATE_EXTENDED_KEY {
-            return Ok(Network::Testnet);
+            Ok(Network::Testnet)
         } else {
             let msg = format!("Unknown extended key version {:?}", ver);
-            return Err(Error::BadData(msg));
+            Err(Error::BadData(msg))
         }
     }
 
@@ -142,12 +142,12 @@ impl ExtendedKey {
     pub fn key_type(&self) -> Result<ExtendedKeyType> {
         let ver = self.version();
         if ver == MAINNET_PUBLIC_EXTENDED_KEY || ver == TESTNET_PUBLIC_EXTENDED_KEY {
-            return Ok(ExtendedKeyType::Public);
+            Ok(ExtendedKeyType::Public)
         } else if ver == MAINNET_PRIVATE_EXTENDED_KEY || ver == TESTNET_PRIVATE_EXTENDED_KEY {
-            return Ok(ExtendedKeyType::Private);
+            Ok(ExtendedKeyType::Private)
         } else {
             let msg = format!("Unknown extended key version {:?}", ver);
-            return Err(Error::BadData(msg));
+            Err(Error::BadData(msg))
         }
     }
 
@@ -166,7 +166,7 @@ impl ExtendedKey {
         ((self.0[9] as u32) << 24)
             | ((self.0[10] as u32) << 16)
             | ((self.0[11] as u32) << 8)
-            | ((self.0[12] as u32) << 0)
+            | (self.0[12] as u32)
     }
 
     /// Gets the chain code
@@ -216,11 +216,11 @@ impl ExtendedKey {
     /// Gets the extenced public key for this key
     pub fn extended_public_key(&self) -> Result<ExtendedKey> {
         match self.key_type()? {
-            ExtendedKeyType::Public => Ok(self.clone()),
+            ExtendedKeyType::Public => Ok(*self),
             ExtendedKeyType::Private => {
                 let private_key = &self.0[46..];
                 let secp = Secp256k1::signing_only();
-                let secp_secret_key = SecretKey::from_slice(&private_key)?;
+                let secp_secret_key = SecretKey::from_slice(private_key)?;
                 let secp_public_key = PublicKey::from_secret_key(&secp, &secp_secret_key);
                 let public_key = secp_public_key.serialize();
 
@@ -250,14 +250,14 @@ impl ExtendedKey {
 
         let secp = Secp256k1::signing_only();
         let private_key = &self.0[46..];
-        let secp_par_secret_key = SecretKey::from_slice(&private_key)?;
+        let secp_par_secret_key = SecretKey::from_slice(private_key)?;
         let chain_code = &self.0[13..45];
         let key = hmac::SigningKey::new(&SHA512, chain_code);
 
         let hmac = if index >= HARDENED_KEY {
             let mut v = Vec::<u8>::with_capacity(37);
             v.push(0);
-            v.extend_from_slice(&private_key);
+            v.extend_from_slice(private_key);
             v.write_u32::<BigEndian>(index)?;
             hmac::sign(&key, &v)
         } else {
@@ -279,7 +279,7 @@ impl ExtendedKey {
         }
 
         let mut secp_child_secret_key = SecretKey::from_slice(&hmac.as_ref()[..32])?;
-        secp_child_secret_key.add_assign(&private_key)?;
+        secp_child_secret_key.add_assign(private_key)?;
 
         let child_chain_code = &hmac.as_ref()[32..];
         let fingerprint = self.fingerprint()?;
@@ -409,19 +409,19 @@ pub fn derive_extended_key(master: &ExtendedKey, path: &str) -> Result<ExtendedK
         return Err(Error::BadArgument(msg.to_string()));
     }
 
-    let mut key = master.clone();
+    let mut key = *master;
 
     for part in parts[1..].iter() {
-        if part.len() == 0 {
+        if part.is_empty() {
             let msg = "Empty part";
             return Err(Error::BadArgument(msg.to_string()));
         }
 
-        let index = if part.ends_with("'") || part.ends_with("h") || part.ends_with("H") {
+        let index = if part.ends_with('\'') || part.ends_with('h') || part.ends_with('H') {
             let index: u32 = part
-                .trim_end_matches("'")
-                .trim_end_matches("h")
-                .trim_end_matches("H")
+                .trim_end_matches('\'')
+                .trim_end_matches('h')
+                .trim_end_matches('H')
                 .parse()?;
             if index >= HARDENED_KEY {
                 let msg = "Key index is already hardened";
@@ -456,12 +456,12 @@ pub fn is_private_key_valid(key: &[u8]) -> bool {
     if !is_below_order {
         return false;
     }
-    for i in 0..32 {
-        if key[i] != 0 {
+    for k in key.iter().take(32) {
+        if *k != 0 {
             return true;
         }
     }
-    return false;
+    false
 }
 
 #[cfg(test)]

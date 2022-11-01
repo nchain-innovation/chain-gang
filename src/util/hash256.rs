@@ -15,7 +15,7 @@ pub struct Hash256(pub [u8; 32]);
 impl Hash256 {
     /// Converts the hash into a hex string
     pub fn encode(&self) -> String {
-        let mut r = self.0.clone();
+        let mut r = self.0;
         r.reverse();
         hex::encode(r)
     }
@@ -51,7 +51,7 @@ impl Serializable<Hash256> for Hash256 {
 
 /// Hashes a data array twice using SHA256
 pub fn sha256d(data: &[u8]) -> Hash256 {
-    let sha256 = digest(&SHA256, &data);
+    let sha256 = digest(&SHA256, data);
     let sha256d = digest(&SHA256, sha256.as_ref());
     let mut hash256 = [0; 32];
     hash256.clone_from_slice(sha256d.as_ref());

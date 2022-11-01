@@ -58,7 +58,7 @@ pub struct TransactionChecker<'a> {
 
 impl<'a> Checker for TransactionChecker<'a> {
     fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], script: &[u8]) -> Result<bool> {
-        if sig.len() < 1 {
+        if sig.is_empty() {
             return Err(Error::ScriptError("Signature too short".to_string()));
         }
         let sighash_type = sig[sig.len() - 1];
@@ -79,7 +79,7 @@ impl<'a> Checker for TransactionChecker<'a> {
         // OpenSSL-generated signatures may not be normalized, but libsecp256kq requires them to be
         signature.normalize_s();
         let message = Message::from_slice(&sig_hash.0)?;
-        let public_key = PublicKey::from_slice(&pubkey)?;
+        let public_key = PublicKey::from_slice(pubkey)?;
         Ok(secp.verify(&message, &signature, &public_key).is_ok())
     }
 

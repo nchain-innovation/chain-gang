@@ -41,7 +41,7 @@ fn load_wordlist_internal(bytes: &[u8]) -> Vec<String> {
 
 /// Encodes data into a mnemonic using BIP-39
 pub fn mnemonic_encode(data: &[u8], word_list: &[String]) -> Vec<String> {
-    let hash = digest(&SHA256, &data);
+    let hash = digest(&SHA256, data);
     let mut words = Vec::with_capacity((data.len() * 8 + data.len() / 32 + 10) / 11);
     let mut bits = Bits::from_slice(data, data.len() * 8);
     bits.append(&Bits::from_slice(hash.as_ref(), data.len() / 4));

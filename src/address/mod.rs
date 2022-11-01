@@ -5,8 +5,8 @@
 //! Extract the public key hash and address type from a base-58 address:
 //!
 //! ```rust
-//! use sv::address::addr_decode;
-//! use sv::network::Network;
+//! use chain_gang::address::addr_decode;
+//! use chain_gang::network::Network;
 //!
 //! let addr = "15wpV72HRpAFPMmosR3jvGq7axU7t6ghX5";
 //! let (pubkeyhash, addr_type) = addr_decode(&addr, Network::Mainnet).unwrap();
@@ -15,9 +15,9 @@
 //! Encode a public key hash into a base-58 address:
 //!
 //! ```rust
-//! use sv::address::{addr_encode, AddressType};
-//! use sv::network::Network;
-//! use sv::util::hash160;
+//! use chain_gang::address::{addr_encode, AddressType};
+//! use chain_gang::network::Network;
+//! use chain_gang::util::hash160;
 //!
 //! let pubkeyhash = hash160(&[0; 33]);
 //! let addr = addr_encode(&pubkeyhash, AddressType::P2PKH, Network::Mainnet);

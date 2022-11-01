@@ -5,11 +5,11 @@
 //! Send and receive a message to a node syncronously:
 //!
 //! ```no_run, rust
-//! use sv::messages::{Message, Ping, Version, NODE_BITCOIN_CASH, PROTOCOL_VERSION};
-//! use sv::network::Network;
-//! use sv::peer::{Peer, SVPeerFilter};
-//! use sv::util::rx::Observable;
-//! use sv::util::secs_since;
+//! use chain_gang::messages::{Message, Ping, Version, NODE_BITCOIN_CASH, PROTOCOL_VERSION};
+//! use chain_gang::network::Network;
+//! use chain_gang::peer::{Peer, SVPeerFilter};
+//! use chain_gang::util::rx::Observable;
+//! use chain_gang::util::secs_since;
 //! use std::time::UNIX_EPOCH;
 //!
 //! let (ip, port) = Network::Mainnet.seed_iter().next().unwrap();
@@ -33,11 +33,11 @@
 //! Handle node events asynronously:
 //!
 //! ```no_run, rust
-//! use sv::messages::{Version, NODE_BITCOIN_CASH, PROTOCOL_VERSION};
-//! use sv::network::Network;
-//! use sv::peer::{Peer, PeerConnected, PeerDisconnected, PeerMessage, SVPeerFilter};
-//! use sv::util::rx::{Observable, Observer};
-//! use sv::util::secs_since;
+//! use chain_gang::messages::{Version, NODE_BITCOIN_CASH, PROTOCOL_VERSION};
+//! use chain_gang::network::Network;
+//! use chain_gang::peer::{Peer, PeerConnected, PeerDisconnected, PeerMessage, SVPeerFilter};
+//! use chain_gang::util::rx::{Observable, Observer};
+//! use chain_gang::util::secs_since;
 //! use std::sync::Arc;
 //! use std::time::UNIX_EPOCH;
 //!

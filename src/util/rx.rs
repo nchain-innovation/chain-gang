@@ -117,7 +117,7 @@ impl<T: Sync + Send + Clone> Single<T> {
 impl<T: Sync + Send + Clone> Observer<T> for Single<T> {
     fn next(&self, event: &T) {
         let mut value = self.value.write().unwrap();
-        if let None = *value {
+        if value.is_none() {
             *value = Some(event.clone());
             self.subject.next(event);
         }
@@ -127,7 +127,7 @@ impl<T: Sync + Send + Clone> Observer<T> for Single<T> {
 impl<T: Sync + Send + Clone + 'static> Observable<T> for Single<T> {
     fn subscribe<S: Observer<T> + 'static>(&self, observer: &Arc<S>) {
         match &*self.value.read().unwrap() {
-            Some(value) => observer.next(&value),
+            Some(value) => observer.next(value),
             None => self.subject.subscribe(observer),
         }
     }
