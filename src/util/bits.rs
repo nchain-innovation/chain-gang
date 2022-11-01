@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 const LSHIFT_MASK: [u8; 8] = [0xff, 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x01];
-const RSHIFT_MASK: [u8; 8] = [0xff, 0xfE, 0xfc, 0xf8, 0xf0, 0xe0, 0xc0, 0x80];
+const RSHIFT_MASK: [u8; 8] = [0xff, 0xfe, 0xfc, 0xf8, 0xf0, 0xe0, 0xc0, 0x80];
 
 /// Manages an array of bits
 #[derive(Debug, Default, Clone)]
@@ -106,7 +106,7 @@ pub fn lshift(v: &[u8], n: usize) -> Vec<u8> {
             val <<= bit_shift;
             result[k as usize] |= val;
         }
-        if k - 1 >= 0 {
+        if k > 0 {
             let mut carryval = v[i] & overflow_mask;
             carryval >>= (8 - bit_shift) % 8;
             result[(k - 1) as usize] |= carryval;

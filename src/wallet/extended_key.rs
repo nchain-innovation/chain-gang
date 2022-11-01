@@ -122,7 +122,7 @@ impl ExtendedKey {
         ((self.0[0] as u32) << 24)
             | ((self.0[1] as u32) << 16)
             | ((self.0[2] as u32) << 8)
-            | ((self.0[3] as u32))
+            | (self.0[3] as u32)
     }
 
     /// Gets the network

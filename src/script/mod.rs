@@ -101,10 +101,10 @@ impl fmt::Debug for Script {
         let script = &self.0;
         let mut ret = String::new();
         let mut i = 0;
-        ret.push_str("[");
+        ret.push('[');
         while i < script.len() {
             if i != 0 {
-                ret.push_str(" ")
+                ret.push(' ')
             }
             match script[i] {
                 OP_0 => ret.push_str("OP_0"),
@@ -259,7 +259,7 @@ impl fmt::Debug for Script {
                 ret.push_str(&format!(" {}", item));
             }
         }
-        ret.push_str("]");
+        ret.push(']');
         f.write_str(&ret)
     }
 }

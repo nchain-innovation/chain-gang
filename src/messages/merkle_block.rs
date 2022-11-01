@@ -130,7 +130,7 @@ impl MerkleBlock {
         if *flag_bits_used / 8 >= self.flags.len() {
             return Err(Error::BadData("Not enough flag bits".to_string()));
         }
-        let flag = (self.flags[*flag_bits_used / 8] >> *flag_bits_used % 8) & 1;
+        let flag = (self.flags[*flag_bits_used / 8] >> (*flag_bits_used % 8)) & 1;
         *flag_bits_used += 1;
         Ok(flag)
     }

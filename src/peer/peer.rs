@@ -151,10 +151,8 @@ impl Peer {
 
             if let Err(e) = message.write(&mut tcp_writer, self.network.magic()) {
                 io_error = Some(e);
-            } else {
-                if let Err(e) = tcp_writer.flush() {
-                    io_error = Some(e);
-                }
+            } else if let Err(e) = tcp_writer.flush() {
+                io_error = Some(e);
             }
         }
 

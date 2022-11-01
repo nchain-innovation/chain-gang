@@ -158,7 +158,7 @@ impl Message {
                         return Ok(Message::Partial(header));
                     }
                 }
-                return Err(e)
+                Err(e)
             }
         }
     }
@@ -453,7 +453,7 @@ fn write_with_payload<T: Serializable<T>>(
         magic,
         command,
         payload_size: payload.size() as u32,
-        checksum: checksum,
+        checksum,
     };
 
     header.write(writer)?;

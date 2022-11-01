@@ -113,7 +113,7 @@ impl Tx {
             let mut tx_checker = TransactionChecker {
                 tx: self,
                 sig_hash_cache: &mut sighash_cache,
-                input: input,
+                input,
                 satoshis: tx_out.satoshis,
                 require_sighash_forkid,
             };

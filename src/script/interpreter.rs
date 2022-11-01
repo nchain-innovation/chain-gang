@@ -69,13 +69,13 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
             }
             OP_PUSHDATA2 => {
                 remains(i + 1, 2, script)?;
-                let len = ((script[i + 1] as usize)) + ((script[i + 2] as usize) << 8);
+                let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
                 remains(i + 3, len, script)?;
                 stack.push(script[i + 3..i + 3 + len].to_vec());
             }
             OP_PUSHDATA4 => {
                 remains(i + 1, 4, script)?;
-                let len = ((script[i + 1] as usize) )
+                let len = (script[i + 1] as usize)
                     + ((script[i + 2] as usize) << 8)
                     + ((script[i + 3] as usize) << 16)
                     + ((script[i + 4] as usize) << 24);

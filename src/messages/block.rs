@@ -61,7 +61,7 @@ impl Block {
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
     ) -> Result<()> {
-        if self.txns.len() == 0 {
+        if self.txns.is_empty() {
             return Err(Error::BadData("Txn count is zero".to_string()));
         }
 
@@ -113,7 +113,7 @@ impl Block {
                 n -= 1;
                 let h1 = row.pop_front().unwrap();
                 let h2 = if n == 0 {
-                    h1.clone()
+                    h1
                 } else {
                     n -= 1;
                     row.pop_front().unwrap()
@@ -124,7 +124,7 @@ impl Block {
                 row.push_back(sha256d(&h));
             }
         }
-        return row.pop_front().unwrap();
+        row.pop_front().unwrap()
     }
 }
 
