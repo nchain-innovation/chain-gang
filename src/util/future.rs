@@ -53,7 +53,7 @@ impl<T> Future<T> {
 
     /// Waits up to a certain duration for a value and consumes the future
     pub fn get_timeout(self, duration: Duration) -> Result<T, Future<T>> {
-        if let Err(_) = self.latch.wait_timeout(duration) {
+        if self.latch.wait_timeout(duration).is_err() {
             return Err(self);
         }
         let mut lock = self.result.lock().unwrap();

@@ -61,10 +61,12 @@ pub fn sha256d(data: &[u8]) -> Hash256 {
 impl Ord for Hash256 {
     fn cmp(&self, other: &Hash256) -> Ordering {
         for i in (0..32).rev() {
-            if self.0[i] < other.0[i] {
-                return Ordering::Less;
-            } else if self.0[i] > other.0[i] {
-                return Ordering::Greater;
+            
+            match self.0[i].cmp(&other.0[i])  {
+                Ordering::Greater => return Ordering::Greater,
+                Ordering::Less => return Ordering::Less,
+                Ordering::Equal => {},
+
             }
         }
         Ordering::Equal

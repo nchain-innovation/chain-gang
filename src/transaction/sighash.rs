@@ -229,7 +229,7 @@ fn legacy_sighash(
         tx.outputs.clone()
     };
     var_int::write(tx_out_list.len() as u64, &mut s)?;
-    for i in 0..tx_out_list.len() {
+    for (i, tx_out) in tx_out_list.iter().enumerate() {
         if i == n_input && base_type == SIGHASH_SINGLE {
             let empty = TxOut {
                 satoshis: -1,
@@ -237,7 +237,7 @@ fn legacy_sighash(
             };
             empty.write(&mut s)?;
         } else {
-            tx_out_list[i].write(&mut s)?;
+            tx_out.write(&mut s)?;
         }
     }
 

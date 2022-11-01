@@ -31,7 +31,7 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
     let mut i = 0;
 
     'outer: while i < script.len() {
-        if branch_exec.len() > 0 && !branch_exec[branch_exec.len() - 1] {
+        if !branch_exec.is_empty() && !branch_exec[branch_exec.len() - 1] {
             i = skip_branch(script, i);
             if i >= script.len() {
                 break;
@@ -69,13 +69,13 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
             }
             OP_PUSHDATA2 => {
                 remains(i + 1, 2, script)?;
-                let len = ((script[i + 1] as usize) << 0) + ((script[i + 2] as usize) << 8);
+                let len = ((script[i + 1] as usize)) + ((script[i + 2] as usize) << 8);
                 remains(i + 3, len, script)?;
                 stack.push(script[i + 3..i + 3 + len].to_vec());
             }
             OP_PUSHDATA4 => {
                 remains(i + 1, 4, script)?;
-                let len = ((script[i + 1] as usize) << 0)
+                let len = ((script[i + 1] as usize) )
                     + ((script[i + 2] as usize) << 8)
                     + ((script[i + 3] as usize) << 16)
                     + ((script[i + 4] as usize) << 24);
@@ -94,7 +94,7 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
                 branch_exec[len - 1] = !branch_exec[len - 1];
             }
             OP_ENDIF => {
-                if branch_exec.len() == 0 {
+                if branch_exec.is_empty() {
                     let msg = "ENDIF found without matching IF".to_string();
                     return Err(Error::ScriptError(msg));
                 }
@@ -699,7 +699,7 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
         i = next_op(i, script);
     }
 
-    if branch_exec.len() != 0 {
+    if !branch_exec.is_empty() {
         return Err(Error::ScriptError("ENDIF missing".to_string()));
     }
     // We don't call pop_bool here because the final stack element can be longer than 4 bytes
@@ -721,7 +721,7 @@ fn check_multisig<T: Checker>(
     if total < 0 {
         return Err(Error::ScriptError("total out of range".to_string()));
     }
-    check_stack_size(total as usize, &stack)?;
+    check_stack_size(total as usize, stack)?;
     let mut keys = Vec::with_capacity(total as usize);
     for _i in 0..total {
         keys.push(stack.pop().unwrap());
@@ -732,14 +732,14 @@ fn check_multisig<T: Checker>(
     if required < 0 || required > total {
         return Err(Error::ScriptError("required out of range".to_string()));
     }
-    check_stack_size(required as usize, &stack)?;
+    check_stack_size(required as usize, stack)?;
     let mut sigs = Vec::with_capacity(required as usize);
     for _i in 0..required {
         sigs.push(stack.pop().unwrap());
     }
 
     // Pop one more off. This isn't used and can't be changed.
-    check_stack_size(1, &stack)?;
+    check_stack_size(1, stack)?;
     stack.pop().unwrap();
 
     // Remove signature for pre-fork scripts
@@ -765,12 +765,12 @@ fn check_multisig<T: Checker>(
 }
 
 fn prefork(sig: &[u8]) -> bool {
-    sig.len() > 0 && sig[sig.len() - 1] & SIGHASH_FORKID == 0
+    !sig.is_empty() && sig[sig.len() - 1] & SIGHASH_FORKID == 0
 }
 
 /// Removes any instances of the signature from the lock_script in pre-fork transactions
-fn remove_sig<'a>(sig: &[u8], script: &[u8]) -> Vec<u8> {
-    if sig.len() == 0 {
+fn remove_sig(sig: &[u8], script: &[u8]) -> Vec<u8> {
+    if sig.is_empty() {
         return script.to_vec();
     }
     let mut result = Vec::with_capacity(script.len());

@@ -16,9 +16,9 @@ pub struct SeedIter {
 
 impl SeedIter {
     /// Creates a new seed iterator from a list of DNS seeds
-    pub fn new(seeds: &Vec<String>, port: u16) -> SeedIter {
+    pub fn new(seeds: &[String], port: u16) -> SeedIter {
         SeedIter {
-            seeds: seeds.clone(),
+            seeds: seeds.to_owned(),
             port,
             nodes: Vec::new(),
             seed_index: 0,
@@ -36,7 +36,7 @@ impl Iterator for SeedIter {
                 return None;
             }
 
-            if self.nodes.len() == 0 {
+            if self.nodes.is_empty() {
                 let i = (self.seed_index + self.random_offset) % self.seeds.len();
                 info!("Looking up DNS {:?}", self.seeds[i]);
                 match lookup_host(&self.seeds[i]) {
