@@ -31,7 +31,7 @@ impl Serializable<TxIn> for TxIn {
         let prev_output = OutPoint::read(reader)?;
         let script_len = var_int::read(reader)?;
         let mut unlock_script = Script(vec![0; script_len as usize]);
-        reader.read(&mut unlock_script.0)?;
+        reader.read_exact(&mut unlock_script.0)?;
         let sequence = reader.read_u32::<LittleEndian>()?;
         Ok(TxIn {
             prev_output,
@@ -43,7 +43,7 @@ impl Serializable<TxIn> for TxIn {
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
         self.prev_output.write(writer)?;
         var_int::write(self.unlock_script.0.len() as u64, writer)?;
-        writer.write(&self.unlock_script.0)?;
+        writer.write_all(&self.unlock_script.0)?;
         writer.write_u32::<LittleEndian>(self.sequence)?;
         Ok(())
     }

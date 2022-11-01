@@ -29,13 +29,13 @@ impl Serializable<FilterAdd> for FilterAdd {
     fn read(reader: &mut dyn Read) -> Result<FilterAdd> {
         let data_len = var_int::read(reader)?;
         let mut data = vec![0; data_len as usize];
-        reader.read(&mut data)?;
+        reader.read_exact(&mut data)?;
         Ok(FilterAdd { data })
     }
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
         var_int::write(self.data.len() as u64, writer)?;
-        writer.write(&self.data)?;
+        writer.write_all(&self.data)?;
         Ok(())
     }
 }

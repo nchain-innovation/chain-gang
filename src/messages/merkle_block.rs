@@ -156,7 +156,7 @@ impl Serializable<MerkleBlock> for MerkleBlock {
         }
         let flags_len = var_int::read(reader)?;
         let mut flags = vec![0; flags_len as usize];
-        reader.read(&mut flags)?;
+        reader.read_exact(&mut flags)?;
         Ok(MerkleBlock {
             header,
             total_transactions,
@@ -173,7 +173,7 @@ impl Serializable<MerkleBlock> for MerkleBlock {
             hash.write(writer)?;
         }
         var_int::write(self.flags.len() as u64, writer)?;
-        writer.write(&self.flags)?;
+        writer.write_all(&self.flags)?;
         Ok(())
     }
 }

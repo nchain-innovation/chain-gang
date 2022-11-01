@@ -31,7 +31,7 @@ impl Serializable<FilterLoad> for FilterLoad {
     fn read(reader: &mut dyn Read) -> Result<FilterLoad> {
         let num_filters = var_int::read(reader)?;
         let mut filter = vec![0; num_filters as usize];
-        reader.read(&mut filter)?;
+        reader.read_exact(&mut filter)?;
         let num_hash_funcs = reader.read_u32::<LittleEndian>()? as usize;
         let tweak = reader.read_u32::<LittleEndian>()?;
         let flags = reader.read_u8()?;
@@ -47,7 +47,7 @@ impl Serializable<FilterLoad> for FilterLoad {
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
         var_int::write(self.bloom_filter.filter.len() as u64, writer)?;
-        writer.write(&self.bloom_filter.filter)?;
+        writer.write_all(&self.bloom_filter.filter)?;
         writer.write_u32::<LittleEndian>(self.bloom_filter.num_hash_funcs as u32)?;
         writer.write_u32::<LittleEndian>(self.bloom_filter.tweak)?;
         writer.write_u8(self.flags)?;

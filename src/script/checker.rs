@@ -121,7 +121,7 @@ impl<'a> Checker for TransactionChecker<'a> {
         if (sequence_masked < SEQUENCE_LOCKTIME_TYPE_FLAG
             && tx_sequence_masked >= SEQUENCE_LOCKTIME_TYPE_FLAG)
             || (sequence_masked >= SEQUENCE_LOCKTIME_TYPE_FLAG
-                && sequence_masked < SEQUENCE_LOCKTIME_TYPE_FLAG)
+                && tx_sequence_masked < SEQUENCE_LOCKTIME_TYPE_FLAG)
         {
             let msg = "sequence types different".to_string();
             return Err(Error::ScriptError(msg));

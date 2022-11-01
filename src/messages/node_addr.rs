@@ -41,7 +41,7 @@ impl Serializable<NodeAddr> for NodeAddr {
     fn read(reader: &mut dyn Read) -> Result<NodeAddr> {
         let services = reader.read_u64::<LittleEndian>()?;
         let mut ip = [0; 16];
-        reader.read(&mut ip)?;
+        reader.read_exact(&mut ip)?;
         let ip = Ipv6Addr::from(ip);
         let port = reader.read_u16::<BigEndian>()?;
         Ok(NodeAddr { services, ip, port })
@@ -49,7 +49,7 @@ impl Serializable<NodeAddr> for NodeAddr {
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
         writer.write_u64::<LittleEndian>(self.services)?;
-        writer.write(&self.ip.octets())?;
+        writer.write_all(&self.ip.octets())?;
         writer.write_u16::<BigEndian>(self.port)?;
         Ok(())
     }

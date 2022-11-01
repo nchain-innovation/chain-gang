@@ -60,7 +60,7 @@ pub fn check_unlock_script_addr(pubkey: &[u8], unlock_script: &[u8]) -> bool {
     if !check_unlock_script(unlock_script) {
         return false;
     }
-    let i = next_op(0, &unlock_script);
+    let i = next_op(0, unlock_script);
     unlock_script[i + 1..] == *pubkey
 }
 
@@ -70,7 +70,7 @@ pub fn extract_pubkey(unlock_script: &[u8]) -> Result<Vec<u8>> {
         let msg = "Script is not a sigscript for P2PKH".to_string();
         return Err(Error::BadData(msg));
     }
-    let i = next_op(0, &unlock_script);
+    let i = next_op(0, unlock_script);
     Ok(unlock_script[i + 1..].to_vec())
 }
 

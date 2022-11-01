@@ -76,7 +76,7 @@ impl Serializable<Version> for Version {
         ret.nonce = reader.read_u64::<LittleEndian>()?;
         let user_agent_size = var_int::read(reader)? as usize;
         let mut user_agent_bytes = vec![0; user_agent_size];
-        reader.read(&mut user_agent_bytes)?;
+        reader.read_exact(&mut user_agent_bytes)?;
         ret.user_agent = String::from_utf8(user_agent_bytes)?;
         ret.start_height = reader.read_i32::<LittleEndian>()?;
         ret.relay = reader.read_u8()? == 0x01;
@@ -91,7 +91,7 @@ impl Serializable<Version> for Version {
         self.tx_addr.write(writer)?;
         writer.write_u64::<LittleEndian>(self.nonce)?;
         var_int::write(self.user_agent.as_bytes().len() as u64, writer)?;
-        writer.write(self.user_agent.as_bytes())?;
+        writer.write_all(self.user_agent.as_bytes())?;
         writer.write_i32::<LittleEndian>(self.start_height)?;
         writer.write_u8(if self.relay { 0x01 } else { 0x00 })?;
         Ok(())

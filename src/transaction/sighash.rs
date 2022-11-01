@@ -100,9 +100,9 @@ fn bip143_sighash(
             }
             cache.hash_prevouts = Some(sha256d(&prev_outputs));
         }
-        s.write(&cache.hash_prevouts.unwrap().0)?;
+        s.write_all(&cache.hash_prevouts.unwrap().0)?;
     } else {
-        s.write(&[0; 32])?;
+        s.write_all(&[0; 32])?;
     }
 
     // 3. Serialize hash of sequences
@@ -114,9 +114,9 @@ fn bip143_sighash(
             }
             cache.hash_sequence = Some(sha256d(&sequences));
         }
-        s.write(&cache.hash_sequence.unwrap().0)?;
+        s.write_all(&cache.hash_sequence.unwrap().0)?;
     } else {
-        s.write(&[0; 32])?;
+        s.write_all(&[0; 32])?;
     }
 
     // 4. Serialize prev output
@@ -124,7 +124,7 @@ fn bip143_sighash(
 
     // 5. Serialize input script
     var_int::write(script_code.len() as u64, &mut s)?;
-    s.write(script_code)?;
+    s.write_all(script_code)?;
 
     // 6. Serialize satoshis
     s.write_i64::<LittleEndian>(satoshis)?;
@@ -145,13 +145,13 @@ fn bip143_sighash(
             }
             cache.hash_outputs = Some(sha256d(&outputs));
         }
-        s.write(&cache.hash_outputs.unwrap().0)?;
+        s.write_all(&cache.hash_outputs.unwrap().0)?;
     } else if base_type == SIGHASH_SINGLE && n_input < tx.outputs.len() {
         let mut outputs = Vec::with_capacity(tx.outputs[n_input].size());
         tx.outputs[n_input].write(&mut outputs)?;
-        s.write(&sha256d(&outputs).0)?;
+        s.write_all(&sha256d(&outputs).0)?;
     } else {
-        s.write(&[0; 32])?;
+        s.write_all(&[0; 32])?;
     }
 
     // 9. Serialize lock_time

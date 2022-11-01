@@ -70,10 +70,10 @@ impl ExtendedKey {
                     .unwrap(),
             }
             c.write_u8(depth).unwrap();
-            c.write(parent_fingerprint).unwrap();
+            c.write_all(parent_fingerprint).unwrap();
             c.write_u32::<BigEndian>(index).unwrap();
-            c.write(chain_code).unwrap();
-            c.write(public_key).unwrap();
+            c.write_all(chain_code).unwrap();
+            c.write_all(public_key).unwrap();
         }
         Ok(extended_key)
     }
@@ -369,12 +369,12 @@ impl ExtendedKey {
 impl Serializable<ExtendedKey> for ExtendedKey {
     fn read(reader: &mut dyn Read) -> Result<ExtendedKey> {
         let mut k = ExtendedKey([0; 78]);
-        reader.read(&mut k.0)?;
+        reader.read_exact(&mut k.0)?;
         Ok(k)
     }
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
-        writer.write(&self.0)?;
+        writer.write_all(&self.0)?;
         Ok(())
     }
 }

@@ -100,7 +100,7 @@ impl Serializable<BloomFilter> for BloomFilter {
             num_hash_funcs: 0,
             tweak: 0,
         };
-        reader.read(&mut bloom_filter.filter)?;
+        reader.read_exact(&mut bloom_filter.filter)?;
         bloom_filter.num_hash_funcs = reader.read_u64::<LittleEndian>()? as usize;
         bloom_filter.tweak = reader.read_u32::<LittleEndian>()?;
         Ok(bloom_filter)
@@ -108,7 +108,7 @@ impl Serializable<BloomFilter> for BloomFilter {
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
         var_int::write(self.filter.len() as u64, writer)?;
-        writer.write(&self.filter)?;
+        writer.write_all(&self.filter)?;
         writer.write_u64::<LittleEndian>(self.num_hash_funcs as u64)?;
         writer.write_u32::<LittleEndian>(self.tweak)?;
         Ok(())

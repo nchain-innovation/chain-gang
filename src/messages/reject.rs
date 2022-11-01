@@ -46,17 +46,17 @@ impl Serializable<Reject> for Reject {
     fn read(reader: &mut dyn Read) -> Result<Reject> {
         let message_size = var_int::read(reader)? as usize;
         let mut message_bytes = vec![0; message_size];
-        reader.read(&mut message_bytes)?;
+        reader.read_exact(&mut message_bytes)?;
         let message = String::from_utf8(message_bytes)?;
         let code = reader.read_u8()?;
         let reason_size = var_int::read(reader)? as usize;
         let mut reason_bytes = vec![0; reason_size];
-        reader.read(&mut reason_bytes)?;
+        reader.read_exact(&mut reason_bytes)?;
         let reason = String::from_utf8(reason_bytes)?;
         let mut data = vec![];
         if message == *"block" || message == *"tx" {
             data = vec![0_u8; 32];
-            reader.read(&mut data)?;
+            reader.read_exact(&mut data)?;
         }
         Ok(Reject {
             message,
@@ -68,11 +68,11 @@ impl Serializable<Reject> for Reject {
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
         var_int::write(self.message.as_bytes().len() as u64, writer)?;
-        writer.write(self.message.as_bytes())?;
+        writer.write_all(self.message.as_bytes())?;
         writer.write_u8(self.code)?;
         var_int::write(self.reason.as_bytes().len() as u64, writer)?;
-        writer.write(self.reason.as_bytes())?;
-        writer.write(&self.data)?;
+        writer.write_all(self.reason.as_bytes())?;
+        writer.write_all(&self.data)?;
         Ok(())
     }
 }

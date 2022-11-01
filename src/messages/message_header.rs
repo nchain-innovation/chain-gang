@@ -80,19 +80,19 @@ impl Serializable<MessageHeader> for MessageHeader {
         let mut ret = MessageHeader {
             ..Default::default()
         };
-        c.read(&mut ret.magic)?;
-        c.read(&mut ret.command)?;
+        c.read_exact(&mut ret.magic)?;
+        c.read_exact(&mut ret.command)?;
         ret.payload_size = c.read_u32::<LittleEndian>()?;
-        c.read(&mut ret.checksum)?;
+        c.read_exact(&mut ret.checksum)?;
 
         Ok(ret)
     }
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
-        writer.write(&self.magic)?;
-        writer.write(&self.command)?;
+        writer.write_all(&self.magic)?;
+        writer.write_all(&self.command)?;
         writer.write_u32::<LittleEndian>(self.payload_size)?;
-        writer.write(&self.checksum)?;
+        writer.write_all(&self.checksum)?;
         Ok(())
     }
 }
