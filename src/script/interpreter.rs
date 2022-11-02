@@ -574,9 +574,9 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
                     neg = n[nlen - 1] & 128;
                     n[nlen - 1] &= 127;
                 }
-                for _ in n.len()..m.to_usize().unwrap() {
-                    v.push(0);
-                }
+                // Add zeros
+                let diff = m.to_usize().unwrap() - n.len();
+                v.extend(std::iter::repeat(0).take(diff));
                 for b in n.iter().rev() {
                     v.push(*b);
                 }
