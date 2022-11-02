@@ -13,7 +13,7 @@
 //!     227, 225, 243, 232, 104, 101, 97, 100, 101, 114, 115,
 //!     0, 0, 0, 0, 0, 1, 0, 0, 0, 20, 6, 224, 88, 0,
 //! ];
-//! let magic = Network::Mainnet.magic();
+//! let magic = Network::BSV_Mainnet.magic();
 //! let message = Message::read(&mut Cursor::new(&bytes), magic).unwrap();
 //!
 //! match message {

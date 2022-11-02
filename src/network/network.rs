@@ -1,31 +1,31 @@
 use crate::messages::{Block, BlockHeader, OutPoint, Tx, TxIn, TxOut};
 use crate::network::SeedIter;
 use crate::script::Script;
-use crate::util::{Error, Hash256, Result};
+// use crate::util::{Error, Hash256, Result};
+use crate::util::Hash256;
 use hex;
 
 #[allow(non_camel_case_types)]
 /// Network type
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Network {
-    BSV_Mainnet = 0,
-    BSV_Testnet = 1,
-    BSV_STN = 2,
+    // BSV
+    BSV_Mainnet,
+    BSV_Testnet,
+    BSV_STN,
+    // BTC
+    BTC_Mainnet,
+    BTC_Testnet,
+    // BCH
+    BCH_Mainnet,
+    BCH_Testnet,
 }
 
 impl Network {
     /// Converts an integer to a network type
-    pub fn from_u8(x: u8) -> Result<Network> {
-        match x {
-            x if x == Network::BSV_Mainnet as u8 => Ok(Network::BSV_Mainnet),
-            x if x == Network::BSV_Testnet as u8 => Ok(Network::BSV_Testnet),
-            x if x == Network::BSV_STN as u8 => Ok(Network::BSV_STN),
-            _ => {
-                let msg = format!("Unknown network type: {}", x);
-                Err(Error::BadArgument(msg))
-            }
-        }
-    }
+    /// pub fn from_u8(x: u8) -> Result<Network> {
+    /// Deleted as considered too dangerous!
+    /// As it was hardcoding u8 -> network mappings
 
     /// Returns the default TCP port
     pub fn port(&self) -> u16 {
@@ -33,22 +33,35 @@ impl Network {
             Network::BSV_Mainnet => 8333,
             Network::BSV_Testnet => 18333,
             Network::BSV_STN => 9333,
+
+            Network::BTC_Mainnet => 8333,
+            Network::BTC_Testnet => 18333,
+            // Network::BTC_SigNet => 38333,
+            // Network::BTC_RegTest => 18444,
+            Network::BCH_Mainnet => 8333,
+            Network::BCH_Testnet => 18333,
+            // Network::BCH_Testnet4 => 28333,
+            // Network::BCH_ScaleNet => 38333,
+            // Network::BCH_RegTest => 18444,
         }
     }
 
     /// Returns the magic bytes for the message headers
     pub fn magic(&self) -> [u8; 4] {
         match self {
-            Network::BSV_Mainnet => [0xe3, 0xe1, 0xf3, 0xe8],
-            Network::BSV_Testnet => [0xf4, 0xe5, 0xf3, 0xf4],
+            Network::BSV_Mainnet | Network::BCH_Mainnet => [0xe3, 0xe1, 0xf3, 0xe8],
+            Network::BSV_Testnet | Network::BCH_Testnet => [0xf4, 0xe5, 0xf3, 0xf4],
             Network::BSV_STN => [0xfb, 0xce, 0xc4, 0xf9],
+
+            Network::BTC_Mainnet => [0xf9, 0xbe, 0xb4, 0xd9],
+            Network::BTC_Testnet => [0x0b, 0x11, 0x09, 0x07],
         }
     }
 
     /// Returns the genesis block
     pub fn genesis_block(&self) -> Block {
         match self {
-            Network::BSV_Mainnet => {
+            Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => {
                 let header = BlockHeader {
                     version: 1,
                     prev_hash: Hash256([0; 32]),
@@ -83,7 +96,10 @@ impl Network {
                     txns: vec![tx],
                 }
             }
-            Network::BSV_Testnet | Network::BSV_STN => {
+            Network::BSV_Testnet
+            | Network::BSV_STN
+            | Network::BTC_Testnet
+            | Network::BCH_Testnet => {
                 let header = BlockHeader {
                     version: 1,
                     prev_hash: Hash256([0; 32]),
@@ -124,11 +140,14 @@ impl Network {
     /// Returns the genesis block hash
     pub fn genesis_hash(&self) -> Hash256 {
         match self {
-            Network::BSV_Mainnet => {
+            Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => {
                 Hash256::decode("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f")
                     .unwrap()
             }
-            Network::BSV_Testnet | Network::BSV_STN => {
+            Network::BSV_Testnet
+            | Network::BSV_STN
+            | Network::BTC_Testnet
+            | Network::BCH_Testnet => {
                 Hash256::decode("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943")
                     .unwrap()
             }
@@ -136,19 +155,21 @@ impl Network {
     }
 
     /// Returns the version byte flag for P2PKH-type addresses
+    ///     base58Prefixes[PUBKEY_ADDRESS] = std::vector<uint8_t>(1, 0);
     pub fn addr_pubkeyhash_flag(&self) -> u8 {
         match self {
-            Network::BSV_Mainnet => 0x00,
-            Network::BSV_Testnet => 0x6f,
+            Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => 0x00,
+            Network::BSV_Testnet | Network::BTC_Testnet | Network::BCH_Testnet => 0x6f,
             Network::BSV_STN => 0x6f,
         }
     }
 
     /// Returns the version byte flag for P2SH-type addresses
+    ///         base58Prefixes[SCRIPT_ADDRESS] = std::vector<uint8_t>(1, 5);
     pub fn addr_script_flag(&self) -> u8 {
         match self {
-            Network::BSV_Mainnet => 0x05,
-            Network::BSV_Testnet => 0xc4,
+            Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => 0x05,
+            Network::BSV_Testnet | Network::BTC_Testnet | Network::BCH_Testnet => 0xc4,
             Network::BSV_STN => 0xc4,
         }
     }
@@ -167,6 +188,40 @@ impl Network {
                 "testnet-seed.bitcoincloud.net".to_string(),
             ],
             Network::BSV_STN => vec!["stn-seed.bitcoinsv.io".to_string()],
+
+            Network::BTC_Mainnet => vec![
+                "seed.bitcoin.sipa.be".to_string(),
+                "dnsseed.bluematt.me".to_string(),
+                "dnsseed.bitcoin.dashjr.org".to_string(),
+                "seed.bitcoinstats.com".to_string(),
+                "seed.bitcoin.jonasschnelli.ch".to_string(),
+                "seed.btc.petertodd.org".to_string(),
+                "seed.bitcoin.sprovoost.nl".to_string(),
+                "dnsseed.emzy.de".to_string(),
+                "seed.bitcoin.wiz.biz".to_string(),
+            ],
+            Network::BTC_Testnet => vec![
+                "testnet-seed.bitcoin.jonasschnelli.ch".to_string(),
+                "seed.tbtc.petertodd.org".to_string(),
+                "seed.testnet.bitcoin.sprovoost.nl".to_string(),
+                "testnet-seed.bluematt.me".to_string(),
+            ],
+
+            Network::BCH_Mainnet => vec![
+                "seed.flowee.cash".to_string(),
+                "seed-bch.bitcoinforks.org".to_string(),
+                "btccash-seeder.bitcoinunlimited.info".to_string(),
+                "seed.bchd.cash".to_string(),
+                "seed.bch.loping.net".to_string(),
+                "dnsseed.electroncash.de".to_string(),
+                "bchseed.c3-soft.com".to_string(),
+                "bch.bitjson.com".to_string(),
+            ],
+            Network::BCH_Testnet => vec![
+                "testnet-seed.bchd.cash".to_string(),
+                "seed.tbch.loping.net".to_string(),
+                "testnet-seed.bitcoinunlimited.info".to_string(),
+            ],
         }
     }
 

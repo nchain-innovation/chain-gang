@@ -12,7 +12,7 @@
 //! use chain_gang::util::secs_since;
 //! use std::time::UNIX_EPOCH;
 //!
-//! let (ip, port) = Network::Mainnet.seed_iter().next().unwrap();
+//! let (ip, port) = Network::BSV_Mainnet.seed_iter().next().unwrap();
 //! let version = Version {
 //!     version: PROTOCOL_VERSION,
 //!     services: NODE_BITCOIN_CASH,
@@ -21,7 +21,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! let peer = Peer::connect(ip, port, Network::Mainnet, version, SVPeerFilter::new(0));
+//! let peer = Peer::connect(ip, port, Network::BSV_Mainnet, version, SVPeerFilter::new(0));
 //! peer.connected_event().poll();
 //!
 //! let ping = Message::Ping(Ping { nonce: 0 });
@@ -41,7 +41,7 @@
 //! use std::sync::Arc;
 //! use std::time::UNIX_EPOCH;
 //!
-//! let (ip, port) = Network::Mainnet.seed_iter().next().unwrap();
+//! let (ip, port) = Network::BSV_Mainnet.seed_iter().next().unwrap();
 //! let version = Version {
 //!     version: PROTOCOL_VERSION,
 //!     services: NODE_BITCOIN_CASH,
@@ -50,7 +50,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! let peer = Peer::connect(ip, port, Network::Mainnet, version, SVPeerFilter::new(0));
+//! let peer = Peer::connect(ip, port, Network::BSV_Mainnet, version, SVPeerFilter::new(0));
 //!
 //! struct EventHandler {}
 //!

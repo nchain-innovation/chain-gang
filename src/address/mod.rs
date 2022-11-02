@@ -9,7 +9,7 @@
 //! use chain_gang::network::Network;
 //!
 //! let addr = "15wpV72HRpAFPMmosR3jvGq7axU7t6ghX5";
-//! let (pubkeyhash, addr_type) = addr_decode(&addr, Network::Mainnet).unwrap();
+//! let (pubkeyhash, addr_type) = addr_decode(&addr, Network::BSV_Mainnet).unwrap();
 //! ```
 //!
 //! Encode a public key hash into a base-58 address:
@@ -20,7 +20,7 @@
 //! use chain_gang::util::hash160;
 //!
 //! let pubkeyhash = hash160(&[0; 33]);
-//! let addr = addr_encode(&pubkeyhash, AddressType::P2PKH, Network::Mainnet);
+//! let addr = addr_encode(&pubkeyhash, AddressType::P2PKH, Network::BSV_Mainnet);
 //! ```
 //!
 use crate::network::Network;
@@ -103,14 +103,14 @@ mod tests {
     fn to_addr() {
         let pubkey_hex = "04005937fd439b3c19014d5f328df8c7ed514eaaf41c1980b8aeab461dffb23fbf3317e42395db24a52ce9fc947d9c22f54dc3217c8b11dfc7a09c59e0dca591d3";
         let pubkeyhash = hash160(&hex::decode(pubkey_hex).unwrap());
-        let addr = addr_encode(&pubkeyhash, AddressType::P2PKH, Network::Mainnet);
+        let addr = addr_encode(&pubkeyhash, AddressType::P2PKH, Network::BSV_Mainnet);
         assert!(addr == "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn");
     }
 
     #[test]
     fn from_addr() {
         let addr = "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn";
-        let result = addr_decode(&addr, Network::Mainnet).unwrap();
+        let result = addr_decode(&addr, Network::BSV_Mainnet).unwrap();
         let hash160 = result.0;
         let addr_type = result.1;
         assert!(addr_type == AddressType::P2PKH);
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn from_addr_errors() {
-        assert!(addr_decode("0", Network::Mainnet).is_err());
-        assert!(addr_decode("1000000000000000000000000000000000", Network::Mainnet).is_err());
+        assert!(addr_decode("0", Network::BSV_Mainnet).is_err());
+        assert!(addr_decode("1000000000000000000000000000000000", Network::BSV_Mainnet).is_err());
     }
 }

@@ -24,7 +24,7 @@ pub const MAINNET_PUBLIC_EXTENDED_KEY: u32 = 0x0488B21E;
 /// "xprv" prefix for private extended keys on mainnet
 pub const MAINNET_PRIVATE_EXTENDED_KEY: u32 = 0x0488ADE4;
 /// "tpub" prefix for public extended keys on testnet
-pub const TESTNET_PUBLIC_EXTENDED_KEY: u32 = 0x043587C;
+pub const TESTNET_PUBLIC_EXTENDED_KEY: u32 = 0x043587CF;
 /// "tprv" prefix for private extended keys on testnet
 pub const TESTNET_PRIVATE_EXTENDED_KEY: u32 = 0x04358394;
 
@@ -62,10 +62,10 @@ impl ExtendedKey {
         {
             let mut c = Cursor::new(&mut extended_key.0 as &mut [u8]);
             match network {
-                Network::BSV_Mainnet => c
+                Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => c
                     .write_u32::<BigEndian>(MAINNET_PUBLIC_EXTENDED_KEY)
                     .unwrap(),
-                Network::BSV_Testnet | Network::BSV_STN => c
+                Network::BSV_Testnet | Network::BSV_STN | Network::BCH_Testnet | Network::BTC_Testnet=> c
                     .write_u32::<BigEndian>(TESTNET_PUBLIC_EXTENDED_KEY)
                     .unwrap(),
             }
@@ -100,10 +100,10 @@ impl ExtendedKey {
         {
             let mut c = Cursor::new(&mut extended_key.0 as &mut [u8]);
             match network {
-                Network::BSV_Mainnet => c
+                Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => c
                     .write_u32::<BigEndian>(MAINNET_PRIVATE_EXTENDED_KEY)
                     .unwrap(),
-                Network::BSV_Testnet | Network::BSV_STN => c
+                Network::BSV_Testnet | Network::BSV_STN | Network::BTC_Testnet | Network::BCH_Testnet => c
                     .write_u32::<BigEndian>(TESTNET_PRIVATE_EXTENDED_KEY)
                     .unwrap(),
             }
@@ -559,7 +559,7 @@ mod tests {
     #[test]
     fn new_public_key() {
         let key = ExtendedKey::new_public_key(
-            Network::Testnet,
+            Network::BSV_Testnet,
             111,
             &[0, 1, 2, 3],
             44,
@@ -567,7 +567,7 @@ mod tests {
             &[6; 33],
         )
         .unwrap();
-        assert!(key.network().unwrap() == Network::Testnet);
+        assert!(key.network().unwrap() == Network::BSV_Testnet);
         assert!(key.key_type().unwrap() == ExtendedKeyType::Public);
         assert!(key.depth() == 111);
         assert!(key.parent_fingerprint() == [0_u8, 1_u8, 2_u8, 3_u8]);
@@ -579,7 +579,7 @@ mod tests {
 
         // Errors
         assert!(ExtendedKey::new_public_key(
-            Network::Testnet,
+            Network::BSV_Testnet,
             111,
             &[0, 1, 2],
             44,
@@ -588,7 +588,7 @@ mod tests {
         )
         .is_err());
         assert!(ExtendedKey::new_public_key(
-            Network::Testnet,
+            Network::BSV_Testnet,
             111,
             &[0, 1, 2, 3],
             44,
@@ -597,7 +597,7 @@ mod tests {
         )
         .is_err());
         assert!(ExtendedKey::new_public_key(
-            Network::Testnet,
+            Network::BSV_Testnet,
             111,
             &[0, 1, 2, 3],
             44,
@@ -610,7 +610,7 @@ mod tests {
     #[test]
     fn new_private_key() {
         let key = ExtendedKey::new_private_key(
-            Network::Mainnet,
+            Network::BSV_Mainnet,
             255,
             &[4, 5, 6, 7],
             HARDENED_KEY + 100,
@@ -618,7 +618,7 @@ mod tests {
             &[8; 32],
         )
         .unwrap();
-        assert!(key.network().unwrap() == Network::Mainnet);
+        assert!(key.network().unwrap() == Network::BSV_Mainnet);
         assert!(key.key_type().unwrap() == ExtendedKeyType::Private);
         assert!(key.depth() == 255);
         assert!(key.parent_fingerprint() == [4_u8, 5_u8, 6_u8, 7_u8]);
@@ -628,7 +628,7 @@ mod tests {
 
         // Errors
         assert!(ExtendedKey::new_private_key(
-            Network::Mainnet,
+            Network::BSV_Mainnet,
             255,
             &[4, 5, 6],
             HARDENED_KEY + 100,
@@ -637,7 +637,7 @@ mod tests {
         )
         .is_err());
         assert!(ExtendedKey::new_private_key(
-            Network::Mainnet,
+            Network::BSV_Mainnet,
             255,
             &[4, 5, 6, 7],
             HARDENED_KEY + 100,
@@ -646,7 +646,7 @@ mod tests {
         )
         .is_err());
         assert!(ExtendedKey::new_private_key(
-            Network::Mainnet,
+            Network::BSV_Mainnet,
             255,
             &[4, 5, 6, 7],
             HARDENED_KEY + 100,
@@ -677,7 +677,7 @@ mod tests {
         let key = hmac::SigningKey::new(&SHA512, &key.as_bytes());
         let hmac = hmac::sign(&key, &seed);
         ExtendedKey::new_private_key(
-            Network::Mainnet,
+            Network::BSV_Mainnet,
             0,
             &[0; 4],
             0,
