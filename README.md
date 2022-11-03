@@ -32,7 +32,7 @@ BSV only Features
 
 To call the library from a Rust project add the following line to to Cargo.toml:
 ```toml
-chain-gang = { version = "0.1", path = "../../chain-gang" }
+chain-gang = { version = "0.1", path = "../chain-gang" }
 ``` 
 
 

@@ -1,6 +1,7 @@
 use crate::messages::{Block, BlockHeader, OutPoint, Tx, TxIn, TxOut};
 use crate::network::SeedIter;
 use crate::script::Script;
+use std::fmt;
 // use crate::util::{Error, Hash256, Result};
 use crate::util::Hash256;
 use hex;
@@ -19,6 +20,22 @@ pub enum Network {
     // BCH
     BCH_Mainnet,
     BCH_Testnet,
+}
+
+/// Display the network name
+impl fmt::Display for Network {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            Network::BSV_Mainnet => "BSV_Mainnet",
+            Network::BSV_Testnet => "BSV_Testnet",
+            Network::BSV_STN => "BSV_STN",
+            Network::BTC_Mainnet => "BTC_Mainnet",
+            Network::BTC_Testnet => "BTC_Testnet",
+            Network::BCH_Mainnet => "BCH_Mainnet",
+            Network::BCH_Testnet => "BCH_Testnet",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 impl Network {
@@ -43,6 +60,15 @@ impl Network {
             // Network::BCH_Testnet4 => 28333,
             // Network::BCH_ScaleNet => 38333,
             // Network::BCH_RegTest => 18444,
+        }
+    }
+
+    /// Return a user_agent string for the network
+    pub fn user_agent(&self) -> &str {
+        match self {
+            Network::BSV_Mainnet | Network::BSV_Testnet | Network::BSV_STN => "/Bitcoin SV:1.0.10/",
+            Network::BTC_Mainnet | Network::BTC_Testnet => "/Satoshi:23.0.0/",
+            Network::BCH_Mainnet | Network::BCH_Testnet => "/Bitcoin Cash Node:24.1.0(EB32.0)/",
         }
     }
 
@@ -155,7 +181,6 @@ impl Network {
     }
 
     /// Returns the version byte flag for P2PKH-type addresses
-    ///     base58Prefixes[PUBKEY_ADDRESS] = std::vector<uint8_t>(1, 0);
     pub fn addr_pubkeyhash_flag(&self) -> u8 {
         match self {
             Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => 0x00,
@@ -165,7 +190,6 @@ impl Network {
     }
 
     /// Returns the version byte flag for P2SH-type addresses
-    ///         base58Prefixes[SCRIPT_ADDRESS] = std::vector<uint8_t>(1, 5);
     pub fn addr_script_flag(&self) -> u8 {
         match self {
             Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => 0x05,

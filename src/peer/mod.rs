@@ -17,7 +17,7 @@
 //!     version: PROTOCOL_VERSION,
 //!     services: NODE_BITCOIN_CASH,
 //!     timestamp: secs_since(UNIX_EPOCH) as i64,
-//!     user_agent: "rust-sv".to_string(),
+//!     user_agent: "chain-gang".to_string(),
 //!     ..Default::default()
 //! };
 //!

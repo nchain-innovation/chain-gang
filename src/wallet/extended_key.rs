@@ -65,7 +65,10 @@ impl ExtendedKey {
                 Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => c
                     .write_u32::<BigEndian>(MAINNET_PUBLIC_EXTENDED_KEY)
                     .unwrap(),
-                Network::BSV_Testnet | Network::BSV_STN | Network::BCH_Testnet | Network::BTC_Testnet=> c
+                Network::BSV_Testnet
+                | Network::BSV_STN
+                | Network::BCH_Testnet
+                | Network::BTC_Testnet => c
                     .write_u32::<BigEndian>(TESTNET_PUBLIC_EXTENDED_KEY)
                     .unwrap(),
             }
@@ -103,7 +106,10 @@ impl ExtendedKey {
                 Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => c
                     .write_u32::<BigEndian>(MAINNET_PRIVATE_EXTENDED_KEY)
                     .unwrap(),
-                Network::BSV_Testnet | Network::BSV_STN | Network::BTC_Testnet | Network::BCH_Testnet => c
+                Network::BSV_Testnet
+                | Network::BSV_STN
+                | Network::BTC_Testnet
+                | Network::BCH_Testnet => c
                     .write_u32::<BigEndian>(TESTNET_PRIVATE_EXTENDED_KEY)
                     .unwrap(),
             }
