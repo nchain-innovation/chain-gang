@@ -58,7 +58,7 @@ impl BloomFilter {
 
     /// Adds data to the bloom filter
     pub fn add(&mut self, data: &[u8]) {
-        debug!("Adding to bloom filter: {:?}", hex::encode(&data));
+        debug!("Adding to bloom filter: {:?}", hex::encode(data));
         for i in 0..self.num_hash_funcs {
             let seed = Wrapping(i as u32) * Wrapping(0xFBA4C795) + Wrapping(self.tweak);
             let c = murmur3_32(&mut Cursor::new(&data), seed.0) % (self.filter.len() as u32 * 8);

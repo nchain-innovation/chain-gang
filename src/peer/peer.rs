@@ -65,6 +65,32 @@ impl PeerFilter for SVPeerFilter {
     }
 }
 
+/// The PeerNodeFilter ensures that Peer only connects to nodes that meet the required criteria
+/// Based on: start_height, user_agent string, services provided by the Peer
+/// Not these fields are optional, so if not provided are ignored
+#[derive(Default)]
+pub struct PeerNodeFilter {
+    pub start_height: Option<i32>,
+    pub user_agent: Option<String>,
+    pub services: Option<u64>,
+}
+
+impl PeerFilter for PeerNodeFilter {
+    /// Return true if we can connect to this Peer, based on the contents of Version
+    fn connectable(&self, version: &Version) -> bool {
+        self.user_agent
+            .as_ref()
+            .map_or(true, |user_agent| version.user_agent.contains(user_agent))
+            && self
+                .start_height
+                .map_or(true, |start_height| version.start_height >= start_height)
+            && self
+                .services
+                .map_or(true, |services| version.services & services != 0)
+    }
+}
+
+
 /// Node on the network to send and receive messages
 ///
 /// It will setup a connection, respond to pings, and store basic properties about the connection,

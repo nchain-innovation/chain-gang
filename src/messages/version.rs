@@ -93,7 +93,7 @@ impl Serializable<Version> for Version {
         var_int::write(self.user_agent.as_bytes().len() as u64, writer)?;
         writer.write_all(self.user_agent.as_bytes())?;
         writer.write_i32::<LittleEndian>(self.start_height)?;
-        writer.write_u8(if self.relay { 0x01 } else { 0x00 })?;
+        writer.write_u8(u8::from(self.relay))?;
         Ok(())
     }
 }
