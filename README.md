@@ -3,6 +3,7 @@
 This is a Rust library that enables monitoring of the P2P messages of Bitcoin derived blockchains.
 
 This library currently supports the following blockchains:
+
 | Name | Code | Networks |
 | --- | --- | --- |
 | Bitcoin SV | `BSV` | BSV_Mainnet, BSV_Testnet, BSV_STN |
