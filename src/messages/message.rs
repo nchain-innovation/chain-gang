@@ -9,11 +9,12 @@ use crate::messages::inv::Inv;
 use crate::messages::merkle_block::MerkleBlock;
 use crate::messages::message_header::MessageHeader;
 use crate::messages::ping::Ping;
+use crate::messages::protoconf::Protoconf;
 use crate::messages::reject::Reject;
 use crate::messages::send_cmpct::SendCmpct;
 use crate::messages::tx::Tx;
 use crate::messages::version::Version;
-use crate::messages::protoconf::Protoconf;
+use crate::messages::Authch;
 
 use crate::util::{Error, Result, Serializable};
 use ring::digest;
@@ -110,9 +111,12 @@ pub mod commands {
     /// [Version acknowledgement command](https://en.bitcoin.it/wiki/Protocol_documentation#verack)
     pub const VERACK: [u8; 12] = *b"verack\0\0\0\0\0\0";
 
-    // New commands 
+    // New commands
     /// [protocol configuration parameters] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/protoconf.md
     pub const PROTOCONF: [u8; 12] = *b"protoconf\0\0\0";
+
+    /// [authch P2p message format] https://github.com/bitcoin-sv/bitcoin-sv/blob/master/doc/release-notes.md#authch-p2p-message-format
+    pub const AUTHCH: [u8; 12] = *b"authch\0\0\0\0\0\0";
 }
 
 /// Bitcoin peer-to-peer message with its payload
@@ -144,6 +148,7 @@ pub enum Message {
     Verack,
     Version(Version),
     Protoconf(Protoconf),
+    Authch(Authch),
 }
 
 impl Message {
@@ -342,13 +347,19 @@ impl Message {
             }
             return Ok(Message::Verack);
         }
-
+        // New messages
         if header.command == commands::PROTOCONF {
             let payload = header.payload(reader)?;
             let protoconf = Protoconf::read(&mut Cursor::new(payload))?;
             protoconf.validate()?;
             return Ok(Message::Protoconf(protoconf));
+        }
 
+        if header.command == commands::AUTHCH {
+            let payload = header.payload(reader)?;
+            let authch = Authch::read(&mut Cursor::new(payload))?;
+            authch.validate()?;
+            return Ok(Message::Authch(authch));
         }
 
         // Unknown message
@@ -392,7 +403,9 @@ impl Message {
             Message::Tx(p) => write_with_payload(writer, TX, p, magic),
             Message::Verack => write_without_payload(writer, VERACK, magic),
             Message::Version(v) => write_with_payload(writer, VERSION, v, magic),
+            // New messages
             Message::Protoconf(p) => write_with_payload(writer, PROTOCONF, p, magic),
+            Message::Authch(p) => write_with_payload(writer, AUTHCH, p, magic),
         }
     }
 }
@@ -435,7 +448,9 @@ impl fmt::Debug for Message {
             Message::Tx(p) => f.write_str(&format!("{:#?}", p)),
             Message::Verack => f.write_str("Verack"),
             Message::Version(p) => f.write_str(&format!("{:#?}", p)),
+            // New messages
             Message::Protoconf(p) => f.write_str(&format!("{:#?}", p)),
+            Message::Authch(p) => f.write_str(&format!("{:#?}", p)),
         }
     }
 }

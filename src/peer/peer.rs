@@ -90,7 +90,6 @@ impl PeerFilter for PeerNodeFilter {
     }
 }
 
-
 /// Node on the network to send and receive messages
 ///
 /// It will setup a connection, respond to pings, and store basic properties about the connection,

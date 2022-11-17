@@ -57,6 +57,7 @@
 //! ```
 
 mod addr;
+mod authch;
 mod block;
 mod block_header;
 mod block_locator;
@@ -73,13 +74,13 @@ mod node_addr;
 mod node_addr_ex;
 mod out_point;
 mod ping;
+mod protoconf;
 mod reject;
 mod send_cmpct;
 mod tx;
 mod tx_in;
 mod tx_out;
 mod version;
-mod protoconf;
 
 pub use self::addr::Addr;
 pub use self::block::Block;
@@ -116,4 +117,5 @@ pub use self::version::{
     PROTOCOL_VERSION, UNKNOWN_IP,
 };
 
+pub use self::authch::Authch;
 pub use self::protoconf::Protoconf;
