@@ -13,6 +13,8 @@ use crate::messages::reject::Reject;
 use crate::messages::send_cmpct::SendCmpct;
 use crate::messages::tx::Tx;
 use crate::messages::version::Version;
+use crate::messages::protoconf::Protoconf;
+
 use crate::util::{Error, Result, Serializable};
 use ring::digest;
 use std::fmt;
@@ -107,6 +109,10 @@ pub mod commands {
 
     /// [Version acknowledgement command](https://en.bitcoin.it/wiki/Protocol_documentation#verack)
     pub const VERACK: [u8; 12] = *b"verack\0\0\0\0\0\0";
+
+    // New commands 
+    /// [protocol configuration parameters] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/protoconf.md
+    pub const PROTOCONF: [u8; 12] = *b"protoconf\0\0\0";
 }
 
 /// Bitcoin peer-to-peer message with its payload
@@ -137,6 +143,7 @@ pub enum Message {
     Tx(Tx),
     Verack,
     Version(Version),
+    Protoconf(Protoconf),
 }
 
 impl Message {
@@ -336,6 +343,14 @@ impl Message {
             return Ok(Message::Verack);
         }
 
+        if header.command == commands::PROTOCONF {
+            let payload = header.payload(reader)?;
+            let protoconf = Protoconf::read(&mut Cursor::new(payload))?;
+            protoconf.validate()?;
+            return Ok(Message::Protoconf(protoconf));
+
+        }
+
         // Unknown message
         if header.payload_size > 0 {
             header.payload(reader)?;
@@ -377,6 +392,7 @@ impl Message {
             Message::Tx(p) => write_with_payload(writer, TX, p, magic),
             Message::Verack => write_without_payload(writer, VERACK, magic),
             Message::Version(v) => write_with_payload(writer, VERSION, v, magic),
+            Message::Protoconf(p) => write_with_payload(writer, PROTOCONF, p, magic),
         }
     }
 }
@@ -419,6 +435,7 @@ impl fmt::Debug for Message {
             Message::Tx(p) => f.write_str(&format!("{:#?}", p)),
             Message::Verack => f.write_str("Verack"),
             Message::Version(p) => f.write_str(&format!("{:#?}", p)),
+            Message::Protoconf(p) => f.write_str(&format!("{:#?}", p)),
         }
     }
 }

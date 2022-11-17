@@ -79,6 +79,7 @@ mod tx;
 mod tx_in;
 mod tx_out;
 mod version;
+mod protoconf;
 
 pub use self::addr::Addr;
 pub use self::block::Block;
@@ -114,3 +115,5 @@ pub use self::version::{
     Version, MIN_SUPPORTED_PROTOCOL_VERSION, NODE_BITCOIN_CASH, NODE_NETWORK, NODE_NONE,
     PROTOCOL_VERSION, UNKNOWN_IP,
 };
+
+pub use self::protoconf::Protoconf;
