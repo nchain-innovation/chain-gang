@@ -13,11 +13,11 @@ pub const SUPPORTED_VERSION: i32 = 0x01;
 #[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]
 pub struct Authch {
     /// The message version, should be 0x01
-    version: i32,
+    pub version: i32,
     /// The length of the payload
-    message_length: u32,
+    pub message_length: u32,
     /// The payload (random text)
-    message: Vec<u8>,
+    pub message: Vec<u8>,
 }
 
 impl Authch {
@@ -37,13 +37,15 @@ impl Serializable<Authch> for Authch {
         let message_length = reader.read_u32::<LittleEndian>()?;
         let message_size: usize = message_length.try_into().unwrap();
 
-        let mut ret = Authch {
+        let mut message_buf: Vec<u8> = vec![0; message_size];
+        reader.read_exact(&mut message_buf)?;
+
+        let ret = Authch {
             version,
             message_length,
-            message: Vec::with_capacity(message_size),
+            message: message_buf,
         };
 
-        reader.read_exact(&mut ret.message)?;
         Ok(ret)
     }
 

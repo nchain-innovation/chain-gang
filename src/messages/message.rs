@@ -821,6 +821,29 @@ mod tests {
         let m = Message::Version(p);
         m.write(&mut v, magic).unwrap();
         assert!(Message::read(&mut Cursor::new(&v), magic).unwrap() == m);
+
+        // Protoconf
+        let mut v = Vec::new();
+        let p = Protoconf {
+            number_of_fields: 2,
+            max_recv_payload_length: 2097152,
+            stream_policies: "BlockPriority,Default".to_string(),
+        };
+        let m = Message::Protoconf(p);
+        m.write(&mut v, magic).unwrap();
+        assert!(Message::read(&mut Cursor::new(&v), magic).unwrap() == m);
+
+        // Authch
+        let mut v: Vec<u8> = Vec::new();
+        let payload: Vec<u8> = "hello world".to_owned().into_bytes();
+        let p = Authch {
+            version: 0x01,
+            message_length: payload.len() as u32,
+            message: payload,
+        };
+        let m = Message::Authch(p);
+        m.write(&mut v, magic).unwrap();
+        assert!(Message::read(&mut Cursor::new(&v), magic).unwrap() == m);
     }
 
     #[test]
