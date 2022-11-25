@@ -825,9 +825,9 @@ mod tests {
         // Protoconf
         let mut v = Vec::new();
         let p = Protoconf {
-            number_of_fields: 2,
+            version: 2,
             max_recv_payload_length: 2097152,
-            stream_policies: "BlockPriority,Default".to_string(),
+            stream_policies: Some("BlockPriority,Default".to_string()),
         };
         let m = Message::Protoconf(p);
         m.write(&mut v, magic).unwrap();
