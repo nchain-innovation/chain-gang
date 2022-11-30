@@ -1,4 +1,4 @@
-use crate::messages::addr::Addr;
+use crate::messages::addr::{Addr, AddrV2};
 use crate::messages::block::Block;
 use crate::messages::block_locator::BlockLocator;
 use crate::messages::fee_filter::FeeFilter;
@@ -32,6 +32,8 @@ pub const MAX_PAYLOAD_SIZE: u32 = 0x02000000;
 pub mod commands {
     /// [Addr command](https://en.bitcoin.it/wiki/Protocol_documentation#addr)
     pub const ADDR: [u8; 12] = *b"addr\0\0\0\0\0\0\0\0";
+
+    pub const ADDRV2: [u8; 12] = *b"addrv2\0\0\0\0\0\0";
 
     /// [Alert command](https://en.bitcoin.it/wiki/Protocol_documentation#alert) (deprecated)
     pub const ALERT: [u8; 12] = *b"alert\0\0\0\0\0\0\0";
@@ -123,6 +125,7 @@ pub mod commands {
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Message {
     Addr(Addr),
+    AddrV2(AddrV2),
     Block(Block),
     FeeFilter(FeeFilter),
     FilterAdd(FilterAdd),
@@ -184,6 +187,13 @@ impl Message {
             let payload = header.payload(reader)?;
             let addr = Addr::read(&mut Cursor::new(payload))?;
             return Ok(Message::Addr(addr));
+        }
+
+        // AddrV2
+        if header.command == commands::ADDRV2 {
+            let payload = header.payload(reader)?;
+            let addr = AddrV2::read(&mut Cursor::new(payload))?;
+            return Ok(Message::AddrV2(addr));
         }
 
         // Block
@@ -376,6 +386,7 @@ impl Message {
         use self::commands::*;
         match self {
             Message::Addr(p) => write_with_payload(writer, ADDR, p, magic),
+            Message::AddrV2(p) => write_with_payload(writer, ADDRV2, p, magic),
             Message::Block(p) => write_with_payload(writer, BLOCK, p, magic),
             Message::FeeFilter(p) => write_with_payload(writer, FEEFILTER, p, magic),
             Message::FilterAdd(p) => write_with_payload(writer, FILTERADD, p, magic),
@@ -414,6 +425,7 @@ impl fmt::Debug for Message {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Message::Addr(p) => f.write_str(&format!("{:#?}", p)),
+            Message::AddrV2(p) => f.write_str(&format!("{:#?}", p)),
             Message::Block(p) => f.write_str(&format!("{:#?}", p)),
             Message::FeeFilter(p) => f.write_str(&format!("{:#?}", p)),
             Message::FilterAdd(p) => f.write_str(&format!("{:#?}", p)),
@@ -501,7 +513,9 @@ pub trait Payload<T>: Serializable<T> + fmt::Debug {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::messages::addr::{Bip155, NodeAddrExV2};
     use crate::messages::block_header::BlockHeader;
+
     use crate::messages::inv_vect::{InvVect, INV_VECT_TX};
     use crate::messages::node_addr::NodeAddr;
     use crate::messages::node_addr_ex::NodeAddrEx;
@@ -532,6 +546,21 @@ mod tests {
         };
         let p = Addr { addrs: vec![a] };
         let m = Message::Addr(p);
+        m.write(&mut v, magic).unwrap();
+        assert!(Message::read(&mut Cursor::new(&v), magic).unwrap() == m);
+
+        // AddrV2
+        let mut v = Vec::new();
+        let a = NodeAddrExV2 {
+            last_connected_time: 700,
+            services: 900,
+            bip_address: Bip155::IPV6(Ipv6Addr::from([
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 9, 8, 7, 6, 5,
+            ])),
+            port: 4000,
+        };
+        let p = AddrV2 { addrs: vec![a] };
+        let m = Message::AddrV2(p);
         m.write(&mut v, magic).unwrap();
         assert!(Message::read(&mut Cursor::new(&v), magic).unwrap() == m);
 
