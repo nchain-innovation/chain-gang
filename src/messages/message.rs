@@ -846,6 +846,7 @@ mod tests {
             user_agent: "dummy".to_string(),
             start_height: 22,
             relay: true,
+            ..Default::default()
         };
         let m = Message::Version(p);
         m.write(&mut v, magic).unwrap();

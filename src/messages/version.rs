@@ -1,10 +1,9 @@
 use crate::messages::message::Payload;
 use crate::messages::node_addr::NodeAddr;
-use crate::util::{secs_since, var_int, Error, Result, Serializable};
+use crate::util::{var_int, Error, Result, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
-use std::time::UNIX_EPOCH;
 
 /// Protocol version supported by this library
 pub const PROTOCOL_VERSION: u32 = 70015;
@@ -45,6 +44,8 @@ pub struct Version {
     pub start_height: i32,
     /// Whether the client wants to receive broadcast transactions before a filter is set
     pub relay: bool,
+    /// ID to use to identify this new association
+    pub association_id: Vec<u8>,
 }
 
 impl Version {
@@ -54,11 +55,7 @@ impl Version {
             let msg = format!("Unsupported protocol version: {}", self.version);
             return Err(Error::BadData(msg));
         }
-        let now = secs_since(UNIX_EPOCH) as i64;
-        if (self.timestamp - now).abs() > 2 * 60 * 60 {
-            let msg = format!("Timestamp too old: {}", self.timestamp);
-            return Err(Error::BadData(msg));
-        }
+        // Remove timestamp validation
         Ok(())
     }
 }
@@ -80,6 +77,13 @@ impl Serializable<Version> for Version {
         ret.user_agent = String::from_utf8(user_agent_bytes)?;
         ret.start_height = reader.read_i32::<LittleEndian>()?;
         ret.relay = reader.read_u8()? == 0x01;
+        // Check to see if there is an association_id to read
+        if let Ok(ass_len) = reader.read_u8() {
+            if ass_len > 0 {
+                ret.association_id = vec![0; ass_len.try_into().unwrap()];
+                reader.read_exact(&mut ret.association_id)?;
+            }
+        }
         Ok(ret)
     }
 
@@ -94,6 +98,11 @@ impl Serializable<Version> for Version {
         writer.write_all(self.user_agent.as_bytes())?;
         writer.write_i32::<LittleEndian>(self.start_height)?;
         writer.write_u8(u8::from(self.relay))?;
+        // Check to see if there is an association_id to write
+        if !self.association_id.is_empty() {
+            writer.write_u8(self.association_id.len().try_into().unwrap())?;
+            writer.write_all(&self.association_id)?;
+        }
         Ok(())
     }
 }
@@ -104,11 +113,20 @@ impl Payload<Version> for Version {
             + self.tx_addr.size()
             + var_int::size(self.user_agent.as_bytes().len() as u64)
             + self.user_agent.as_bytes().len()
+            // Check to see if there is an association_id to write
+            + if !self.association_id.is_empty() {
+                self.association_id.len() + 1
+            } else {
+                0
+            }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::util::{secs_since, Serializable};
+    use std::time::UNIX_EPOCH;
+
     use super::*;
     use hex;
     use std::io::Cursor;
@@ -151,6 +169,7 @@ mod tests {
             user_agent: "dummy".to_string(),
             start_height: 22,
             relay: true,
+            association_id: vec![1, 2, 3, 4],
         };
         m.write(&mut v).unwrap();
         assert!(v.len() == m.size());
@@ -173,6 +192,7 @@ mod tests {
             user_agent: "dummy".to_string(),
             start_height: 22,
             relay: true,
+            ..Default::default()
         };
         // Valid
         assert!(m.validate().is_ok());
@@ -182,11 +202,11 @@ mod tests {
             ..m.clone()
         };
         assert!(m2.validate().is_err());
-        // Bad timestamp
+        // Bad timestamp - should be ignored
         let m3 = Version {
             timestamp: 0,
             ..m.clone()
         };
-        assert!(m3.validate().is_err());
+        assert!(m3.validate().is_ok());
     }
 }
