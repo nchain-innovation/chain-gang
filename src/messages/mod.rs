@@ -61,6 +61,7 @@ mod authch;
 mod block;
 mod block_header;
 mod block_locator;
+mod createstrm;
 mod fee_filter;
 mod filter_add;
 mod filter_load;
@@ -118,4 +119,5 @@ pub use self::version::{
 };
 
 pub use self::authch::Authch;
+pub use self::createstrm::Createstrm;
 pub use self::protoconf::Protoconf;

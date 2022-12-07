@@ -15,6 +15,7 @@ use crate::messages::send_cmpct::SendCmpct;
 use crate::messages::tx::Tx;
 use crate::messages::version::Version;
 use crate::messages::Authch;
+use crate::messages::Createstrm;
 
 use crate::util::{Error, Result, Serializable};
 use ring::digest;
@@ -119,6 +120,9 @@ pub mod commands {
 
     /// [authch P2p message format] https://github.com/bitcoin-sv/bitcoin-sv/blob/master/doc/release-notes.md#authch-p2p-message-format
     pub const AUTHCH: [u8; 12] = *b"authch\0\0\0\0\0\0";
+
+    /// [createstrm message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
+    pub const CREATESTRM: [u8; 12] = *b"createstrm\0\0";
 }
 
 /// Bitcoin peer-to-peer message with its payload
@@ -152,6 +156,7 @@ pub enum Message {
     Version(Version),
     Protoconf(Protoconf),
     Authch(Authch),
+    Createstrm(Createstrm),
 }
 
 impl Message {
@@ -372,6 +377,13 @@ impl Message {
             return Ok(Message::Authch(authch));
         }
 
+        if header.command == commands::CREATESTRM {
+            let payload = header.payload(reader)?;
+            let createstrm = Createstrm::read(&mut Cursor::new(payload))?;
+            createstrm.validate()?;
+            return Ok(Message::Createstrm(createstrm));
+        }
+
         // Unknown message
         if header.payload_size > 0 {
             header.payload(reader)?;
@@ -417,6 +429,7 @@ impl Message {
             // New messages
             Message::Protoconf(p) => write_with_payload(writer, PROTOCONF, p, magic),
             Message::Authch(p) => write_with_payload(writer, AUTHCH, p, magic),
+            Message::Createstrm(p) => write_with_payload(writer, CREATESTRM, p, magic),
         }
     }
 }
@@ -463,6 +476,7 @@ impl fmt::Debug for Message {
             // New messages
             Message::Protoconf(p) => f.write_str(&format!("{:#?}", p)),
             Message::Authch(p) => f.write_str(&format!("{:#?}", p)),
+            Message::Createstrm(p) => f.write_str(&format!("{:#?}", p)),
         }
     }
 }
