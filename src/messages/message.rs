@@ -16,6 +16,7 @@ use crate::messages::tx::Tx;
 use crate::messages::version::Version;
 use crate::messages::Authch;
 use crate::messages::Createstrm;
+use crate::messages::Streamack;
 
 use crate::util::{Error, Result, Serializable};
 use ring::digest;
@@ -123,6 +124,9 @@ pub mod commands {
 
     /// [createstrm message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
     pub const CREATESTRM: [u8; 12] = *b"createstrm\0\0";
+
+    /// [streamack message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
+    pub const STREAMACK: [u8; 12] = *b"streamack\0\0\0";
 }
 
 /// Bitcoin peer-to-peer message with its payload
@@ -157,6 +161,7 @@ pub enum Message {
     Protoconf(Protoconf),
     Authch(Authch),
     Createstrm(Createstrm),
+    Streamack(Streamack),
 }
 
 impl Message {
@@ -384,6 +389,13 @@ impl Message {
             return Ok(Message::Createstrm(createstrm));
         }
 
+        if header.command == commands::STREAMACK {
+            let payload = header.payload(reader)?;
+            let streamack = Streamack::read(&mut Cursor::new(payload))?;
+            streamack.validate()?;
+            return Ok(Message::Streamack(streamack));
+        }
+
         // Unknown message
         if header.payload_size > 0 {
             header.payload(reader)?;
@@ -430,6 +442,7 @@ impl Message {
             Message::Protoconf(p) => write_with_payload(writer, PROTOCONF, p, magic),
             Message::Authch(p) => write_with_payload(writer, AUTHCH, p, magic),
             Message::Createstrm(p) => write_with_payload(writer, CREATESTRM, p, magic),
+            Message::Streamack(p) => write_with_payload(writer, STREAMACK, p, magic),
         }
     }
 }
@@ -477,6 +490,7 @@ impl fmt::Debug for Message {
             Message::Protoconf(p) => f.write_str(&format!("{:#?}", p)),
             Message::Authch(p) => f.write_str(&format!("{:#?}", p)),
             Message::Createstrm(p) => f.write_str(&format!("{:#?}", p)),
+            Message::Streamack(p) => f.write_str(&format!("{:#?}", p)),
         }
     }
 }

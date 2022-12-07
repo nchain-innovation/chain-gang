@@ -78,6 +78,7 @@ mod ping;
 mod protoconf;
 mod reject;
 mod send_cmpct;
+mod streamack;
 mod tx;
 mod tx_in;
 mod tx_out;
@@ -119,5 +120,6 @@ pub use self::version::{
 };
 
 pub use self::authch::Authch;
-pub use self::createstrm::Createstrm;
+pub use self::createstrm::{Createstrm, MAX_SUPPORTED_STREAM_TYPE, MIN_SUPPORTED_STREAM_TYPE};
 pub use self::protoconf::Protoconf;
+pub use self::streamack::Streamack;
