@@ -17,7 +17,10 @@ use crate::messages::version::Version;
 use crate::messages::Authch;
 use crate::messages::Cmpctblock;
 use crate::messages::Createstrm;
+use crate::messages::Getblocktxn;
 use crate::messages::Streamack;
+use crate::messages::Blocktxn;
+
 
 use crate::util::{Error, Result, Serializable};
 use ring::digest;
@@ -164,6 +167,8 @@ pub enum Message {
     Createstrm(Createstrm),
     Streamack(Streamack),
     Cmpctblock(Cmpctblock),
+    Getblocktxn(Getblocktxn),
+    Blocktxn(Blocktxn),
 }
 
 impl Message {
@@ -405,6 +410,18 @@ impl Message {
             return Ok(Message::Cmpctblock(cmpctblock));
         }
 
+        if header.command == commands::GETBLOCKTXN {
+            let payload = header.payload(reader)?;
+            let getblocktxn = Getblocktxn::read(&mut Cursor::new(payload))?;
+            return Ok(Message::Getblocktxn(getblocktxn));
+        }
+
+        if header.command == commands::BLOCKTXN {
+            let payload = header.payload(reader)?;
+            let blocktxn = Blocktxn::read(&mut Cursor::new(payload))?;
+            return Ok(Message::Blocktxn(blocktxn));
+        }
+
         // Unknown message
         if header.payload_size > 0 {
             header.payload(reader)?;
@@ -453,6 +470,8 @@ impl Message {
             Message::Createstrm(p) => write_with_payload(writer, CREATESTRM, p, magic),
             Message::Streamack(p) => write_with_payload(writer, STREAMACK, p, magic),
             Message::Cmpctblock(p) => write_with_payload(writer, CMPCTBLOCK, p, magic),
+            Message::Getblocktxn(p) => write_with_payload(writer, GETBLOCKTXN, p, magic),
+            Message::Blocktxn(p) => write_with_payload(writer, BLOCKTXN, p, magic),
         }
     }
 }
@@ -502,6 +521,8 @@ impl fmt::Debug for Message {
             Message::Createstrm(p) => f.write_str(&format!("{:#?}", p)),
             Message::Streamack(p) => f.write_str(&format!("{:#?}", p)),
             Message::Cmpctblock(p) => f.write_str(&format!("{:#?}", p)),
+            Message::Getblocktxn(p) => f.write_str(&format!("{:#?}", p)),
+            Message::Blocktxn(p) => f.write_str(&format!("{:#?}", p)),
         }
     }
 }

@@ -66,6 +66,7 @@ mod createstrm;
 mod fee_filter;
 mod filter_add;
 mod filter_load;
+mod getblocktxn;
 mod headers;
 mod inv;
 mod inv_vect;
@@ -84,6 +85,7 @@ mod tx;
 mod tx_in;
 mod tx_out;
 mod version;
+mod blocktxn;
 
 pub use self::addr::Addr;
 pub use self::block::Block;
@@ -123,5 +125,7 @@ pub use self::version::{
 pub use self::authch::Authch;
 pub use self::cmpctblock::Cmpctblock;
 pub use self::createstrm::{Createstrm, MAX_SUPPORTED_STREAM_TYPE, MIN_SUPPORTED_STREAM_TYPE};
+pub use self::getblocktxn::Getblocktxn;
 pub use self::protoconf::Protoconf;
 pub use self::streamack::Streamack;
+pub use self::blocktxn::Blocktxn;

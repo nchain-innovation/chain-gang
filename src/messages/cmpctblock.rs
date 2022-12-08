@@ -82,8 +82,6 @@ pub struct Cmpctblock {
 
     /// The short transaction IDs calculated from the transactions which were not provided explicitly in prefilledtxn
     pub shortids: Vec<ShortTXID>,
-    /// The number of prefilled transactions in prefilledtxn (ie block tx count - shortids_length)
-    // pub prefilledtxn_length: var_int
 
     /// List of PrefilledTransactions
     pub prefilledtxn: Vec<PrefilledTransaction>,
