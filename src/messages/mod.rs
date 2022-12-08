@@ -61,6 +61,7 @@ mod authch;
 mod block;
 mod block_header;
 mod block_locator;
+mod cmpctblock;
 mod createstrm;
 mod fee_filter;
 mod filter_add;
@@ -120,6 +121,7 @@ pub use self::version::{
 };
 
 pub use self::authch::Authch;
+pub use self::cmpctblock::Cmpctblock;
 pub use self::createstrm::{Createstrm, MAX_SUPPORTED_STREAM_TYPE, MIN_SUPPORTED_STREAM_TYPE};
 pub use self::protoconf::Protoconf;
 pub use self::streamack::Streamack;

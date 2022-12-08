@@ -15,6 +15,7 @@ use crate::messages::send_cmpct::SendCmpct;
 use crate::messages::tx::Tx;
 use crate::messages::version::Version;
 use crate::messages::Authch;
+use crate::messages::Cmpctblock;
 use crate::messages::Createstrm;
 use crate::messages::Streamack;
 
@@ -162,6 +163,7 @@ pub enum Message {
     Authch(Authch),
     Createstrm(Createstrm),
     Streamack(Streamack),
+    Cmpctblock(Cmpctblock),
 }
 
 impl Message {
@@ -396,6 +398,13 @@ impl Message {
             return Ok(Message::Streamack(streamack));
         }
 
+        if header.command == commands::CMPCTBLOCK {
+            let payload = header.payload(reader)?;
+            let cmpctblock = Cmpctblock::read(&mut Cursor::new(payload))?;
+            cmpctblock.validate()?;
+            return Ok(Message::Cmpctblock(cmpctblock));
+        }
+
         // Unknown message
         if header.payload_size > 0 {
             header.payload(reader)?;
@@ -443,6 +452,7 @@ impl Message {
             Message::Authch(p) => write_with_payload(writer, AUTHCH, p, magic),
             Message::Createstrm(p) => write_with_payload(writer, CREATESTRM, p, magic),
             Message::Streamack(p) => write_with_payload(writer, STREAMACK, p, magic),
+            Message::Cmpctblock(p) => write_with_payload(writer, CMPCTBLOCK, p, magic),
         }
     }
 }
@@ -491,6 +501,7 @@ impl fmt::Debug for Message {
             Message::Authch(p) => f.write_str(&format!("{:#?}", p)),
             Message::Createstrm(p) => f.write_str(&format!("{:#?}", p)),
             Message::Streamack(p) => f.write_str(&format!("{:#?}", p)),
+            Message::Cmpctblock(p) => f.write_str(&format!("{:#?}", p)),
         }
     }
 }
