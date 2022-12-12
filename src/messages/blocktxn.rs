@@ -1,22 +1,19 @@
-
-use std::io;
-use std::io::{Read, Write};
 use crate::messages::{Payload, Tx, MAX_SATOSHIS};
 use crate::util::{var_int, Error, Hash256, Result, Serializable};
-
+use std::io;
+use std::io::{Read, Write};
 
 /// The blocktxn message is defined as a message containing a serialized BlockTransactions message and pchCommand == "blocktxn".
-/// 
-/// 
+///
+///
 /// blocktxn payload - BlockTransactions
 #[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]
 pub struct Blocktxn {
     /// Hash of the block
     pub blockhash: Hash256,
-    // List of Transactions 
+    // List of Transactions
     pub transactions: Vec<Tx>,
 }
-
 
 impl Blocktxn {
     /// Checks if the tx is valid - without recourse to UTXO etc.
@@ -46,7 +43,6 @@ impl Blocktxn {
     }
 }
 
-
 impl Serializable<Blocktxn> for Blocktxn {
     fn read(reader: &mut dyn Read) -> Result<Blocktxn> {
         let mut ret = Blocktxn {
@@ -72,12 +68,11 @@ impl Serializable<Blocktxn> for Blocktxn {
         // Write transactions_length: var_int
         var_int::write(self.transactions.len() as u64, writer)?;
         for tx in &self.transactions {
-            Tx::write(&tx, writer)?;
+            Tx::write(tx, writer)?;
         }
         Ok(())
     }
 }
-
 
 impl Payload<Blocktxn> for Blocktxn {
     fn size(&self) -> usize {
@@ -86,7 +81,6 @@ impl Payload<Blocktxn> for Blocktxn {
         self.transactions.iter().map(|x| x.size()).sum::<usize>()
     }
 }
-
 
 #[cfg(test)]
 mod tests {

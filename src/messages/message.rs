@@ -15,12 +15,11 @@ use crate::messages::send_cmpct::SendCmpct;
 use crate::messages::tx::Tx;
 use crate::messages::version::Version;
 use crate::messages::Authch;
+use crate::messages::Blocktxn;
 use crate::messages::Cmpctblock;
 use crate::messages::Createstrm;
 use crate::messages::Getblocktxn;
 use crate::messages::Streamack;
-use crate::messages::Blocktxn;
-
 
 use crate::util::{Error, Result, Serializable};
 use ring::digest;
@@ -131,6 +130,9 @@ pub mod commands {
 
     /// [streamack message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
     pub const STREAMACK: [u8; 12] = *b"streamack\0\0\0";
+
+    /// [sendaddrv2 message format] https://github.com/bitcoin/bips/blob/master/bip-0155.mediawiki
+    pub const SENDADDRV2: [u8; 12] = *b"sendaddrv2\0\0";
 }
 
 /// Bitcoin peer-to-peer message with its payload
@@ -169,6 +171,7 @@ pub enum Message {
     Cmpctblock(Cmpctblock),
     Getblocktxn(Getblocktxn),
     Blocktxn(Blocktxn),
+    SendAddrV2,
 }
 
 impl Message {
@@ -422,6 +425,14 @@ impl Message {
             return Ok(Message::Blocktxn(blocktxn));
         }
 
+        //SendAddrV2(SendAddrV2),
+        if header.command == commands::SENDADDRV2 {
+            if header.payload_size != 0 {
+                return Err(Error::BadData("Bad payload".to_string()));
+            }
+            return Ok(Message::SendAddrV2);
+        }
+
         // Unknown message
         if header.payload_size > 0 {
             header.payload(reader)?;
@@ -472,6 +483,7 @@ impl Message {
             Message::Cmpctblock(p) => write_with_payload(writer, CMPCTBLOCK, p, magic),
             Message::Getblocktxn(p) => write_with_payload(writer, GETBLOCKTXN, p, magic),
             Message::Blocktxn(p) => write_with_payload(writer, BLOCKTXN, p, magic),
+            Message::SendAddrV2 => write_without_payload(writer, SENDADDRV2, magic),
         }
     }
 }
@@ -523,6 +535,7 @@ impl fmt::Debug for Message {
             Message::Cmpctblock(p) => f.write_str(&format!("{:#?}", p)),
             Message::Getblocktxn(p) => f.write_str(&format!("{:#?}", p)),
             Message::Blocktxn(p) => f.write_str(&format!("{:#?}", p)),
+            Message::SendAddrV2 => f.write_str("SendAddrV2"),
         }
     }
 }
