@@ -40,7 +40,7 @@ impl BloomFilter {
         let ln2 = 2_f64.ln();
         let size = (-1_f64 / ln2.powf(2_f64) * insert * pr_false_pos.ln()) / 8_f64;
         let size = size.min(BLOOM_FILTER_MAX_FILTER_SIZE as f64);
-        let num_hash_funcs = (size as f64) * 8_f64 / insert * ln2;
+        let num_hash_funcs = (size) * 8_f64 / insert * ln2;
         let num_hash_funcs = num_hash_funcs.min(BLOOM_FILTER_MAX_HASH_FUNCS as f64);
         let size = size.ceil() as usize;
         let num_hash_funcs = num_hash_funcs.ceil() as usize;

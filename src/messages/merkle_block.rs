@@ -33,7 +33,7 @@ impl MerkleBlock {
         let mut matches = Vec::new();
         let tree_depth = (self.total_transactions as f32).log(2.).ceil() as usize;
         let mut row_len = self.total_transactions as usize;
-        let mut total_nodes = row_len as usize;
+        let mut total_nodes = row_len;
         while row_len > 1 {
             row_len = (row_len + 1) / 2;
             total_nodes += row_len;
