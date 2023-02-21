@@ -97,7 +97,7 @@ impl Script {
     }
 
     /// Evaluates a script using the provided checker, returning the stacks for inspection
-    pub fn debug<T: Checker>(&self, checker: &mut T, flags: u32) -> Result<(Stack, Stack)> {
+    pub fn eval_with_stack<T: Checker>(&self, checker: &mut T, flags: u32) -> Result<(Stack, Stack)> {
         self::interpreter::core_eval(&self.0, checker, flags)
     }
 }
@@ -315,7 +315,7 @@ mod tests {
     fn test_debug() {
         let mut script = Script::new();
         script.append_slice(&[OP_10, OP_5, OP_DIV]);
-        let result = script.debug(&mut TransactionlessChecker {}, NO_FLAGS);
+        let result = script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS);
         assert!(result.is_ok());
 
         if let Ok((stack, _alt_stack)) = result {
