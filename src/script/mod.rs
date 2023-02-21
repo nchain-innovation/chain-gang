@@ -30,6 +30,7 @@ mod stack;
 pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker};
 pub(crate) use self::interpreter::next_op;
 pub use self::interpreter::{NO_FLAGS, PREGENESIS_RULES};
+pub use self::stack::Stack;
 
 /// Transaction script
 #[derive(Default, Clone, PartialEq, Eq, Hash)]
@@ -93,6 +94,11 @@ impl Script {
     /// Evaluates a script using the provided checker
     pub fn eval<T: Checker>(&self, checker: &mut T, flags: u32) -> Result<()> {
         self::interpreter::eval(&self.0, checker, flags)
+    }
+
+    /// Evaluates a script using the provided checker, returning the stacks for inspection
+    pub fn debug<T: Checker>(&self, checker: &mut T, flags: u32) -> Result<(Stack, Stack)> {
+        self::interpreter::core_eval(&self.0, checker, flags)
     }
 }
 
@@ -303,5 +309,19 @@ mod tests {
         s.append_data(&vec![0; 65536]);
         assert!(s.0[0] == OP_PUSHDATA4 && s.0[1] == 0 && s.0[2] == 0 && s.0[3] == 1);
         assert!(s.0.len() == 65541);
+    }
+
+    #[test]
+    fn test_debug() {
+        let mut script = Script::new();
+        script.append_slice(&[OP_10, OP_5, OP_DIV]);
+        let result = script.debug(&mut TransactionlessChecker {}, NO_FLAGS);
+        assert!(result.is_ok());
+
+        if let Ok((stack, _alt_stack)) = result {
+            dbg!(&stack);
+            assert_eq!(stack[0][0], 2);
+        }
+        assert!(false);
     }
 }
