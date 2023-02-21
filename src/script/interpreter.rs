@@ -1,6 +1,6 @@
 use crate::script::op_codes::*;
 use crate::script::stack::{
-    decode_bigint, decode_bool, encode_bigint, encode_num, pop_bigint, pop_bool, pop_num,
+    decode_bigint, decode_bool, encode_bigint, encode_num, pop_bigint, pop_bool, pop_num, Stack,
 };
 use crate::script::Checker;
 use crate::transaction::sighash::SIGHASH_FORKID;
@@ -21,10 +21,11 @@ pub const NO_FLAGS: u32 = 0x00;
 /// Flag to execute the script with pre-genesis rules
 pub const PREGENESIS_RULES: u32 = 0x01;
 
-/// Executes a script
-pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()> {
-    let mut stack: Vec<Vec<u8>> = Vec::with_capacity(STACK_CAPACITY);
-    let mut alt_stack: Vec<Vec<u8>> = Vec::with_capacity(ALT_STACK_CAPACITY);
+/// Core of the script evaluation - split out for debugging
+pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(Stack, Stack)> {
+    let mut stack: Stack = Vec::with_capacity(STACK_CAPACITY);
+    let mut alt_stack: Stack = Vec::with_capacity(ALT_STACK_CAPACITY);
+
     // True if executing current if/else branch, false if next else
     let mut branch_exec: Vec<bool> = Vec::new();
     let mut check_index = 0;
@@ -701,20 +702,26 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
     if !branch_exec.is_empty() {
         return Err(Error::ScriptError("ENDIF missing".to_string()));
     }
-    // We don't call pop_bool here because the final stack element can be longer than 4 bytes
-    check_stack_size(1, &stack)?;
-    if !decode_bool(&stack[stack.len() - 1]) {
-        return Err(Error::ScriptError("Top of stack is false".to_string()));
+    Ok((stack, alt_stack))
+}
+
+/// Executes a script
+pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()> {
+    match core_eval(script, checker, flags) {
+        Ok((stack, _alt_stack)) => {
+            // We don't call pop_bool here because the final stack element can be longer than 4 bytes
+            check_stack_size(1, &stack)?;
+            if !decode_bool(&stack[stack.len() - 1]) {
+                return Err(Error::ScriptError("Top of stack is false".to_string()));
+            }
+            Ok(())
+        }
+        Err(x) => Err(x),
     }
-    Ok(())
 }
 
 #[inline]
-fn check_multisig<T: Checker>(
-    stack: &mut Vec<Vec<u8>>,
-    checker: &mut T,
-    script: &[u8],
-) -> Result<bool> {
+fn check_multisig<T: Checker>(stack: &mut Stack, checker: &mut T, script: &[u8]) -> Result<bool> {
     // Pop the keys
     let total = pop_num(stack)?;
     if total < 0 {
@@ -789,7 +796,7 @@ fn remove_sig(sig: &[u8], script: &[u8]) -> Vec<u8> {
 }
 
 #[inline]
-fn check_stack_size(minsize: usize, stack: &Vec<Vec<u8>>) -> Result<()> {
+fn check_stack_size(minsize: usize, stack: &Stack) -> Result<()> {
     if stack.len() < minsize {
         let msg = format!("Stack too small: {}", minsize);
         return Err(Error::ScriptError(msg));

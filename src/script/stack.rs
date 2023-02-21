@@ -2,9 +2,12 @@ use crate::util::{Error, Result};
 use num_bigint::{BigInt, Sign};
 use num_traits::Zero;
 
+// Type to simplify the types..
+pub type Stack = Vec<Vec<u8>>;
+
 /// Pops a bool off the stack
 #[inline]
-pub fn pop_bool(stack: &mut Vec<Vec<u8>>) -> Result<bool> {
+pub fn pop_bool(stack: &mut Stack) -> Result<bool> {
     if stack.is_empty() {
         let msg = "Cannot pop bool, empty stack".to_string();
         return Err(Error::ScriptError(msg));
@@ -20,7 +23,7 @@ pub fn pop_bool(stack: &mut Vec<Vec<u8>>) -> Result<bool> {
 
 /// Pops a pre-genesis number off the stack
 #[inline]
-pub fn pop_num(stack: &mut Vec<Vec<u8>>) -> Result<i32> {
+pub fn pop_num(stack: &mut Stack) -> Result<i32> {
     if stack.is_empty() {
         let msg = "Cannot pop num, empty stack".to_string();
         return Err(Error::ScriptError(msg));
@@ -37,7 +40,7 @@ pub fn pop_num(stack: &mut Vec<Vec<u8>>) -> Result<i32> {
 
 /// Pops a bigint number off the stack
 #[inline]
-pub fn pop_bigint(stack: &mut Vec<Vec<u8>>) -> Result<BigInt> {
+pub fn pop_bigint(stack: &mut Stack) -> Result<BigInt> {
     if stack.is_empty() {
         let msg = "Cannot pop bigint, empty stack".to_string();
         return Err(Error::ScriptError(msg));
