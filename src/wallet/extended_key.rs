@@ -1,7 +1,6 @@
 use crate::network::Network;
 use crate::util::{hash160, sha256d, Error, Result, Serializable};
 use byteorder::{BigEndian, WriteBytesExt};
-// use ring::digest::SHA512;
 use ring::hmac;
 use rust_base58::base58::{FromBase58, ToBase58};
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
@@ -258,7 +257,7 @@ impl ExtendedKey {
         let private_key = &self.0[46..];
         let secp_par_secret_key = SecretKey::from_slice(private_key)?;
         let chain_code = &self.0[13..45];
-        let key = hmac::Key::new(hmac::HMAC_SHA256, chain_code);
+        let key = hmac::Key::new(hmac::HMAC_SHA512, chain_code);
 
         let hmac = if index >= HARDENED_KEY {
             let mut v = Vec::<u8>::with_capacity(37);
