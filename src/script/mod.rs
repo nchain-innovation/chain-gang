@@ -97,7 +97,11 @@ impl Script {
     }
 
     /// Evaluates a script using the provided checker, returning the stacks for inspection
-    pub fn eval_with_stack<T: Checker>(&self, checker: &mut T, flags: u32) -> Result<(Stack, Stack)> {
+    pub fn eval_with_stack<T: Checker>(
+        &self,
+        checker: &mut T,
+        flags: u32,
+    ) -> Result<(Stack, Stack)> {
         self::interpreter::core_eval(&self.0, checker, flags)
     }
 }
@@ -322,6 +326,5 @@ mod tests {
             dbg!(&stack);
             assert_eq!(stack[0][0], 2);
         }
-        assert!(false);
     }
 }
