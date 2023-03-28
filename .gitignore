@@ -11,3 +11,5 @@ Cargo.lock
 .DS_STORE
 .vscode
 
+# Working file
+out.txt
