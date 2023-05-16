@@ -1,8 +1,6 @@
 //! A foundation for building applications on Bitcoin SV using Rust.
-#![cfg(feature = "interface")]
-#![feature(async_fn_in_trait)]
-
-//#[cfg(feature = "RUSTC_IS_NIGHTLY")]
+//#![cfg(feature = "interface")]
+//#![feature(async_fn_in_trait)]
 
 extern crate byteorder;
 extern crate digest;

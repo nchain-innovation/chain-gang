@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 use crate::network::Network;
 use anyhow::Result;
 use serde::Deserialize;
@@ -29,7 +31,8 @@ pub struct BroadcastResponse {
 
 /// Trait of the blockchain interface
 ///
-pub trait BlockchainInterface {
+#[async_trait]
+pub trait BlockchainInterface: Send + Sync  {
     fn set_network(&mut self, network: &Network);
 
     /// Get balance associated with address

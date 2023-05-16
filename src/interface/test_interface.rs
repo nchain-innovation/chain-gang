@@ -1,27 +1,13 @@
-use async_mutex::Mutex;
-
-//use reqwest::header::TE;
-use std::collections::HashMap;
+use async_trait::async_trait;
 
 use anyhow::Result;
-use serde::Serialize;
+use async_mutex::Mutex;
+use std::collections::HashMap;
 
 use crate::{
-    interface::blockchain_interface::{
-        Balance,
-        //BroadcastResponse,
-        BlockchainInterface,
-        Utxo,
-    },
+    interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
     network::Network,
 };
-
-/// Structure for json serialisation for broadcast_tx
-/// TODO - do we need this?
-#[derive(Debug, Serialize)]
-pub struct BroadcastTxType {
-    pub txhex: String,
-}
 
 /// TestData - is the data used to set up a a test fixture and can be used to capture broadcast transactions
 #[derive(Debug, Default)]
@@ -54,11 +40,10 @@ impl TestInterface {
     pub async fn set_test_data(&mut self, test_data: &TestData) {
         // Check there is no broadcast data
         assert!(test_data.broadcast.is_empty());
-        let _ = test_data
-            .utxo
-            .iter()
-            .map(|(addr, utxo)| self.set_utxo(addr, utxo));
 
+        for (addr, utxo) in &test_data.utxo {
+            self.set_utxo(&addr, &utxo).await;
+        }
         self.set_height(test_data.height).await;
     }
 
@@ -69,11 +54,11 @@ impl TestInterface {
 
     pub async fn set_height(&self, height: u32) {
         let mut test_data = self.test_data.lock().await;
-
         test_data.height = height;
     }
 }
 
+#[async_trait]
 impl BlockchainInterface for TestInterface {
     fn set_network(&mut self, network: &Network) {
         self.network_type = *network;

@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 use anyhow::Result;
 use serde::Serialize;
 
@@ -45,6 +47,7 @@ impl WocInterface {
     }
 }
 
+#[async_trait]
 impl BlockchainInterface for WocInterface {
     fn set_network(&mut self, network: &Network) {
         self.network_type = *network;
@@ -97,6 +100,7 @@ impl BlockchainInterface for WocInterface {
             .text()
             .await
             .expect("failedto get a payload");
+
         // TODO change this to a BroadcastResponse later
 
         Ok(response)
