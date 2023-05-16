@@ -1,4 +1,8 @@
 //! A foundation for building applications on Bitcoin SV using Rust.
+#![cfg(feature = "interface")]
+#![feature(async_fn_in_trait)]
+
+//#[cfg(feature = "RUSTC_IS_NIGHTLY")]
 
 extern crate byteorder;
 extern crate digest;
@@ -23,3 +27,7 @@ pub mod script;
 pub mod transaction;
 pub mod util;
 pub mod wallet;
+
+// Only include interface if nightly build as we are dependent on async_fn_in_trait feature
+#[cfg(feature = "interface")]
+pub mod interface;
