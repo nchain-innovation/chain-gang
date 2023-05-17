@@ -9,8 +9,8 @@ use serde::Deserialize;
 /// Balance returned from WoC
 #[derive(Debug, Default, Deserialize, Clone, Copy)]
 pub struct Balance {
-    pub confirmed: u64,
-    pub unconfirmed: u64,
+    pub confirmed: i64,
+    pub unconfirmed: i64,
 }
 
 /// Type to represent UTXO Entry
@@ -20,7 +20,7 @@ pub struct UtxoEntry {
     pub height: u32,
     pub tx_pos: u32,
     pub tx_hash: String,
-    pub value: u64,
+    pub value: i64,
 }
 /// Type to represent UTXO set
 pub type Utxo = Vec<UtxoEntry>;

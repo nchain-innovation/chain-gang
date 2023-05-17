@@ -73,13 +73,13 @@ impl BlockchainInterface for TestInterface {
 
         let confirmation_height = test_data.height - 6;
 
-        let confirmed: u64 = utxo
+        let confirmed: i64 = utxo
             .iter()
             .filter(|x| x.height <= confirmation_height)
             .map(|x| x.value)
             .sum();
 
-        let unconfirmed: u64 = utxo
+        let unconfirmed: i64 = utxo
             .iter()
             .filter(|x| x.height > confirmation_height)
             .map(|x| x.value)

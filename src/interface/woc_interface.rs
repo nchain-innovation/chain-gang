@@ -10,7 +10,6 @@ use serde::Serialize;
 use crate::{
     interface::blockchain_interface::{
         Balance,
-        //BroadcastResponse,
         BlockchainInterface,
         Utxo,
     },
