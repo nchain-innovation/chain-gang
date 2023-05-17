@@ -66,6 +66,8 @@ impl BlockchainInterface for TestInterface {
 
     /// Get balance associated with address
     async fn get_balance(&self, address: &str) -> Result<Balance> {
+        debug!("get_balance");
+
         let utxo: Utxo = self.get_utxo(address).await?;
         let test_data = self.test_data.lock().await;
 
@@ -92,6 +94,8 @@ impl BlockchainInterface for TestInterface {
 
     /// Get UXTO associated with address
     async fn get_utxo(&self, address: &str) -> Result<Utxo> {
+        debug!("broadcast_tx");
+
         let test_data = self.test_data.lock().await;
 
         match test_data.utxo.get(address) {
@@ -102,7 +106,7 @@ impl BlockchainInterface for TestInterface {
 
     /// Broadcast Tx
     async fn broadcast_tx(&self, tx: &str) -> Result<()> {
-        println!("broadcast_tx");
+        debug!("broadcast_tx");
         let mut test_data = self.test_data.lock().await;
 
         // Record tx
