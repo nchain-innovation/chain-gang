@@ -66,7 +66,7 @@ impl BlockchainInterface for WocInterface {
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/balance");
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
-            debug!("url = {}", &url);
+            warn!("url = {}", &url);
             return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
         };
         let txt = match response.text().await {
@@ -80,7 +80,7 @@ impl BlockchainInterface for WocInterface {
             Ok(data) => data,
             Err(x) => {
                 debug!("address = {}", &address);
-                debug!("txt = {}", &txt);
+                warn!("txt = {}", &txt);
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
             },
         };
@@ -96,7 +96,7 @@ impl BlockchainInterface for WocInterface {
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/unspent");
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
-            debug!("url = {}", &url);
+            warn!("url = {}", &url);
             return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
         };
         let txt = match response.text().await {
@@ -108,7 +108,7 @@ impl BlockchainInterface for WocInterface {
         let data: Utxo = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                debug!("txt = {}", &txt);
+                warn!("txt = {}", &txt);
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
             },
         };
