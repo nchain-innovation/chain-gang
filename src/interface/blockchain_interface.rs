@@ -25,10 +25,6 @@ pub struct UtxoEntry {
 /// Type to represent UTXO set
 pub type Utxo = Vec<UtxoEntry>;
 
-pub struct BroadcastResponse {
-    pub txid: String,
-}
-
 /// Trait of the blockchain interface
 ///
 #[async_trait]
@@ -42,5 +38,5 @@ pub trait BlockchainInterface: Send + Sync  {
     async fn get_utxo(&self, address: &str) -> Result<Utxo>;
 
     /// Broadcast Tx
-    async fn broadcast_tx(&self, tx: &str) -> Result<String>;
+    async fn broadcast_tx(&self, tx: &str) -> Result<()>;
 }

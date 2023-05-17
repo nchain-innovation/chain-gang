@@ -101,19 +101,13 @@ impl BlockchainInterface for TestInterface {
     }
 
     /// Broadcast Tx
-    async fn broadcast_tx(&self, tx: &str) -> Result<String> {
+    async fn broadcast_tx(&self, tx: &str) -> Result<()> {
         println!("broadcast_tx");
         let mut test_data = self.test_data.lock().await;
 
         // Record tx
         test_data.broadcast.push(tx.to_string());
 
-        /*
-        // Spoof request to provide an async response
-        let url = format!("https://www.google.com");
-        reqwest::get(url).await
-        */
-        let response = "empty string".to_string();
-        Ok(response)
+        Ok(())
     }
 }

@@ -1,6 +1,10 @@
-use async_trait::async_trait;
 
-use anyhow::Result;
+use async_trait::async_trait;
+use reqwest::StatusCode;
+
+use anyhow::{
+    Result, anyhow,
+};
 use serde::Serialize;
 
 use crate::{
@@ -32,7 +36,7 @@ impl Default for WocInterface {
 impl WocInterface {
     pub fn new() -> Self {
         WocInterface {
-            network_type: Network::BCH_Testnet,
+            network_type: Network::BSV_Testnet,
         }
     }
 
@@ -42,7 +46,7 @@ impl WocInterface {
             Network::BSV_Mainnet => "main",
             Network::BSV_Testnet => "test",
             Network::BSV_STN => "stn",
-            _ => "unknown",
+            _ => panic!("unknown network {}", &self.network_type),
         }
     }
 }
@@ -58,10 +62,26 @@ impl BlockchainInterface for WocInterface {
         let network = self.get_network_str();
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/balance");
-        let response = reqwest::get(url).await?;
-        let data = response.json::<Balance>().await?;
-        dbg!(&address);
-        dbg!(&data);
+        let response = reqwest::get(&url).await?;
+        if response.status() != 200 {
+            dbg!(&url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
+        let txt = match response.text().await {
+            Ok(txt) => txt,
+            Err(x) => {
+                dbg!(&address);
+                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+            },
+        };
+        let data: Balance = match serde_json::from_str(&txt) {
+            Ok(data) => data,
+            Err(x) => {
+                dbg!(&address);
+                dbg!(&txt);
+                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+            },
+        };
         Ok(data)
     }
 
@@ -71,38 +91,51 @@ impl BlockchainInterface for WocInterface {
 
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/unspent");
-        let response = reqwest::get(url).await?;
-        let data = response.json::<Utxo>().await?;
-        dbg!(&address);
-        dbg!(&data);
+        let response = reqwest::get(&url).await?;
+        if response.status() != 200 {
+            dbg!(&url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
+        let txt = match response.text().await {
+            Ok(txt) => txt,
+            Err(x) => {
+                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+            },
+        };
+        let data: Utxo = match serde_json::from_str(&txt) {
+            Ok(data) => data,
+            Err(x) => {
+                dbg!(&txt);
+                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+            },
+        };
         Ok(data)
     }
 
     /// Broadcast Tx
-    async fn broadcast_tx(&self, tx: &str) -> Result<String> {
+    async fn broadcast_tx(&self, tx: &str) -> Result<()> {
         println!("broadcast_tx");
         let network = self.get_network_str();
-
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
-        dbg!(&url);
+
         let data_for_broadcast = BroadcastTxType {
             txhex: tx.to_string(),
         };
         let data = serde_json::to_string(&data_for_broadcast).unwrap();
-        dbg!(&data);
         let client = reqwest::Client::new();
         let response = client
-            .post(url)
+            .post(&url)
             .json(&data)
             .send()
-            .await
-            .expect("failedto get a response")
-            .text()
-            .await
-            .expect("failedto get a payload");
-
-        // TODO change this to a BroadcastResponse later
-
-        Ok(response)
+            .await?;
+        
+        // Assume a response of 200 means broadcast tx success
+        match response.status() {
+            StatusCode::OK => Ok(()),
+            _ => {
+                dbg!(&url);
+                std::result::Result::Err(anyhow!("response.status() = {}", response.status()))
+            },
+        }
     }
 }
