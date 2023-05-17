@@ -42,7 +42,7 @@ impl TestInterface {
         assert!(test_data.broadcast.is_empty());
 
         for (addr, utxo) in &test_data.utxo {
-            self.set_utxo(&addr, &utxo).await;
+            self.set_utxo(addr, utxo).await;
         }
         self.set_height(test_data.height).await;
     }
