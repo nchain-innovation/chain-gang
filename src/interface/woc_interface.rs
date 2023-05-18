@@ -121,7 +121,7 @@ impl BlockchainInterface for WocInterface {
         debug!("broadcast_tx");
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
-
+        debug!("url = {}", &url);
         let data_for_broadcast = BroadcastTxType {
             txhex: tx.as_hexstr(),
         };
