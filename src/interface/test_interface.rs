@@ -2,6 +2,7 @@ use async_trait::async_trait;
 
 use anyhow::Result;
 use async_mutex::Mutex;
+use std::sync::Arc;
 use std::collections::HashMap;
 
 use crate::{
@@ -21,7 +22,7 @@ pub struct TestData {
 pub struct TestInterface {
     network_type: Network,
     /// TestData  is separated and enclosed in a Mutex to provide interior mutablity.
-    test_data: Mutex<TestData>,
+    test_data: Arc<Mutex<TestData>>,
 }
 
 impl Default for TestInterface {
@@ -34,7 +35,7 @@ impl TestInterface {
     pub fn new() -> Self {
         TestInterface {
             network_type: Network::BCH_Testnet,
-            test_data: Mutex::new(TestData::default()),
+            test_data: Arc::new(Mutex::new(TestData::default())),
         }
     }
 
