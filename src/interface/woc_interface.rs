@@ -22,6 +22,7 @@ pub struct BroadcastTxType {
     pub txhex: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct WocInterface {
     network_type: Network,
 }

@@ -10,13 +10,14 @@ use crate::{
 };
 
 /// TestData - is the data used to set up a a test fixture and can be used to capture broadcast transactions
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TestData {
     utxo: HashMap<String, Utxo>,
     height: u32,
     broadcast: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
 pub struct TestInterface {
     network_type: Network,
     /// TestData  is separated and enclosed in a Mutex to provide interior mutablity.
