@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
     network::Network,
+    messages::Tx,
 };
 
 /// TestData - is the data used to set up a a test fixture and can be used to capture broadcast transactions
@@ -107,13 +108,15 @@ impl BlockchainInterface for TestInterface {
     }
 
     /// Broadcast Tx
-    async fn broadcast_tx(&self, tx: &str) -> Result<()> {
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
         debug!("broadcast_tx");
         let mut test_data = self.test_data.lock().await;
 
         // Record tx
-        test_data.broadcast.push(tx.to_string());
+        test_data.broadcast.push(tx.as_hexstr());
 
-        Ok(())
+        // Return hex
+        let txid = tx.hash().encode();
+        Ok(txid)
     }
 }

@@ -14,6 +14,7 @@ use crate::{
         Utxo,
     },
     network::Network,
+    messages::Tx,
 };
 
 /// Structure for json serialisation for broadcast_tx
@@ -116,13 +117,13 @@ impl BlockchainInterface for WocInterface {
     }
 
     /// Broadcast Tx
-    async fn broadcast_tx(&self, tx: &str) -> Result<()> {
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
         debug!("broadcast_tx");
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
 
         let data_for_broadcast = BroadcastTxType {
-            txhex: tx.to_string(),
+            txhex: tx.as_hexstr(),
         };
         let data = serde_json::to_string(&data_for_broadcast).unwrap();
         let client = reqwest::Client::new();
@@ -134,7 +135,10 @@ impl BlockchainInterface for WocInterface {
         
         // Assume a response of 200 means broadcast tx success
         match response.status() {
-            StatusCode::OK => Ok(()),
+            StatusCode::OK => {
+                let txid = tx.hash().encode();
+                Ok(txid)
+            },
             _ => {
                 debug!("url = {}", &url);
                 std::result::Result::Err(anyhow!("response.status() = {}", response.status()))

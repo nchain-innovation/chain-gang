@@ -1,6 +1,9 @@
 use async_trait::async_trait;
 
-use crate::network::Network;
+use crate::{
+    network::Network,
+    messages::Tx,
+};
 use anyhow::Result;
 use serde::Deserialize;
 
@@ -37,6 +40,6 @@ pub trait BlockchainInterface: Send + Sync  {
     /// Get UXTO associated with address
     async fn get_utxo(&self, address: &str) -> Result<Utxo>;
 
-    /// Broadcast Tx
-    async fn broadcast_tx(&self, tx: &str) -> Result<()>;
+    /// Broadcast Tx, return the txid
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String>;
 }
