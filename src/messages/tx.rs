@@ -148,6 +148,13 @@ impl Tx {
             && self.inputs[0].prev_output.hash == COINBASE_OUTPOINT_HASH
             && self.inputs[0].prev_output.index == COINBASE_OUTPOINT_INDEX
     }
+
+    /// Return tx as a hex string
+    pub fn as_hexstr(&self) -> String {
+        let mut buff = Vec::with_capacity(self.size());
+        self.write(&mut buff).unwrap();
+        hex::encode(&buff)
+    }
 }
 
 impl Serializable<Tx> for Tx {
