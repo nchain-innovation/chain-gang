@@ -117,6 +117,7 @@ impl BlockchainInterface for WocInterface {
     }
 
     /// Broadcast Tx
+    /// 
     async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
         debug!("broadcast_tx");
         let network = self.get_network_str();
@@ -125,23 +126,24 @@ impl BlockchainInterface for WocInterface {
         let data_for_broadcast = BroadcastTxType {
             txhex: tx.as_hexstr(),
         };
-        let data = serde_json::to_string(&data_for_broadcast).unwrap();
+        //let data = serde_json::to_string(&data_for_broadcast).unwrap();
         let client = reqwest::Client::new();
         let response = client
             .post(&url)
-            .json(&data)
+            .json(&data_for_broadcast)
             .send()
             .await?;
-        
+        let status = response.status();
         // Assume a response of 200 means broadcast tx success
-        match response.status() {
+        match status {
             StatusCode::OK => {
-                let txid = tx.hash().encode();
-                Ok(txid)
+                let res = response.text().await?;
+                let hash = res.trim();
+                Ok(hash.to_string())
             },
             _ => {
                 debug!("url = {}", &url);
-                std::result::Result::Err(anyhow!("response.status() = {}", response.status()))
+                std::result::Result::Err(anyhow!("response.status() = {}", status))
             },
         }
     }

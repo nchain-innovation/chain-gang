@@ -68,6 +68,8 @@ impl MerkleBlock {
         Ok(matches)
     }
 
+    // Disabling this clippy warning as there is not much we can do about too many arguments here
+    #[allow(clippy::too_many_arguments)]
     fn traverse(
         &self,
         preorder_node: &mut usize,

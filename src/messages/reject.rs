@@ -43,6 +43,12 @@ impl Reject {
 }
 
 impl Serializable<Reject> for Reject {
+    
+    // I have allowed this clippy warning otherwise clippy complains about the 
+    // if message == *"block" ... 
+    // because the previous line sets data to zero bytes in length
+    // so clippy thinks that we are reading into a zero byte buffer.
+    #[allow(clippy::read_zero_byte_vec)]
     fn read(reader: &mut dyn Read) -> Result<Reject> {
         let message_size = var_int::read(reader)? as usize;
         let mut message_bytes = vec![0; message_size];
