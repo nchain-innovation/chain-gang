@@ -12,7 +12,6 @@
 //! }
 //! ```
 
-
 // Disabled this warning as would probably break too much other code to fix it
 //warn: module has the same name as its containing module
 #[allow(clippy::module_inception)]

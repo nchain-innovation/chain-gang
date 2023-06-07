@@ -1,20 +1,13 @@
-
 use async_trait::async_trait;
 use reqwest::StatusCode;
 
-use anyhow::{
-    Result, anyhow,
-};
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 use crate::{
-    interface::blockchain_interface::{
-        Balance,
-        BlockchainInterface,
-        Utxo,
-    },
-    network::Network,
+    interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
     messages::Tx,
+    network::Network,
 };
 
 /// Structure for json serialisation for broadcast_tx
@@ -75,7 +68,7 @@ impl BlockchainInterface for WocInterface {
             Err(x) => {
                 debug!("address = {}", &address);
                 return std::result::Result::Err(anyhow!("response.text() = {}", x));
-            },
+            }
         };
         let data: Balance = match serde_json::from_str(&txt) {
             Ok(data) => data,
@@ -83,7 +76,7 @@ impl BlockchainInterface for WocInterface {
                 debug!("address = {}", &address);
                 warn!("txt = {}", &txt);
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
-            },
+            }
         };
         Ok(data)
     }
@@ -104,20 +97,20 @@ impl BlockchainInterface for WocInterface {
             Ok(txt) => txt,
             Err(x) => {
                 return std::result::Result::Err(anyhow!("response.text() = {}", x));
-            },
+            }
         };
         let data: Utxo = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
                 warn!("txt = {}", &txt);
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
-            },
+            }
         };
         Ok(data)
     }
 
     /// Broadcast Tx
-    /// 
+    ///
     async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
         debug!("broadcast_tx");
         let network = self.get_network_str();
@@ -128,11 +121,7 @@ impl BlockchainInterface for WocInterface {
         };
         //let data = serde_json::to_string(&data_for_broadcast).unwrap();
         let client = reqwest::Client::new();
-        let response = client
-            .post(&url)
-            .json(&data_for_broadcast)
-            .send()
-            .await?;
+        let response = client.post(&url).json(&data_for_broadcast).send().await?;
         let status = response.status();
         // Assume a response of 200 means broadcast tx success
         match status {
@@ -140,11 +129,11 @@ impl BlockchainInterface for WocInterface {
                 let res = response.text().await?;
                 let hash = res.trim();
                 Ok(hash.to_string())
-            },
+            }
             _ => {
                 debug!("url = {}", &url);
                 std::result::Result::Err(anyhow!("response.status() = {}", status))
-            },
+            }
         }
     }
 }

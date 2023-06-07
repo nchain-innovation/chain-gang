@@ -2,13 +2,13 @@ use async_trait::async_trait;
 
 use anyhow::Result;
 use async_mutex::Mutex;
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
-    network::Network,
     messages::Tx,
+    network::Network,
 };
 
 /// TestData - is the data used to set up a a test fixture and can be used to capture broadcast transactions

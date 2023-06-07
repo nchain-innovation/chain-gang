@@ -1,9 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{
-    network::Network,
-    messages::Tx,
-};
+use crate::{messages::Tx, network::Network};
 use anyhow::Result;
 use serde::Deserialize;
 
@@ -31,7 +28,7 @@ pub type Utxo = Vec<UtxoEntry>;
 /// Trait of the blockchain interface
 ///
 #[async_trait]
-pub trait BlockchainInterface: Send + Sync  {
+pub trait BlockchainInterface: Send + Sync {
     fn set_network(&mut self, network: &Network);
 
     /// Get balance associated with address
