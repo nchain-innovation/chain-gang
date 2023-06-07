@@ -31,6 +31,9 @@ pub type Utxo = Vec<UtxoEntry>;
 pub trait BlockchainInterface: Send + Sync {
     fn set_network(&mut self, network: &Network);
 
+    // Return Ok(()) if connection is good
+    async fn status(&self) -> Result<()>;
+
     /// Get balance associated with address
     async fn get_balance(&self, address: &str) -> Result<Balance>;
 

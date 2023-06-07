@@ -67,6 +67,12 @@ impl BlockchainInterface for TestInterface {
         self.network_type = *network;
     }
 
+    // Return Ok(()) if connection is good
+    async fn status(&self) -> Result<()> {
+        Ok(())
+    }
+
+
     /// Get balance associated with address
     async fn get_balance(&self, address: &str) -> Result<Balance> {
         debug!("get_balance");

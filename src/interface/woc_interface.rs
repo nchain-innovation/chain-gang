@@ -51,9 +51,27 @@ impl BlockchainInterface for WocInterface {
         self.network_type = *network;
     }
 
+    // Return Ok(()) if connection is good
+    async fn status(&self) -> Result<()> {
+        log::debug!("status");
+
+        let network = self.get_network_str();
+        let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/woc");
+        let response = reqwest::get(&url).await?;
+        if response.status() != 200 {
+            log::warn!("url = {}", &url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
+        match response.text().await {
+            Ok(txt) if txt == "Whats On Chain" => Ok(()),
+            Ok(txt) => std::result::Result::Err(anyhow!("Unexpected txt = {}", txt)),
+            Err(err) => std::result::Result::Err(anyhow!("response.text() = {}", err)),
+        }
+    }
+
     /// Get balance associated with address
     async fn get_balance(&self, address: &str) -> Result<Balance> {
-        debug!("get_balance");
+        log::debug!("get_balance");
 
         let network = self.get_network_str();
         let url =
@@ -66,15 +84,15 @@ impl BlockchainInterface for WocInterface {
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                debug!("address = {}", &address);
+                log::debug!("address = {}", &address);
                 return std::result::Result::Err(anyhow!("response.text() = {}", x));
             }
         };
         let data: Balance = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                debug!("address = {}", &address);
-                warn!("txt = {}", &txt);
+                log::debug!("address = {}", &address);
+                log::warn!("txt = {}", &txt);
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
             }
         };
@@ -83,14 +101,14 @@ impl BlockchainInterface for WocInterface {
 
     /// Get UXTO associated with address
     async fn get_utxo(&self, address: &str) -> Result<Utxo> {
-        debug!("get_utxo");
+        log::debug!("get_utxo");
         let network = self.get_network_str();
 
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/unspent");
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
-            warn!("url = {}", &url);
+            log::warn!("url = {}", &url);
             return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
         };
         let txt = match response.text().await {
@@ -102,7 +120,7 @@ impl BlockchainInterface for WocInterface {
         let data: Utxo = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                warn!("txt = {}", &txt);
+                log::warn!("txt = {}", &txt);
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
             }
         };
@@ -112,10 +130,10 @@ impl BlockchainInterface for WocInterface {
     /// Broadcast Tx
     ///
     async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
-        debug!("broadcast_tx");
+        log::debug!("broadcast_tx");
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
-        debug!("url = {}", &url);
+        log::debug!("url = {}", &url);
         let data_for_broadcast = BroadcastTxType {
             txhex: tx.as_hexstr(),
         };
@@ -131,7 +149,7 @@ impl BlockchainInterface for WocInterface {
                 Ok(hash.to_string())
             }
             _ => {
-                debug!("url = {}", &url);
+                log::debug!("url = {}", &url);
                 std::result::Result::Err(anyhow!("response.status() = {}", status))
             }
         }
