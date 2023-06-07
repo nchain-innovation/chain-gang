@@ -40,7 +40,7 @@ impl fmt::Display for Network {
 
 impl Network {
     /// Converts an integer to a network type
-    /// pub fn from_u8(x: u8) -> Result<Network> {
+    /// `pub fn from_u8(x: u8) -> Result<Network> {`
     /// Deleted as considered too dangerous!
     /// As it was hardcoding u8 -> network mappings
 

@@ -5,7 +5,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
 
-/// [createstrm message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
+/// [createstrm message format] <https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md>
 
 pub const MIN_SUPPORTED_STREAM_TYPE: u8 = 1;
 pub const MAX_SUPPORTED_STREAM_TYPE: u8 = 4;

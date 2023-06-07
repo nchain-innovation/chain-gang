@@ -5,7 +5,7 @@ use crate::util::{Error, Result, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
-/// [streamack message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
+/// [streamack message format] <https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md>
 
 /// Streamack payload
 #[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]

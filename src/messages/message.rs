@@ -35,103 +35,103 @@ pub const MAX_PAYLOAD_SIZE: u32 = 0x02000000;
 
 /// Message commands for the header
 pub mod commands {
-    /// [Addr command](https://en.bitcoin.it/wiki/Protocol_documentation#addr)
+    /// [Addr command] <https://en.bitcoin.it/wiki/Protocol_documentation#addr>
     pub const ADDR: [u8; 12] = *b"addr\0\0\0\0\0\0\0\0";
 
     pub const ADDRV2: [u8; 12] = *b"addrv2\0\0\0\0\0\0";
 
-    /// [Alert command](https://en.bitcoin.it/wiki/Protocol_documentation#alert) (deprecated)
+    /// [Alert command] <https://en.bitcoin.it/wiki/Protocol_documentation#alert> (deprecated)
     pub const ALERT: [u8; 12] = *b"alert\0\0\0\0\0\0\0";
 
-    /// [Block command](https://en.bitcoin.it/wiki/Protocol_documentation#block)
+    /// [Block command] <https://en.bitcoin.it/wiki/Protocol_documentation#block>
     pub const BLOCK: [u8; 12] = *b"block\0\0\0\0\0\0\0";
 
-    /// [Block transaction command](https://en.bitcoin.it/wiki/Protocol_documentation#blocktxn)
+    /// [Block transaction command] <https://en.bitcoin.it/wiki/Protocol_documentation#blocktxn>
     pub const BLOCKTXN: [u8; 12] = *b"blocktxn\0\0\0\0";
 
-    /// [Compact block command](https://en.bitcoin.it/wiki/Protocol_documentation#cmpctblock)
+    /// [Compact block command] <https://en.bitcoin.it/wiki/Protocol_documentation#cmpctblock>
     pub const CMPCTBLOCK: [u8; 12] = *b"cmpctblock\0\0";
 
-    /// [Inventory command](https://en.bitcoin.it/wiki/Protocol_documentation#inv)
+    /// [Inventory command] <https://en.bitcoin.it/wiki/Protocol_documentation#inv>
     pub const INV: [u8; 12] = *b"inv\0\0\0\0\0\0\0\0\0";
 
-    /// [Fee filter command](https://en.bitcoin.it/wiki/Protocol_documentation#feefilter)
+    /// [Fee filter command] <https://en.bitcoin.it/wiki/Protocol_documentation#feefilter>
     pub const FEEFILTER: [u8; 12] = *b"feefilter\0\0\0";
 
-    /// [Filter add command](https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock)
+    /// [Filter add command] <https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock>
     pub const FILTERADD: [u8; 12] = *b"filteradd\0\0\0";
 
-    /// [Filter clear command](https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock)
+    /// [Filter clear command] <https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock>
     pub const FILTERCLEAR: [u8; 12] = *b"filterclear\0";
 
-    /// [Filter load command](https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock)
+    /// [Filter load command] <https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock>
     pub const FILTERLOAD: [u8; 12] = *b"filterload\0\0";
 
-    /// [Get addr command](https://en.bitcoin.it/wiki/Protocol_documentation#getaddr)
+    /// [Get addr command] <https://en.bitcoin.it/wiki/Protocol_documentation#getaddr>
     pub const GETADDR: [u8; 12] = *b"getaddr\0\0\0\0\0";
 
-    /// [Get blocks command](https://en.bitcoin.it/wiki/Protocol_documentation#getblocks)
+    /// [Get blocks command] <https://en.bitcoin.it/wiki/Protocol_documentation#getblocks>
     pub const GETBLOCKS: [u8; 12] = *b"getblocks\0\0\0";
 
-    /// [Get block transaction command](https://en.bitcoin.it/wiki/Protocol_documentation#getblocktxn)
+    /// [Get block transaction command] <https://en.bitcoin.it/wiki/Protocol_documentation#getblocktxn>
     pub const GETBLOCKTXN: [u8; 12] = *b"getblocktxn\0";
 
-    /// [Get data command](https://en.bitcoin.it/wiki/Protocol_documentation#getdata)
+    /// [Get data command] <https://en.bitcoin.it/wiki/Protocol_documentation#getdata>
     pub const GETDATA: [u8; 12] = *b"getdata\0\0\0\0\0";
 
-    /// [Get headers command](https://en.bitcoin.it/wiki/Protocol_documentation#getheaders)
+    /// [Get headers command] <https://en.bitcoin.it/wiki/Protocol_documentation#getheaders>
     pub const GETHEADERS: [u8; 12] = *b"getheaders\0\0";
 
-    /// [Headers command](https://en.bitcoin.it/wiki/Protocol_documentation#headers)
+    /// [Headers command] <https://en.bitcoin.it/wiki/Protocol_documentation#headers>
     pub const HEADERS: [u8; 12] = *b"headers\0\0\0\0\0";
 
-    /// [Mempool command](https://en.bitcoin.it/wiki/Protocol_documentation#mempool)
+    /// [Mempool command] <https://en.bitcoin.it/wiki/Protocol_documentation#mempool>
     pub const MEMPOOL: [u8; 12] = *b"mempool\0\0\0\0\0";
 
-    /// [Merkle block](https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock)
+    /// [Merkle block] <https://en.bitcoin.it/wiki/Protocol_documentation#filterload.2C_filteradd.2C_filterclear.2C_merkleblock>
     pub const MERKLEBLOCK: [u8; 12] = *b"merkleblock\0";
 
-    /// [Not found command](https://en.bitcoin.it/wiki/Protocol_documentation#notfound)
+    /// [Not found command] <https://en.bitcoin.it/wiki/Protocol_documentation#notfound>
     pub const NOTFOUND: [u8; 12] = *b"notfound\0\0\0\0";
 
-    /// [Ping command](https://en.bitcoin.it/wiki/Protocol_documentation#ping)
+    /// [Ping command] <https://en.bitcoin.it/wiki/Protocol_documentation#ping>
     pub const PING: [u8; 12] = *b"ping\0\0\0\0\0\0\0\0";
 
-    /// [Pong command](https://en.bitcoin.it/wiki/Protocol_documentation#pong)
+    /// [Pong command] <https://en.bitcoin.it/wiki/Protocol_documentation#pong>
     pub const PONG: [u8; 12] = *b"pong\0\0\0\0\0\0\0\0";
 
-    /// [Reject command](https://en.bitcoin.it/wiki/Protocol_documentation#reject)
+    /// [Reject command] <https://en.bitcoin.it/wiki/Protocol_documentation#reject>
     pub const REJECT: [u8; 12] = *b"reject\0\0\0\0\0\0";
 
-    /// [Send compact command](https://en.bitcoin.it/wiki/Protocol_documentation#sendcmpct)
+    /// [Send compact command] <https://en.bitcoin.it/wiki/Protocol_documentation#sendcmpct>
     pub const SENDCMPCT: [u8; 12] = *b"sendcmpct\0\0\0";
 
-    /// [Send headers command](https://en.bitcoin.it/wiki/Protocol_documentation#sendheaders)
+    /// [Send headers command] <https://en.bitcoin.it/wiki/Protocol_documentation#sendheaders>
     pub const SENDHEADERS: [u8; 12] = *b"sendheaders\0";
 
-    /// [Transaction command](https://en.bitcoin.it/wiki/Protocol_documentation#tx)
+    /// [Transaction command] <https://en.bitcoin.it/wiki/Protocol_documentation#tx>
     pub const TX: [u8; 12] = *b"tx\0\0\0\0\0\0\0\0\0\0";
 
-    /// [Version command](https://en.bitcoin.it/wiki/Protocol_documentation#version)
+    /// [Version command] <https://en.bitcoin.it/wiki/Protocol_documentation#version>
     pub const VERSION: [u8; 12] = *b"version\0\0\0\0\0";
 
-    /// [Version acknowledgement command](https://en.bitcoin.it/wiki/Protocol_documentation#verack)
+    /// [Version acknowledgement command] <https://en.bitcoin.it/wiki/Protocol_documentation#verack>
     pub const VERACK: [u8; 12] = *b"verack\0\0\0\0\0\0";
 
     // New commands
-    /// [protocol configuration parameters] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/protoconf.md
+    /// [protocol configuration parameters] <https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/protoconf.md>
     pub const PROTOCONF: [u8; 12] = *b"protoconf\0\0\0";
 
-    /// [authch P2p message format] https://github.com/bitcoin-sv/bitcoin-sv/blob/master/doc/release-notes.md#authch-p2p-message-format
+    /// [authch P2p message format] <https://github.com/bitcoin-sv/bitcoin-sv/blob/master/doc/release-notes.md#authch-p2p-message-format>
     pub const AUTHCH: [u8; 12] = *b"authch\0\0\0\0\0\0";
 
-    /// [createstrm message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
+    /// [createstrm message format] <https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md>
     pub const CREATESTRM: [u8; 12] = *b"createstrm\0\0";
 
-    /// [streamack message format] https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md
+    /// [streamack message format] <https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md>
     pub const STREAMACK: [u8; 12] = *b"streamack\0\0\0";
 
-    /// [sendaddrv2 message format] https://github.com/bitcoin/bips/blob/master/bip-0155.mediawiki
+    /// [sendaddrv2 message format] <https://github.com/bitcoin/bips/blob/master/bip-0155.mediawiki>
     pub const SENDADDRV2: [u8; 12] = *b"sendaddrv2\0\0";
 }
 

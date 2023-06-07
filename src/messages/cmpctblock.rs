@@ -70,7 +70,7 @@ impl Payload<PrefilledTransaction> for PrefilledTransaction {
     }
 }
 
-/// cmpctblock defined in https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki
+/// cmpctblock defined in <https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki>
 /// The cmpctblock message is defined as a message containing a serialized HeaderAndShortIDs message and pchCommand == "cmpctblock".
 /// Cmpctblock payload - HeaderAndShortIDs
 #[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]
