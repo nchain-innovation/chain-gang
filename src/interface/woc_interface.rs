@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use reqwest::StatusCode;
 
+use crate::util::Serializable;
 use anyhow::{anyhow, Result};
 use serde::Serialize;
 
@@ -152,6 +153,28 @@ impl BlockchainInterface for WocInterface {
                 log::debug!("url = {}", &url);
                 std::result::Result::Err(anyhow!("response.status() = {}", status))
             }
+        }
+    }
+
+    async fn get_tx(&self, txid: &str) -> Result<Tx> {
+        log::debug!("get_tx");
+
+        let network = self.get_network_str();
+
+        let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/{txid}/hex");
+        let response = reqwest::get(&url).await?;
+        if response.status() != 200 {
+            log::warn!("url = {}", &url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
+        match response.text().await {
+            Ok(txt) => {
+                let bytes = hex::decode(txt)?;
+                let mut byte_slice = &bytes[..];
+                let tx: Tx = Tx::read(&mut byte_slice)?;
+                Ok(tx)
+            }
+            Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
         }
     }
 }

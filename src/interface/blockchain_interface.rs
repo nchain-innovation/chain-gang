@@ -42,4 +42,6 @@ pub trait BlockchainInterface: Send + Sync {
 
     /// Broadcast Tx, return the txid
     async fn broadcast_tx(&self, tx: &Tx) -> Result<String>;
+
+    async fn get_tx(&self, txid: &str) -> Result<Tx>;
 }

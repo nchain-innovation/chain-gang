@@ -41,6 +41,10 @@ chain-gang = { path = "../chain-gang" }
 The library uses the following feature flag
 * `interface` - this provides a blockchain interface for accessing the current blockchain status
 
+Therefore to build the library with this feature
+```bash
+cargo build --features "interface"
+```
 
 # Known limitations
 

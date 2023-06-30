@@ -72,7 +72,6 @@ impl BlockchainInterface for TestInterface {
         Ok(())
     }
 
-
     /// Get balance associated with address
     async fn get_balance(&self, address: &str) -> Result<Balance> {
         debug!("get_balance");
@@ -124,5 +123,10 @@ impl BlockchainInterface for TestInterface {
         // Return hex
         let txid = tx.hash().encode();
         Ok(txid)
+    }
+
+    async fn get_tx(&self, _txid: &str) -> Result<Tx> {
+        debug!("get_tx");
+        std::unimplemented!();
     }
 }
