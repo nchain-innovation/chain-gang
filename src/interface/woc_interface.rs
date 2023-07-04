@@ -147,7 +147,8 @@ impl BlockchainInterface for WocInterface {
             StatusCode::OK => {
                 let res = response.text().await?;
                 let hash = res.trim();
-                Ok(hash.to_string())
+                let txid = hash.trim_matches('"');
+                Ok(txid.to_string())
             }
             _ => {
                 log::debug!("url = {}", &url);
