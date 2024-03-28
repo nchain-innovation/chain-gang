@@ -49,7 +49,7 @@ impl fmt::Debug for Headers {
 }
 
 /// Returns the hash for a header at a particular index utilizing prev_hash if possible
-pub fn header_hash(i: usize, headers: &Vec<BlockHeader>) -> Result<Hash256> {
+pub fn header_hash(i: usize, headers: &[BlockHeader]) -> Result<Hash256> {
     match headers.len().cmp(&(i + 1)) {
         Ordering::Greater => Ok(headers[i + 1].prev_hash),
         Ordering::Equal => Ok(headers[i].hash()),

@@ -48,7 +48,7 @@ impl Serializable<Createstrm> for Createstrm {
         // Read association_id
         if let Ok(ass_len) = reader.read_u8() {
             if ass_len > 0 {
-                ret.association_id = vec![0; ass_len.try_into().unwrap()];
+                ret.association_id = vec![0; ass_len.into()];
                 reader.read_exact(&mut ret.association_id)?;
             }
         }
