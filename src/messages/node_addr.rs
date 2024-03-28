@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::util::{Result, Serializable};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
@@ -5,7 +7,7 @@ use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv6Addr};
 
 /// Network address for a node on the network
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct NodeAddr {
     /// Services flags for the node
     pub services: u64,

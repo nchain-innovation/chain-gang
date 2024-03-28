@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+
+
 use crate::messages::message::Payload;
 use crate::messages::node_addr::NodeAddr;
 use crate::util::{var_int, Error, Result, Serializable};
@@ -24,7 +27,9 @@ pub const NODE_NETWORK: u64 = 1;
 pub const NODE_BITCOIN_CASH: u64 = 1 << 5;
 
 /// Version payload defining a node's capabilities
-#[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]
+//#[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
+
 pub struct Version {
     /// The protocol version being used by the node
     pub version: u32,
@@ -80,7 +85,7 @@ impl Serializable<Version> for Version {
         // Check to see if there is an association_id to read
         if let Ok(ass_len) = reader.read_u8() {
             if ass_len > 0 {
-                ret.association_id = vec![0; ass_len.try_into().unwrap()];
+                ret.association_id = vec![0; ass_len.into()];
                 reader.read_exact(&mut ret.association_id)?;
             }
         }
