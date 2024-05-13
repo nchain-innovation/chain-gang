@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 use crate::messages::message::Payload;
 use crate::messages::node_addr::NodeAddr;
 use crate::util::{var_int, Error, Result, Serializable};
