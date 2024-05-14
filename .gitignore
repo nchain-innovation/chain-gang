@@ -13,3 +13,8 @@ Cargo.lock
 
 # Working file
 out.txt
+
+
+# Compiled Python bytecode
+*.py[cod]
+__pycache__
