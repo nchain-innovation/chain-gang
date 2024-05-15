@@ -1,5 +1,5 @@
 
-from engine.engine_types import StackElement
+from .engine_types import StackElement
 
 # Maximum script number length before Genesis (equal to CScriptNum::MAXIMUM_ELEMENT_SIZE)
 MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS = 4
@@ -7,6 +7,9 @@ MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS = 4
 MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS = 750 * 1000
 # Maximum size that we are using
 MAXIMUM_ELEMENT_SIZE = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
+
+
+from chain_gang import py_encode_num, py_decode_num
 
 
 def int_to_little_endian(n: int, length: int) -> bytes:
@@ -18,6 +21,8 @@ def int_to_little_endian(n: int, length: int) -> bytes:
 
 def encode_num(num: int) -> bytes:
     """ Encode a number, return a bytearray in little endian
+    """
+    return py_encode_num(num)
     """
     if num == 0:
         return b""
@@ -35,7 +40,7 @@ def encode_num(num: int) -> bytes:
     elif negative:
         result[-1] |= 0x80
     return bytes(result)
-
+    """
 
 def is_minimally_encoded(element, max_element_size=MAXIMUM_ELEMENT_SIZE) -> bool:
     """ Determines if an element is minimally encoded, returns True if it is.
@@ -69,7 +74,10 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
             raise ValueError(f"Value is not minimally encoded: {element.hex()}")
         else:
             raise ValueError(f"Value is not minimally encoded: {element}")
+    return py_decode_num(element)
 
+
+    """
     if isinstance(element, int):
         return element
 
@@ -95,3 +103,4 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
             return result
     else:
         raise ValueError(f"Value is of unknown type: {element} {type(element)}")
+    """

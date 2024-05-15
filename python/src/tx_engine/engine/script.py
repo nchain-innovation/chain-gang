@@ -1,10 +1,10 @@
 
 import re
 
-from engine.util import int_to_little_endian
-from engine.op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
-from engine.decode_op import decode_op
-from engine.engine_types import Commands
+from .util import int_to_little_endian
+from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
+from .decode_op import decode_op
+from .engine_types import Commands
 
 
 class Script:

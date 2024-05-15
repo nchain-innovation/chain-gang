@@ -39,7 +39,8 @@ chain-gang = { path = "../chain-gang" }
 ## Feature Flags
 
 The library uses the following feature flag
-* `interface` - this provides a blockchain interface for accessing the current blockchain status
+* `interface` - this provides a blockchain interface for accessing the current blockchain status, via servers such as WhatsOnChain.
+* `python` - this provides a python interface to the chain_gang library.
 
 Therefore to build the library with this feature
 ```bash

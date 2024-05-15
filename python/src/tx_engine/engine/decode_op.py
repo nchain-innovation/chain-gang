@@ -1,7 +1,7 @@
 from typing import Union
 
-from engine.util import encode_num
-from engine.op_code_names import OP_CODE_NAMES
+from .util import encode_num
+from .op_code_names import OP_CODE_NAMES
 
 
 # Create a dictionary of OP_DUP -> 118, DUP -> 118
