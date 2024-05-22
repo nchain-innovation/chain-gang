@@ -1,4 +1,4 @@
-
+from typing import List
 from .engine_types import StackElement
 
 # Maximum script number length before Genesis (equal to CScriptNum::MAXIMUM_ELEMENT_SIZE)
@@ -42,6 +42,7 @@ def encode_num(num: int) -> bytes:
     return bytes(result)
     """
 
+
 def is_minimally_encoded(element, max_element_size=MAXIMUM_ELEMENT_SIZE) -> bool:
     """ Determines if an element is minimally encoded, returns True if it is.
         Code copied from SV codebase for details see:
@@ -76,7 +77,6 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
             raise ValueError(f"Value is not minimally encoded: {element}")
     return py_decode_num(element)
 
-
     """
     if isinstance(element, int):
         return element
@@ -104,3 +104,13 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
     else:
         raise ValueError(f"Value is of unknown type: {element} {type(element)}")
     """
+
+
+def insert_num(val: int) -> List[int]:
+    """ This function is used to insert numbers into script
+    """
+    val_as_bytes = bytearray(encode_num(val))
+    length = len(val_as_bytes)
+    # print(f"val_as_bytes=0x{val_as_bytes.hex()}, length={length}")
+    val_as_bytes.insert(0, length)
+    return list(val_as_bytes)

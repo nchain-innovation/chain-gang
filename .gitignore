@@ -18,3 +18,7 @@ out.txt
 # Compiled Python bytecode
 *.py[cod]
 __pycache__
+
+# shared library files
+*.so
+

@@ -3,12 +3,10 @@ use pyo3::{
     prelude::*,
 };
 
-use crate::{
-    script::{
+use crate::script::{
         Script, TransactionlessChecker, NO_FLAGS,
         stack::{Stack, encode_num, decode_num}
-    }
-};
+    };
 
 
 // Convert errors to PyErr
