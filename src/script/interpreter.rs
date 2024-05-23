@@ -38,7 +38,6 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
                 break;
             }
         }
-
         match script[i] {
             OP_0 => stack.push(encode_num(0)?),
             OP_1NEGATE => stack.push(encode_num(-1)?),
