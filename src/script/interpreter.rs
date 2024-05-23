@@ -587,7 +587,7 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
             OP_BIN2NUM => {
                 check_stack_size(1, &stack)?;
                 let mut v = stack.pop().unwrap();
-                v.reverse();
+                //v.reverse();
                 let n = decode_bigint(&mut v);
                 let e = encode_bigint(n);
                 stack.push(e);
@@ -695,7 +695,6 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
                 return Err(Error::ScriptError(msg));
             }
         }
-
         i = next_op(i, script);
     }
 

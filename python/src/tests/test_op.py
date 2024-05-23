@@ -108,27 +108,27 @@ class ScriptOPTests(unittest.TestCase):
         """
         script = Script([OP_RESERVED])
         context = Context(script=script)
-        self.assertFalse(context.evaluate())
+        self.assertFalse(context.evaluate(quiet=True))
 
         script = Script([OP_RESERVED1])
         context = Context(script=script)
-        self.assertFalse(context.evaluate())
+        self.assertFalse(context.evaluate(quiet=True))
 
         script = Script([OP_RESERVED2])
         context = Context(script=script)
-        self.assertFalse(context.evaluate())
+        self.assertFalse(context.evaluate(quiet=True))
 
         script = Script([OP_VER])
         context = Context(script=script)
-        self.assertFalse(context.evaluate())
+        self.assertFalse(context.evaluate(quiet=True))
 
         script = Script([OP_VERIF])
         context = Context(script=script)
-        self.assertFalse(context.evaluate())
+        self.assertFalse(context.evaluate(quiet=True))
 
         script = Script([OP_VERNOTIF])
         context = Context(script=script)
-        self.assertFalse(context.evaluate())
+        self.assertFalse(context.evaluate(quiet=True))
 
     def test_1negate(self):
         """ Check of 1negate

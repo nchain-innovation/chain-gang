@@ -74,29 +74,34 @@ class Context:
     def set_commands(self, cmds: Commands) -> None:
         self.cmds = cmds[:]
 
-    def evaluate_core(self) -> bool:
+    def evaluate_core(self, quiet: bool = False) -> bool:
         """ evaluate_core calls the interpreter and returns the stacks
+            if quiet is true, dont print exceptions
         """
         try:
             # cmds = bytes(self.cmds)
             cmds = cmds_as_bytes(self.cmds)
+            # print(f"cmds={cmds.hex()}")
         except Exception as e:
-            print(f"cmds_as_bytes exception1 '{e}'")
+            if not quiet:
+                print(f"cmds_as_bytes exception '{e}'")
             return False
         try:
             (self.raw_stack, self.raw_alt_stack) = script_eval(cmds)
         except Exception as e:
-            print(f"script_eval exception2 '{e}'")
-            print(f"cmds={self.cmds}")
+            if not quiet:
+                print(f"script_eval exception '{e}'")
+            # print(f"cmds={self.cmds}")
             return False
         else:
             # print(f"before self.stack={self.stack}")
             return True
 
-    def evaluate(self) -> bool:
+    def evaluate(self, quiet: bool = False) -> bool:
         """ evaluate calls Evaluate_core and checks the stack has the correct value on return
+            if quiet is true, dont print exceptions
         """
-        if not self.evaluate_core():
+        if not self.evaluate_core(quiet):
             return False
         self.stack = [decode_element(s) for s in self.raw_stack]
         # print(f"after self.stack={self.stack}")

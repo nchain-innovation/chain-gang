@@ -42,10 +42,17 @@ The library uses the following feature flag
 * `interface` - this provides a blockchain interface for accessing the current blockchain status, via servers such as WhatsOnChain.
 * `python` - this provides a python interface to the chain_gang library.
 
-Therefore to build the library with this feature
+Therefore to build the library with the `interface` feature
 ```bash
 cargo build --features "interface"
 ```
+
+Therefore to build the library with the `python` feature
+```bash
+cargo build --features "python"
+```
+
+
 
 # Known limitations
 

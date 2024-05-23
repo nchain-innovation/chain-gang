@@ -36,11 +36,15 @@ Context now has
 
 * `raw_stack` - which contains the stack before trying to convert to numbers
 ```python
-script = Script([OP_PUSHDATA1, b'\x02', b"\x01\x02"])
+script = Script([OP_PUSHDATA1, 0x02, b"\x01\x02"])
 context = Context(script=script)
 self.assertTrue(context.evaluate_core())
 self.assertEqual(context.raw_stack, [[1,2]])
 ```
 
-`evaluate_core` - does not decode stack to nums
-`evaluate` - does decode stack to nums
+# Script evaluations 
+* `evaluate_core` - executes the script, does not decode stack to nums
+* `evaluate` - executes the script and decode stack elements to numbers
+
+ Both `evaluate` and `evaluate_core` have a parameter `quiet` which if set to true does not print out exceptions when excuting code.
+ This is currently only used in unit tests.
