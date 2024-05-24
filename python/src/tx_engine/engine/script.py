@@ -84,13 +84,6 @@ class Script:
         return retval
 
     def get_commands(self) -> Commands:
-        """ Return the commands in this script
+        """ Return a copy of the commands in this script
         """
         return self.cmds[:]
-
-
-""" Script
-    Script + Script = Script
-    Script.parse_string
-    Script.raw_serialize
-"""
