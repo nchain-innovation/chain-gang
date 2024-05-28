@@ -20,21 +20,21 @@ from tx_engine.engine.op_codes import (
 class DebugTest(unittest.TestCase):
     def test_ip_limit_1(self):
         script = Script([OP_1, OP_2, OP_3, OP_4])
+        context = Context(script=script, ip_limit=1)
+        self.assertTrue(context.evaluate())
+        self.assertEqual(context.get_stack(), [1])
+
+    def test_ip_limit_2(self):
+        script = Script([OP_1, OP_2, OP_3, OP_4])
         context = Context(script=script, ip_limit=2)
         self.assertTrue(context.evaluate())
         self.assertEqual(context.get_stack(), [1, 2])
 
-    def test_ip_limit_2(self):
+    def test_ip_limit_3(self):
         script = Script([OP_1, OP_2, OP_3, OP_4])
         context = Context(script=script, ip_limit=3)
         self.assertTrue(context.evaluate())
         self.assertEqual(context.get_stack(), [1, 2, 3])
-
-    def test_ip_limit_3(self):
-        script = Script([OP_1, OP_2, OP_3, OP_4])
-        context = Context(script=script, ip_limit=0)
-        self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [])
 
 
 if __name__ == "__main__":

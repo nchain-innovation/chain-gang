@@ -26,10 +26,9 @@ class Context:
     """
     def __init__(self, script: None | Script = None, cmds: None | Commands = None, ip_limit: None | int = None, z: None | bytes = None):
         self.cmds: Commands
-        self.stack: Stack
         self.ip_limit: Optional[int]
         self.z: Optional[bytes]
-        self.stack = []
+        self.stack: Stack = []
         self.altstack: Stack = []
         self.raw_stack: Stack = []
         self.raw_alt_stack: Stack = []
