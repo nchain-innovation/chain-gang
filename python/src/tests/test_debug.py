@@ -30,6 +30,12 @@ class DebugTest(unittest.TestCase):
         self.assertTrue(context.evaluate())
         self.assertEqual(context.get_stack(), [1, 2, 3])
 
+    def test_ip_limit_3(self):
+        script = Script([OP_1, OP_2, OP_3, OP_4])
+        context = Context(script=script, ip_limit=0)
+        self.assertTrue(context.evaluate())
+        self.assertEqual(context.get_stack(), [])
+
 
 if __name__ == "__main__":
     unittest.main()

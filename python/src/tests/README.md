@@ -12,4 +12,4 @@ To run an individual test
 ```
 
 ## Current Status
-* All work!
+* All tests pass!
