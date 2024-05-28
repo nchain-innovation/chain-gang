@@ -11,7 +11,7 @@ MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS = 750 * 1000
 MAXIMUM_ELEMENT_SIZE = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 
-from chain_gang import py_encode_num, py_decode_num
+from chain_gang import py_encode_num, py_decode_num, py_encode_varint
 
 
 def int_to_little_endian(n: int, length: int) -> bytes:
@@ -99,6 +99,8 @@ def read_varint(s: BytesIO) -> int:
 
 def encode_varint(i: int) -> bytes:
     """encodes an integer as a varint"""
+    return py_encode_varint(i)
+    """
     if i < 0xFD:
         return bytes([i])
     elif i < 0x10000:
@@ -109,3 +111,4 @@ def encode_varint(i: int) -> bytes:
         return b"\xff" + int_to_little_endian(i, 8)
     else:
         raise ValueError("integer too large: {}".format(i))
+    """

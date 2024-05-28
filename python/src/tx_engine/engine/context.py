@@ -7,24 +7,8 @@ copy_library()
 # import copied library
 from chain_gang import py_script_eval, py_decode_num
 
-from .script import Script
+from .script import Script, cmds_as_bytes
 from .engine_types import Commands, Stack, StackElement
-
-
-def cmds_as_bytes(cmds: Commands) -> bytes:
-    """ Given commands return bytes - prior to passing to Rust
-    """
-    # print(f"cmds = {cmds}")
-    retval = bytearray()
-    for c in cmds:
-        # print(f"c = {c}")
-        if isinstance(c, int):
-            retval += c.to_bytes()
-        elif isinstance(c, list):
-            retval += cmds_as_bytes(c)
-        else:
-            retval += c
-    return bytes(retval)
 
 
 def decode_element(elem: StackElement) -> int:

@@ -1,11 +1,16 @@
 
 import re
 from io import BytesIO
+from typing import List
 
-from .util import int_to_little_endian, read_varint, little_endian_to_int, encode_varint
+from .util import read_varint, little_endian_to_int, encode_varint
 from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
 from .decode_op import decode_op
+from .op_code_names import OP_CODE_NAMES
+
 from .engine_types import Commands
+
+from chain_gang import py_script_serialise
 
 
 def read_data(s: BytesIO, cmds: Commands, read_ints: int) -> int:
@@ -14,6 +19,35 @@ def read_data(s: BytesIO, cmds: Commands, read_ints: int) -> int:
     data_length = little_endian_to_int(s.read(read_ints))
     cmds.append(s.read(data_length))
     return data_length + 1
+
+
+def cmds_as_bytes(cmds: Commands) -> bytes:
+    """ Given commands return bytes - prior to passing to Rust
+    """
+    retval = bytearray()
+    for c in cmds:
+        if isinstance(c, int):
+            """
+            if OP_CODE_NAMES.get(c):
+                name = OP_CODE_NAMES.get(c)
+            else:
+                name = "OP_[{}]".format(c)
+            """
+
+            retval += c.to_bytes()
+        elif isinstance(c, list):
+            retval += cmds_as_bytes(c)
+        else:
+            # If we have a byte array without a preceeding length, add it, if less than 0x4c, otherwise would expect OP_PUSHDATA
+            if len(c) < 0x4c:
+                if len(retval) == 0:
+                    retval += len(c).to_bytes()
+                elif not retval[-1] in [OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4] and retval[-1] != len(c):
+                    # print(f"retval[-1] != len(c).to_bytes(), {retval[-1]} != {len(c)}, {retval[-1]!= len(c)}")
+                    retval += len(c).to_bytes()
+
+            retval += c
+    return bytes(retval)
 
 
 class Script:
@@ -31,36 +65,34 @@ class Script:
         """
         return Script(self.cmds + other.cmds)
 
+    def __repr__(self) -> str:
+        result: List[str] = []
+        for cmd in self.cmds:
+            if type(cmd) == int:
+                if OP_CODE_NAMES.get(cmd):
+                    name = OP_CODE_NAMES.get(cmd)
+                else:
+                    name = "OP_[{}]".format(cmd)
+                assert isinstance(name, str)
+                result.append(name)
+            else:
+                if not isinstance(cmd, bytes):
+                    assert isinstance(cmd, bytes)
+                result.append("0x" + cmd.hex())
+        return " ".join(result)
+
     def raw_serialize(self) -> bytes:
         """ Returns the serialized script, without the prepended length
         """
-        result: bytes = b""
-        for cmd in self.cmds:
-            if isinstance(cmd, int):
-                result += int_to_little_endian(cmd, 1)
-            else:
-                length = len(cmd)
-                if length <= 75:  # Encode as number
-                    result += int_to_little_endian(length, 1)
-                elif length <= 255:
-                    result += int_to_little_endian(OP_PUSHDATA1, 1)
-                    result += int_to_little_endian(length, 1)
-                elif length <= 65535:
-                    result += int_to_little_endian(OP_PUSHDATA2, 1)
-                    result += int_to_little_endian(length, 2)
-                else:
-                    result += int_to_little_endian(OP_PUSHDATA4, 1)
-                    result += int_to_little_endian(length, 4)
-                # Write bytes
-                result += cmd
-        return result
+        cmds = cmds_as_bytes(self.cmds)
+        return py_script_serialise(cmds)
 
     def serialize(self) -> bytes:
         """ Returns the serialized script, with the prepended length
         """
         result = self.raw_serialize()
         total = len(result)
-        return encode_varint(total) + result
+        return bytearray(encode_varint(total)) + bytearray(result)
 
     @classmethod
     # def parse(cls, s: BytesIO) -> Script:
@@ -75,6 +107,7 @@ class Script:
             count += 1
             current_byte = current[0]
             if current_byte < 0x4c:
+                # The next opcode bytes is data to be pushed onto the stack
                 cmds.append(s.read(current_byte))
                 count += current_byte
             elif current_byte == OP_PUSHDATA1:

@@ -32,7 +32,7 @@ def copy_library():
     destination_file = "./chain_gang.so"
     source_file = (depth * "../") + "target/debug/libchain_gang.dylib"
     if should_copy(source_file, destination_file):
-        print("copy library")
+        print("Copy library...")
         shutil.copyfile(source_file, destination_file)
 
 
