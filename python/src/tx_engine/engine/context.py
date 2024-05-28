@@ -24,11 +24,12 @@ def decode_element(elem: StackElement) -> int:
 class Context:
     """ This class captures an execution context for the script
     """
-    def __init__(self, script: None | Script = None, cmds: None | Commands = None, stack: None | Stack = None, ip_limit: None | int = None, z: None | bytes = None):
+    def __init__(self, script: None | Script = None, cmds: None | Commands = None, ip_limit: None | int = None, z: None | bytes = None):
         self.cmds: Commands
         self.stack: Stack
         self.ip_limit: Optional[int]
         self.z: Optional[bytes]
+        self.stack = []
         self.altstack: Stack = []
         self.raw_stack: Stack = []
         self.raw_alt_stack: Stack = []
@@ -39,11 +40,6 @@ class Context:
             self.cmds = cmds[:]
         else:
             self.cmds = []
-
-        if stack:
-            self.stack = stack
-        else:
-            self.stack = []
 
         if ip_limit:
             self.ip_limit = ip_limit
