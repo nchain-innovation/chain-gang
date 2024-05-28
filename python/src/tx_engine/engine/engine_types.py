@@ -1,7 +1,7 @@
-from typing import List, Union, Sequence
+from typing import List, Union, MutableSequence
 
 Command = Union[int, bytes]
-Commands = Sequence[Command]
+Commands = MutableSequence[Command]
 
 StackElement = Union[int, bytes]
 Stack = List[StackElement]

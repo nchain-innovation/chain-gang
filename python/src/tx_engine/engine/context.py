@@ -1,7 +1,7 @@
 from typing import Optional
 
+# Copy the library before importing modules that may rely on chain_gang
 from .copy_library import copy_library
-
 copy_library()
 
 # import copied library

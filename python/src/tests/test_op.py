@@ -4,8 +4,9 @@ sys.path.append("..")
 
 import unittest
 import logging
-from tx_engine.engine.script import Script
 from tx_engine.engine.context import Context
+from tx_engine.engine.script import Script
+
 
 from tx_engine.engine.op_codes import (
     OP_0,
@@ -74,7 +75,7 @@ class ScriptOPTests(unittest.TestCase):
         """ Check of swap with a big number
         """
         # script = Script([encode_num(64), OP_1, OP_SWAP])
-        script = Script(insert_num(64) + [OP_1, OP_SWAP])
+        script = Script(insert_num(64) + [OP_1, OP_SWAP])  # type: ignore[arg-type]
         context = Context(script=script)
         self.assertTrue(context.evaluate())
         self.assertEqual(context.get_stack(), [1, 64])
@@ -155,16 +156,15 @@ class ScriptOPTests(unittest.TestCase):
         """
         # OP_1NEGATE,1000,OP_ADD,999,OP_EQUAL
         # script = Script.parse_string("OP_1NEGATE, 1000, OP_ADD, 999, OP_EQUAL")
-        script = Script([OP_1NEGATE] + insert_num(1000) + [OP_ADD] + insert_num(999) + [OP_EQUAL])
+        script = Script([OP_1NEGATE] + insert_num(1000) + [OP_ADD] + insert_num(999) + [OP_EQUAL])    # type: ignore[arg-type]
         context = Context(script=script)
         self.assertTrue(context.evaluate())
 
     def test_1negate_large_numbers_part2(self):
         """  Check of 1negate with large numbers
         """
-
         # script = Script([encode_num(-1), encode_num(1000), OP_ADD, encode_num(999), OP_EQUAL])
-        script = Script(insert_num(-1) + insert_num(1000) + [OP_ADD] + insert_num(999) + [OP_EQUAL])
+        script = Script(insert_num(-1) + insert_num(1000) + [OP_ADD] + insert_num(999) + [OP_EQUAL])  # type: ignore[arg-type]
         context = Context(script=script)
         self.assertTrue(context.evaluate())
 

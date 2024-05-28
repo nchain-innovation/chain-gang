@@ -1,4 +1,6 @@
 from typing import List
+from io import BytesIO
+
 from .engine_types import StackElement
 
 # Maximum script number length before Genesis (equal to CScriptNum::MAXIMUM_ELEMENT_SIZE)
@@ -17,6 +19,12 @@ def int_to_little_endian(n: int, length: int) -> bytes:
         byte sequence of length
     """
     return n.to_bytes(length, "little")
+
+
+def little_endian_to_int(b: bytes) -> int:
+    """little_endian_to_int takes byte sequence as a little-endian number.
+    Returns an integer"""
+    return int.from_bytes(b, "little")
 
 
 def encode_num(num: int) -> bytes:
@@ -114,3 +122,35 @@ def insert_num(val: int) -> List[int]:
     # print(f"val_as_bytes=0x{val_as_bytes.hex()}, length={length}")
     val_as_bytes.insert(0, length)
     return list(val_as_bytes)
+
+
+def read_varint(s: BytesIO) -> int:
+    """ read_varint reads a variable integer from a stream
+    """
+    i = s.read(1)[0]
+    if i == 0xFD:
+        # 0xfd means the next two bytes are the number
+        return little_endian_to_int(s.read(2))
+    elif i == 0xFE:
+        # 0xfe means the next four bytes are the number
+        return little_endian_to_int(s.read(4))
+    elif i == 0xFF:
+        # 0xff means the next eight bytes are the number
+        return little_endian_to_int(s.read(8))
+    else:
+        # anything else is just the integer
+        return i
+
+
+def encode_varint(i: int) -> bytes:
+    """encodes an integer as a varint"""
+    if i < 0xFD:
+        return bytes([i])
+    elif i < 0x10000:
+        return b"\xfd" + int_to_little_endian(i, 2)
+    elif i < 0x100000000:
+        return b"\xfe" + int_to_little_endian(i, 4)
+    elif i < 0x10000000000000000:
+        return b"\xff" + int_to_little_endian(i, 8)
+    else:
+        raise ValueError("integer too large: {}".format(i))
