@@ -37,12 +37,9 @@ def encode_num(num: int) -> bytes:
 def is_minimally_encoded(element, max_element_size=MAXIMUM_ELEMENT_SIZE) -> bool:
     """ Determines if an element is minimally encoded, returns True if it is.
         Code copied from SV codebase for details see:
-        file: int_serialization.h
-        function: IsMinimallyEncoded
-        line: 98
+            file: int_serialization.h, function: IsMinimallyEncoded, line: 98
     """
     if isinstance(element, int):
-        # TypeError: object of type 'int' has no len()
         return True
     size = len(element)
     if size > max_element_size:
@@ -74,7 +71,8 @@ def insert_num(val: int) -> List[int]:
     """
     val_as_bytes = bytearray(encode_num(val))
     length = len(val_as_bytes)
-    # print(f"val_as_bytes=0x{val_as_bytes.hex()}, length={length}")
+    assert length < 0x4c, "Length of number too long, need to encode using OP_PUSHDATA"
+    # Insert the length
     val_as_bytes.insert(0, length)
     return list(val_as_bytes)
 
@@ -100,15 +98,3 @@ def read_varint(s: BytesIO) -> int:
 def encode_varint(i: int) -> bytes:
     """encodes an integer as a varint"""
     return py_encode_varint(i)
-    """
-    if i < 0xFD:
-        return bytes([i])
-    elif i < 0x10000:
-        return b"\xfd" + int_to_little_endian(i, 2)
-    elif i < 0x100000000:
-        return b"\xfe" + int_to_little_endian(i, 4)
-    elif i < 0x10000000000000000:
-        return b"\xff" + int_to_little_endian(i, 8)
-    else:
-        raise ValueError("integer too large: {}".format(i))
-    """

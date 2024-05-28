@@ -101,8 +101,9 @@ impl Script {
         &self,
         checker: &mut T,
         flags: u32,
+        break_at: Option<usize>
     ) -> Result<(Stack, Stack)> {
-        self::interpreter::core_eval(&self.0, checker, flags)
+        self::interpreter::core_eval(&self.0, checker, flags, break_at)
     }
 }
 

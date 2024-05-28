@@ -3,7 +3,6 @@ import sys
 sys.path.append("..")
 
 import unittest
-import logging
 from tx_engine.engine.context import Context
 from tx_engine.engine.script import Script
 
@@ -196,5 +195,4 @@ class BitTwiddlingTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level="WARN")
     unittest.main()

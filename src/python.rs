@@ -48,10 +48,10 @@ fn py_script_serialise(py_script: &[u8]) -> PyResult<Bytes> {
 }
 
 #[pyfunction]
-fn py_script_eval(py_script: &[u8]) -> PyResult<(Stack, Stack)> {
+fn py_script_eval(py_script: &[u8], break_at: Option<usize>) -> PyResult<(Stack, Stack)> {
     let mut script = Script::new();
     script.append_slice(py_script);
-    Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS)?)
+    Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, break_at)?)
 }
 
 

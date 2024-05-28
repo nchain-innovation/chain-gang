@@ -12,8 +12,4 @@ To run an individual test
 ```
 
 ## Current Status
-* `test_if.py` - works!
-* `test_op.py` - works!
-* `test_bit_twiddling.py` - works!
-* `test_bsv.py` - works
-
+* All work!

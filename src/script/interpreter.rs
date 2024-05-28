@@ -22,7 +22,7 @@ pub const NO_FLAGS: u32 = 0x00;
 pub const PREGENESIS_RULES: u32 = 0x01;
 
 /// Core of the script evaluation - split out for debugging
-pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(Stack, Stack)> {
+pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32, break_at: Option<usize>) -> Result<(Stack, Stack)> {
     let mut stack: Stack = Vec::with_capacity(STACK_CAPACITY);
     let mut alt_stack: Stack = Vec::with_capacity(ALT_STACK_CAPACITY);
 
@@ -35,6 +35,12 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
         if !branch_exec.is_empty() && !branch_exec[branch_exec.len() - 1] {
             i = skip_branch(script, i);
             if i >= script.len() {
+                break;
+            }
+        }
+        if let Some(val) = break_at {
+            // hit our breakpoint
+            if i >= val {
                 break;
             }
         }
@@ -705,7 +711,7 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
 
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()> {
-    match core_eval(script, checker, flags) {
+    match core_eval(script, checker, flags, None) {
         Ok((stack, _alt_stack)) => {
             // We don't call pop_bool here because the final stack element can be longer than 4 bytes
             check_stack_size(1, &stack)?;

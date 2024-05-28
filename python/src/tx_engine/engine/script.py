@@ -11,8 +11,8 @@ from .engine_types import Commands
 from chain_gang import py_script_serialise
 
 
-def read_data(s: BytesIO, cmds: Commands, read_ints: int) -> int:
-    """ read n bytes
+def read_pushdata(s: BytesIO, cmds: Commands, read_ints: int) -> int:
+    """ read n bytes, append to cmd and return length - used by OP_PUSHDATA
     """
     data_length = little_endian_to_int(s.read(read_ints))
     cmds.append(s.read(data_length))
@@ -29,7 +29,8 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
         elif isinstance(c, list):
             retval += cmds_as_bytes(c)
         else:
-            # If we have a byte array without a preceeding length, add it, if less than 0x4c, otherwise would expect OP_PUSHDATA
+            # If we have a byte array without a preceeding length, add it, if less than 0x4c
+            # Otherwise would expect OP_PUSHDATA preceeding
             if len(c) < 0x4c:
                 if len(retval) == 0:
                     retval += len(c).to_bytes()
@@ -79,25 +80,26 @@ class Script:
             current = s.read(1)
             count += 1
             current_byte = current[0]
-            if current_byte < 0x4c:
+            if current_byte == OP_PUSHDATA1:
+                count += read_pushdata(s, cmds, 1)
+            elif current_byte == OP_PUSHDATA2:
+                count += read_pushdata(s, cmds, 2)
+            elif current_byte == OP_PUSHDATA4:
+                count += read_pushdata(s, cmds, 4)
+
+            elif current_byte < 0x4c:
                 # The next opcode bytes is data to be pushed onto the stack
                 cmds.append(s.read(current_byte))
                 count += current_byte
-            elif current_byte == OP_PUSHDATA1:
-                count += read_data(s, cmds, 1)
-            elif current_byte == OP_PUSHDATA2:
-                count += read_data(s, cmds, 2)
-            elif current_byte == OP_PUSHDATA4:
-                count += read_data(s, cmds, 4)
             else:
                 cmds.append(current_byte)
+
         if count != length:
             raise SyntaxError(f"parsing script failed count = {count} length = {length}")
         return cls(cmds)
 
     @classmethod
     # def parse_string(cls, s: str) -> Script:
-    # def parse_string(cls, s: str):
     def parse_string(cls, s):
         """ Converts a string to a Script
         """
@@ -110,8 +112,9 @@ class Script:
 
     @classmethod
     def _remove_byte_lengths(cls, decoded: Commands):
-        # Filter out all small bytes as they are push data op codes 1-75
-        # Removes byte len that is followed by number of bytes
+        """ Filter out all small bytes as they are push data op codes 1-75 (< 0x4c)
+            Removes byte len that is followed by number of bytes
+        """
         retval = []
         for i, element in enumerate(decoded):
             if i + 1 < len(decoded):

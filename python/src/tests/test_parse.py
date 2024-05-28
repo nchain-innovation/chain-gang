@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import unittest
-import logging
 import sys
 sys.path.append("..")
 
@@ -33,5 +32,4 @@ class ParseTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level="WARNING")
     unittest.main()
