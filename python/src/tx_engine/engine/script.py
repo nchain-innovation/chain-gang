@@ -1,12 +1,10 @@
 
 import re
 from io import BytesIO
-from typing import List
 
 from .util import read_varint, little_endian_to_int, encode_varint
 from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
 from .decode_op import decode_op
-from .op_code_names import OP_CODE_NAMES
 
 from .engine_types import Commands
 
@@ -27,13 +25,6 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
     retval = bytearray()
     for c in cmds:
         if isinstance(c, int):
-            """
-            if OP_CODE_NAMES.get(c):
-                name = OP_CODE_NAMES.get(c)
-            else:
-                name = "OP_[{}]".format(c)
-            """
-
             retval += c.to_bytes()
         elif isinstance(c, list):
             retval += cmds_as_bytes(c)
@@ -43,9 +34,7 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
                 if len(retval) == 0:
                     retval += len(c).to_bytes()
                 elif not retval[-1] in [OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4] and retval[-1] != len(c):
-                    # print(f"retval[-1] != len(c).to_bytes(), {retval[-1]} != {len(c)}, {retval[-1]!= len(c)}")
                     retval += len(c).to_bytes()
-
             retval += c
     return bytes(retval)
 
@@ -64,22 +53,6 @@ class Script:
         """ Enable the addition of two scripts
         """
         return Script(self.cmds + other.cmds)
-
-    def __repr__(self) -> str:
-        result: List[str] = []
-        for cmd in self.cmds:
-            if type(cmd) == int:
-                if OP_CODE_NAMES.get(cmd):
-                    name = OP_CODE_NAMES.get(cmd)
-                else:
-                    name = "OP_[{}]".format(cmd)
-                assert isinstance(name, str)
-                result.append(name)
-            else:
-                if not isinstance(cmd, bytes):
-                    assert isinstance(cmd, bytes)
-                result.append("0x" + cmd.hex())
-        return " ".join(result)
 
     def raw_serialize(self) -> bytes:
         """ Returns the serialized script, without the prepended length
