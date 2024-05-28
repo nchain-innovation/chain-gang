@@ -22,8 +22,9 @@ def int_to_little_endian(n: int, length: int) -> bytes:
 
 
 def little_endian_to_int(b: bytes) -> int:
-    """little_endian_to_int takes byte sequence as a little-endian number.
-    Returns an integer"""
+    """ little_endian_to_int takes byte sequence as a little-endian number.
+        Returns an integer
+    """
     return int.from_bytes(b, "little")
 
 
@@ -31,24 +32,6 @@ def encode_num(num: int) -> bytes:
     """ Encode a number, return a bytearray in little endian
     """
     return py_encode_num(num)
-    """
-    if num == 0:
-        return b""
-    abs_num = abs(num)
-    negative = num < 0
-    result = bytearray()
-    while abs_num:
-        result.append(abs_num & 0xFF)
-        abs_num >>= 8
-    if result[-1] & 0x80:
-        if negative:
-            result.append(0x80)
-        else:
-            result.append(0)
-    elif negative:
-        result[-1] |= 0x80
-    return bytes(result)
-    """
 
 
 def is_minimally_encoded(element, max_element_size=MAXIMUM_ELEMENT_SIZE) -> bool:
@@ -84,34 +67,6 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
         else:
             raise ValueError(f"Value is not minimally encoded: {element}")
     return py_decode_num(element)
-
-    """
-    if isinstance(element, int):
-        return element
-
-    elif isinstance(element, bytes):
-        try:
-            b = element
-            big_endian = b[::-1]
-        except TypeError:
-            # TypeError: 'int' object is not subscriptable
-            return int(element)
-        if big_endian[0] & 0x80:
-            negative = True
-            result = big_endian[0] & 0x7F
-        else:
-            negative = False
-            result = big_endian[0]
-        for c in big_endian[1:]:
-            result <<= 8
-            result += c
-        if negative:
-            return -result
-        else:
-            return result
-    else:
-        raise ValueError(f"Value is of unknown type: {element} {type(element)}")
-    """
 
 
 def insert_num(val: int) -> List[int]:

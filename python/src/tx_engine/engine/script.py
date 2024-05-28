@@ -51,6 +51,7 @@ class Script:
                 else:
                     result += int_to_little_endian(OP_PUSHDATA4, 1)
                     result += int_to_little_endian(length, 4)
+                # Write bytes
                 result += cmd
         return result
 

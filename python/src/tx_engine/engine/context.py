@@ -5,14 +5,14 @@ from .copy_library import copy_library
 copy_library()
 
 # import copied library
-from chain_gang import script_eval, py_decode_num
+from chain_gang import py_script_eval, py_decode_num
 
 from .script import Script
 from .engine_types import Commands, Stack, StackElement
 
 
 def cmds_as_bytes(cmds: Commands) -> bytes:
-    """ Given commands return bytes
+    """ Given commands return bytes - prior to passing to Rust
     """
     # print(f"cmds = {cmds}")
     retval = bytearray()
@@ -87,7 +87,7 @@ class Context:
                 print(f"cmds_as_bytes exception '{e}'")
             return False
         try:
-            (self.raw_stack, self.raw_alt_stack) = script_eval(cmds)
+            (self.raw_stack, self.raw_alt_stack) = py_script_eval(cmds)
         except Exception as e:
             if not quiet:
                 print(f"script_eval exception '{e}'")
