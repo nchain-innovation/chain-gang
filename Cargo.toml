@@ -47,6 +47,6 @@ opt-level = "s"     # Optimize for size over speed
 lto = true          # Enable link-time optimizations to shrink binary
 
 ["features"]
-default = ["dep:serde"]
+default = ["dep:serde", "python"]
 interface = ["dep:serde", "dep:serde_json", "dep:reqwest", "dep:anyhow", "dep:async-mutex", "dep:async-trait"]
 python = ["dep:serde", "dep:pyo3"]

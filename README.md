@@ -38,21 +38,24 @@ chain-gang = { path = "../chain-gang" }
 
 ## Feature Flags
 
-The library uses the following feature flag
-* `interface` - this provides a blockchain interface for accessing the current blockchain status, via servers such as WhatsOnChain.
-* `python` - this provides a python interface to the chain_gang library.
+The `chain-gang` library uses the following feature flags:
 
-Therefore to build the library with the `interface` feature
+* `interface` - this provides a blockchain interface for accessing the current blockchain status, via servers such as WhatsOnChain.
+* `python` - this provides a Python interface to the `chain_gang` library.
+
+To build the library with the `interface` feature
 ```bash
 cargo build --features "interface"
 ```
 
-Therefore to build the library with the `python` feature
+To build the library with the `python` feature
 ```bash
 cargo build --features "python"
 ```
+For more details of the `python` feature see [here](python/README.md)
 
-
+Note that the `python` feature is part of the `default` build, as the `Maturin` build tool does not support
+building libraries with feature flags.
 
 # Known limitations
 
