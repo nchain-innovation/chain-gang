@@ -54,9 +54,6 @@ cargo build --features "python"
 ```
 For more details of the `python` feature see [here](python/README.md)
 
-Note that the `python` feature is part of the `default` build, as the `Maturin` build tool does not support
-building libraries with feature flags.
-
 # Known limitations
 
 This library should not be used for consensus code because its validation checks are incomplete.
