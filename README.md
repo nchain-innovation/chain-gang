@@ -63,6 +63,8 @@ This library should not be used for consensus code because its validation checks
 
 # License
 
-rust-sv and therefore chain-gang is licensed under the MIT license.
+Still to be agreed with nChain IP etc.
 
+(rust-sv and therefore chain-gang is licensed under the MIT license.)
+See [here](LICENSE)
 

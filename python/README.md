@@ -33,7 +33,31 @@ self.assertEqual(context.raw_stack, [[1,2]])
  `Quiet` is currently only used in unit tests.
 
 
- `Maturin` is a tool for building and publishing Rust-based Python packages with minimal configuration. 
+# Maturin
+`Maturin` is a tool for building and publishing Rust-based Python packages with minimal configuration. 
+
+`maturin build` - builds the wheels and stores them in a folder
+`maturin develop` - builds and installs in the current virtualenv.
+
+
+# Python VENV
+
+Use the following commands to setup the virtual environment
+
+```bash
+$ cd ~
+$ python3 -m venv penv
+$ source ~/penv/bin/activate
+```
+
+To use the venv type the following:
+
+```bash
+$ source ~/penv/bin/activate
+```
+
+For background information see
+https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment
 
 
  # Requirements for tx_engine

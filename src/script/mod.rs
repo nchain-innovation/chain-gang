@@ -320,7 +320,7 @@ mod tests {
     fn test_debug() {
         let mut script = Script::new();
         script.append_slice(&[OP_10, OP_5, OP_DIV]);
-        let result = script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS);
+        let result = script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, None);
         assert!(result.is_ok());
 
         if let Ok((stack, _alt_stack)) = result {

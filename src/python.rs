@@ -58,6 +58,7 @@ fn py_script_eval(py_script: &[u8], break_at: Option<usize>) -> PyResult<(Stack,
 
 /// A Python module for interacting with the Rust chain-gang BSV script interpreter implemented in Rust.
 #[pymodule]
+#[pyo3(name="chain_gang")]
 fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_encode_num, m)?)?;
     m.add_function(wrap_pyfunction!(py_decode_num, m)?)?;
