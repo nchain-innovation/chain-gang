@@ -11,7 +11,7 @@ MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS = 750 * 1000
 MAXIMUM_ELEMENT_SIZE = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 
-from chain_gang import py_encode_num, py_decode_num, py_encode_varint
+from tx_engine.chain_gang import py_encode_num, py_decode_num, py_encode_varint
 
 
 def int_to_little_endian(n: int, length: int) -> bytes:

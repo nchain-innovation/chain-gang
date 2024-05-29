@@ -4,8 +4,21 @@ This feature provides the ability to call `chain-gang` with a `tx_engine` like i
 
 This interface has been tested using Python3 version 3.11.2
 
+# Example usage
 
-## Changes from pure Python tx_engine
+```python
+>>> from tx_engine.engine.context import Context
+>>> from tx_engine.engine.script import Script
+
+>>> s = Script.parse_string("OP_10 OP_5 OP_DIV")
+>>> c = Context(script=s)
+>>> c.evaluate()
+True
+>>> c.get_stack()
+[2]
+```
+
+## Changes from Python tx_engine
 
 * `encode_num()` is now `insert_num()`
 
@@ -60,7 +73,18 @@ For background information see
 https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment
 
 
- # Requirements for tx_engine
+# Unit Tests
+The unit tests need to operate in the Python virtual environment
+
+```bash
+$ source ~/penv/bin/activate
+$ cd python
+$ ./tests.sh
+```
+
+For more information on the tests see [here](src/tests/README.md)
+
+# Requirements for tx_engine
 
 this is the repo I'm working on: https://bitbucket.stressedsharks.com/users/f.barbacovi_nchain.com/repos/script_libraries/browse, 
 

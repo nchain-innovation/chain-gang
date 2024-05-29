@@ -1,11 +1,6 @@
 from typing import Optional
 
-# Copy the library before importing modules that may rely on chain_gang
-from .copy_library import copy_library
-copy_library()
-
-# import copied library
-from chain_gang import py_script_eval, py_decode_num
+from tx_engine.chain_gang import py_script_eval, py_decode_num
 
 from .script import Script, cmds_as_bytes
 from .engine_types import Commands, Stack, StackElement

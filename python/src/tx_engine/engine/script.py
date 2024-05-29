@@ -8,7 +8,7 @@ from .decode_op import decode_op
 
 from .engine_types import Commands
 
-from chain_gang import py_script_serialise
+from tx_engine.chain_gang import py_script_serialise
 
 
 def read_pushdata(s: BytesIO, cmds: Commands, read_ints: int) -> int:
