@@ -24,7 +24,7 @@ class Context:
         self.ip_limit: Optional[int]
         self.z: Optional[bytes]
         self.stack: Stack = []
-        self.altstack: Stack = []
+        self.alt_stack: Stack = []
         self.raw_stack: Stack = []
         self.raw_alt_stack: Stack = []
 
@@ -48,12 +48,17 @@ class Context:
     def set_commands(self, cmds: Commands) -> None:
         self.cmds = cmds[:]
 
+    def reset_stacks(self) -> None:
+        self.stack = []
+        self.alt_stack = []
+        self.raw_stack = []
+        self.raw_alt_stack = []
+
     def evaluate_core(self, quiet: bool = False) -> bool:
         """ evaluate_core calls the interpreter and returns the stacks
             if quiet is true, dont print exceptions
         """
         try:
-            # cmds = bytes(self.cmds)
             cmds = cmds_as_bytes(self.cmds)
             # print(f"cmds={cmds.hex()}")
         except Exception as e:
@@ -90,9 +95,12 @@ class Context:
     def get_stack(self) -> Stack:
         """ Return the data stack as human readable
         """
+        self.stack = [decode_element(s) for s in self.raw_stack]
+
         return self.stack
 
     def get_altstack(self):
         """ Return the get_altstack as human readable
         """
+        self.alt_stack = [decode_element(s) for s in self.raw_alt_stack]
         return self.alt_stack

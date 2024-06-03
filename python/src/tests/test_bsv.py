@@ -293,7 +293,14 @@ class BSVTests(unittest.TestCase):
         self.assertEqual(context.raw_stack, [[0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01]])
 
     def test_num2bin_1(self):
-        """ Check of num2bin
+        """ Check of num2bin - https://github.com/dashpay/dips/blob/master/dip-0020.md
+
+            The stacks hold byte vectors.
+            When used as numbers, byte vectors are interpreted as little-endian variable-length integers with the most significant bit determining the sign of the integer.
+            Thus 0x81 represents -1. 0x80 is another representation of zero (so called negative 0).
+            Positive 0 is represented by a null-length vector.
+            Byte vectors are interpreted as Booleans where False is represented by any representation of zero and True is represented by any representation of non-zero.
+            (From https://en.bitcoin.it/wiki/Script)
         """
         script = Script([OP_2, OP_4, OP_NUM2BIN])
         context = Context(script=script)

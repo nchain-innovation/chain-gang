@@ -16,3 +16,6 @@ dynamic = ["version"]
 features = ["pyo3/extension-module", "python"]
 python-source = "python/src"
 module-name = "tx_engine.chain_gang"
+sdist-include = ["LICENSE", "python/README.md"]
+bindings = "pyo3"
+sdist-generator = "cargo"
