@@ -74,6 +74,19 @@ class DebuggerTests(unittest.TestCase):
         self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
         self.assertEqual(self.dbif.db_context.ip, 2)
 
+    def test_step_and_run(self):
+        self.dbif.process_input(["file", EXAMPLE_ADD])
+        self.assertIsNone(self.dbif.db_context.ip)
+
+        self.dbif.process_input(["s"])
+        self.assertEqual(self.dbif.db_context.get_stack(), [1])
+        self.assertEqual(self.dbif.db_context.ip, 1)
+
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.get_stack(), [3])
+        self.assertEqual(self.dbif.db_context.ip, 2)
+
+
     def test_file_load_twice(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
         self.assertIsNone(self.dbif.db_context.ip)
@@ -89,6 +102,10 @@ class DebuggerTests(unittest.TestCase):
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.ip, 0)
         self.assertEqual(self.dbif.db_context.get_stack(), [1, 3, 2])
+
+        self.dbif.process_input(["step"])
+        self.assertEqual(self.dbif.db_context.ip, 1)
+        self.assertEqual(self.dbif.db_context.get_stack(), [1])
 
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ class DebuggingContext:
         """ Reset the script ready to run - interface to Debugger
         """
         LOGGER.info("debug_context - reset")
-
+        self.sf.ip = 0
         self.sf.reset_core()
         self.sf.reset_stacks()
 
