@@ -96,7 +96,6 @@ class Context:
         """ Return the data stack as human readable
         """
         self.stack = [decode_element(s) for s in self.raw_stack]
-
         return self.stack
 
     def get_altstack(self):

@@ -84,8 +84,7 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.get_stack(), [3])
-        self.assertEqual(self.dbif.db_context.ip, 2)
-
+        self.assertEqual(self.dbif.db_context.ip, 0)
 
     def test_file_load_twice(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
