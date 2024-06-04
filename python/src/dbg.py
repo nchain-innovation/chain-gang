@@ -11,7 +11,7 @@ def debugger_cmdline_parser():
     """
     parser = argparse.ArgumentParser(description="Debug bitcoin script.")
     parser.add_argument("-verbose", "-v", action="store_true", help="Provide extra debugging information.")
-    parser.add_argument("-file", metavar="FILE", nargs="+", action="store", help="Provide the source file(s) to debug.")
+    parser.add_argument("-file", metavar="FILE", nargs="*", action="store", help="Provide the source file to debug.")
     args = parser.parse_args()
 
     print("Script debugger")

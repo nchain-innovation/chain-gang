@@ -49,18 +49,18 @@ class DebuggerInterface:
     """ Provides the interface to the debugger
     """
     def __init__(self):
-        self.context = DebuggingContext()
+        self.db_context = DebuggingContext()
         # Display the stack in hex
         self.hex_stack = False
 
     def set_noisy(self, boolean: bool) -> None:
-        self.context.noisy = boolean
+        self.db_context.noisy = boolean
 
     def print_status(self) -> None:
         """ Print out the current stack contents
         """
-        altstack = self.context.get_altstack()
-        stack = self.context.get_stack()
+        altstack = self.db_context.get_altstack()
+        stack = self.db_context.get_stack()
         if self.hex_stack:
             # Print stack in hex form
             hstack = [e.hex() for e in stack]
@@ -75,28 +75,28 @@ class DebuggerInterface:
             if bits[-1] not in ("bs"):
                 print(f"Wrong file extension: {fname}")
             else:
-                if self.context.noisy:
+                if self.db_context.noisy:
                     print(f"Loading filename: {fname}")
-                self.context.load_script_file(fname)
+                self.db_context.load_script_file(fname)
         else:
             print(f"No file extension: {fname}")
 
     def has_script(self) -> bool:
         """ Return True if we have a script loaded.
         """
-        return self.context.has_script()
+        return self.db_context.has_script()
 
     def run(self) -> None:
         if self.has_script():
-            self.context.reset()
-            self.context.run()
+            self.db_context.reset()
+            self.db_context.run()
         else:
             print("No script loaded.")
 
     def reset(self) -> None:
         LOGGER.info("reset")
         if self.has_script():
-            self.context.reset()
+            self.db_context.reset()
         else:
             print("No script loaded.")
 
@@ -108,7 +108,7 @@ class DebuggerInterface:
 
         while first_time:
             first_time = False
-            if not self.context.step():
+            if not self.db_context.step():
                 print("Operation failed.")
                 break
 
@@ -120,12 +120,12 @@ class DebuggerInterface:
             print("No script loaded.")
             return
 
-        if self.context.is_not_runable():
-            self.context.reset()
+        if self.db_context.is_not_runable():
+            self.db_context.reset()
 
-        if self.context.can_run():
+        if self.db_context.can_run():
             if stepping:
-                self.context.step()
+                self.db_context.step()
             else:
                 self._next()
         else:
@@ -136,12 +136,12 @@ class DebuggerInterface:
             print("No script loaded.")
             return
 
-        if self.context.is_not_runable():
-            self.context.reset()
-        elif self.context.can_run():
+        if self.db_context.is_not_runable():
+            self.db_context.reset()
+        elif self.db_context.can_run():
             # Step to step over current breakpoint
-            self.context.step()
-            self.context.run(stop_on_fn_end=True)
+            self.db_context.step()
+            self.db_context.run(stop_on_fn_end=True)
         else:
             print('At end of script, use "reset" to run again.')
 
@@ -152,13 +152,13 @@ class DebuggerInterface:
             print("No script loaded.")
             return
 
-        if self.context.is_not_runable():
-            self.context.reset()
+        if self.db_context.is_not_runable():
+            self.db_context.reset()
 
-        if self.context.can_run():
+        if self.db_context.can_run():
             # step to step over current breakpoint
-            self.context.step()
-            self.context.run()
+            self.db_context.step()
+            self.db_context.run()
         else:
             print('At end of script, use "reset" to run again.')
 
@@ -169,28 +169,28 @@ class DebuggerInterface:
 
         if len(user_input) > 1:
             n = int(user_input[1])
-            if n >= self.context.get_number_of_operations():
+            if n >= self.db_context.get_number_of_operations():
                 print('Breakpoint beyond end of script.')
                 return
         else:
-            if self.context.is_not_runable():
+            if self.db_context.is_not_runable():
                 print('Script is not running.')
                 return
             else:
-                if isinstance(self.context.ip, int):
-                    n = max(self.context.ip - 1, 0)
+                if isinstance(self.db_context.ip, int):
+                    n = max(self.db_context.ip - 1, 0)
                 else:
                     n = 0
 
-        bpid = self.context.breakpoints.add(n)
+        bpid = self.db_context.breakpoints.add(n)
         if bpid is None:
             print("Breakpoint already present at this address.")
         else:
-            if self.context.noisy:
+            if self.db_context.noisy:
                 print(f"Added breakpoint {bpid} at {n}")
 
     def list_breakpoints(self) -> None:
-        bps = self.context.breakpoints.get_all()
+        bps = self.db_context.breakpoints.get_all()
         if len(bps) == 0:
             print("No breakpoints.")
         else:
@@ -202,11 +202,11 @@ class DebuggerInterface:
             print("Provide the n of the breakpoint to delete.")
         else:
             n = user_input[1]
-            bp = self.context.breakpoints.get_all()
+            bp = self.db_context.breakpoints.get_all()
             if n in bp.keys():
-                if self.context.noisy:
+                if self.db_context.noisy:
                     print(f"Deleted breakpoint {n}.")
-                self.context.breakpoints.delete(n)
+                self.db_context.breakpoints.delete(n)
             else:
                 print(f"Breakpoint {n} not found.")
 
@@ -215,7 +215,7 @@ class DebuggerInterface:
             # interpret line
             s = user_input[1:]
             line: str = " ".join(s)
-            self.context.interpret_line(line)
+            self.db_context.interpret_line(line)
 
     def process_input(self, user_input: List[str]) -> None:
         if user_input[0] in ("h", "help"):
@@ -226,7 +226,7 @@ class DebuggerInterface:
             else:
                 self.load_script_file(user_input[1])
         elif user_input[0] == "list":
-            self.context.list()
+            self.db_context.list()
         elif user_input[0] == "info" and user_input[1] == "break":
             self.list_breakpoints()
         elif user_input[0] == "hex":
@@ -237,7 +237,7 @@ class DebuggerInterface:
             self.reset()
         elif user_input[0] in ("r", "run"):
             self.run()
-        elif user_input[0] == "s":
+        elif user_input[0] in ("s", "step"):
             self.step(stepping=True)
         elif user_input[0] == "n":
             self.step(stepping=False)
@@ -271,6 +271,7 @@ class DebuggerInterface:
     def load_files_from_list(self, filenames: List[str]) -> None:
         """ Parse the provided list of filenames and load script files.
         """
+        print(f"filenames={filenames}")
         for fname in filenames:
             # determine the file extension
             if has_extension(fname, "bs") or has_extension(fname, "ms"):

@@ -46,3 +46,28 @@ self.assertEqual(context.raw_stack, [[1,2]])
 
 * `encode_num()` is now `insert_num()`
 
+# Script Debugger
+
+Example usage:
+```bash
+% python3 dbg.py -f ../examples/add.bs
+Script debugger
+For help, type "help".
+Loading filename: ../examples/add.bs
+altstack = [], stack = []
+(gdb) list
+0: OP_1
+1: OP_2
+2: OP_ADD
+altstack = [], stack = []
+(gdb) s
+0: OP_1
+altstack = [], stack = [1]
+(gdb) s
+1: OP_2
+altstack = [], stack = [1, 2]
+(gdb) s
+2: OP_ADD
+altstack = [], stack = [3]
+(gdb) 
+```

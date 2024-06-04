@@ -42,13 +42,6 @@ class ScriptState():
             if has_extension(filename, "bs"):
                 self.parse_script(contents)
 
-    def load_source(self, source: List[str]) -> None:
-        """ Given source code parse it (as Metascript).
-            As used by the web debugger service
-        """
-        contents = " ".join(source)
-        self.script = Script.parse_string(contents)
-
     def parse_script(self, contents: List[str]) -> None:
         if contents:
             # parse contents

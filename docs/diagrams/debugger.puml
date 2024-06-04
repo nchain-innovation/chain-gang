@@ -1,0 +1,103 @@
+@startuml
+title Debugger
+
+class DebugInterface {
+    context: DebuggingContext
+
+    set_noisy(self, boolean: bool)
+    print_status(self)
+    load_script_file(self, fname: str)
+    has_script(self) -> bool
+    run(self)
+    reset(self)
+    _next(self)
+    step(self, stepping: bool)
+    continue_to_fn_end(self)
+    continue_script(self)
+    add_breakpoint(self, user_input: List[str])
+    list_breakpoints(self)
+    delete_breakpoint(self, user_input: List[str])
+    interpreter_mode(self, user_input: List[str])
+    process_input(self, user_input: List[str])
+    read_eval_print_loop(self)
+    load_files_from_list(self, filenames: List[str])
+}
+
+class DebuggingContext {
+    sf : StackFrame
+
+    get_stack(self)
+    get_raw_stack(self)
+    get_altstack(self)
+    breakpoints(self) -> Breakpoints
+    ip(self) -> Optional[int]
+    run_to_breakpoint(self)
+    step(self) -> bool
+    reset(self)
+    can_run(self) -> bool
+    run(self, stop_on_fn_end: bool = False)
+    get_number_of_operations(self) -> int
+    interpret_line(self, user_input: str)
+    has_script(self) -> bool
+    is_not_runable(self) -> bool
+    list(self)
+    load_script_file(self, fname)
+}
+
+
+DebugInterface -down-* DebuggingContext
+
+class StackFrame {
+    name
+    script_state: ScriptState
+    context: Context
+    breakpoints: Breakpoints
+    ip: Optional[int]
+
+    __repr__(self) -> str
+    reset_core(self)
+    reset_stacks(self)
+    can_run(self) -> bool
+    get_cmd(self) -> Command
+    print_cmd(self)
+    print_breakpoint(self)
+    hit_breakpoint(self) -> bool
+}
+
+DebuggingContext -down-* StackFrame
+
+
+class Context {
+    set_commands(self, cmds: Commands)
+    reset_stacks(self)
+    evaluate_core(self, quiet: bool = False) -> bool
+    evaluate(self, quiet: bool = False) -> bool
+    get_stack(self) -> Stack
+    get_altstack(self)
+}
+
+
+
+class ScriptState {
+    load_file(self, filename: str)
+    parse_script(self, contents: List[str])
+    list(self)
+    get_commands(self)
+    set_commands(self, cmds)
+}
+
+
+class Breakpoints {
+    get_all(self) -> Dict[str, int]
+    add(self, op_number: int) -> Optional[str]
+    delete(self, id)
+    hit(self, op_number: int) -> bool
+    get_associated(self, op_number: int) -> str
+    reset_all(self)
+}
+
+StackFrame -down-* Context
+StackFrame -down-* ScriptState
+StackFrame -down-* Breakpoints
+
+@enduml

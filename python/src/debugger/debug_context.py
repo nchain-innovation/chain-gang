@@ -68,10 +68,11 @@ class DebuggingContext:
         """ Run the script
         """
         LOGGER.info(f"evaluate_core - {self.sf.ip}")
-        """ Return false if failed
-        """
         succ = self.sf.context.evaluate_core()
-        print(f"succ={succ}")
+        if not succ:
+            print("Operation failed.")
+
+            # print(f"succ={succ}")
 
         """
         while self.can_run():
@@ -126,12 +127,4 @@ class DebuggingContext:
             Load any use(d) library files
         """
         self.sf.script_state.load_file(fname)
-        self.sf.breakpoints.reset_all()
-
-    def load_source(self, source) -> None:
-        """ Load script file from fname
-            Reset the breakpoints as these will no longer be relevant
-            Load any use(d) library files
-        """
-        self.sf.script_state.load_source(source)
         self.sf.breakpoints.reset_all()
