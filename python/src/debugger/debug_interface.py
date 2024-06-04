@@ -26,7 +26,7 @@ q, quit, exit -- Quits the program.
 file <filename> -- Loads the specified script file for debugging.
 list -- List the current script file contents.
 run -- Runs the current loaded script until breakpoint or error.
-i <script> -- Execute script interactively in the current context.
+i <script> -- Execute script interactively.
 
 hex -- Display the main stack in hexidecimal values.
 dec -- Display the main stack in decimal values.
@@ -39,7 +39,6 @@ b -- Adds a breakpoint on the current operation.
 b <n>-- Adds a breakpoint on the nth operation.
 info break -- List all the current breakpoints.
 d <n> -- Deletes breakpoint number n.
-
 """
 
 

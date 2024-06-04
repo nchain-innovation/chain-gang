@@ -2,6 +2,27 @@
 
 Notes on the development of `chain-gang` and the `tx_engine` Python interface.
 
+# Project directory structure
+```
+├── README.md
+├── docs
+│   ├── Development.md
+│   └── diagrams
+├── python
+│   ├── README.md
+│   ├── examples
+│   ├── lint.sh
+│   ├── src
+│   └── tests.sh
+├── src
+└── target
+```
+* `docs` - contains the documents and diagrams associated with this project
+* `python/src` - contains the source code for the `tx_engine` Python interface
+* `python/examples` - contains example scripts for the python script debugger
+* `src` - contains the Rust source code for the `chain-gang` library
+* `target` - contains the build artefacts for the project
+
 
 # Tx_engine Requirements
 Tx_engine was developed from the following "requirements".
