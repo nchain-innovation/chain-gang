@@ -106,6 +106,29 @@ class DebuggerTests(unittest.TestCase):
         self.assertEqual(self.dbif.db_context.ip, 1)
         self.assertEqual(self.dbif.db_context.get_stack(), [1])
 
+    def test_breakpoint(self):
+        self.dbif.process_input(["file", EXAMPLE_SWAP])
+
+        self.dbif.process_input(["b", "2"])
+
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.ip, 2)
+        self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
+
+        # Restarts from the begining
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.ip, 2)
+        self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
+
+        # Continues from current position
+        self.dbif.process_input(["c"])
+        self.assertEqual(self.dbif.db_context.ip, 0)
+        self.assertEqual(self.dbif.db_context.get_stack(), [1, 3, 2])
+
+    def test_interpreter(self):
+        self.dbif.process_input(["i", "1", "2", "OP_ADD"])
+        self.assertEqual(self.dbif.db_context.get_stack(), [3])
+
 
 if __name__ == "__main__":
     unittest.main()

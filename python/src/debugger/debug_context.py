@@ -64,32 +64,30 @@ class DebuggingContext:
         """
         return self.sf.can_run()
 
-    def run(self, stop_on_fn_end: bool = False) -> None:
+    def get_next_breakpoint(self) -> None | int:
+        """ Based on the current ip determine the next breakpoint
+        """
+
+    def run(self) -> None:
         """ Run the script
         """
-        LOGGER.info(f"evaluate_core - {self.sf.ip}")
-        self.sf.context.ip_limit = None
+        # Check for breakpoints
+        if self.sf.ip is None:
+            self.sf.ip = 0
+
+        next_bp = self.sf.breakpoints.get_next_breakpoint(self.sf.ip)
+        if next_bp is None:
+            self.sf.context.ip_limit = None
+            self.sf.ip = 0
+        else:
+            self.sf.context.ip_limit = next_bp
+            self.sf.ip = next_bp
         succ = self.sf.context.evaluate_core()
         if not succ:
             print("Operation failed.")
-
-            # print(f"succ={succ}")
-
-        """
-        while self.can_run():
-            if self.sf.hit_breakpoint():
-                if self.noisy:
-                    self.sf.print_breakpoint()
-                break
-            (succ, exited_function) = self.step()
-            if not succ:
-                print("Operation failed.")
-                break
-            if exited_function and stop_on_fn_end:
-                if self.noisy:
-                    print("Exited function.")
-                break
-        """
+        else:
+            if self.sf.hit_breakpoint() and self.noisy:
+                self.sf.print_breakpoint()
 
     def get_number_of_operations(self) -> int:
         return len(self.sf.script_state.get_commands())

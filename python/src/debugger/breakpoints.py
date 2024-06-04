@@ -40,3 +40,17 @@ class Breakpoints:
         """
         self.breakpoints.clear()
         self.id = 0
+
+    def get_next_breakpoint(self, ip: int) -> None | int:
+        """ Based on the current ip determine the next breakpoint
+        """
+        if len(self.breakpoints) == 0:
+            return None
+        # Get first breakpoint (greater than current ip)
+        bps = [b for b in self.breakpoints.values()]
+        # Sort in ascending order
+        bps.sort()
+        for bp in bps:
+            if bp > ip:
+                return bp
+        return None

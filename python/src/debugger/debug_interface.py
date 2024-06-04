@@ -33,8 +33,6 @@ dec -- Display the main stack in decimal values.
 
 reset -- Reset the script to the staring position.
 s -- Step over the next instruction.
-n -- Like s but does not step into functions.
-f -- Run until the current function is complete.
 c -- Continue the current loaded script until breakpoint or error.
 
 b -- Adds a breakpoint on the current operation.
@@ -100,21 +98,8 @@ class DebuggerInterface:
         else:
             print("No script loaded.")
 
-    def _next(self) -> None:
-        """ Perform the next operation, all setup has been performed by step
-            this needs to be aware of the number of MOP_FNCALLS we have done and exit the same number of times
-        """
-        first_time = True
-
-        while first_time:
-            first_time = False
-            if not self.db_context.step():
-                print("Operation failed.")
-                break
-
-    def step(self, stepping: bool) -> None:
+    def step(self) -> None:
         """ Step over the next operation.
-            The stepping flag is used to indicate if we are stepping into (function_table) functions or not.
         """
         if not self.has_script():
             print("No script loaded.")
@@ -124,24 +109,7 @@ class DebuggerInterface:
             self.db_context.reset()
 
         if self.db_context.can_run():
-            if stepping:
-                self.db_context.step()
-            else:
-                self._next()
-        else:
-            print('At end of script, use "reset" to run again.')
-
-    def continue_to_fn_end(self) -> None:
-        if not self.has_script():
-            print("No script loaded.")
-            return
-
-        if self.db_context.is_not_runable():
-            self.db_context.reset()
-        elif self.db_context.can_run():
-            # Step to step over current breakpoint
             self.db_context.step()
-            self.db_context.run(stop_on_fn_end=True)
         else:
             print('At end of script, use "reset" to run again.')
 
@@ -238,11 +206,7 @@ class DebuggerInterface:
         elif user_input[0] in ("r", "run"):
             self.run()
         elif user_input[0] in ("s", "step"):
-            self.step(stepping=True)
-        elif user_input[0] == "n":
-            self.step(stepping=False)
-        elif user_input[0] == "f":
-            self.continue_to_fn_end()
+            self.step()
         elif user_input[0] == "c":
             self.continue_script()
         elif user_input[0] == "b":
