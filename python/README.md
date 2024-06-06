@@ -1,6 +1,6 @@
 # Python Feature
 
-This feature provides the ability to call `chain-gang` with a `tx_engine` like interface from Python. Where `tx_engine` was a previous Python BSV library used by nChain.
+This feature provides the ability to call `chain-gang` with a `tx_engine` interface from Python. Where `tx_engine` was a previous Python BSV library used by nChain.
 
 This interface has been tested using Python3 version 3.11.2
 

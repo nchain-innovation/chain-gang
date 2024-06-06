@@ -70,7 +70,7 @@ $ ./lint.sh
 `Maturin` is a tool for building and publishing Rust-based Python packages with minimal configuration. 
 
 * `maturin build` - builds the wheels and stores them in a folder
-* `maturin develop` - builds and installs in the current virtualenv.
+* `maturin develop` - builds and installs in the current `virtualenv`.
 * `maturin publish` - builds and uploads to `pypi` - this appears to work, however we don't want to build at this time
 * `maturin sdist` - creates a source code distribution, as a `.tar.gz` file, - appears to work with both Rust and Python source code
 * `maturin upload`
