@@ -45,11 +45,11 @@ fn py_script_serialise(py_script: &[u8]) -> PyResult<Bytes> {
     Ok(v)
 }
 
-// py_script_eval evaluates bitcoin script
-// Where
-//  * py_script - the script to execute
-//  * break_at - the instruction to stop at, or None
-//  * z - the sig_hash of the transaction as bytes, or None
+/// py_script_eval evaluates bitcoin script
+/// Where
+///  * py_script - the script to execute
+///  * break_at - the instruction to stop at, or None
+///  * z - the sig_hash of the transaction as bytes, or None
 #[pyfunction]
 fn py_script_eval(
     py_script: &[u8],
