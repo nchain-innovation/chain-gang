@@ -22,7 +22,12 @@ pub const NO_FLAGS: u32 = 0x00;
 pub const PREGENESIS_RULES: u32 = 0x01;
 
 /// Core of the script evaluation - split out for debugging
-pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32, break_at: Option<usize>) -> Result<(Stack, Stack)> {
+pub fn core_eval<T: Checker>(
+    script: &[u8],
+    checker: &mut T,
+    flags: u32,
+    break_at: Option<usize>,
+) -> Result<(Stack, Stack)> {
     let mut stack: Stack = Vec::with_capacity(STACK_CAPACITY);
     let mut alt_stack: Stack = Vec::with_capacity(ALT_STACK_CAPACITY);
 

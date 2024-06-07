@@ -27,23 +27,11 @@ Notes on the development of `chain-gang` and the `tx_engine` Python interface.
 # Tx_engine Requirements
 Tx_engine was developed from the following "requirements".
 
-This is the repo I'm working on: https://bitbucket.stressedsharks.com/users/f.barbacovi_nchain.com/repos/script_libraries/browse, 
-
-(disregarding the fact that tx_engine is in there)
-
-if you enter lib/ellipticcurves/ec_arithmetic_Fq, 
-you will see that I actually only use Script, pick and roll 
-
-(which I defined to return OP_i OP_PICK as many times as I need, e.g., pick(position=3,nElements=2) -> OP_3 OP_PICK OP_3 OP_PICK, 
-
-you can find them in tx_engine/engine/utility_scripts.py).
-
-I think that the only thing I need is:
-Script
-Script + Script = Script
-Script.parse_string
-Script.raw_serialize
-The debugger (or, more generally, the Context class)
+* Script
+* Script + Script = Script
+* Script.parse_string
+* Script.raw_serialize
+* The debugger (or, more generally, the Context class)
 
 
 # Tx_engine Unit Tests
@@ -67,7 +55,7 @@ $ ./lint.sh
 ```
 
 # Maturin
-`Maturin` is a tool for building and publishing Rust-based Python packages with minimal configuration. 
+`Maturin` is a tool for building and publishing Rust-based Python packages. 
 
 * `maturin build` - builds the wheels and stores them in a folder
 * `maturin develop` - builds and installs in the current `virtualenv`.

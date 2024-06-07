@@ -35,15 +35,8 @@ class Context:
         else:
             self.cmds = []
 
-        if ip_limit:
-            self.ip_limit = ip_limit
-        else:
-            self.ip_limit = None
-
-        if z:
-            self.z = z
-        else:
-            self.z = None
+        self.ip_limit = ip_limit if ip_limit else None
+        self.z = z if z else None
 
     def set_commands(self, cmds: Commands) -> None:
         self.cmds = cmds[:]
@@ -66,7 +59,7 @@ class Context:
                 print(f"cmds_as_bytes exception '{e}'")
             return False
         try:
-            (self.raw_stack, self.raw_alt_stack) = py_script_eval(cmds, self.ip_limit)
+            (self.raw_stack, self.raw_alt_stack) = py_script_eval(cmds, self.ip_limit, self.z)
         except Exception as e:
             if not quiet:
                 print(f"script_eval exception '{e}'")

@@ -1,6 +1,7 @@
 use crate::messages::Tx;
 use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
-use crate::util::{Error, Result};
+use crate::util::{Error, Hash256, Result};
+
 use secp256k1::{Message, PublicKey, Secp256k1, Signature};
 
 /// Locktimes greater than or equal to this are interpreted as timestamps. Less then, block heights.
@@ -42,6 +43,39 @@ impl Checker for TransactionlessChecker {
     }
 }
 
+/// Script checker that uses a provided transaction hash (z) for the check_sig and
+/// fails all other transaction checks
+pub struct ZChecker {
+    /// z is sig_hash of transaction
+    pub z: Hash256,
+}
+
+impl Checker for ZChecker {
+    // Given a signature and public key, check signature matches signed script hash (z)
+    fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], _script: &[u8]) -> Result<bool> {
+        if sig.is_empty() {
+            return Err(Error::ScriptError("Signature too short".to_string()));
+        }
+        let sig_hash = self.z;
+        let der_sig = &sig[0..sig.len() - 1];
+        let secp = Secp256k1::verification_only();
+        let mut signature = Signature::from_der(der_sig)?;
+        // OpenSSL-generated signatures may not be normalized, but libsecp256kq requires them to be
+        signature.normalize_s();
+        let message = Message::from_slice(&sig_hash.0)?;
+        let public_key = PublicKey::from_slice(pubkey)?;
+        Ok(secp.verify(&message, &signature, &public_key).is_ok())
+    }
+
+    fn check_locktime(&self, _locktime: i32) -> Result<bool> {
+        Err(Error::IllegalState("Illegal transaction check".to_string()))
+    }
+
+    fn check_sequence(&self, _sequence: i32) -> Result<bool> {
+        Err(Error::IllegalState("Illegal transaction check".to_string()))
+    }
+}
+
 /// Checks that external values in a script are correct for a specific transaction spend
 pub struct TransactionChecker<'a> {
     /// Spending transaction
@@ -57,6 +91,7 @@ pub struct TransactionChecker<'a> {
 }
 
 impl<'a> Checker for TransactionChecker<'a> {
+    // Given a signature and public key, check signature matches signed script hash
     fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], script: &[u8]) -> Result<bool> {
         if sig.is_empty() {
             return Err(Error::ScriptError("Signature too short".to_string()));

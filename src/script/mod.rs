@@ -27,7 +27,7 @@ mod interpreter;
 pub mod op_codes;
 pub mod stack;
 
-pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker};
+pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker, ZChecker};
 pub(crate) use self::interpreter::next_op;
 pub use self::interpreter::{NO_FLAGS, PREGENESIS_RULES};
 pub use self::stack::Stack;
@@ -101,7 +101,7 @@ impl Script {
         &self,
         checker: &mut T,
         flags: u32,
-        break_at: Option<usize>
+        break_at: Option<usize>,
     ) -> Result<(Stack, Stack)> {
         self::interpreter::core_eval(&self.0, checker, flags, break_at)
     }
