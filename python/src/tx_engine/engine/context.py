@@ -53,7 +53,6 @@ class Context:
         """
         try:
             cmds = cmds_as_bytes(self.cmds)
-            # print(f"cmds={cmds.hex()}")
         except Exception as e:
             if not quiet:
                 print(f"cmds_as_bytes exception '{e}'")
@@ -63,10 +62,8 @@ class Context:
         except Exception as e:
             if not quiet:
                 print(f"script_eval exception '{e}'")
-            # print(f"cmds={self.cmds}")
             return False
         else:
-            # print(f"before self.stack={self.stack}")
             return True
 
     def evaluate(self, quiet: bool = False) -> bool:
@@ -76,9 +73,7 @@ class Context:
         if not self.evaluate_core(quiet):
             return False
         self.stack = [decode_element(s) for s in self.raw_stack]
-        # print(f"after self.stack={self.stack}")
         self.alt_stack = [decode_element(s) for s in self.raw_alt_stack]
-
         if len(self.stack) == 0:
             return False
         if self.stack[-1] == 0:  # was b""
