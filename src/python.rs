@@ -1,7 +1,8 @@
-use pyo3::{exceptions::PyRuntimeError, prelude::*};
-use std::io::{Write,Cursor};
+use pyo3::prelude::*;
+use std::io::{Cursor, Write};
 
 use crate::{
+    python_tx::{Bytes, PyTx, PyTxIn, PyTxOut},
     script::{
         stack::{decode_num, encode_num, Stack},
         Script, TransactionlessChecker, ZChecker, NO_FLAGS,
@@ -9,14 +10,14 @@ use crate::{
     util::{var_int, Hash256, Serializable},
 };
 
-pub type Bytes = Vec<u8>;
-
+/*
 // Convert errors to PyErr
 impl std::convert::From<crate::util::Error> for PyErr {
     fn from(err: crate::util::Error) -> PyErr {
         PyRuntimeError::new_err(err.to_string())
     }
 }
+*/
 
 #[pyfunction]
 fn py_encode_num(val: i64) -> PyResult<Bytes> {
@@ -63,8 +64,8 @@ fn py_script_eval(
         Some(sig_hash) => {
             let z = Hash256::read(&mut Cursor::new(sig_hash))?;
             Ok(script.eval_with_stack(&mut ZChecker { z }, NO_FLAGS, break_at)?)
-        },
-        None =>  Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, break_at)?)
+        }
+        None => Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, break_at)?),
     }
 }
 
@@ -77,5 +78,10 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_encode_varint, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_serialise, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval, m)?)?;
+    // Tx classes
+    m.add_class::<PyTxIn>()?;
+    m.add_class::<PyTxOut>()?;
+    m.add_class::<PyTx>()?;
+
     Ok(())
 }
