@@ -1,8 +1,12 @@
 #!/usr/bin/python3
 import logging
 import sys
-import readline  # noqa: F401
-# Note readline is not used but including it enables 'input()' command history.
+try:
+    import readline  # noqa: F401
+    # Note readline is not used but including it enables 'input()' command history.
+except ModuleNotFoundError:
+    pass
+
 from typing import List
 sys.path.append("..")
 from debugger.debug_context import DebuggingContext
