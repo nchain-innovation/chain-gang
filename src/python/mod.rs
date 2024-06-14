@@ -1,8 +1,11 @@
 use pyo3::prelude::*;
 use std::io::{Cursor, Write};
 
+mod py_tx;
+mod py_script;
+
 use crate::{
-    python_tx::{Bytes, PyTx, PyTxIn, PyTxOut},
+    python::py_tx::{PyTx, PyTxIn, PyTxOut},
     script::{
         stack::{decode_num, encode_num, Stack},
         Script, TransactionlessChecker, ZChecker, NO_FLAGS,
@@ -10,6 +13,8 @@ use crate::{
     util::{var_int, Hash256, Serializable},
 };
 
+
+pub type Bytes = Vec<u8>;
 /*
 // Convert errors to PyErr
 impl std::convert::From<crate::util::Error> for PyErr {

@@ -33,6 +33,3 @@ pub mod interface;
 
 #[cfg(feature = "python")]
 pub mod python;
-
-#[cfg(feature = "python")]
-pub mod python_tx;

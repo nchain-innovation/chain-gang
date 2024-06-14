@@ -1,20 +1,26 @@
 //use linked_hash_map::LinkedHashMap;
 // use std::collections::HashSet;
-use core::hash::Hash;
 // use std::collections::HashMap;
+
+use core::hash::Hash;
+use std::io::Cursor;
 
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
-    script::Script,
     transaction::{
         generate_signature,
         sighash::{sighash, SigHashCache},
     },
     util::{Hash256, Serializable},
+    python::py_script::PyScript,
 };
-use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyBytes};
+use pyo3::{
+    exceptions::PyRuntimeError, 
+    prelude::*, 
+    types::{PyBytes, PyType},
+};
 
-pub type Bytes = Vec<u8>;
+
 
 // Convert errors to PyErr
 impl std::convert::From<crate::util::Error> for PyErr {
@@ -24,13 +30,15 @@ impl std::convert::From<crate::util::Error> for PyErr {
 }
 
 /// TxIn - This represents is a bitcoin transaction input
-#[pyclass(name = "TxIn")]
+//
+// #[pyclass(name = "TxIn")]
+#[pyclass(name = "TxIn", get_all, set_all)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxIn {
     pub prev_tx: [u8; 32],
     pub prev_index: u32,
     pub sequence: u32,
-    pub sig_script: Script,
+    pub sig_script: PyScript,
 }
 
 impl PyTxIn {
@@ -41,7 +49,7 @@ impl PyTxIn {
                 index: self.prev_index,
             },
             sequence: self.sequence,
-            unlock_script: self.sig_script.clone(),
+            unlock_script: self.sig_script.as_script(),
         }
     }
 }
@@ -50,30 +58,32 @@ impl PyTxIn {
 impl PyTxIn {
     #[new]
     fn new(prev_tx: [u8; 32], prev_index: u32, sig_script: &[u8], sequence: u32) -> Self {
-        let script = Script(sig_script.to_vec());
+        let sig_script = PyScript::new(sig_script);
         PyTxIn {
             prev_tx,
             prev_index,
             sequence,
-            sig_script: script,
+            sig_script,
         }
     }
 }
 
 /// TxIn - This represents a bitcoin transaction output
 
-#[pyclass(name = "TxOut")]
+//
+//#[pyclass(name = "TxOut")]
+#[pyclass(name = "TxOut", get_all, set_all)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxOut {
     pub amount: i64,
-    pub script_pubkey: Script,
+    pub script_pubkey: PyScript,
 }
 
 impl PyTxOut {
     fn as_txout(&self) -> TxOut {
         TxOut {
             satoshis: self.amount,
-            lock_script: self.script_pubkey.clone(),
+            lock_script: self.script_pubkey.as_script(),
         }
     }
 }
@@ -84,10 +94,50 @@ impl PyTxOut {
     fn new(amount: i64, script_pubkey: &[u8]) -> Self {
         PyTxOut {
             amount,
-            script_pubkey: Script(script_pubkey.to_vec()),
+            script_pubkey: PyScript::new(script_pubkey),
         }
     }
 }
+
+// Conversion functions
+fn txin_as_pytxin(txin: &TxIn) -> PyTxIn {
+    PyTxIn {
+        prev_tx: txin.prev_output.hash.0,
+        prev_index: txin.prev_output.index,
+        sequence: txin.sequence,
+        sig_script: PyScript::new(&txin.unlock_script.0),
+    }
+}
+
+fn txout_as_pytxout(txout: &TxOut) -> PyTxOut {
+    PyTxOut {
+        amount: txout.satoshis,
+        script_pubkey: PyScript::new(&txout.lock_script.0), 
+
+    }
+}
+
+/// Convert from Rust Tx to PyTx
+fn tx_as_pytx(tx: &Tx) -> PyTx {
+    PyTx {
+        version: tx.version,
+        tx_ins: tx
+            .inputs
+            .clone()
+            .into_iter()
+            .map(|x| txin_as_pytxin(&x))
+            .collect(),
+            tx_outs: tx
+            .outputs
+            .clone()
+            .into_iter()
+            .map(|x| txout_as_pytxout(&x))
+            .collect(),
+        locktime: tx.lock_time,
+    }
+}
+
+
 
 /// Tx - This represents a bitcoin transaction
 /// We need this to
@@ -95,8 +145,7 @@ impl PyTxOut {
 /// * serialise a transaction - rust
 /// * sign tx - rust
 /// * verify tx - rust
-
-#[pyclass(name = "Tx")]
+#[pyclass(name = "Tx", get_all, set_all)]
 #[derive(Default, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct PyTx {
     pub version: u32,
@@ -162,7 +211,6 @@ impl PyTx {
 
     /// Binary hash of the serialization
     /// def hash(self) -> bytes:
-
     fn hash(&self, py: Python<'_>) -> PyResult<PyObject> {
         let tx = self.as_tx();
         let hash = tx.hash();
@@ -171,7 +219,6 @@ impl PyTx {
     }
 
     /// Returns true if it is a coinbase transaction
-    /// def is_coinbase(self) -> bool:
     fn is_coinbase(&self) -> PyResult<bool> {
         let tx = self.as_tx();
         Ok(tx.coinbase())
@@ -232,4 +279,13 @@ impl PyTx {
         Ok(())
     }
     */
+    /// Parse Bytes to produce Tx
+    // #[new]
+    #[classmethod]
+    fn parse(_cls: &Bound<'_, PyType>, bytes: &[u8]) -> PyResult<Self> {
+        let tx = Tx::read(&mut Cursor::new(&bytes))?;
+        let pytx = tx_as_pytx(&tx);
+        Ok(pytx)
+    }
+
 }
