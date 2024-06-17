@@ -38,7 +38,7 @@ pub struct PyTxIn {
     pub prev_tx: [u8; 32],
     pub prev_index: u32,
     pub sequence: u32,
-    pub sig_script: PyScript,
+    pub script_sig: PyScript,
 }
 
 impl PyTxIn {
@@ -49,7 +49,7 @@ impl PyTxIn {
                 index: self.prev_index,
             },
             sequence: self.sequence,
-            unlock_script: self.sig_script.as_script(),
+            unlock_script: self.script_sig.as_script(),
         }
     }
 }
@@ -57,13 +57,13 @@ impl PyTxIn {
 #[pymethods]
 impl PyTxIn {
     #[new]
-    fn new(prev_tx: [u8; 32], prev_index: u32, sig_script: &[u8], sequence: u32) -> Self {
-        let sig_script = PyScript::new(sig_script);
+    fn new(prev_tx: [u8; 32], prev_index: u32, script: &[u8], sequence: u32) -> Self {
+        let script_sig = PyScript::new(script);
         PyTxIn {
             prev_tx,
             prev_index,
             sequence,
-            sig_script,
+            script_sig,
         }
     }
 }
@@ -105,7 +105,7 @@ fn txin_as_pytxin(txin: &TxIn) -> PyTxIn {
         prev_tx: txin.prev_output.hash.0,
         prev_index: txin.prev_output.index,
         sequence: txin.sequence,
-        sig_script: PyScript::new(&txin.unlock_script.0),
+        script_sig: PyScript::new(&txin.unlock_script.0),
     }
 }
 
