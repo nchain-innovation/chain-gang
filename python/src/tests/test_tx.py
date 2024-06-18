@@ -4,6 +4,7 @@ sys.path.append("..")
 
 from tx_engine import Tx
 
+
 class TxTest(unittest.TestCase):
     def test_parse_version(self):
         raw_tx = bytes.fromhex(
@@ -21,7 +22,7 @@ class TxTest(unittest.TestCase):
         want = bytes.fromhex(
             "813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1"
         )
-        # TODO: Determine if we want to return the previos tx as bytes?
+        # TODO: Determine if we want to return the previous tx as bytes?
         prev_tx = tx.tx_ins[0].prev_tx
         self.assertEqual(bytes(prev_tx), want)
 

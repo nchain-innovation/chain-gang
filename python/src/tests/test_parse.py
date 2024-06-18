@@ -3,9 +3,8 @@ import unittest
 import sys
 sys.path.append("..")
 
-# from tx_engine.engine.context import Context
-# from tx_engine.engine.script import Script
 from tx_engine import Script, Context
+
 
 class ParseTest(unittest.TestCase):
     def test_comma_separated(self):

@@ -15,6 +15,7 @@ def decode_element(elem: StackElement) -> int:
         print(f"elem={elem}, retval={retval}, type={type(retval)}")  # type: ignore[str-bytes-safe]
     return retval
 
+
 def cmds_as_bytes(cmds: Commands) -> bytes:
     """ Given commands return bytes - prior to passing to Rust
     """
@@ -34,7 +35,6 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
                     retval += len(c).to_bytes()
             retval += c
     return bytes(retval)
-
 
 
 class Context:

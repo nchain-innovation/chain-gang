@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use std::io::{Cursor, Write};
+use std::io::Cursor;
 
 mod op_code_names;
 mod py_script;
@@ -14,7 +14,7 @@ use crate::{
         stack::{decode_num, encode_num, Stack},
         Script, TransactionlessChecker, ZChecker, NO_FLAGS,
     },
-    util::{var_int, Hash256, Serializable},
+    util::{Hash256, Serializable},
 };
 
 pub type Bytes = Vec<u8>;
@@ -27,13 +27,6 @@ fn py_encode_num(val: i64) -> PyResult<Bytes> {
 #[pyfunction]
 fn py_decode_num(s: &[u8]) -> PyResult<i64> {
     Ok(decode_num(s)?)
-}
-
-#[pyfunction]
-fn py_encode_varint(n: u64) -> PyResult<Bytes> {
-    let mut v = Vec::new();
-    var_int::write(n, &mut v)?;
-    Ok(v)
 }
 
 
@@ -66,7 +59,6 @@ fn py_script_eval(
 fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_encode_num, m)?)?;
     m.add_function(wrap_pyfunction!(py_decode_num, m)?)?;
-    m.add_function(wrap_pyfunction!(py_encode_varint, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
