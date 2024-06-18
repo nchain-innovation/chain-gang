@@ -173,7 +173,7 @@ impl PyScript {
         Ok(PyScript { cmds: script })
     }
 
-    // Converts bytes to a Script:
+    /// Converts bytes to a Script:
     #[classmethod]
     fn parse(_cls: &Bound<'_, PyType>, bytes: &[u8]) -> PyResult<Self> {
         let script = PyScript::read(&mut Cursor::new(&bytes))?;
