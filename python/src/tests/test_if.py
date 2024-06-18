@@ -3,9 +3,8 @@ import unittest
 import sys
 sys.path.append("..")
 
-from tx_engine.engine.context import Context
-# from tx_engine.engine.script import Script
-from tx_engine.chain_gang import Script
+from tx_engine import Script, Context
+
 
 from tx_engine.engine.op_codes import OP_0, OP_1, OP_DUP, OP_IF, OP_ELSE, OP_ENDIF
 

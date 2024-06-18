@@ -2,8 +2,7 @@ import unittest
 import sys
 sys.path.append("..")
 
-from tx_engine.chain_gang import Tx
-
+from tx_engine import Tx
 
 class TxTest(unittest.TestCase):
     def test_parse_version(self):
