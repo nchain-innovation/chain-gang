@@ -25,9 +25,9 @@ mod checker;
 mod interpreter;
 #[allow(dead_code)]
 pub mod op_codes;
-mod stack;
+pub mod stack;
 
-pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker};
+pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker, ZChecker};
 pub(crate) use self::interpreter::next_op;
 pub use self::interpreter::{NO_FLAGS, PREGENESIS_RULES};
 pub use self::stack::Stack;
@@ -101,8 +101,9 @@ impl Script {
         &self,
         checker: &mut T,
         flags: u32,
+        break_at: Option<usize>,
     ) -> Result<(Stack, Stack)> {
-        self::interpreter::core_eval(&self.0, checker, flags)
+        self::interpreter::core_eval(&self.0, checker, flags, break_at)
     }
 }
 
@@ -319,7 +320,7 @@ mod tests {
     fn test_debug() {
         let mut script = Script::new();
         script.append_slice(&[OP_10, OP_5, OP_DIV]);
-        let result = script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS);
+        let result = script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, None);
         assert!(result.is_ok());
 
         if let Ok((stack, _alt_stack)) = result {

@@ -22,7 +22,12 @@ pub const NO_FLAGS: u32 = 0x00;
 pub const PREGENESIS_RULES: u32 = 0x01;
 
 /// Core of the script evaluation - split out for debugging
-pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(Stack, Stack)> {
+pub fn core_eval<T: Checker>(
+    script: &[u8],
+    checker: &mut T,
+    flags: u32,
+    break_at: Option<usize>,
+) -> Result<(Stack, Stack)> {
     let mut stack: Stack = Vec::with_capacity(STACK_CAPACITY);
     let mut alt_stack: Stack = Vec::with_capacity(ALT_STACK_CAPACITY);
 
@@ -38,7 +43,12 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
                 break;
             }
         }
-
+        if let Some(val) = break_at {
+            // hit our breakpoint
+            if i >= val {
+                break;
+            }
+        }
         match script[i] {
             OP_0 => stack.push(encode_num(0)?),
             OP_1NEGATE => stack.push(encode_num(-1)?),
@@ -695,7 +705,6 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
                 return Err(Error::ScriptError(msg));
             }
         }
-
         i = next_op(i, script);
     }
 
@@ -707,7 +716,7 @@ pub fn core_eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Resu
 
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()> {
-    match core_eval(script, checker, flags) {
+    match core_eval(script, checker, flags, None) {
         Ok((stack, _alt_stack)) => {
             // We don't call pop_bool here because the final stack element can be longer than 4 bytes
             check_stack_size(1, &stack)?;

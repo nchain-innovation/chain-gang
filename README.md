@@ -38,13 +38,21 @@ chain-gang = { path = "../chain-gang" }
 
 ## Feature Flags
 
-The library uses the following feature flag
-* `interface` - this provides a blockchain interface for accessing the current blockchain status
+The `chain-gang` library uses the following feature flags:
 
-Therefore to build the library with this feature
+* `interface` - this provides a blockchain interface for accessing the current blockchain status, via servers such as WhatsOnChain.
+* `python` - this provides a Python interface to the `chain_gang` library.
+
+To build the library with the `interface` feature
 ```bash
 cargo build --features "interface"
 ```
+
+To build the library with the `python` feature
+```bash
+cargo build --features "python"
+```
+For more details of the `python` feature see [here](python/README.md)
 
 # Known limitations
 
@@ -52,6 +60,8 @@ This library should not be used for consensus code because its validation checks
 
 # License
 
-rust-sv and therefore chain-gang is licensed under the MIT license.
+Still to be agreed with nChain IP etc.
 
+(Rust-sv is licensed under the MIT license.)
+See [here](LICENSE)
 
