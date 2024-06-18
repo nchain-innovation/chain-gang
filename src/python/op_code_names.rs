@@ -31,13 +31,13 @@ lazy_static! {
         ("OP_16", 96),
         ("OP_NOP",  97),
 
-        ("OP_VER",  98), // TODO: Check implemenation
+        ("OP_VER",  98), // Disabled
 
         ("OP_IF",  99),
         ("OP_NOTIF",  100),
 
-        ("OP_VERIF",  101), // TODO: Check implemenation
-        ("OP_VERNOTIF",  102), // TODO: Check implemenation
+        ("OP_VERIF",  101), // Disabled
+        ("OP_VERNOTIF",  102), // Disabled
 
         ("OP_ELSE",  103),
         ("OP_ENDIF",  104),
@@ -83,8 +83,8 @@ lazy_static! {
         ("OP_1ADD",  139),
         ("OP_1SUB",  140),
 
-        ("OP_2MUL",  141), // TODO: Check implemenation
-        ("OP_2DIV",  142), // TODO: Check implemenation
+        ("OP_2MUL",  141), // Disabled
+        ("OP_2DIV",  142), // Disabled
 
         ("OP_NEGATE",  143),
         ("OP_ABS",  144),

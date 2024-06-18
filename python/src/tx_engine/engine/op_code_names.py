@@ -67,8 +67,8 @@ OP_CODE_NAMES: Dict[int, str] = {
     138: "OP_RESERVED2",
     139: "OP_1ADD",
     140: "OP_1SUB",
-    141: "OP_2MUL",
-    142: "OP_2DIV",
+    141: "OP_2MUL",  # disabled
+    142: "OP_2DIV",  # disabled
     143: "OP_NEGATE",
     144: "OP_ABS",
     145: "OP_NOT",

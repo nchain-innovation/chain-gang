@@ -79,8 +79,8 @@ OP_RESERVED2 = 0x8A
 # Artithmetic
 OP_1ADD = 0x8B
 OP_1SUB = 0x8C
-OP_2MUL = 0x8D
-OP_2DIV = 0x8E
+OP_2MUL = 0x8D  # Disabled
+OP_2DIV = 0x8E  # Disabled
 OP_NEGATE = 0x8F
 OP_ABS = 0x90
 OP_NOT = 0x91
