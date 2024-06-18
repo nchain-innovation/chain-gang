@@ -39,6 +39,16 @@ class ParseTest(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate())
 
+    def test_simple_add(self):
+        s1 = "OP_1"
+        script1 = Script.parse_string(s1)
+        s2 = "OP_2"
+        script2 = Script.parse_string(s2)
+        script3 = script1 + script2
+        context = Context(script=script3)
+        self.assertTrue(context.evaluate_core())
+        self.assertEqual(context.raw_stack, [[1], [2]])
+
 
 if __name__ == '__main__':
     unittest.main()
