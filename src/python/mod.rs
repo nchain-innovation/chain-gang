@@ -18,14 +18,6 @@ use crate::{
 };
 
 pub type Bytes = Vec<u8>;
-/*
-// Convert errors to PyErr
-impl std::convert::From<crate::util::Error> for PyErr {
-    fn from(err: crate::util::Error) -> PyErr {
-        PyRuntimeError::new_err(err.to_string())
-    }
-}
-*/
 
 #[pyfunction]
 fn py_encode_num(val: i64) -> PyResult<Bytes> {
@@ -44,15 +36,6 @@ fn py_encode_varint(n: u64) -> PyResult<Bytes> {
     Ok(v)
 }
 
-#[pyfunction]
-fn py_script_serialise(py_script: &[u8]) -> PyResult<Bytes> {
-    let mut script = Script::new();
-    script.append_slice(py_script);
-
-    let mut v = Vec::new();
-    v.write_all(&script.0)?;
-    Ok(v)
-}
 
 /// py_script_eval evaluates bitcoin script
 /// Where
@@ -84,7 +67,6 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_encode_num, m)?)?;
     m.add_function(wrap_pyfunction!(py_decode_num, m)?)?;
     m.add_function(wrap_pyfunction!(py_encode_varint, m)?)?;
-    m.add_function(wrap_pyfunction!(py_script_serialise, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval, m)?)?;
     // Script
     m.add_class::<PyScript>()?;

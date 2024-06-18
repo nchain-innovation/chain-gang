@@ -1,6 +1,6 @@
 import logging
 from typing import List
-from tx_engine.engine.script import Script
+from tx_engine import Script
 from debugger.decode_op import cmd_repr
 from debugger.util import has_extension
 

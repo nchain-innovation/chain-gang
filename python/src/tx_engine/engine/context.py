@@ -1,9 +1,9 @@
 from typing import Optional
 
-from tx_engine.chain_gang import py_script_eval, py_decode_num
+from tx_engine.chain_gang import py_script_eval, py_decode_num, Script
 
-from .script import Script, cmds_as_bytes
 from .engine_types import Commands, Stack, StackElement
+from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
 
 
 def decode_element(elem: StackElement) -> int:
@@ -14,6 +14,27 @@ def decode_element(elem: StackElement) -> int:
         retval = elem
         print(f"elem={elem}, retval={retval}, type={type(retval)}")  # type: ignore[str-bytes-safe]
     return retval
+
+def cmds_as_bytes(cmds: Commands) -> bytes:
+    """ Given commands return bytes - prior to passing to Rust
+    """
+    retval = bytearray()
+    for c in cmds:
+        if isinstance(c, int):
+            retval += c.to_bytes()
+        elif isinstance(c, list):
+            retval += cmds_as_bytes(c)
+        else:
+            # If we have a byte array without a preceeding length, add it, if less than 0x4c
+            # Otherwise would expect OP_PUSHDATA preceeding
+            if len(c) < 0x4c:
+                if len(retval) == 0:
+                    retval += len(c).to_bytes()
+                elif not retval[-1] in [OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4] and retval[-1] != len(c):
+                    retval += len(c).to_bytes()
+            retval += c
+    return bytes(retval)
+
 
 
 class Context:

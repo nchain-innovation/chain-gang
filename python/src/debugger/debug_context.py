@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 from debugger.stack_frame import StackFrame
-from tx_engine.engine.script import Script
+from tx_engine import Script
 
 from debugger.breakpoints import Breakpoints
 
