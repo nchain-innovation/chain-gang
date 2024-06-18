@@ -18,6 +18,9 @@ extern crate rust_base58;
 extern crate secp256k1;
 extern crate snowflake;
 
+#[cfg(feature = "python")]
+extern crate lazy_static;
+
 pub mod address;
 pub mod messages;
 pub mod network;

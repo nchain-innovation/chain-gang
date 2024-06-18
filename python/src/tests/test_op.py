@@ -4,7 +4,8 @@ sys.path.append("..")
 
 import unittest
 from tx_engine.engine.context import Context
-from tx_engine.engine.script import Script
+# from tx_engine.engine.script import Script
+from tx_engine.chain_gang import Script
 
 
 from tx_engine.engine.op_codes import (

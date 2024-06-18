@@ -36,6 +36,8 @@ async-trait = { version = "0.1.58", optional = true }
 
 # For python feature
 pyo3 = { version = "0.21.2", optional = true }
+regex = "1.10.5"
+lazy_static = "1.4.0"
 
 [lib]
 name = "chain_gang"

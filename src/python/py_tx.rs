@@ -7,20 +7,18 @@ use std::io::Cursor;
 
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
+    python::py_script::PyScript,
     transaction::{
         generate_signature,
         sighash::{sighash, SigHashCache},
     },
     util::{Hash256, Serializable},
-    python::py_script::PyScript,
 };
 use pyo3::{
-    exceptions::PyRuntimeError, 
-    prelude::*, 
+    exceptions::PyRuntimeError,
+    prelude::*,
     types::{PyBytes, PyType},
 };
-
-
 
 // Convert errors to PyErr
 impl std::convert::From<crate::util::Error> for PyErr {
@@ -112,8 +110,7 @@ fn txin_as_pytxin(txin: &TxIn) -> PyTxIn {
 fn txout_as_pytxout(txout: &TxOut) -> PyTxOut {
     PyTxOut {
         amount: txout.satoshis,
-        script_pubkey: PyScript::new(&txout.lock_script.0), 
-
+        script_pubkey: PyScript::new(&txout.lock_script.0),
     }
 }
 
@@ -127,7 +124,7 @@ fn tx_as_pytx(tx: &Tx) -> PyTx {
             .into_iter()
             .map(|x| txin_as_pytxin(&x))
             .collect(),
-            tx_outs: tx
+        tx_outs: tx
             .outputs
             .clone()
             .into_iter()
@@ -136,8 +133,6 @@ fn tx_as_pytx(tx: &Tx) -> PyTx {
         locktime: tx.lock_time,
     }
 }
-
-
 
 /// Tx - This represents a bitcoin transaction
 /// We need this to
@@ -287,5 +282,4 @@ impl PyTx {
         let pytx = tx_as_pytx(&tx);
         Ok(pytx)
     }
-
 }

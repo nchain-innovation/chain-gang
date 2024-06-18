@@ -1,18 +1,21 @@
 use pyo3::prelude::*;
 use std::io::{Cursor, Write};
 
-mod py_tx;
+mod op_code_names;
 mod py_script;
+mod py_tx;
 
 use crate::{
-    python::py_tx::{PyTx, PyTxIn, PyTxOut},
+    python::{
+        py_script::PyScript,
+        py_tx::{PyTx, PyTxIn, PyTxOut},
+    },
     script::{
         stack::{decode_num, encode_num, Stack},
         Script, TransactionlessChecker, ZChecker, NO_FLAGS,
     },
     util::{var_int, Hash256, Serializable},
 };
-
 
 pub type Bytes = Vec<u8>;
 /*
@@ -83,6 +86,9 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_encode_varint, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_serialise, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval, m)?)?;
+    // Script
+    m.add_class::<PyScript>()?;
+
     // Tx classes
     m.add_class::<PyTxIn>()?;
     m.add_class::<PyTxOut>()?;
