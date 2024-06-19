@@ -1,6 +1,7 @@
 use crate::util::{Error, Result, Serializable};
 use hex;
-use ring::digest::{digest, SHA256};
+// use ring::digest::{digest, SHA256};
+use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
 use std::fmt;
 use std::io;
@@ -51,8 +52,10 @@ impl Serializable<Hash256> for Hash256 {
 
 /// Hashes a data array twice using SHA256
 pub fn sha256d(data: &[u8]) -> Hash256 {
-    let sha256 = digest(&SHA256, data);
-    let sha256d = digest(&SHA256, sha256.as_ref());
+    // Double hash of payload
+    let sha256 = Sha256::digest(data);
+    let sha256d = Sha256::digest(sha256);
+
     let mut hash256 = [0; 32];
     hash256.clone_from_slice(sha256d.as_ref());
     Hash256(hash256)

@@ -6,7 +6,7 @@ use std::str;
 use crate::messages;
 use crate::util::{Error, Result, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use ring::digest;
+use sha2::{Digest, Sha256};
 
 /* Constants for the max size buffer that can the read() function
 ** Problem is the read() from socket function
@@ -57,9 +57,11 @@ impl MessageHeader {
         let mut p: Vec<u8> = vec![0; self.payload_size as usize];
         reader.read_exact(p.as_mut())?;
 
-        let hash = digest::digest(&digest::SHA256, p.as_ref());
-        let hash = digest::digest(&digest::SHA256, hash.as_ref());
-        let h = &hash.as_ref();
+        // Double hash of payload
+        let hash = Sha256::digest(&p);
+        let hash = Sha256::digest(hash);
+
+        let h = hash;
         let j = &self.checksum;
         if h[0] != j[0] || h[1] != j[1] || h[2] != j[2] || h[3] != j[3] {
             let msg = format!("Bad checksum: {:?} != {:?}", &h[..4], j);
@@ -171,9 +173,10 @@ mod tests {
     #[test]
     fn payload() {
         let p = [0x22, 0x33, 0x44, 0x00, 0x11, 0x22, 0x45, 0x67, 0x89];
-        let hash = digest::digest(&digest::SHA256, &p);
-        let hash = digest::digest(&digest::SHA256, hash.as_ref());
-        let hash = hash.as_ref();
+        // let hash = hash.as_ref();
+        let hash = Sha256::digest(&p);
+        let hash = Sha256::digest(hash);
+
         let checksum = [hash[0], hash[1], hash[2], hash[3]];
         let header = MessageHeader {
             magic: [0x00, 0x00, 0x00, 0x00],

@@ -1,7 +1,8 @@
 //! Functions to convert data to and from mnemonic words
 
 use crate::util::{Bits, Error, Result};
-use ring::digest::{digest, SHA256};
+use sha2::{Digest, Sha256};
+
 use std::str;
 
 /// Wordlist language
@@ -41,7 +42,8 @@ fn load_wordlist_internal(bytes: &[u8]) -> Vec<String> {
 
 /// Encodes data into a mnemonic using BIP-39
 pub fn mnemonic_encode(data: &[u8], word_list: &[String]) -> Vec<String> {
-    let hash = digest(&SHA256, data);
+    let hash = Sha256::digest(data);
+
     let mut words = Vec::with_capacity((data.len() * 8 + data.len() / 32 + 10) / 11);
     let mut bits = Bits::from_slice(data, data.len() * 8);
     bits.append(&Bits::from_slice(hash.as_ref(), data.len() / 4));
@@ -69,7 +71,8 @@ pub fn mnemonic_decode(mnemonic: &[String], word_list: &[String]) -> Result<Vec<
     }
     let data_len = bits.len * 32 / 33;
     let cs_len = bits.len / 33;
-    let cs = digest(&SHA256, &bits.data[0..data_len / 8]);
+    let cs = Sha256::digest(&bits.data[0..data_len / 8]);
+
     let cs_bits = Bits::from_slice(cs.as_ref(), cs_len);
     if cs_bits.extract(0, cs_len) != bits.extract(data_len, cs_len) {
         return Err(Error::BadArgument("Invalid checksum".to_string()));

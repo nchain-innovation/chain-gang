@@ -29,7 +29,6 @@ fn py_decode_num(s: &[u8]) -> PyResult<i64> {
     Ok(decode_num(s)?)
 }
 
-
 /// py_script_eval evaluates bitcoin script
 /// Where
 ///  * py_script - the script to execute

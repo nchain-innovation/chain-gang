@@ -1,7 +1,9 @@
 use crate::network::Network;
 use crate::util::{hash160, sha256d, Error, Result, Serializable};
 use byteorder::{BigEndian, WriteBytesExt};
-use ring::hmac;
+use hmac::{Hmac, Mac};
+use sha2::Sha512;
+
 use rust_base58::base58::{FromBase58, ToBase58};
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use std::fmt;
@@ -9,6 +11,7 @@ use std::io;
 use std::io::{Cursor, Read, Write};
 use std::slice;
 
+type HmacSha512 = Hmac<Sha512>;
 /// Maximum private key value (exclusive)
 const SECP256K1_CURVE_ORDER: [u8; 32] = [
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
@@ -257,36 +260,38 @@ impl ExtendedKey {
         let private_key = &self.0[46..];
         let secp_par_secret_key = SecretKey::from_slice(private_key)?;
         let chain_code = &self.0[13..45];
-        let key = hmac::Key::new(hmac::HMAC_SHA512, chain_code);
+        let mut key = HmacSha512::new_from_slice(chain_code).expect("hmac512 error");
 
         let hmac = if index >= HARDENED_KEY {
             let mut v = Vec::<u8>::with_capacity(37);
             v.push(0);
             v.extend_from_slice(private_key);
             v.write_u32::<BigEndian>(index)?;
-            hmac::sign(&key, &v)
+            key.update(&v);
+            key.finalize().into_bytes()
         } else {
             let mut v = Vec::<u8>::with_capacity(37);
             let secp_public_key = PublicKey::from_secret_key(&secp, &secp_par_secret_key);
             let public_key = secp_public_key.serialize();
             v.extend_from_slice(&public_key);
             v.write_u32::<BigEndian>(index)?;
-            hmac::sign(&key, &v)
+            key.update(&v);
+            key.finalize().into_bytes()
         };
 
-        if hmac.as_ref().len() != 64 {
+        if hmac.len() != 64 {
             return Err(Error::IllegalState("HMAC invalid length".to_string()));
         }
 
-        if !is_private_key_valid(&hmac.as_ref()[..32]) {
+        if !is_private_key_valid(&hmac[..32]) {
             let msg = "Invalid key. Try next index.".to_string();
             return Err(Error::IllegalState(msg));
         }
 
-        let mut secp_child_secret_key = SecretKey::from_slice(&hmac.as_ref()[..32])?;
+        let mut secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
         secp_child_secret_key.add_assign(private_key)?;
 
-        let child_chain_code = &hmac.as_ref()[32..];
+        let child_chain_code = &hmac[32..];
         let fingerprint = self.fingerprint()?;
         let child_private_key =
             unsafe { slice::from_raw_parts(secp_child_secret_key.as_ptr(), 32) };
@@ -313,31 +318,32 @@ impl ExtendedKey {
         }
 
         let chain_code = &self.0[13..45];
-        let key = hmac::Key::new(hmac::HMAC_SHA512, chain_code);
+        let mut key = HmacSha512::new_from_slice(chain_code).expect("hmac512 error");
 
         let mut v = Vec::<u8>::with_capacity(65);
         let public_key = self.public_key()?;
         v.extend_from_slice(&public_key);
         v.write_u32::<BigEndian>(index)?;
-        let hmac = hmac::sign(&key, &v);
+        key.update(&v);
+        let hmac = key.finalize().into_bytes();
 
-        if hmac.as_ref().len() != 64 {
+        if hmac.len() != 64 {
             return Err(Error::IllegalState("HMAC invalid length".to_string()));
         }
 
-        if !is_private_key_valid(&hmac.as_ref()[..32]) {
+        if !is_private_key_valid(&hmac[..32]) {
             let msg = "Invalid key. Try next index.".to_string();
             return Err(Error::IllegalState(msg));
         }
 
         let secp = Secp256k1::signing_only();
-        let child_offset = SecretKey::from_slice(&hmac.as_ref()[..32])?;
+        let child_offset = SecretKey::from_slice(&hmac[..32])?;
         let child_offset = PublicKey::from_secret_key(&secp, &child_offset);
         let secp_par_public_key = PublicKey::from_slice(&public_key)?;
         let secp_child_public_key = secp_par_public_key.combine(&child_offset)?;
         let child_public_key = secp_child_public_key.serialize();
 
-        let child_chain_code = &hmac.as_ref()[32..];
+        let child_chain_code = &hmac[32..];
         let fingerprint = self.fingerprint()?;
 
         ExtendedKey::new_public_key(
@@ -680,15 +686,18 @@ mod tests {
     fn master_private_key(seed: &str) -> ExtendedKey {
         let seed = hex::decode(seed).unwrap();
         let key = "Bitcoin seed".to_string();
-        let key = hmac::Key::new(hmac::HMAC_SHA512, &key.as_bytes());
-        let hmac = hmac::sign(&key, &seed);
+
+        let mut key = HmacSha512::new_from_slice(key.as_bytes()).expect("hmac512 error");
+        key.update(&seed);
+        let hmac = key.finalize().into_bytes();
+
         ExtendedKey::new_private_key(
             Network::BSV_Mainnet,
             0,
             &[0; 4],
             0,
-            &hmac.as_ref()[32..],
-            &hmac.as_ref()[0..32],
+            &hmac[32..],
+            &hmac[0..32],
         )
         .unwrap()
     }

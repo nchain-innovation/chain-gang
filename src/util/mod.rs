@@ -15,6 +15,8 @@ mod latch;
 mod result;
 pub mod rx;
 mod serdes;
+pub mod sha1;
+pub mod sha256;
 pub(crate) mod var_int;
 
 pub(crate) use self::bits::{lshift, rshift, Bits};

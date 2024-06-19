@@ -22,7 +22,8 @@ use crate::messages::Getblocktxn;
 use crate::messages::Streamack;
 
 use crate::util::{Error, Result, Serializable};
-use ring::digest;
+use sha2::{Digest, Sha256};
+
 use std::fmt;
 use std::io;
 use std::io::{Cursor, Read, Write};
@@ -562,9 +563,10 @@ fn write_with_payload<T: Serializable<T>>(
 ) -> io::Result<()> {
     let mut bytes = Vec::with_capacity(payload.size());
     payload.write(&mut bytes)?;
-    let hash = digest::digest(&digest::SHA256, bytes.as_ref());
-    let hash = digest::digest(&digest::SHA256, hash.as_ref());
-    let h = &hash.as_ref();
+    let hash = Sha256::digest(&bytes);
+    let hash = Sha256::digest(hash);
+    let h = hash;
+
     let checksum = [h[0], h[1], h[2], h[3]];
 
     let header = MessageHeader {

@@ -1,5 +1,4 @@
 use hex::FromHexError;
-use ring;
 use rust_base58::base58::FromBase58Error;
 use secp256k1;
 use std;
@@ -33,8 +32,6 @@ pub enum Error {
     Secp256k1Error(secp256k1::Error),
     /// The operation timed out
     Timeout,
-    /// An unknown error in the Ring library
-    UnspecifiedRingError,
     /// The data or functionality is not supported by this library
     Unsupported(String),
 }
@@ -54,7 +51,6 @@ impl std::fmt::Display for Error {
             Error::ScriptError(s) => f.write_str(&format!("Script error: {}", s)),
             Error::Secp256k1Error(e) => f.write_str(&format!("Secp256k1 error: {}", e)),
             Error::Timeout => f.write_str("Timeout"),
-            Error::UnspecifiedRingError => f.write_str("Unspecified ring error"),
             Error::Unsupported(s) => f.write_str(&format!("Unsuppored: {}", s)),
         }
     }
@@ -75,7 +71,6 @@ impl std::error::Error for Error {
             Error::ScriptError(_) => "Script error",
             Error::Secp256k1Error(_) => "Secp256k1 error",
             Error::Timeout => "Timeout",
-            Error::UnspecifiedRingError => "Unspecified ring error",
             Error::Unsupported(_) => "Unsupported",
         }
     }
@@ -125,12 +120,6 @@ impl From<std::num::ParseIntError> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Error::Secp256k1Error(e)
-    }
-}
-
-impl From<ring::error::Unspecified> for Error {
-    fn from(_: ring::error::Unspecified) -> Self {
-        Error::UnspecifiedRingError
     }
 }
 

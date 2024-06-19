@@ -1,16 +1,15 @@
 [package]
 name = "chain-gang"
-version = "0.1.3"
+version = "0.2.0"
 description = "This is a library that enables monitoring of multiple blockchains (BTC, BCH, BSV)."
 # repository = "https://github.com/brentongunning/rust-sv"
-# authors = ["Brenton Gunning <brentongunning@gmail.com>"]
-# keywords = ["bitcoin", "sv", "cash", "crypto"]
-# license = "MIT"
+authors = ["Brenton Gunning <brentongunning@gmail.com>", "Arthur Gordon <a.gordon@nchain.com>"]
+keywords = ["bitcoin", "sv", "cash", "crypto"]
+license = "MIT"
 edition = "2021"
 
 [dependencies]
 byteorder = "1.2"
-digest = "0.7"
 dns-lookup = "1.0.8"
 hex = "0.3"
 linked-hash-map = "0.5"
@@ -19,12 +18,14 @@ murmur3 = "0.4"
 num-bigint = "0.2"
 num-traits = "0.2"
 rand = "0.5"
-ring = "0.16.20"
-ripemd160 = "0.7"
+# Crypto
+ripemd = "0.1.3"
 rust-base58 = "0.0"
-
+sha1 = "0.10.6"
+sha2 = "0.10.8"
 secp256k1 = "0.12"
 snowflake = "1.3"
+hmac = "0.12.1"
 
 # Used by the interface feature
 serde = { version = "1.0", features = ["derive"], optional = true }
@@ -38,6 +39,7 @@ async-trait = { version = "0.1.58", optional = true }
 pyo3 = { version = "0.21.2", optional = true }
 regex = "1.10.5"
 lazy_static = "1.4.0"
+
 
 [lib]
 name = "chain_gang"

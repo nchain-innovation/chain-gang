@@ -4,12 +4,10 @@ use crate::script::stack::{
 };
 use crate::script::Checker;
 use crate::transaction::sighash::SIGHASH_FORKID;
-use crate::util::{hash160, lshift, rshift, sha256d, Error, Result};
-use digest::{FixedOutput, Input};
+use crate::util::{hash160, lshift, rshift, sha1::sha1, sha256::sha256, sha256d, Error, Result};
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
-use ring::digest::{digest, SHA1_FOR_LEGACY_USE_ONLY, SHA256};
-use ripemd160::{Digest, Ripemd160};
+use ripemd::{Digest, Ripemd160};
 
 // Stack capacity defaults, which may exceeded
 const STACK_CAPACITY: usize = 100;
@@ -605,22 +603,21 @@ pub fn core_eval<T: Checker>(
             OP_RIPEMD160 => {
                 check_stack_size(1, &stack)?;
                 let v = stack.pop().unwrap();
-                let mut ripemd160 = Ripemd160::new();
-                ripemd160.process(v.as_ref());
-                let result = ripemd160.fixed_result().to_vec();
+                let result = Ripemd160::digest(&v).to_vec();
+
                 stack.push(result);
             }
             OP_SHA1 => {
                 check_stack_size(1, &stack)?;
                 let v = stack.pop().unwrap();
-                let result = digest(&SHA1_FOR_LEGACY_USE_ONLY, &v);
-                stack.push(result.as_ref().to_vec());
+                let result = sha1(&v);
+                stack.push(result);
             }
             OP_SHA256 => {
                 check_stack_size(1, &stack)?;
                 let v = stack.pop().unwrap();
-                let result = digest(&SHA256, &v);
-                stack.push(result.as_ref().to_vec());
+                let result = sha256(&v);
+                stack.push(result);
             }
             OP_HASH160 => {
                 check_stack_size(1, &stack)?;
