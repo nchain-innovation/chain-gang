@@ -1,6 +1,6 @@
 from typing import Optional
 
-from tx_engine.chain_gang import py_script_eval, py_decode_num, Script
+from tx_engine.tx_engine import py_script_eval, py_decode_num, Script
 
 from .engine_types import Commands, Stack, StackElement
 from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4

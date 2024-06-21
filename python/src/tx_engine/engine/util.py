@@ -10,7 +10,7 @@ MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS = 750 * 1000
 MAXIMUM_ELEMENT_SIZE = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 
-from tx_engine.chain_gang import py_encode_num, py_decode_num
+from tx_engine.tx_engine import py_encode_num, py_decode_num
 
 
 def encode_num(num: int) -> bytes:

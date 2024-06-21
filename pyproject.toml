@@ -3,7 +3,7 @@ requires = ["maturin>=1.5,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "chain_gang"
+name = "tx_engine"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Rust",
@@ -15,7 +15,7 @@ dynamic = ["version"]
 [tool.maturin]
 features = ["pyo3/extension-module", "python"]
 python-source = "python/src"
-module-name = "tx_engine.chain_gang"
+module-name = "tx_engine"
 sdist-include = ["LICENSE", "python/README.md"]
 bindings = "pyo3"
 sdist-generator = "cargo"
