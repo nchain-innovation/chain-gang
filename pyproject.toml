@@ -4,6 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "tx_engine"
+readme = "docs/README.md"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Rust",

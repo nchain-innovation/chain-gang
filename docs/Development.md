@@ -101,3 +101,11 @@ For background information see:
 https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment
 
 
+ # Github & PyPi
+
+ To force a release the git version needs to be tagged
+
+```bash
+ git tag -a v0.2.0 -m "Python interface"
+ git push --tags
+ ```
