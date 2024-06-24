@@ -23,7 +23,7 @@ impl SeedIter {
             nodes: Vec::new(),
             seed_index: 0,
             node_index: 0,
-            random_offset: thread_rng().gen_range::<usize>(0, 100),
+            random_offset: thread_rng().gen_range(0..100),
         }
     }
 }
