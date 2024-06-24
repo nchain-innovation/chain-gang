@@ -66,7 +66,7 @@ impl PyTxIn {
     }
 }
 
-/// TxIn - This represents a bitcoin transaction output
+/// TxOut - This represents a bitcoin transaction output
 
 //
 //#[pyclass(name = "TxOut")]

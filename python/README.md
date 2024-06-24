@@ -5,6 +5,8 @@ Where `tx_engine` was a previous Python BSV library used by nChain.
 
 This interface has been tested using Python3 version 3.11.2
 
+For documentation of the Python Classes see  [here](../docs/PythonClasses.md)
+
 # Example usage
 
 ```python
