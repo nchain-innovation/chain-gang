@@ -21,3 +21,4 @@ module-name = "tx_engine"
 sdist-include = ["LICENSE", "python/README.md"]
 bindings = "pyo3"
 sdist-generator = "cargo"
+readme = "docs/README.md"
