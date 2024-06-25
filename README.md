@@ -1,6 +1,6 @@
 # Chain-Gang
 
-This is a Rust library that enables monitoring of the P2P messages of Bitcoin derived blockchains.
+This is a Rust library that enables interacting with Bitcoin derived blockchains.
 
 This library currently supports the following blockchains:
 
@@ -9,7 +9,6 @@ This library currently supports the following blockchains:
 | Bitcoin SV | `BSV` | BSV_Mainnet, BSV_Testnet, BSV_STN |
 | Bitcoin  | `BTC` | BTC_Mainnet, BTC_Testnet |
 | Bitcoin Cash | `BCH` | BCH_Mainnet, BCH_Testnet |
-
 
 
 Features (all blockchains)

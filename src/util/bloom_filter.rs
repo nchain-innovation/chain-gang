@@ -61,7 +61,9 @@ impl BloomFilter {
         debug!("Adding to bloom filter: {:?}", hex::encode(data));
         for i in 0..self.num_hash_funcs {
             let seed = Wrapping(i as u32) * Wrapping(0xFBA4C795) + Wrapping(self.tweak);
-            let c = murmur3_32(&mut Cursor::new(&data), seed.0).expect("error encoding murmur3 hash") % (self.filter.len() as u32 * 8);
+            let c = murmur3_32(&mut Cursor::new(&data), seed.0)
+                .expect("error encoding murmur3 hash")
+                % (self.filter.len() as u32 * 8);
             self.filter[c as usize / 8] |= 1 << (c % 8);
         }
     }
@@ -72,7 +74,9 @@ impl BloomFilter {
     pub fn contains(&self, data: &[u8]) -> bool {
         for i in 0..self.num_hash_funcs {
             let seed = Wrapping(i as u32) * Wrapping(0xFBA4C795) + Wrapping(self.tweak);
-            let c = murmur3_32(&mut Cursor::new(&data), seed.0).expect("error encoding murmur3 hash") % (self.filter.len() as u32 * 8);
+            let c = murmur3_32(&mut Cursor::new(&data), seed.0)
+                .expect("error encoding murmur3 hash")
+                % (self.filter.len() as u32 * 8);
             if self.filter[c as usize / 8] & 1 << (c % 8) == 0 {
                 return false;
             }

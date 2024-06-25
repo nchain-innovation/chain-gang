@@ -103,7 +103,9 @@ https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-e
 
  # Github & PyPi
 
- To force a release the git version needs to be tagged
+ To force a release the git version needs to be tagged.
+ 1) Update `cargo.toml` version. Otherwise GitHub won't figure out that the software has been updated.
+ 2) Update git `tag` and push. Otherwise the GitHub action `release` will not be triggered.
 
 ```bash
  git tag -a v0.2.0 -m "Python interface"
