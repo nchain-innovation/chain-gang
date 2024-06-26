@@ -4,6 +4,7 @@ use std::io::Cursor;
 mod op_code_names;
 mod py_script;
 mod py_tx;
+mod py_wallet;
 
 use crate::{
     python::{

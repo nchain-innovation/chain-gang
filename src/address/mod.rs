@@ -25,7 +25,7 @@
 //!
 use crate::network::Network;
 use crate::util::{sha256d, Error, Hash160, Result};
-use rust_base58::base58::{FromBase58, ToBase58};
+use base58::{FromBase58, ToBase58};
 
 /// Address type which is either P2PKH or P2SH
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

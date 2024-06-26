@@ -1,7 +1,6 @@
 //! A foundation for building applications on Bitcoin SV using Rust.
 
 //#![cfg(feature = "interface")]
-//#![feature(async_fn_in_trait)]
 
 extern crate byteorder;
 extern crate dns_lookup;
@@ -13,8 +12,8 @@ extern crate linked_hash_map;
 extern crate murmur3;
 extern crate rand;
 
+extern crate base58;
 extern crate ripemd;
-extern crate rust_base58;
 extern crate secp256k1;
 extern crate snowflake;
 
@@ -30,7 +29,6 @@ pub mod transaction;
 pub mod util;
 pub mod wallet;
 
-// Only include interface if nightly build as we are dependent on async_fn_in_trait feature
 #[cfg(feature = "interface")]
 pub mod interface;
 

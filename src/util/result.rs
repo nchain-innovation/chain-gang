@@ -1,5 +1,5 @@
+use base58::FromBase58Error;
 use hex::FromHexError;
-use rust_base58::base58::FromBase58Error;
 use secp256k1;
 use std;
 use std::io;
@@ -32,6 +32,7 @@ pub enum Error {
     Secp256k1Error(secp256k1::Error),
     /// The operation timed out
     Timeout,
+    StringError(String),
     /// The data or functionality is not supported by this library
     Unsupported(String),
 }
@@ -41,7 +42,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::BadArgument(s) => f.write_str(&format!("Bad argument: {}", s)),
             Error::BadData(s) => f.write_str(&format!("Bad data: {}", s)),
-            Error::FromBase58Error(e) => f.write_str(&format!("Base58 decoding error: {}", e)),
+            Error::FromBase58Error(e) => f.write_str(&format!("Base58 decoding error: {:?}", e)),
             Error::FromHexError(e) => f.write_str(&format!("Hex decoding error: {}", e)),
             Error::FromUtf8Error(e) => f.write_str(&format!("Utf8 parsing error: {}", e)),
             Error::IllegalState(s) => f.write_str(&format!("Illegal state: {}", s)),
@@ -52,6 +53,7 @@ impl std::fmt::Display for Error {
             Error::Secp256k1Error(e) => f.write_str(&format!("Secp256k1 error: {}", e)),
             Error::Timeout => f.write_str("Timeout"),
             Error::Unsupported(s) => f.write_str(&format!("Unsuppored: {}", s)),
+            Error::StringError(s) => f.write_str(&format!("StringError: {}", s)),
         }
     }
 }
@@ -71,6 +73,7 @@ impl std::error::Error for Error {
             Error::ScriptError(_) => "Script error",
             Error::Secp256k1Error(_) => "Secp256k1 error",
             Error::Timeout => "Timeout",
+            Error::StringError(_) => "StringError",
             Error::Unsupported(_) => "Unsupported",
         }
     }
@@ -125,3 +128,14 @@ impl From<secp256k1::Error> for Error {
 
 /// Standard Result used in the library
 pub type Result<T> = std::result::Result<T, Error>;
+
+// the trait `From<&str>` is not implemented for `util::result::Error`,
+// which is required by `std::result::Result<std::string::String, util::result::Error>:
+// FromResidual<std::result::Result<Infallible, &str>>`
+// this can't be annotated with `?` because it has type `Result<_, &str>`
+
+impl From<&str> for Error {
+    fn from(e: &str) -> Self {
+        Error::StringError(e.to_string())
+    }
+}

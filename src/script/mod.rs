@@ -324,7 +324,6 @@ mod tests {
         assert!(result.is_ok());
 
         if let Ok((stack, _alt_stack)) = result {
-            dbg!(&stack);
             assert_eq!(stack[0][0], 2);
         }
     }

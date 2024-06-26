@@ -4,7 +4,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 use hmac::{Hmac, Mac};
 use sha2::Sha512;
 
-use rust_base58::base58::{FromBase58, ToBase58};
+use base58::{FromBase58, ToBase58};
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use std::fmt;
 use std::io;

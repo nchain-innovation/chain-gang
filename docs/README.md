@@ -4,6 +4,9 @@ This library provides a Python interface for building BitcoinSV scripts and tran
 
 The classes `Script`, `Context`, `Tx`, `TxIn` and `TxOut` are imported from the top level of `tx_engine`.
 
+For documentation of the Python Classes see  [here](PythonClasses.md)
+
+
 # Example Script execution
 
 ```python
