@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 use std::io::Cursor;
 
+mod base58_checksum;
 mod op_code_names;
 mod py_script;
 mod py_tx;

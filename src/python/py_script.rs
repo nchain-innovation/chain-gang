@@ -134,7 +134,7 @@ impl PyScript {
     }
 
     /// Return the serialised script with the length prepended
-    fn serialize(&self, py: Python<'_>) -> PyResult<PyObject> {
+    pub fn serialize(&self, py: Python<'_>) -> PyResult<PyObject> {
         let mut script: Vec<u8> = Vec::new();
         script.write_all(&self.cmds)?;
         let length = script.len();

@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     fn write_read_addrv2() {
-        let mut v = Vec::new();
+        let mut v: Vec<u8> = Vec::new();
         let addr1 = NodeAddrExV2 {
             last_connected_time: 100,
             services: 900,
