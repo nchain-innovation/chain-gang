@@ -124,7 +124,13 @@ pub struct PyWallet {
 
 impl PyWallet {
     // sign_transaction_with_inputs(input_txs, tx, self.private_key)
-    fn sign_tx_input(&mut self, tx_in: &Tx, tx: &mut Tx, index: usize) -> Result<()> {
+    fn sign_tx_input(
+        &mut self,
+        tx_in: &Tx,
+        tx: &mut Tx,
+        index: usize,
+        sighash_type: u8,
+    ) -> Result<()> {
         // Check correct input tx provided
         let prev_hash = tx.inputs[index].prev_output.hash;
         if prev_hash != tx_in.hash() {
@@ -134,8 +140,6 @@ impl PyWallet {
         // Create locking script
         let public_key = self.public_key.serialize();
         let lock_script = p2pkh_pyscript(&hash160(&public_key)).as_script();
-        // Set sighash flags
-        let sighash_type = SIGHASH_NONE | SIGHASH_FORKID;
         let sighash = sighash(tx, 0, &lock_script.0, 0, sighash_type, &mut self.cache).unwrap();
         // Get private key
         assert!(self.private_key.len() == 32);
@@ -171,20 +175,31 @@ impl PyWallet {
         })
     }
 
-    /// Sign a transaction with the provided private key, Returns new signed tx
-    fn sign_tx_with_inputs(
+    /// Sign a transaction with the provided previous tx, Returns new signed tx
+    fn sign_tx_with_input(&mut self, index: usize, input_pytx: PyTx, pytx: PyTx) -> PyResult<PyTx> {
+        // Convert PyTx -> Tx
+        let input_tx = input_pytx.as_tx();
+        let mut tx = pytx.as_tx();
+        // Set sighash flags
+        let sighash_type = SIGHASH_NONE | SIGHASH_FORKID;
+        self.sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
+        let updated_txpy = tx_as_pytx(&tx);
+        Ok(updated_txpy)
+    }
+
+    /// Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
+    fn sign_tx_with_input_and_sighash(
         &mut self,
         index: usize,
         input_pytx: PyTx,
         pytx: PyTx,
+        sighash_type: u8,
     ) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
         let input_tx = input_pytx.as_tx();
         let mut tx = pytx.as_tx();
-
-        self.sign_tx_input(&input_tx, &mut tx, index)?;
+        self.sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
         let updated_txpy = tx_as_pytx(&tx);
-
         Ok(updated_txpy)
     }
 
@@ -321,4 +336,16 @@ mod tests {
     }
     */
 
+    // TODO: Wallet signing test
+    /*
+    #[test]
+    fn sign_tx() {
+        let wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3";
+        let w = PyWallet::new(wif);
+        let wallet = w.unwrap();
+
+        // tx =
+        //
+    }
+    */
 }

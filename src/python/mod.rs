@@ -12,6 +12,7 @@ use crate::{
     python::{
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
+        py_wallet::PyWallet,
     },
     script::{
         stack::{decode_num, encode_num, Stack},
@@ -69,6 +70,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTxIn>()?;
     m.add_class::<PyTxOut>()?;
     m.add_class::<PyTx>()?;
-
+    // Wallet class
+    m.add_class::<PyWallet>()?;
     Ok(())
 }

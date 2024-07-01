@@ -9,6 +9,8 @@ including:
 * [TxIn](#txin)
 * [TxOut](#txout)
 * [Wallet](#wallet)
+* [Interface Factory](#interface-factory)
+* [Blockchain Interface](#blockchain-interface)
 
 ## Script
 
@@ -128,8 +130,50 @@ This class represents the Wallet functionality, including handling of private an
 Wallet class has the following methods:
 
 * `__init__(wif_key: str) -> Wallet` - Constructor that takes a private key in WIF format
-* `sign_tx_with_inputs(self, index: usize, input_tx: Tx, tx: Tx,) -> PyTx` -  Sign a transaction input at index, returning new signed tx
+* `sign_tx_with_input(self, index: int, input_tx: Tx, tx: Tx) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
+* `sign_tx_with_input_and_sighash(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
 * `get_locking_script(self) -> Script` - Returns a locking script based on the public key
 * `get_public_key_as_hexstr(self) -> String` - Return the public key as a hex string
-* `get_address(&self) -> String` - Return the address based on the public key
-* `to_wif(&self) -> String` - Return the private key in WIF format
+* `get_address(self) -> String` - Return the address based on the public key
+* `to_wif(self) -> String` - Return the private key in WIF format
+
+
+## Interface Factory
+The InterfaceFactory is class for creating interfaces to the BSV blockchain (`BlockchainInterface`).
+
+The InterfaceFactory class one method:
+
+* `set_config(self, config: ConfigType) -> BlockchainInterface` - This reads the configuration `interface_type` field and returns the configured `BlockchainInterface`
+
+## Blockchain Interface
+
+The BlockchainInterface class provides an interface to the BSV network.
+
+BlockchainInterface class has the following methods:
+
+* `__init__(self)` - Constructor that takes no parameters
+* `set_config(self, config)` - configures the interface based on the provide config
+* `get_addr_history(self, address)` - Return the transaction history with this address
+* `is_testnet(self) -> bool` - Return true if this interface is connected to BSV Testnet
+* `get_utxo(self, address)` - Return the utxo associated with this address
+* `get_balance(self, address)` - Return the balance associated with this address
+* `get_block_count(self)` - Return the height of the chain
+* `get_best_block_hash(self)` - Return the hash of the latest block
+* `get_merkle_proof(self, block_hash: str, tx_id: str) -> str` - Given the block hash and tx_id return the merkle proof
+* `get_transaction(self, txid: str)` - Return the transaction (as Dictionary) associated with this txid
+* `get_raw_transaction(self, txid: str) -> Optional[str]` - Return the transaction (as kexstring) associated with this txid, use cached copy if available.
+* `broadcast_tx(self, transaction: str)` - broadcast this tx to the network
+* `get_block(self, blockhash: str) -> Dict` - Return the block given the block hash
+* `get_block_header(self, blockhash: str) -> Dict` - Returns te block_header for a given block hash
+
+### WoC Interface
+The `WoCInterface` is a `BlockchainInterface` that communicates with the WhatsOnChain API. 
+Note that if you are using this you will need to install the python library `requests`.
+
+```bash
+pip3 install requests 
+```
+
+### Mock Interface 
+The `Mock Interface` is a `BlockchainInterface` that is used for unit testing.
+
