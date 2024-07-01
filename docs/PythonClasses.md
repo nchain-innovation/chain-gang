@@ -8,7 +8,7 @@ including:
 * [Tx](#tx)
 * [TxIn](#txin)
 * [TxOut](#txout)
-
+* [Wallet](#wallet)
 
 ## Script
 
@@ -120,3 +120,16 @@ TxOut has the following properties:
 TxOut has the following method:
 
 * `__init__(amount: int, script_pubkey: bytes) -> TxOut` - Constructor that takes the fields 
+
+
+## Wallet
+This class represents the Wallet functionality, including handling of private and public keys and signing transactions.
+
+Wallet class has the following methods:
+
+* `__init__(wif_key: str) -> Wallet` - Constructor that takes a private key in WIF format
+* `sign_tx_with_inputs(self, index: usize, input_tx: Tx, tx: Tx,) -> PyTx` -  Sign a transaction input at index, returning new signed tx
+* `get_locking_script(self) -> Script` - Returns a locking script based on the public key
+* `get_public_key_as_hexstr(self) -> String` - Return the public key as a hex string
+* `get_address(&self) -> String` - Return the address based on the public key
+* `to_wif(&self) -> String` - Return the private key in WIF format

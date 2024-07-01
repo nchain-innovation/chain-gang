@@ -171,8 +171,7 @@ impl PyWallet {
         })
     }
 
-    /// Sign a transaction with the provided private key
-    /// Rasies and Error if unsuccessful
+    /// Sign a transaction with the provided private key, Returns new signed tx
     fn sign_tx_with_inputs(
         &mut self,
         index: usize,
@@ -321,4 +320,5 @@ mod tests {
         dbg!(&w);
     }
     */
+
 }
