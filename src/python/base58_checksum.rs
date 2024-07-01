@@ -1,15 +1,8 @@
-use crate::util::{Error, Result};
+use crate::{
+    python::hashes::short_double_sha256_checksum,
+    util::{Error, Result},
+};
 use base58::{FromBase58, ToBase58};
-use sha2::{Digest, Sha256};
-
-/// Return first 4 digits of double sha256
-fn short_double_sha256_checksum(data: &[u8]) -> Vec<u8> {
-    // Double hash of data
-    let sha256 = Sha256::digest(data);
-    let sha256d = Sha256::digest(sha256);
-    // Return first 4 digits
-    sha256d.as_slice()[..4].to_vec()
-}
 
 /// Given the string return the checked base58 value
 pub fn decode_base58_checksum(input: &str) -> Result<Vec<u8>> {

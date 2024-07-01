@@ -1,19 +1,25 @@
 use pyo3::prelude::*;
-use ripemd::Ripemd160;
-use secp256k1::{All, PublicKey, Secp256k1, SecretKey};
-use sha2::{Digest, Sha256};
+use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use std::slice;
-//use rand::rngs::OsRng;
 
 use crate::{
+    //messages::{Tx, TxIn, TxOut},
+    messages::Tx, // TxIn, TxOut},
     network::Network,
     python::{
         base58_checksum::{decode_base58_checksum, encode_base58_checksum},
-        PyScript,
+        hashes::hash160,
+        py_tx::tx_as_pytx,
+        PyScript, PyTx,
     },
     script::{
         op_codes::{OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160},
         Script,
+    },
+    transaction::{
+        generate_signature,
+        p2pkh::create_unlock_script,
+        sighash::{sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_NONE},
     },
     util::{Error, Result},
 };
@@ -23,11 +29,6 @@ const TEST_PRIVATE_KEY: u8 = 0xef;
 
 const MAIN_PUBKEY_HASH: u8 = 0x00;
 const TEST_PUBKEY_HASH: u8 = 0x6f;
-
-fn hash160(data: &[u8]) -> Vec<u8> {
-    let sha256 = Sha256::digest(data);
-    Ripemd160::digest(sha256).to_vec()
-}
 
 // TODO: note only tested for compressed key
 fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SecretKey)> {
@@ -67,8 +68,6 @@ fn network_and_private_key_to_wif(network: Network, private_key: SecretKey) -> R
         }
     };
 
-    dbg!(&private_key.len());
-
     let pk_data = unsafe { slice::from_raw_parts(private_key.as_ptr(), private_key.len()) };
     let mut data = Vec::new();
     data.push(prefix);
@@ -103,7 +102,7 @@ fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> 
 /// Takes a hash160 and returns the p2pkh script
 /// OP_DUP OP_HASH160 <hash_value> OP_EQUALVERIFY OP_CHECKSIG
 // The script (signature public_key --- bool)
-fn p2pkh_script(h160: &[u8]) -> PyScript {
+fn p2pkh_pyscript(h160: &[u8]) -> PyScript {
     let mut script = Script::new();
     script.append_slice(&[OP_DUP, OP_HASH160]);
     script.append_data(h160);
@@ -116,55 +115,106 @@ fn p2pkh_script(h160: &[u8]) -> PyScript {
 /// and signing transactions
 
 #[pyclass(name = "Wallet")]
-#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PyWallet {
-    secp: Secp256k1<All>,
     private_key: SecretKey,
-    pub address: String,
-    pub network: Network,
+    public_key: PublicKey,
+    network: Network,
+    cache: SigHashCache,
 }
 
 impl PyWallet {
     // sign_transaction_with_inputs(input_txs, tx, self.private_key)
-    /*
-    fn sign_tx_with_inputs(&self, input_txs: &[Tx], tx: &mut Tx) -> bool {
-        //return sign_transaction_with_inputs(input_txs, tx, self.private_key)
-        // Sign a transaction with the provided private key
-        // Return true if successful
-
-        //# Sign inputs
-        /*
-        for i, _ in enumerate(tx.tx_ins):
-            if not sign_input_bsv_with_inputs(input_txs, tx, i, private_key):
-                print(f"failed to sign input {i}")
-                return False
-        return True
-        */
-        true
+    fn sign_tx_input(&mut self, tx_in: &Tx, tx: &mut Tx, index: usize) -> Result<()> {
+        // Check correct input tx provided
+        let prev_hash = tx.inputs[index].prev_output.hash;
+        if prev_hash != tx_in.hash() {
+            let err_msg = format!("Unable to find input tx {:?}", &prev_hash);
+            return Err(Error::BadData(err_msg));
+        }
+        // Create locking script
+        let public_key = self.public_key.serialize();
+        let lock_script = p2pkh_pyscript(&hash160(&public_key)).as_script();
+        // Set sighash flags
+        let sighash_type = SIGHASH_NONE | SIGHASH_FORKID;
+        let sighash = sighash(tx, 0, &lock_script.0, 0, sighash_type, &mut self.cache).unwrap();
+        // Get private key
+        assert!(self.private_key.len() == 32);
+        let private_key_as_bytes: &[u8; 32] =
+            unsafe { slice::from_raw_parts(self.private_key.as_ptr(), 32) }
+                .try_into()
+                .expect("basic array conversion");
+        // Sign sighash
+        let signature = generate_signature(private_key_as_bytes, &sighash, sighash_type).unwrap();
+        // Create unlocking script for input
+        tx.inputs[0].unlock_script = create_unlock_script(&signature, &public_key);
+        Ok(())
     }
-    */
 }
 
 #[pymethods]
 impl PyWallet {
-    /// Given the wif_key, set up the wallet
+    // Given the wif_key, set up the wallet
+
     #[new]
     fn new(wif_key: &str) -> PyResult<Self> {
         let secp = Secp256k1::new();
 
         let (network, private_key) = wif_to_network_and_private_key(wif_key)?;
         let public_key = PublicKey::from_secret_key(&secp, &private_key);
-        // public_key -> address
-        let address = public_key_to_address(&public_key.serialize(), network)?;
+        let cache = SigHashCache::new();
+
         Ok(PyWallet {
-            secp,
             private_key,
-            address,
+            public_key,
             network,
+            cache,
         })
     }
 
-    /*  
+    /// Sign a transaction with the provided private key
+    /// Rasies and Error if unsuccessful
+    fn sign_tx_with_inputs(
+        &mut self,
+        index: usize,
+        input_pytx: PyTx,
+        pytx: PyTx,
+    ) -> PyResult<PyTx> {
+        // Convert PyTx -> Tx
+        let input_tx = input_pytx.as_tx();
+        let mut tx = pytx.as_tx();
+
+        self.sign_tx_input(&input_tx, &mut tx, index)?;
+        let updated_txpy = tx_as_pytx(&tx);
+
+        Ok(updated_txpy)
+    }
+
+    fn get_locking_script(&self) -> PyResult<PyScript> {
+        let serial = self.public_key.serialize();
+        Ok(p2pkh_pyscript(&hash160(&serial)))
+    }
+
+    fn get_public_key_as_hexstr(&self) -> String {
+        let serial = self.public_key.serialize();
+        serial
+            .into_iter()
+            .map(|x| format!("{:02x}", x))
+            .collect::<Vec<_>>()
+            .join("")
+    }
+
+    fn get_address(&self) -> Result<String> {
+        public_key_to_address(&self.public_key.serialize(), self.network)
+    }
+
+    fn to_wif(&self) -> PyResult<String> {
+        Ok(network_and_private_key_to_wif(
+            self.network,
+            self.private_key,
+        )?)
+    }
+
+    /*
     fn generate_key(network: Network) -> PyResult<Self> {
         let secp = Secp256k1::new();
         let mut rng = OsRng::new()?;
@@ -179,49 +229,6 @@ impl PyWallet {
         })
     }
     */
-    
-
-    //fn sign_tx_with_inputs(&self, input_txs: &[Tx], tx: &mut Tx) -> bool {
-    //return sign_transaction_with_inputs(input_txs, tx, self.private_key)
-    // Sign a transaction with the provided private key
-    // Return true if successful
-
-    //# Sign inputs
-    /*
-    for i, _ in enumerate(tx.tx_ins):
-        if not sign_input_bsv_with_inputs(input_txs, tx, i, private_key):
-            print(f"failed to sign input {i}")
-            return False
-    return True
-    */
-    //    true
-    //}
-
-    fn get_locking_script(&self) -> PyResult<PyScript> {
-        let h160 = decode_base58_checksum(&self.address)?;
-        // Drop the first byte
-        Ok(p2pkh_script(&h160[1..]))
-    }
-
-    fn get_public_key_as_hexstr(&self) -> String {
-        let public_key = PublicKey::from_secret_key(&self.secp, &self.private_key);
-        let serial = public_key.serialize();
-        let hexstr = serial
-            .into_iter()
-            .map(|x| format!("{:02x}", x))
-            .collect::<Vec<_>>()
-            .join("");
-        hexstr
-    }
-
-    fn to_wif(&self) -> PyResult<String> {
-        Ok(network_and_private_key_to_wif(
-            self.network,
-            self.private_key,
-        )?)
-    }
-
-
 }
 
 #[cfg(test)]
@@ -261,7 +268,10 @@ mod tests {
         let w = PyWallet::new(wif);
 
         let wallet = w.unwrap();
-        assert_eq!(wallet.address, "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5");
+        assert_eq!(
+            wallet.get_address().unwrap(),
+            "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
+        );
         assert_eq!(wallet.network, Network::BSV_Testnet);
     }
 
@@ -303,7 +313,6 @@ mod tests {
         let public_key = "036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2";
         assert_eq!(pk, public_key);
     }
-
 
     /*
     #[test]

@@ -115,7 +115,7 @@ fn txout_as_pytxout(txout: &TxOut) -> PyTxOut {
 }
 
 /// Convert from Rust Tx to PyTx
-fn tx_as_pytx(tx: &Tx) -> PyTx {
+pub fn tx_as_pytx(tx: &Tx) -> PyTx {
     PyTx {
         version: tx.version,
         tx_ins: tx
@@ -150,7 +150,7 @@ pub struct PyTx {
 }
 
 impl PyTx {
-    fn as_tx(&self) -> Tx {
+    pub fn as_tx(&self) -> Tx {
         Tx {
             version: self.version,
             inputs: self
