@@ -134,7 +134,7 @@ impl PyScript {
     }
 
     /// Return the serialised script with the length prepended
-    pub fn serialize(&self, py: Python<'_>) -> PyResult<PyObject> {
+    pub fn serialize(&self, py: Python) -> PyResult<PyObject> {
         let mut script: Vec<u8> = Vec::new();
         script.write_all(&self.cmds)?;
         let length = script.len();
@@ -147,8 +147,8 @@ impl PyScript {
     }
 
     /// Return a copy of the commands in this script
-    fn get_commands(&self) -> PyResult<Vec<u8>> {
-        Ok(self.cmds.clone())
+    fn get_commands(&self, py: Python<'_>) -> PyResult<PyObject> {
+        Ok(PyBytes::new_bound(py, &self.cmds).into())
     }
 
     // c_script = a_script + b_script

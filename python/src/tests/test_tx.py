@@ -2,7 +2,7 @@ import unittest
 import sys
 sys.path.append("..")
 
-from tx_engine import Tx
+from tx_engine import Tx, p2pkh_script, address_to_public_key_hash, TxOut
 
 
 class TxTest(unittest.TestCase):
@@ -54,6 +54,13 @@ class TxTest(unittest.TestCase):
         )
         tx = Tx.parse(raw_tx)
         self.assertEqual(tx.locktime, 410393)
+
+    def test_vin(self):
+        payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
+        locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
+        vouts = []
+        amt = 100
+        vouts.append(TxOut(amount=amt, script_pubkey=locking_script.get_commands()))
 
 
 if __name__ == "__main__":
