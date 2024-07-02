@@ -11,9 +11,10 @@ PrivateKey --> WIF : network_and_private_key_to_wif(),\nencode_base58_checksum
 
 PrivateKey --> PublicKey : PublicKey::from_secret_key()
 
-PublicKey --> Address : public_key_to_address(),\nencode_base58_checksum()
+PublicKey --> Address : public_key_to_address(),\nencode_base58_checksum(),\nhash160()
 
-Address  --> PublicKey : decode_base58_checksum()
+Address  --> PublicKeyHash : address_to_public_key_hash()
 
+PublicKey --> PublicKeyHash : hash160()
 
 @enduml

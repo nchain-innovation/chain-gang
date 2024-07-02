@@ -180,4 +180,6 @@ The `Mock Interface` is a `BlockchainInterface` that is used for unit testing.
 * `hash160(data: bytes) -> bytes` - Returns the hash160 of the provided data (usually the public key)
 * `p2pkh_script(h160: bytes) -> Script` - Takes the hash160 of the public key and returns the locking script
 * `public_key_to_address(public_key: bytes, network: str) -> String` - Given the public key and the network (either `BSV_Mainnet` or `BSV_Testnet`) return the address
-        
+
+
+![Bitcoin Keys](diagrams/keys.png)
