@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+use pyo3::{prelude::*, types::PyBytes};
 use std::io::Cursor;
 
 mod base58_checksum;
@@ -10,9 +10,10 @@ mod py_wallet;
 
 use crate::{
     python::{
+        hashes::hash160,
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
-        py_wallet::PyWallet,
+        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, PyWallet},
     },
     script::{
         stack::{decode_num, encode_num, Stack},
@@ -31,6 +32,23 @@ fn py_encode_num(val: i64) -> PyResult<Bytes> {
 #[pyfunction]
 fn py_decode_num(s: &[u8]) -> PyResult<i64> {
     Ok(decode_num(s)?)
+}
+
+#[pyfunction(name = "p2pkh_script")]
+fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
+    p2pkh_pyscript(h160)
+}
+
+#[pyfunction(name = "hash160")]
+pub fn py_hash160(py: Python, data: &[u8]) -> PyObject {
+    let result = hash160(data);
+    PyBytes::new_bound(py, &result).into()
+}
+
+#[pyfunction(name = "address_to_public_key_hash")]
+pub fn py_address_to_public_key_hash(py: Python, address: &str) -> PyResult<PyObject> {
+    let result = address_to_public_key_hash(address)?;
+    Ok(PyBytes::new_bound(py, &result).into())
 }
 
 /// py_script_eval evaluates bitcoin script
@@ -63,6 +81,10 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_encode_num, m)?)?;
     m.add_function(wrap_pyfunction!(py_decode_num, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval, m)?)?;
+    m.add_function(wrap_pyfunction!(py_p2pkh_pyscript, m)?)?;
+    m.add_function(wrap_pyfunction!(py_hash160, m)?)?;
+    m.add_function(wrap_pyfunction!(py_address_to_public_key_hash, m)?)?;
+
     // Script
     m.add_class::<PyScript>()?;
 

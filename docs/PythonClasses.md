@@ -11,6 +11,7 @@ including:
 * [Wallet](#wallet)
 * [Interface Factory](#interface-factory)
 * [Blockchain Interface](#blockchain-interface)
+* [Other Functions](#other-functions)
 
 ## Script
 
@@ -54,10 +55,6 @@ Context has the following methods:
 * `get_stack(self) -> Stack` - Return the `stack` as human readable
 * `get_altstack(self) -> Stack`-  Return the `alt_stack` as human readable
 
-
-
-
-
 Example from unit tests of using `evaluate_core` and `raw_stack`:
 ```python
 script = Script([OP_PUSHDATA1, 0x02, b"\x01\x02"])
@@ -69,7 +66,6 @@ self.assertEqual(context.raw_stack, [[1, 2]])
 ### Quiet Evalutation
  Both `evaluate` and `evaluate_core` have a parameter `quiet`.
  If the `quiet` parameter is set to `True` the `evaluate` function does not print out exceptions when executing code.  This `quiet` parameter is currently only used in unit tests.
-
 
 
 ## Tx
@@ -176,4 +172,11 @@ pip3 install requests
 
 ### Mock Interface 
 The `Mock Interface` is a `BlockchainInterface` that is used for unit testing.
+
+
+# Other Functions
+
+* `address_to_public_key_hash(address: str) -> bytes` - given the address return the hash160 of the public key
+* `hash160(data: bytes) -> bytes` - returns the hash160 of the provided data (usually the public key)
+* `p2pkh_script(h160: bytes) -> Script` - takes the hash160 of the public key and returns the locking script
 

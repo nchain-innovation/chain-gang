@@ -1,3 +1,4 @@
+use base58::FromBase58;
 use pyo3::prelude::*;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use std::slice;
@@ -77,7 +78,7 @@ fn network_and_private_key_to_wif(network: Network, private_key: SecretKey) -> R
 }
 
 // Given public_key and network return address as a string
-fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> {
+pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> {
     let prefix_as_bytes: u8 = match network {
         Network::BSV_Mainnet => MAIN_PUBKEY_HASH,
         Network::BSV_Testnet => TEST_PUBKEY_HASH,
@@ -99,10 +100,14 @@ fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> 
     Ok(encode_base58_checksum(&data))
 }
 
+pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>> {
+    let decoded: Vec<u8> = address.from_base58()?;
+    Ok(decoded[1..decoded.len() - 4].to_vec())
+}
+
 /// Takes a hash160 and returns the p2pkh script
 /// OP_DUP OP_HASH160 <hash_value> OP_EQUALVERIFY OP_CHECKSIG
-// The script (signature public_key --- bool)
-fn p2pkh_pyscript(h160: &[u8]) -> PyScript {
+pub fn p2pkh_pyscript(h160: &[u8]) -> PyScript {
     let mut script = Script::new();
     script.append_slice(&[OP_DUP, OP_HASH160]);
     script.append_data(h160);
@@ -249,6 +254,14 @@ impl PyWallet {
 mod tests {
     use super::*;
 
+    fn bytes_to_hexstr(bytes: &[u8]) -> String {
+        bytes
+            .into_iter()
+            .map(|x| format!("{:02x}", x))
+            .collect::<Vec<_>>()
+            .join("")
+    }
+
     #[test]
     fn decode_base58_checksum_valid() {
         // Valid data
@@ -306,12 +319,7 @@ mod tests {
         let wallet = w.unwrap();
 
         let ls = wallet.get_locking_script().unwrap();
-        let cmds = ls
-            .cmds
-            .into_iter()
-            .map(|x| format!("{:02x}", x))
-            .collect::<Vec<_>>()
-            .join("");
+        let cmds = bytes_to_hexstr(&ls.cmds);
         let locking_script = "76a91410375cfe32b917cd24ca1038f824cd00f739185988ac";
         assert_eq!(cmds, locking_script);
     }
@@ -328,6 +336,19 @@ mod tests {
         assert_eq!(pk, public_key);
     }
 
+    #[test]
+    fn addr_to_public_key_hash() {
+        let address = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5";
+        let public_key =
+            hex::decode("036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2")
+                .unwrap();
+        let hash_public_key = hash160(&public_key);
+
+        let pk = address_to_public_key_hash(address).unwrap();
+        let pk_hexstr = bytes_to_hexstr(&pk);
+        let hash_pk = bytes_to_hexstr(&hash_public_key);
+        assert_eq!(pk_hexstr, hash_pk);
+    }
     /*
     #[test]
     fn generate_key() {
