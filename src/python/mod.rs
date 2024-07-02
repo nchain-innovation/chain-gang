@@ -13,13 +13,14 @@ use crate::{
         hashes::hash160,
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
-        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, PyWallet},
+        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, PyWallet, public_key_to_address},
     },
     script::{
         stack::{decode_num, encode_num, Stack},
         Script, TransactionlessChecker, ZChecker, NO_FLAGS,
     },
-    util::{Hash256, Serializable},
+    util::{Hash256, Serializable, Error},
+    network::Network,
 };
 
 pub type Bytes = Vec<u8>;
@@ -49,6 +50,20 @@ pub fn py_hash160(py: Python, data: &[u8]) -> PyObject {
 pub fn py_address_to_public_key_hash(py: Python, address: &str) -> PyResult<PyObject> {
     let result = address_to_public_key_hash(address)?;
     Ok(PyBytes::new_bound(py, &result).into())
+}
+
+#[pyfunction(name = "public_key_to_address")]
+pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<String> {
+    // network conversion
+    let network_type = match network {
+        "BSV_Mainnet" => Network::BSV_Mainnet,
+        "BSV_Testnet" => Network::BSV_Testnet,
+        _ => {
+            let msg = format!("Unknown network: {}", network);
+            return Err(Error::BadData(msg).into());
+        }
+    };
+    Ok(public_key_to_address(public_key, network_type)?)
 }
 
 /// py_script_eval evaluates bitcoin script
@@ -84,6 +99,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_p2pkh_pyscript, m)?)?;
     m.add_function(wrap_pyfunction!(py_hash160, m)?)?;
     m.add_function(wrap_pyfunction!(py_address_to_public_key_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(py_public_key_to_address, m)?)?;
 
     // Script
     m.add_class::<PyScript>()?;
