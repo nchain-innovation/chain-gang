@@ -55,7 +55,7 @@ class TxTest(unittest.TestCase):
         tx = Tx.parse(raw_tx)
         self.assertEqual(tx.locktime, 410393)
 
-    def test_vin(self):
+    def test_vout(self):
         payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
         locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
         vouts = []

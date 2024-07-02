@@ -9,18 +9,18 @@ mod py_tx;
 mod py_wallet;
 
 use crate::{
+    network::Network,
     python::{
         hashes::hash160,
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
-        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, PyWallet, public_key_to_address},
+        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, PyWallet},
     },
     script::{
         stack::{decode_num, encode_num, Stack},
         Script, TransactionlessChecker, ZChecker, NO_FLAGS,
     },
-    util::{Hash256, Serializable, Error},
-    network::Network,
+    util::{Error, Hash256, Serializable},
 };
 
 pub type Bytes = Vec<u8>;

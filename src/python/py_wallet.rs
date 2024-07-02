@@ -140,10 +140,23 @@ impl PyWallet {
             let err_msg = format!("Unable to find input tx {:?}", &prev_hash);
             return Err(Error::BadData(err_msg));
         }
-        // Create locking script
-        let public_key = self.public_key.serialize();
-        let lock_script = p2pkh_pyscript(&hash160(&public_key)).as_script();
-        let sighash = sighash(tx, 0, &lock_script.0, 0, sighash_type, &mut self.cache).unwrap();
+        // Gather data for sighash
+        let prev_index: usize = tx.inputs[index]
+            .prev_output
+            .index
+            .try_into()
+            .expect("Unable to convert prev_index into usize");
+        let prev_amount = tx_in.outputs[prev_index].satoshis;
+        let prev_lock_script = &tx_in.outputs[prev_index].lock_script;
+
+        let sighash = sighash(
+            tx,
+            0,
+            &prev_lock_script.0,
+            prev_amount,
+            sighash_type,
+            &mut self.cache,
+        )?;
         // Get private key
         assert!(self.private_key.len() == 32);
         let private_key_as_bytes: &[u8; 32] =
@@ -151,9 +164,10 @@ impl PyWallet {
                 .try_into()
                 .expect("basic array conversion");
         // Sign sighash
-        let signature = generate_signature(private_key_as_bytes, &sighash, sighash_type).unwrap();
+        let signature = generate_signature(private_key_as_bytes, &sighash, sighash_type)?;
         // Create unlocking script for input
-        tx.inputs[0].unlock_script = create_unlock_script(&signature, &public_key);
+        let public_key = self.public_key.serialize();
+        tx.inputs[index].unlock_script = create_unlock_script(&signature, &public_key);
         Ok(())
     }
 }
