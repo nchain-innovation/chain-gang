@@ -9,7 +9,7 @@ from tx_engine import p2pkh_script, hash160, address_to_public_key_hash
 Quick test of the following functionality
 * p2pkh_script
 * h160
-* address_to_public_key
+* address_to_public_key_hash
 """
 
 log = logging.getLogger(__name__)

@@ -1,10 +1,8 @@
-use base58::FromBase58;
 use pyo3::prelude::*;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use std::slice;
 
 use crate::{
-    //messages::{Tx, TxIn, TxOut},
     messages::Tx, // TxIn, TxOut},
     network::Network,
     python::{
@@ -101,8 +99,8 @@ pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<Stri
 }
 
 pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>> {
-    let decoded: Vec<u8> = address.from_base58()?;
-    Ok(decoded[1..decoded.len() - 4].to_vec())
+    let decoded = decode_base58_checksum(address)?;
+    Ok(decoded[1..].to_vec())
 }
 
 /// Takes a hash160 and returns the p2pkh script

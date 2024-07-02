@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "tx_engine"
-readme = "docs/README.md"
+readme = "README.md"
 description = "This library provides a Python interface for building BitcoinSV scripts and transactions."
 requires-python = ">=3.8"
 classifiers = [
