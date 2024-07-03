@@ -1,17 +1,9 @@
-//use linked_hash_map::LinkedHashMap;
-// use std::collections::HashSet;
-// use std::collections::HashMap;
-
 use core::hash::Hash;
 use std::io::Cursor;
 
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
     python::py_script::PyScript,
-    transaction::{
-        generate_signature,
-        sighash::{sighash, SigHashCache},
-    },
     util::{Hash256, Serializable},
 };
 use pyo3::{
@@ -170,19 +162,6 @@ impl PyTx {
     }
 }
 
-/*
-struct PyMap<K, V>(LinkedHashMap<K, V>);
-
-impl<'a, K, V> FromPyObject<'a> for PyMap<K, V> where K: FromPyObject<'a> + Hash + Eq, V: FromPyObject<'a> + Hash + Eq {
-    fn extract(ob: &'a PyAny) -> PyResult<Self> {
-        if let Ok(dict) = ob.downcast::<PyDict>() {
-            Ok(PyMap(dict.items().extract::<Vec<(K, V)>>()?.into_iter().collect::<LinkedHashMap<_,_>>()))
-        } else {
-            Err(PyTypeError::new_err("dict expected"))
-        }
-    }
-}
-*/
 
 #[pymethods]
 impl PyTx {
@@ -228,6 +207,8 @@ impl PyTx {
         Ok(bytes.into())
     }
 
+
+    /*
     /// sign the transaction input to spend it
     /// * self - Spending transaction
     /// * n_input - Spending input index
@@ -261,6 +242,7 @@ impl PyTx {
         let bytes = PyBytes::new_bound(py, &signature);
         Ok(bytes.into())
     }
+    */
 
     /*
     /// Validates a non-coinbase transaction

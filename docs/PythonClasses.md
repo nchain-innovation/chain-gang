@@ -85,7 +85,6 @@ Script has the following methods:
 * `hash(self) -> bytes` - Return transaction hash as bytes
 * `is_coinbase(self) -> bool` - Returns true if it is a coinbase transaction
 * `serialize(self) -> bytes` - Returns Tx as bytes
- * `generate_signature_for_input(self, n_input: int, script_code: bytes, satoshis: int, private_key: bytes, sighash_type: int) -> bytes` - Sign the transaction input to spend it
     
 Script has the following class methods:
 
