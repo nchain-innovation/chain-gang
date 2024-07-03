@@ -125,8 +125,8 @@ This class represents the Wallet functionality, including handling of private an
 Wallet class has the following methods:
 
 * `__init__(wif_key: str) -> Wallet` - Constructor that takes a private key in WIF format
-* `sign_tx_with_input(self, index: int, input_tx: Tx, tx: Tx) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
-* `sign_tx_with_input_and_sighash(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
+* `sign_tx(self, index: int, input_tx: Tx, tx: Tx) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
+* `sign_tx_sighash(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
 * `get_locking_script(self) -> Script` - Returns a locking script based on the public key
 * `get_public_key_as_hexstr(self) -> String` - Return the public key as a hex string
 * `get_address(self) -> String` - Return the address based on the public key
