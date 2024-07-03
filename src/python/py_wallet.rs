@@ -193,7 +193,7 @@ impl PyWallet {
     }
 
     /// Sign a transaction with the provided previous tx, Returns new signed tx
-    fn sign_tx_with_input(&mut self, index: usize, input_pytx: PyTx, pytx: PyTx) -> PyResult<PyTx> {
+    fn sign_tx(&mut self, index: usize, input_pytx: PyTx, pytx: PyTx) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
         let input_tx = input_pytx.as_tx();
         let mut tx = pytx.as_tx();
@@ -205,7 +205,7 @@ impl PyWallet {
     }
 
     /// Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
-    fn sign_tx_with_input_and_sighash(
+    fn sign_tx_sighash(
         &mut self,
         index: usize,
         input_pytx: PyTx,

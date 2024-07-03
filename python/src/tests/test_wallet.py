@@ -5,7 +5,7 @@ import sys
 sys.path.append("..")
 
 
-from tx_engine import Wallet
+from tx_engine import Wallet, hash160, Tx, TxIn, TxOut
 
 
 class WalletTest(unittest.TestCase):
@@ -13,6 +13,33 @@ class WalletTest(unittest.TestCase):
         wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3"
         wallet = Wallet(wif)
         self.assertEqual(wallet.get_address(), "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5")
+
+    def test_sign_tx(self):
+        funding_tx = "0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
+        fund_tx = Tx.parse(bytes.fromhex(funding_tx))
+
+        wif_key = "cVvay9F4wkxrC6cLwThUnRHEajQ8FNoDEg1pbsgYjh7xYtkQ9LVZ"
+        wallet = Wallet(wif_key)
+        self.assertEqual(wallet.get_address(), "mry2yrN53spb4qXC2WFnaNh2uSHk5XDdN6")
+        pk = bytes.fromhex(wallet.get_public_key_as_hexstr())
+        hash_pk = hash160(pk)
+        self.assertEqual(hash_pk.hex(), "7d981c463355c618e9666044315ef1ffc523e870")
+        # Matches funding_tx output 1
+
+        #  fn new(prev_tx: [u8; 32], prev_index: u32, script: &[u8], sequence: u32) -> Self
+        vins = [TxIn(prev_tx=fund_tx.hash(), prev_index=1, script=b'', sequence=0xFFFFFFFF)]
+        amt = 50
+
+        # fn new(amount: i64, script_pubkey: &[u8]) -> Self
+        vouts = [TxOut(amount=amt, script_pubkey=wallet.get_locking_script().get_commands())]
+
+        # fn new(version: u32, tx_ins: Vec<PyTxIn>, tx_outs: Vec<PyTxOut>, locktime: u32) -> Self
+        tx = Tx(version=1, tx_ins=vins, tx_outs=vouts, locktime=0)
+
+        # fn sign_tx(&mut self, index: usize, input_pytx: PyTx, pytx: PyTx) -> PyResult<PyTx>
+        new_tx = wallet.sign_tx(0, fund_tx, tx)
+        expected = "0100000001039c459f8538aa0f659a34aac529934c2448786d889c5b3fa49f22cad363d7b8010000006a4730440220130f013454ba56d9f91fa66b2bfb504c42e72dccbff663baa6cf56dcaeee5e1302207abecd08818a1a5eb21c468794429fb5e783b05a2893b0036eb5371fbe4c7a61422102074255deb137868690e021edc515ab06f33513a287952ff44492390aaca8dae0ffffffff0132000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
+        self.assertEqual(new_tx.serialize().hex(), expected)
 
 
 if __name__ == "__main__":
