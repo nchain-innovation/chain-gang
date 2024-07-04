@@ -27,7 +27,7 @@ class WalletTest(unittest.TestCase):
         # Matches funding_tx output 1
 
         #  fn new(prev_tx: [u8; 32], prev_index: u32, script: &[u8], sequence: u32) -> Self
-        vins = [TxIn(prev_tx=fund_tx.hash(), prev_index=1, script=b'', sequence=0xFFFFFFFF)]
+        vins = [TxIn(prev_tx=fund_tx.id(), prev_index=1, script=b'', sequence=0xFFFFFFFF)]
         amt = 50
 
         # fn new(amount: i64, script_pubkey: &[u8]) -> Self

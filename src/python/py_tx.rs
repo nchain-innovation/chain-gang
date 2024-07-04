@@ -25,7 +25,7 @@ impl std::convert::From<crate::util::Error> for PyErr {
 #[pyclass(name = "TxIn", get_all, set_all)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxIn {
-    pub prev_tx: [u8; 32],
+    pub prev_tx: String,
     pub prev_index: u32,
     pub sequence: u32,
     pub script_sig: PyScript,
@@ -33,9 +33,12 @@ pub struct PyTxIn {
 
 impl PyTxIn {
     fn as_txin(&self) -> TxIn {
+        // convert hexstr to bytes and reverse
+        let hash = Hash256::decode(&self.prev_tx).expect("Error decoding hexstr prev outpoint");
+
         TxIn {
             prev_output: OutPoint {
-                hash: Hash256(self.prev_tx),
+                hash,
                 index: self.prev_index,
             },
             sequence: self.sequence,
@@ -47,10 +50,10 @@ impl PyTxIn {
 #[pymethods]
 impl PyTxIn {
     #[new]
-    fn new(prev_tx: [u8; 32], prev_index: u32, script: &[u8], sequence: u32) -> Self {
+    fn new(prev_tx: &str, prev_index: u32, script: &[u8], sequence: u32) -> Self {
         let script_sig = PyScript::new(script);
         PyTxIn {
-            prev_tx,
+            prev_tx: prev_tx.to_string(),
             prev_index,
             sequence,
             script_sig,
@@ -91,8 +94,9 @@ impl PyTxOut {
 
 // Conversion functions
 fn txin_as_pytxin(txin: &TxIn) -> PyTxIn {
+    let prev_tx = txin.prev_output.hash.encode();
     PyTxIn {
-        prev_tx: txin.prev_output.hash.0,
+        prev_tx,
         prev_index: txin.prev_output.index,
         sequence: txin.sequence,
         script_sig: PyScript::new(&txin.unlock_script.0),
@@ -162,7 +166,6 @@ impl PyTx {
     }
 }
 
-
 #[pymethods]
 impl PyTx {
     #[new]
@@ -206,7 +209,6 @@ impl PyTx {
         let bytes = PyBytes::new_bound(py, &v);
         Ok(bytes.into())
     }
-
 
     /*
     /// sign the transaction input to spend it

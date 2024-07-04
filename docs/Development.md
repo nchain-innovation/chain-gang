@@ -108,6 +108,6 @@ https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-e
  2) Update git `tag` and push. Otherwise the GitHub action `release` will not be triggered.
 
 ```bash
- git tag -a v0.2.0 -m "Python interface"
+ git tag -a v0.3.6 -m "Python interface"
  git push --tags
  ```
