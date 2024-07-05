@@ -50,8 +50,9 @@ impl PyTxIn {
 #[pymethods]
 impl PyTxIn {
     #[new]
-    fn new(prev_tx: &str, prev_index: u32, script: &[u8], sequence: u32) -> Self {
-        let script_sig = PyScript::new(script);
+    #[pyo3(signature = (prev_tx, prev_index, script=vec![], sequence=0xFFFFFFFF))]
+    fn new(prev_tx: &str, prev_index: u32, script: Vec<u8>, sequence: u32) -> Self {
+        let script_sig = PyScript::new(&script);
         PyTxIn {
             prev_tx: prev_tx.to_string(),
             prev_index,

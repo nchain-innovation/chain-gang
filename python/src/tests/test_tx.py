@@ -2,7 +2,7 @@ import unittest
 import sys
 sys.path.append("..")
 
-from tx_engine import Tx, p2pkh_script, address_to_public_key_hash, TxOut
+from tx_engine import Tx, p2pkh_script, address_to_public_key_hash, TxOut, TxIn
 
 
 class TxTest(unittest.TestCase):
@@ -66,6 +66,13 @@ class TxTest(unittest.TestCase):
         prev_tx = fund_tx.tx_ins[0].prev_tx
 
         self.assertEqual(prev_tx, "5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba")
+
+    def test_vin_constructor(self):
+        # __init__(prev_tx: bytes, prev_index: int, script_sig: bytes, sequence: int) -> TxIn
+
+        txin = TxIn(prev_tx= "5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index= 0)
+        self.assertTrue(isinstance(txin, TxIn))
+
 
 
 if __name__ == "__main__":

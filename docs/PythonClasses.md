@@ -98,12 +98,12 @@ TxIn has the following properties:
 
 * `prev_tx` - bytes
 * `prev_index` - unsigned int
-* `sequence` -  int
 * `script_sig` - Script
+* `sequence` -  int
 
 TxIn has the following method:
 
-* `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes, sequence: int) -> TxIn` - Constructor that takes the fields 
+* `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
 
 ## TxOut
 TxOut represents a bitcoin transaction output.
