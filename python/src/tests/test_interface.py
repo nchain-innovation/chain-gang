@@ -2,9 +2,7 @@ import unittest
 import sys
 sys.path.append("..")
 
-from tx_engine.interface.interface_factory import interface_factory
-from tx_engine.interface.woc_interface import WoCInterface
-from tx_engine.interface.mock_interface import MockInterface
+from tx_engine import interface_factory, WoCInterface, MockInterface
 
 
 class InterfaceTest(unittest.TestCase):
