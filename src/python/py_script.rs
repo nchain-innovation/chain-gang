@@ -118,6 +118,7 @@ impl PyScript {
 #[pymethods]
 impl PyScript {
     #[new]
+    #[pyo3(signature = (cmds=vec![]), text_signature="cmds=[], /)")]
     pub fn py_new(cmds: Vec<Command>) -> PyScript {
         // Convert Vec<Commands> to Vec<u8>
         let script = commands_as_vec(cmds);

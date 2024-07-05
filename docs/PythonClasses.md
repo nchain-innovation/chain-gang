@@ -23,7 +23,7 @@ Script has the following property:
 
 Script has the following methods:
 
-* `__init__(self, cmds: bytes) -> Script` - Constructor that takes an array of bytes 
+* `__init__(self, cmds: bytes=[]) -> Script` - Constructor that takes an array of bytes 
 * `raw_serialize(self) -> bytes` - Return the serialised script without the length prepended
 * `serialize(self) -> bytes` - Return the serialised script with the length prepended
 *  `get_commands(self) -> bytes` - Return a copy of the commands in this script
