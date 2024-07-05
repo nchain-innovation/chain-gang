@@ -80,7 +80,7 @@ Script has the following properties:
 
 Script has the following methods:
 
-* `__init__(version: int, tx_ins: [TxIn], tx_outs: [TxOut], locktime: int) -> Tx` - Constructor that takes the fields 
+* `__init__(version: int, tx_ins: [TxIn], tx_outs: [TxOut], locktime: int=0) -> Tx` - Constructor that takes the fields 
 * `id(self) -> str` - Return human-readable hexadecimal of the transaction hash
 * `hash(self) -> bytes` - Return transaction hash as bytes
 * `is_coinbase(self) -> bool` - Returns true if it is a coinbase transaction
@@ -174,6 +174,8 @@ The `Mock Interface` is a `BlockchainInterface` that is used for unit testing.
 
 
 # Other Functions
+These are public key and address functions that are likely to be used if you don't have the private key and 
+are not using the Wallet class.
 
 * `address_to_public_key_hash(address: str) -> bytes` - Given the address return the hash160 of the public key
 * `hash160(data: bytes) -> bytes` - Returns the hash160 of the provided data (usually the public key)

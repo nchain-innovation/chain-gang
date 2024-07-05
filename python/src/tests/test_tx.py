@@ -72,6 +72,11 @@ class TxTest(unittest.TestCase):
         txin = TxIn(prev_tx="5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index=0)
         self.assertTrue(isinstance(txin, TxIn))
 
+    def test_tx_constructor(self):
+        # new(version: u32, tx_ins: Vec<PyTxIn>, tx_outs: Vec<PyTxOut>, locktime: u32) -> Self {
+        tx = Tx(version=1, tx_ins=[], tx_outs=[])
+        self.assertTrue(isinstance(tx, Tx))
+
 
 if __name__ == "__main__":
     unittest.main()

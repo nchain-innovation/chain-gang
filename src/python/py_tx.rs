@@ -170,6 +170,7 @@ impl PyTx {
 #[pymethods]
 impl PyTx {
     #[new]
+    #[pyo3(signature = (version, tx_ins, tx_outs, locktime=0))]
     fn new(version: u32, tx_ins: Vec<PyTxIn>, tx_outs: Vec<PyTxOut>, locktime: u32) -> Self {
         PyTx {
             version,
@@ -211,54 +212,6 @@ impl PyTx {
         Ok(bytes.into())
     }
 
-    /*
-    /// sign the transaction input to spend it
-    /// * self - Spending transaction
-    /// * n_input - Spending input index
-    /// * script_code - The lock_script of the output being spent. This may be a subset of the lock_script if OP_CODESEPARATOR is used.
-    /// * satoshis - The satoshi amount in the output being spent
-    /// * sighash_type - Sighash flags
-    fn generate_signature_for_input(
-        &self,
-        py: Python<'_>,
-        n_input: usize,
-        script_code: &[u8],
-        satoshis: i64,
-        private_key: &[u8],
-        sighash_type: u8,
-    ) -> PyResult<PyObject> {
-        let mut cache = SigHashCache::new();
-        let tx = self.as_tx();
-        // Create sighash
-        let tx_sighash = sighash(
-            &tx,
-            n_input,
-            script_code,
-            satoshis,
-            sighash_type,
-            &mut cache,
-        )?;
-
-        let private_key: &[u8; 32] = private_key.try_into()?;
-        // generate_signature
-        let signature = generate_signature(private_key, &tx_sighash, sighash_type)?;
-        let bytes = PyBytes::new_bound(py, &signature);
-        Ok(bytes.into())
-    }
-    */
-
-    /*
-    /// Validates a non-coinbase transaction
-    //pub fn validate(&self, require_sighash_forkid: bool,   use_genesis_rules: bool,  utxos: LinkedHashMap<OutPoint, TxOut>,  pregenesis_outputs: &HashSet<OutPoint>) -> PyResult<()> {
-        pub fn validate(&self, py: Python<'_>, require_sighash_forkid: bool,   use_genesis_rules: bool,  utxos: PyObject,  pregenesis_outputs: PyObject) -> PyResult<()> {
-        let tx = self.as_tx();
-        let linked_utxo: HashMap<u8, u8> = utxos.extract(py)?;
-        //let linked_utxo: HashMap<OutPoint, TxOut> = utxos.extract(py)?;
-        //let p_outputs: HashSet<OutPoint> =  pregenesis_outputs.extract(py)?;
-        //Ok(tx.validate(require_sighash_forkid, use_genesis_rules, &linked_utxo, &p_outputs)?)
-        Ok(())
-    }
-    */
     /// Parse Bytes to produce Tx
     // #[new]
     #[classmethod]
