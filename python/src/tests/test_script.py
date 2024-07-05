@@ -41,6 +41,5 @@ class ScriptTest(unittest.TestCase):
         self.assertTrue(isinstance(s2, Script))
 
 
-
 if __name__ == "__main__":
     unittest.main()

@@ -69,10 +69,8 @@ class TxTest(unittest.TestCase):
 
     def test_vin_constructor(self):
         # __init__(prev_tx: bytes, prev_index: int, script_sig: bytes, sequence: int) -> TxIn
-
-        txin = TxIn(prev_tx= "5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index= 0)
+        txin = TxIn(prev_tx="5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index=0)
         self.assertTrue(isinstance(txin, TxIn))
-
 
 
 if __name__ == "__main__":
