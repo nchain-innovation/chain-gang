@@ -111,3 +111,37 @@ https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-e
  git tag -a v0.3.6 -m "Python interface"
  git push --tags
  ```
+
+ # Jupyter Notebooks and Development
+This is the build process for tx-engine for use with Jupyter Notebooks
+
+
+
+ 
+``` bash
+brew install maturin
+ 
+cd ~
+python3 -m venv penv
+cd ~/penv/bin/activate
+cd <chain-gang folder>
+maturin develop
+cd ~
+python3 -m pip install ipykernel
+python3 -m ipykernel install —user —name penv —display-name “Python with tx_engine”
+``` 
+ 
+
+After this, in Jupyter a new kernel will show up under the name "Python with tx_engine"
+
+
+## Jupyter "otebooks with PyPi
+To use Jupyter 
+
+1) install pvenv
+```
+source ~/penv/bin/activate
+python3 -m pip install ipykernel
+python3 -m ipykernel install —user —name penv —display-name “Python with tx_engine”
+
+```
