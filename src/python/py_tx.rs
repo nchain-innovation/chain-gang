@@ -180,6 +180,10 @@ impl PyTx {
         }
     }
 
+    fn clone_py(&self) -> Self {
+        self.clone()
+    }
+
     /// def id(self) -> str:
     /// Human-readable hexadecimal of the transaction hash"""
     fn id(&self) -> PyResult<String> {
