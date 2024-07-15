@@ -148,14 +148,16 @@ impl PyScript {
     }
 
     /// Return a copy of the commands in this script
-    fn get_commands(&self, py: Python<'_>) -> PyResult<PyObject> {
-        Ok(PyBytes::new_bound(py, &self.cmds).into())
+    fn get_commands(&self, py: Python<'_>) -> PyObject {
+        PyBytes::new_bound(py, &self.cmds).into()
     }
 
     /// Return a string presentation of the script
-    fn to_string(&self) -> PyResult<String> {
-        Ok(format!("{:?}", self.as_script())) // using the Display implementation in script/mod.rs
+    fn to_string(&self) -> String {
+        let script = self.as_script();
+        script.string_representation()  // using the Display implementation in script/mod.rs
     }
+
     // c_script = a_script + b_script
     fn __add__(&self, other: &Self) -> Self {
         let mut script = self.cmds.clone();

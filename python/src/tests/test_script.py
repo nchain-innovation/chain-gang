@@ -2,7 +2,7 @@ import unittest
 import sys
 sys.path.append("..")
 
-from tx_engine import Script, Context
+from tx_engine import Script, Context, p2pkh_script, hash160
 
 
 class ScriptTest(unittest.TestCase):
@@ -39,6 +39,20 @@ class ScriptTest(unittest.TestCase):
         self.assertTrue(isinstance(s1, Script))
         s2 = Script()
         self.assertTrue(isinstance(s2, Script))
+        self.assertEqual(s1, s2)
+
+    def test_script_to_string(self):
+        # With round trip back to script
+        public_key = bytes.fromhex("036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2")
+        script1 = p2pkh_script(hash160(public_key))
+        as_str = script1.to_string()
+        self.assertEqual(as_str, "OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG")
+
+        script2 = Script.parse_string(as_str)
+        as_str2 = script2.to_string()
+        self.assertEqual(as_str2, "OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG")
+
+        self.assertEqual(script1, script2)
 
 
 if __name__ == "__main__":
