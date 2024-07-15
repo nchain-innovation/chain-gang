@@ -180,6 +180,10 @@ impl PyTx {
         }
     }
 
+    fn clone_py(&self) -> Self {
+        self.clone()
+    }
+
     /// def id(self) -> str:
     /// Human-readable hexadecimal of the transaction hash"""
     fn id(&self) -> PyResult<String> {
@@ -210,6 +214,18 @@ impl PyTx {
         tx.write(&mut v)?;
         let bytes = PyBytes::new_bound(py, &v);
         Ok(bytes.into())
+    }
+
+    /// Add a TxIn to a transaction
+    fn add_tx_in(&mut self, txin: PyTxIn) -> PyResult<bool>{
+        self.tx_ins.push(txin);
+        Ok(true)
+    }
+
+    /// Add a TxOut to a transaction
+    fn add_tx_out(&mut self, txout: PyTxOut) -> PyResult<bool>{
+        self.tx_outs.push(txout);
+        Ok(true)
     }
 
     /// Parse Bytes to produce Tx

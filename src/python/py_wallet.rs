@@ -18,7 +18,7 @@ use crate::{
     transaction::{
         generate_signature,
         p2pkh::create_unlock_script,
-        sighash::{sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_NONE},
+        sighash::{sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_ALL},
     },
     util::{Error, Result},
 };
@@ -151,7 +151,7 @@ impl PyWallet {
 
         let sighash = sighash(
             tx,
-            0,
+            index, 
             &prev_lock_script.0,
             prev_amount,
             sighash_type,
@@ -197,8 +197,8 @@ impl PyWallet {
         // Convert PyTx -> Tx
         let input_tx = input_pytx.as_tx();
         let mut tx = pytx.as_tx();
-        // Set sighash flags
-        let sighash_type = SIGHASH_NONE | SIGHASH_FORKID;
+        // Set sighash flags -> Why SIGASH_NONE?
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         self.sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
         let updated_txpy = tx_as_pytx(&tx);
         Ok(updated_txpy)
