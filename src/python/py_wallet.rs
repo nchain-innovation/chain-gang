@@ -18,7 +18,7 @@ use crate::{
     transaction::{
         generate_signature,
         p2pkh::create_unlock_script,
-        sighash::{sighash, SigHashCache, SIGHASH_FORKID, SIGHASH_ALL},
+        sighash::{sighash, SigHashCache, SIGHASH_ALL, SIGHASH_FORKID},
     },
     util::{Error, Result},
 };
@@ -151,7 +151,7 @@ impl PyWallet {
 
         let sighash = sighash(
             tx,
-            index, 
+            index,
             &prev_lock_script.0,
             prev_amount,
             sighash_type,

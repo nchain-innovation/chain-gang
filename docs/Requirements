@@ -1,0 +1,16 @@
+
+# Tx_engine Requirements
+Tx_engine was developed from the following "requirements".
+
+* Script
+* Script + Script = Script
+* Script.parse_string
+* Script.raw_serialize
+* The debugger (or, more generally, the Context class)
+
+## Requirements Part 2 
+* Tx ouput - including script output
+* Script output - in the form that can be read in using Script::parse_string
+* Tx input signing - issue with for loops and multiple inputs, need to think through
+    * remove `clone_py`
+* Tx verify - either using Rust or Python

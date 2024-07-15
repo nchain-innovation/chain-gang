@@ -24,15 +24,6 @@ Notes on the development of `chain-gang` and the `tx_engine` Python interface.
 * `target` - contains the build artefacts for the project
 
 
-# Tx_engine Requirements
-Tx_engine was developed from the following "requirements".
-
-* Script
-* Script + Script = Script
-* Script.parse_string
-* Script.raw_serialize
-* The debugger (or, more generally, the Context class)
-
 
 # Tx_engine Unit Tests
 The unit tests need to operate in the Python virtual environment
@@ -65,21 +56,12 @@ $ ./lint.sh
 
 Maturin User Guide [here](https://www.maturin.rs/)
 
-* `maturin publish --interpreter -r https://test.pypi.org/legacy/`
-maturin failed
-Caused by: Failed to get registry https://test.pypi.org/legacy/ in .pypirc. Note: Your index didn't start with http:// or https://, which is required for non-pypirc indices.
-
-tried 
-`pip install --index-url https://test.pypi.org/simple/ --upgrade pip`
-still failed
-
-Tried disabling WARP, still failed
-
 
 ## Maturin-Action
 https://github.com/PyO3/maturin-action
 
-GitHub Action to install and run a custom maturin command with built in support for cross compilation
+GitHub Action to install and run a custom maturin command with built in support for cross compilation.
+Used to publish the `tx-engine` on `PyPi`.
 
 # Python VENV
 
@@ -104,10 +86,11 @@ https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-e
  # Github & PyPi
 
  To force a release the git version needs to be tagged.
- 1) Update `cargo.toml` version. Otherwise GitHub won't figure out that the software has been updated.
+ 1) Update `cargo.toml` version push code up to repo. Otherwise GitHub won't figure out that the software has been updated.
  2) Update git `tag` and push. Otherwise the GitHub action `release` will not be triggered.
 
 ```bash
+ git push
  git tag -a v0.3.6 -m "Python interface"
  git push --tags
  ```
@@ -135,7 +118,7 @@ python3 -m ipykernel install —user —name penv —display-name “Python with
 After this, in Jupyter a new kernel will show up under the name "Python with tx_engine"
 
 
-## Jupyter "otebooks with PyPi
+## Jupyter Notebooks with PyPi
 To use Jupyter 
 
 1) install pvenv

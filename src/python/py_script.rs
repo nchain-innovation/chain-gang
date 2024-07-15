@@ -113,8 +113,6 @@ impl PyScript {
         reader.read_exact(&mut script)?;
         Ok(PyScript { cmds: script })
     }
-
-
 }
 
 #[pymethods]

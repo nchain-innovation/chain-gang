@@ -217,13 +217,13 @@ impl PyTx {
     }
 
     /// Add a TxIn to a transaction
-    fn add_tx_in(&mut self, txin: PyTxIn) -> PyResult<bool>{
+    fn add_tx_in(&mut self, txin: PyTxIn) -> PyResult<bool> {
         self.tx_ins.push(txin);
         Ok(true)
     }
 
     /// Add a TxOut to a transaction
-    fn add_tx_out(&mut self, txout: PyTxOut) -> PyResult<bool>{
+    fn add_tx_out(&mut self, txout: PyTxOut) -> PyResult<bool> {
         self.tx_outs.push(txout);
         Ok(true)
     }
