@@ -77,6 +77,51 @@ class TxTest(unittest.TestCase):
         tx = Tx(version=1, tx_ins=[], tx_outs=[])
         self.assertTrue(isinstance(tx, Tx))
 
+    def test_add_tx_in(self):
+        tx = Tx(version=1, tx_ins=[], tx_outs=[])
+        self.assertTrue(isinstance(tx, Tx))
+        self.assertEqual(len(tx.tx_ins), 0)
+
+        # * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
+        txin = TxIn(prev_tx="5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index=0)
+        tx.add_tx_in(txin)
+        self.assertEqual(len(tx.tx_ins), 1)
+        self.assertEqual(tx.tx_ins[0], txin)
+
+    def test_add_tx_out(self):
+        tx = Tx(version=1, tx_ins=[], tx_outs=[])
+        self.assertTrue(isinstance(tx, Tx))
+        self.assertEqual(len(tx.tx_outs), 0)
+
+        # * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
+        payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
+        locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
+        txout = TxOut(amount=100, script_pubkey=locking_script.get_commands())
+
+        tx.add_tx_out(txout)
+        self.assertEqual(len(tx.tx_outs), 1)
+        self.assertEqual(tx.tx_outs[0], txout)
+
+    def test_txin_eq(self):
+        txin1 = TxIn(prev_tx="5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index=0)
+        txin2 = TxIn(prev_tx="5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index=1)
+        self.assertNotEqual(txin1, txin2)
+        txin2.prev_index = 0
+        self.assertEqual(txin1, txin2)
+
+    def test_txout_eq(self):
+        payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
+        locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
+        txout1 = TxOut(amount=100, script_pubkey=locking_script.get_commands())
+        txout2 = TxOut(amount=101, script_pubkey=locking_script.get_commands())
+        self.assertNotEqual(txout1, txout2)
+        txout2.amount = 100
+        self.assertEqual(txout1, txout2)
+
+    def test_tx_eq(self):
+        tx1 = Tx(version=1, tx_ins=[], tx_outs=[])
+        tx2 = Tx(version=1, tx_ins=[], tx_outs=[])
+        self.assertEqual(tx1, tx2)
 
 if __name__ == "__main__":
     unittest.main()

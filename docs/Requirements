@@ -14,3 +14,5 @@ Tx_engine was developed from the following "requirements".
 * Tx input signing - issue with for loops and multiple inputs, need to think through
     * remove `clone_py`
 * Tx verify - either using Rust or Python
+
+* Add equality tests (`==`) to Script, Tx, TxIn, TxOut

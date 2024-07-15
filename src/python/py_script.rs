@@ -163,6 +163,11 @@ impl PyScript {
         PyScript { cmds: script }
     }
 
+    // a_script == b_script
+    fn __eq__(&self, other: &Self) -> bool {
+        self.cmds == other.cmds
+    }
+
     /// Converts a string to a Script
     #[classmethod]
     fn parse_string(_cls: &Bound<'_, PyType>, in_string: &str) -> PyResult<Self> {

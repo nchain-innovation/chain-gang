@@ -60,6 +60,11 @@ impl PyTxIn {
             script_sig,
         }
     }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
+    }
+
 }
 
 /// TxOut - This represents a bitcoin transaction output
@@ -90,6 +95,10 @@ impl PyTxOut {
             amount,
             script_pubkey: PyScript::new(script_pubkey),
         }
+    }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
     }
 }
 
@@ -217,15 +226,17 @@ impl PyTx {
     }
 
     /// Add a TxIn to a transaction
-    fn add_tx_in(&mut self, txin: PyTxIn) -> PyResult<bool> {
+    fn add_tx_in(&mut self, txin: PyTxIn) {
         self.tx_ins.push(txin);
-        Ok(true)
     }
 
     /// Add a TxOut to a transaction
-    fn add_tx_out(&mut self, txout: PyTxOut) -> PyResult<bool> {
+    fn add_tx_out(&mut self, txout: PyTxOut) {
         self.tx_outs.push(txout);
-        Ok(true)
+    }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self == other
     }
 
     /// Parse Bytes to produce Tx

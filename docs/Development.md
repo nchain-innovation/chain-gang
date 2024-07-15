@@ -56,6 +56,15 @@ $ ./lint.sh
 
 Maturin User Guide [here](https://www.maturin.rs/)
 
+## Re-install of the Python code
+To force the reinstall of the Python code :
+1) `maturin build` in the virtual env 
+2) `pip3 install --force-reinstall` in the virtual env .. 
+
+For example
+``` bash
+pip3 install --force-reinstall target/wheels/tx_engine-0.3.8-cp310-cp310-macosx_11_0_arm64.whl
+```
 
 ## Maturin-Action
 https://github.com/PyO3/maturin-action
@@ -83,39 +92,33 @@ For background information see:
 https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment
 
 
- # Github & PyPi
+# Github & PyPi
 
- To force a release the git version needs to be tagged.
- 1) Update `cargo.toml` version push code up to repo. Otherwise GitHub won't figure out that the software has been updated.
- 2) Update git `tag` and push. Otherwise the GitHub action `release` will not be triggered.
+To force a release the git version needs to be tagged.
+1) Update `cargo.toml` version push code up to repo. Otherwise GitHub won't figure out that the software has been updated.
+2) Update git `tag` and push. Otherwise the GitHub action `release` will not be triggered.
 
 ```bash
- git push
- git tag -a v0.3.6 -m "Python interface"
- git push --tags
- ```
+git push
+git tag -a v0.3.6 -m "Python interface"
+git push --tags
+```
 
- # Jupyter Notebooks and Development
+# Jupyter Notebooks and Development
 This is the build process for tx-engine for use with Jupyter Notebooks
 
+1) Install Maturin
+2) Configure Python VENV
+3) Activate Python VENV
+Then:
 
-
- 
 ``` bash
-brew install maturin
- 
-cd ~
-python3 -m venv penv
-cd ~/penv/bin/activate
 cd <chain-gang folder>
 maturin develop
 cd ~
 python3 -m pip install ipykernel
 python3 -m ipykernel install —user —name penv —display-name “Python with tx_engine”
 ``` 
- 
-
-After this, in Jupyter a new kernel will show up under the name "Python with tx_engine"
 
 
 ## Jupyter Notebooks with PyPi
@@ -124,7 +127,9 @@ To use Jupyter
 1) install pvenv
 ```
 source ~/penv/bin/activate
+python3 -m pip install tx-engine
 python3 -m pip install ipykernel
 python3 -m ipykernel install —user —name penv —display-name “Python with tx_engine”
-
 ```
+
+After this, in Jupyter a new kernel will show up under the name "Python with tx_engine"
