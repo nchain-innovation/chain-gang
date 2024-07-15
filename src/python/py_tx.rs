@@ -64,7 +64,6 @@ impl PyTxIn {
     fn __eq__(&self, other: &Self) -> bool {
         self == other
     }
-
 }
 
 /// TxOut - This represents a bitcoin transaction output

@@ -155,7 +155,7 @@ impl PyScript {
     /// Return a string presentation of the script
     fn to_string(&self) -> String {
         let script = self.as_script();
-        script.string_representation()  // using the Display implementation in script/mod.rs
+        script.string_representation() // using the Display implementation in script/mod.rs
     }
 
     // c_script = a_script + b_script

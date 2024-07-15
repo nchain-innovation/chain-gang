@@ -134,8 +134,8 @@ impl Script {
                 OP_15 => ret.push_str("OP_15"),
                 OP_16 => ret.push_str("OP_16"),
                 len @ 1..=75 => {
-                    ret.push_str(&format!("{:#x} ", len));
-                    
+                    ret.push_str(&format!("{:#04x} ", len));
+
                     if i + 1 + len as usize <= script.len() {
                         ret.push_str("0x");
                         ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));
@@ -147,8 +147,9 @@ impl Script {
                     ret.push_str("OP_PUSHDATA1 ");
                     if i + 2 <= script.len() {
                         let len = script[i + 1] as usize;
-                        ret.push_str(&format!("{} ", len));
+                        ret.push_str(&format!("{:#04x} ", len));
                         if i + 2 + len <= script.len() {
+                            ret.push_str("0x");
                             ret.push_str(&hex::encode(&script[i + 2..i + 2 + len]));
                         } else {
                             break;
@@ -161,8 +162,10 @@ impl Script {
                     ret.push_str("OP_PUSHDATA2 ");
                     if i + 3 <= script.len() {
                         let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
-                        ret.push_str(&format!("{} ", len));
+                        ret.push_str(&format!("{:#04x} ", (script[i + 1] as usize)));
+                        ret.push_str(&format!("{:#04x} ", (script[i + 2] as usize)));
                         if i + 3 + len <= script.len() {
+                            ret.push_str("0x");
                             ret.push_str(&hex::encode(&script[i + 3..i + 3 + len]));
                         } else {
                             break;
@@ -178,9 +181,15 @@ impl Script {
                             + ((script[i + 2] as usize) << 8)
                             + ((script[i + 3] as usize) << 16)
                             + ((script[i + 4] as usize) << 24);
-                        ret.push_str(&format!("{} ", len));
+
+                        ret.push_str(&format!("{:#04x} ", (script[i + 1] as usize)));
+                        ret.push_str(&format!("{:#04x} ", (script[i + 2] as usize)));
+                        ret.push_str(&format!("{:#04x} ", (script[i + 3] as usize)));
+                        ret.push_str(&format!("{:#04x} ", (script[i + 4] as usize)));
+
                         if i + 5 + len <= script.len() {
-                            ret.push_str(&hex::encode(&script[i..i + len]));
+                            ret.push_str("0x");
+                            ret.push_str(&hex::encode(&script[i + 5..i + 5 + len]));
                         } else {
                             break;
                         }
@@ -271,7 +280,6 @@ impl Script {
         }
         ret
     }
-
 }
 
 impl fmt::Debug for Script {
@@ -348,7 +356,7 @@ impl fmt::Debug for Script {
                             + ((script[i + 4] as usize) << 24);
                         ret.push_str(&format!("{} ", len));
                         if i + 5 + len <= script.len() {
-                            ret.push_str(&hex::encode(&script[i..i + len]));
+                            ret.push_str(&hex::encode(&script[i + 5..i + 5 + len]));
                         } else {
                             break;
                         }

@@ -28,6 +28,7 @@ Script has the following methods:
 * `serialize(self) -> bytes` - Return the serialised script with the length prepended
 *  `get_commands(self) -> bytes` - Return a copy of the commands in this script
 * `__add__(self, other: Script) -> Script` - Enable script addition e.g. `c_script = a_script + b_script`
+* `to_string(self) -> String` - return the script as a string, that can be parsed by `parse_string()`
 
 Script has the following class methods:
 * `Script.parse_string(in_string: str) -> Script` - Converts a string of OP_CODES into a Script
