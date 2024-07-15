@@ -72,21 +72,22 @@ self.assertEqual(context.raw_stack, [[1, 2]])
 
 Tx represents a bitcoin transaction.
 
-Script has the following properties:
+Tx has the following properties:
 * `version` - unsigned integer
 * `tx_ins` - array of `TxIn` classes,
 * `tx_outs` - array of `TxOut` classes
 * `locktime` - unsigned integer
 
-Script has the following methods:
+Tx has the following methods:
 
 * `__init__(version: int, tx_ins: [TxIn], tx_outs: [TxOut], locktime: int=0) -> Tx` - Constructor that takes the fields 
 * `id(self) -> str` - Return human-readable hexadecimal of the transaction hash
 * `hash(self) -> bytes` - Return transaction hash as bytes
 * `is_coinbase(self) -> bool` - Returns true if it is a coinbase transaction
 * `serialize(self) -> bytes` - Returns Tx as bytes
+* `copy(self) -> Tx` - Returns a copy of the Tx
     
-Script has the following class methods:
+Tx has the following class methods:
 
 * `Tx.parse(in_bytes: bytes) -> Tx`  - Parse bytes to produce Tx
 
@@ -101,7 +102,7 @@ TxIn has the following properties:
 * `script_sig` - Script
 * `sequence` -  int
 
-TxIn has the following method:
+TxIn has the following constructor method:
 
 * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
 
@@ -114,7 +115,7 @@ TxOut has the following properties:
 * `script_pubkey` - Script
 
 
-TxOut has the following method:
+TxOut has the following constructor method:
 
 * `__init__(amount: int, script_pubkey: bytes) -> TxOut` - Constructor that takes the fields 
 

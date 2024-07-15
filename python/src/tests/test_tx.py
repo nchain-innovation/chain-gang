@@ -1,5 +1,6 @@
 import unittest
 import sys
+
 sys.path.append("..")
 
 from tx_engine import Tx, p2pkh_script, address_to_public_key_hash, TxOut, TxIn
@@ -82,7 +83,7 @@ class TxTest(unittest.TestCase):
         self.assertTrue(isinstance(tx, Tx))
         self.assertEqual(len(tx.tx_ins), 0)
 
-        # * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
+        # * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields
         txin = TxIn(prev_tx="5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index=0)
         tx.add_tx_in(txin)
         self.assertEqual(len(tx.tx_ins), 1)
@@ -93,7 +94,7 @@ class TxTest(unittest.TestCase):
         self.assertTrue(isinstance(tx, Tx))
         self.assertEqual(len(tx.tx_outs), 0)
 
-        # * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
+        # * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields
         payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
         locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
         txout = TxOut(amount=100, script_pubkey=locking_script.get_commands())
@@ -122,6 +123,12 @@ class TxTest(unittest.TestCase):
         tx1 = Tx(version=1, tx_ins=[], tx_outs=[])
         tx2 = Tx(version=1, tx_ins=[], tx_outs=[])
         self.assertEqual(tx1, tx2)
+
+    def test_tx_copy(self):
+        tx1 = Tx(version=1, tx_ins=[], tx_outs=[])
+        tx2 = tx1.copy()
+        self.assertEqual(tx1, tx2)
+
 
 if __name__ == "__main__":
     unittest.main()

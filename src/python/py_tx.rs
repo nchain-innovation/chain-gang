@@ -22,7 +22,7 @@ impl std::convert::From<crate::util::Error> for PyErr {
 /// TxIn - This represents is a bitcoin transaction input
 //
 // #[pyclass(name = "TxIn")]
-#[pyclass(name = "TxIn", get_all, set_all)]
+#[pyclass(name = "TxIn", get_all, set_all, dict)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxIn {
     pub prev_tx: String,
@@ -71,7 +71,7 @@ impl PyTxIn {
 
 //
 //#[pyclass(name = "TxOut")]
-#[pyclass(name = "TxOut", get_all, set_all)]
+#[pyclass(name = "TxOut", get_all, set_all, dict)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxOut {
     pub amount: i64,
@@ -146,7 +146,7 @@ pub fn tx_as_pytx(tx: &Tx) -> PyTx {
 /// * serialise a transaction - rust
 /// * sign tx - rust
 /// * verify tx - rust
-#[pyclass(name = "Tx", get_all, set_all)]
+#[pyclass(name = "Tx", get_all, set_all, dict)]
 #[derive(Default, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct PyTx {
     pub version: u32,
@@ -189,7 +189,7 @@ impl PyTx {
         }
     }
 
-    fn clone_py(&self) -> Self {
+    fn copy(&self) -> Self {
         self.clone()
     }
 
