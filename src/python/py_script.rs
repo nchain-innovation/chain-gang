@@ -1,14 +1,12 @@
-
-use std::{
-    fmt, 
-    io::{Cursor, Read, Write}
-};
 use pyo3::{
     prelude::*,
     types::{PyBytes, PyType},
 };
 use regex::Regex;
-
+use std::{
+    fmt,
+    io::{Cursor, Read, Write},
+};
 
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
@@ -129,7 +127,13 @@ impl fmt::Debug for PyScript {
     }
 }
 
-
+impl fmt::Display for PyScript {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let script = self.as_script();
+        let ret = script.string_representation();
+        f.write_str(&ret)
+    }
+}
 
 #[pymethods]
 impl PyScript {
@@ -169,9 +173,13 @@ impl PyScript {
     }
 
     /// Return a string presentation of the script
+    fn __repr__(&self) -> String {
+        format!("{}", &self)
+    }
+
+    #[allow(clippy::inherent_to_string_shadow_display)]
     fn to_string(&self) -> String {
-        let script = self.as_script();
-        script.string_representation() // using the Display implementation in script/mod.rs
+        self.__repr__()
     }
 
     // c_script = a_script + b_script

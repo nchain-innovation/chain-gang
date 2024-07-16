@@ -28,7 +28,7 @@ Script has the following methods:
 * `serialize(self) -> bytes` - Return the serialised script with the length prepended
 *  `get_commands(self) -> bytes` - Return a copy of the commands in this script
 * `__add__(self, other: Script) -> Script` - Enable script addition e.g. `c_script = a_script + b_script`
-* `to_string(self) -> String` - return the script as a string, that can be parsed by `parse_string()`
+* `to_string(self) -> String` - return the script as a string, that can be parsed by `parse_string()`. Note also that you can just print the script (`print(script)`)
 
 Script has the following class methods:
 * `Script.parse_string(in_string: str) -> Script` - Converts a string of OP_CODES into a Script
@@ -87,7 +87,7 @@ Tx has the following methods:
 * `is_coinbase(self) -> bool` - Returns true if it is a coinbase transaction
 * `serialize(self) -> bytes` - Returns Tx as bytes
 * `copy(self) -> Tx` - Returns a copy of the Tx
-* `to_string(self) -> String` - return the Tx as a string
+* `to_string(self) -> String` - return the Tx as a string. Note also that you can just print the tx (`print(tx)`).
     
 Tx has the following class methods:
 

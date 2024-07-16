@@ -1,16 +1,15 @@
-use core::hash::Hash;
-use std::io::Cursor;
-
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
     python::py_script::PyScript,
     util::{Hash256, Serializable},
 };
+use core::hash::Hash;
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
     types::{PyBytes, PyType},
 };
+use std::{fmt, io::Cursor};
 
 // Convert errors to PyErr
 impl std::convert::From<crate::util::Error> for PyErr {
@@ -175,6 +174,13 @@ impl PyTx {
     }
 }
 
+impl fmt::Display for PyTx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ret = format!("{:?}", &self);
+        f.write_str(&ret)
+    }
+}
+
 #[pymethods]
 impl PyTx {
     #[new]
@@ -192,8 +198,8 @@ impl PyTx {
         self.clone()
     }
 
-    /// def id(self) -> str:
     /// Human-readable hexadecimal of the transaction hash"""
+    /// def id(self) -> str:
     fn id(&self) -> PyResult<String> {
         let tx = self.as_tx();
         let hash = tx.hash();
@@ -238,8 +244,13 @@ impl PyTx {
         self == other
     }
 
+    fn __repr__(&self) -> String {
+        format!("{}", &self)
+    }
+
+    #[allow(clippy::inherent_to_string_shadow_display)]
     fn to_string(&self) -> String {
-        format!("{:?}", &self)
+        self.__repr__()
     }
 
     /// Parse Bytes to produce Tx
