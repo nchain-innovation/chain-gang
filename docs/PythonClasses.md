@@ -88,6 +88,9 @@ Tx has the following methods:
 * `serialize(self) -> bytes` - Returns Tx as bytes
 * `copy(self) -> Tx` - Returns a copy of the Tx
 * `to_string(self) -> String` - return the Tx as a string. Note also that you can just print the tx (`print(tx)`).
+* `validate(self, [Tx]) -> Result` - provide the input txs, returns None on success and throws a RuntimeError exception on failure. Note can not validate coinbase or pre-genesis transactions.
+
+
     
 Tx has the following class methods:
 

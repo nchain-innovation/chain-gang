@@ -1,16 +1,20 @@
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
     python::py_script::PyScript,
-    util::{Hash256, Serializable},
+    util::{Error, Hash256, Serializable},
 };
 use core::hash::Hash;
+use linked_hash_map::LinkedHashMap;
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
     types::{PyBytes, PyType},
 };
-use std::{fmt, io::Cursor};
-
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    io::Cursor,
+};
 // Convert errors to PyErr
 impl std::convert::From<crate::util::Error> for PyErr {
     fn from(err: crate::util::Error) -> PyErr {
@@ -216,9 +220,9 @@ impl PyTx {
     }
 
     /// Returns true if it is a coinbase transaction
-    fn is_coinbase(&self) -> PyResult<bool> {
+    fn is_coinbase(&self) -> bool {
         let tx = self.as_tx();
-        Ok(tx.coinbase())
+        tx.coinbase()
     }
 
     /// Note that we return PyResult<PyObject> and not PyResult<PyBytes>
@@ -251,6 +255,50 @@ impl PyTx {
     #[allow(clippy::inherent_to_string_shadow_display)]
     fn to_string(&self) -> String {
         self.__repr__()
+    }
+
+    // This will only work on post genesis txs
+    // This will only work for non coinbase transactions
+    fn validate(&self, utxos: Vec<PyTx>) -> PyResult<()> {
+        let tx = self.as_tx();
+        if tx.coinbase() {
+            let msg = "Validate can not check coinbase transactions.".to_string();
+            return Err(Error::BadData(msg).into());
+        }
+
+        // Get the tx input OutPoints
+        let outpoints: Vec<OutPoint> = tx.inputs.iter().map(|x| x.prev_output.clone()).collect();
+
+        // Speed up the OutPoint lookups by preparing HashMap
+        let utxo_as_tx: HashMap<Hash256, Tx> = utxos
+            .iter()
+            .map(|x| x.as_tx())
+            .map(|tx| (tx.hash(), tx))
+            .collect();
+
+        // Convert input utxos into processed_utxo: &LinkedHashMap<OutPoint, TxOut>,
+        let mut processed_utxo: LinkedHashMap<OutPoint, TxOut> = LinkedHashMap::new();
+        for op in outpoints {
+            match utxo_as_tx.get(&op.hash) {
+                Some(tx) => match tx.outputs.get(op.index as usize) {
+                    Some(txout) => processed_utxo.insert(op, txout.clone()),
+                    None => {
+                        let msg = format!("Invalid Outpoint index {}", op.index);
+                        return Err(Error::BadData(msg).into());
+                    }
+                },
+                None => {
+                    let msg = format!("Unable to find hash {:?}", op.hash);
+                    return Err(Error::BadData(msg).into());
+                }
+            };
+        }
+        // Empty HashSet
+        let pregenesis_outputs: HashSet<OutPoint> = HashSet::new();
+
+        // Call validate
+        let result = tx.validate(true, true, &processed_utxo, &pregenesis_outputs);
+        Ok(result?)
     }
 
     /// Parse Bytes to produce Tx

@@ -137,6 +137,21 @@ class TxTest(unittest.TestCase):
         string1 = tx.to_string()
         self.assertEqual(string1, "PyTx { version: 1, tx_ins: [PyTxIn { prev_tx: \"d1c789a9c60383bf715f3f6ad9d14b91fe55f3deb369fe5d9280cb1a01793f81\", prev_index: 0, sequence: 4294967294, script_sig: [0x48 0x3045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01 0x21 0x0349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278a] }], tx_outs: [PyTxOut { amount: 32454049, script_pubkey: [OP_DUP OP_HASH160 0x14 0xbc3b654dca7e56b04dca18f2566cdaf02e8d9ada OP_EQUALVERIFY OP_CHECKSIG] }, PyTxOut { amount: 10011545, script_pubkey: [OP_DUP OP_HASH160 0x14 0x1c4bc762dd5423e332166702cb75f40df79fea12 OP_EQUALVERIFY OP_CHECKSIG] }], locktime: 410393 }")
 
+    def test_validate_failure(self):
+        funding_tx = bytes.fromhex("0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000")
+        fun_tx = Tx.parse(funding_tx)
+        with self.assertRaises(RuntimeError):
+            result = fun_tx.validate([])
+
+    def test_validate_success(self):
+        funding_tx = bytes.fromhex("0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000")
+        fun_tx = Tx.parse(funding_tx)
+        
+        input = bytes.fromhex("0100000001b8c10b49e08bdc4ab61cfbaa1d036fdf9bc1b82351eee4943e0289d381cc5cd0000000006a473044022024ea7fd6ca5accfcd4c557395978c0220d7f7c4a863ab854d4a9da89f561075c02206ffa06562ebbaebbf7e48ce9cbf590a614bcae7f1c5b52317f4a7cb00c5a8a824121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff02c81c8900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a914fbcfc7335afa22c40d3a76053dd4e060f0fc823c88ac00000000")
+        input_tx = Tx.parse(input)
+        result = fun_tx.validate([input_tx])
+        self.assertEqual(result, None)
+
 
 if __name__ == "__main__":
     unittest.main()
