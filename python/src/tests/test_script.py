@@ -3,7 +3,7 @@ import sys
 sys.path.append("..")
 
 from tx_engine import Script, Context, p2pkh_script, hash160
-from tx_engine.engine.op_codes import OP_PUSHDATA4
+from tx_engine.engine.op_codes import OP_PUSHDATA4, OP_DUP
 
 
 class ScriptTest(unittest.TestCase):
@@ -75,6 +75,24 @@ class ScriptTest(unittest.TestCase):
         script2 = Script.parse_string(as_str1[1:-1])
         as_str2 = script2.to_string()
         self.assertEqual(as_str2, as_str1)
+
+    def test_append_byte(self):
+        script1 = Script()
+        script1.append_byte(OP_DUP)
+        as_str1 = script1.to_string()
+        self.assertEqual(as_str1, "[OP_DUP]")
+
+    def test_append_data(self):
+        script1 = Script()
+        script1.append_data(bytes.fromhex("01f0"))
+        as_str1 = script1.to_string()
+        self.assertEqual(as_str1, "[0x01 0xf0]")
+
+    def test_append_pushdata(self):
+        script1 = Script()
+        script1.append_pushdata(bytes.fromhex("01f0"))
+        as_str1 = script1.to_string()
+        self.assertEqual(as_str1, "[0x02 0x01f0]")
 
 
 if __name__ == "__main__":

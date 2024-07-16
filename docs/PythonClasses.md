@@ -24,11 +24,15 @@ Script has the following property:
 Script has the following methods:
 
 * `__init__(self, cmds: bytes=[]) -> Script` - Constructor that takes an array of bytes 
+* `append_byte(self, byte: byte)` - Appends a single opcode or data byte
+* `append_data(self, data: bytes)` - Appends data (without OP_PUSHDATA)
+* `append_pushdata(self, data: bytes)` - Appends the opcodes and provided data that push it onto the stack
 * `raw_serialize(self) -> bytes` - Return the serialised script without the length prepended
 * `serialize(self) -> bytes` - Return the serialised script with the length prepended
 *  `get_commands(self) -> bytes` - Return a copy of the commands in this script
 * `__add__(self, other: Script) -> Script` - Enable script addition e.g. `c_script = a_script + b_script`
 * `to_string(self) -> String` - return the script as a string, that can be parsed by `parse_string()`. Note also that you can just print the script (`print(script)`)
+
 
 Script has the following class methods:
 * `Script.parse_string(in_string: str) -> Script` - Converts a string of OP_CODES into a Script

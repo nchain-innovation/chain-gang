@@ -72,9 +72,7 @@ impl PyTxIn {
     fn __repr__(&self) -> String {
         format!("{:?}", &self)
     }
-
 }
-
 
 /// TxOut - This represents a bitcoin transaction output
 //
@@ -112,7 +110,6 @@ impl PyTxOut {
     fn __repr__(&self) -> String {
         format!("{:?}", &self)
     }
-
 }
 
 // Conversion functions

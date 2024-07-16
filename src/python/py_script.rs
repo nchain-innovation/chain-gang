@@ -10,7 +10,7 @@ use std::{
 
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
-    script::Script,
+    script::{op_codes, Script},
     util::{var_int, Result},
 };
 
@@ -194,7 +194,48 @@ impl PyScript {
         self.cmds == other.cmds
     }
 
-    /// Converts a string to a Script
+    /// Appends a single opcode or data byte
+    fn append_byte(&mut self, byte: u8) {
+        self.cmds.push(byte);
+    }
+
+    /// Appends data
+    fn append_data(&mut self, data: &[u8]) {
+        self.cmds.extend_from_slice(data);
+    }
+
+    /// Appends the opcodes and provided data that push it onto the stack
+    fn append_pushdata(&mut self, data: &[u8]) {
+        let len = data.len();
+        match len {
+            0 => self.cmds.push(op_codes::OP_0),
+            1..=75 => {
+                self.cmds.push(op_codes::OP_PUSH + len as u8);
+                self.cmds.extend_from_slice(data);
+            }
+            76..=255 => {
+                self.cmds.push(op_codes::OP_PUSHDATA1);
+                self.cmds.push(len as u8);
+                self.cmds.extend_from_slice(data);
+            }
+            256..=65535 => {
+                self.cmds.push(op_codes::OP_PUSHDATA2);
+                self.cmds.push((len) as u8);
+                self.cmds.push((len >> 8) as u8);
+                self.cmds.extend_from_slice(data);
+            }
+            _ => {
+                self.cmds.push(op_codes::OP_PUSHDATA4);
+                self.cmds.push((len) as u8);
+                self.cmds.push((len >> 8) as u8);
+                self.cmds.push((len >> 16) as u8);
+                self.cmds.push((len >> 24) as u8);
+                self.cmds.extend_from_slice(data);
+            }
+        }
+    }
+
+    /// Converts a String to a Script
     #[classmethod]
     fn parse_string(_cls: &Bound<'_, PyType>, in_string: &str) -> PyResult<Self> {
         let stripped = in_string.trim();
