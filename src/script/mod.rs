@@ -110,6 +110,7 @@ impl Script {
         let script = &self.0;
         let mut ret = String::new();
         let mut i = 0;
+        ret.push('[');
         while i < script.len() {
             if i != 0 {
                 ret.push(' ')
@@ -278,6 +279,7 @@ impl Script {
                 ret.push_str(&format!(" {}", item));
             }
         }
+        ret.push(']');
         ret
     }
 }

@@ -87,6 +87,7 @@ Tx has the following methods:
 * `is_coinbase(self) -> bool` - Returns true if it is a coinbase transaction
 * `serialize(self) -> bytes` - Returns Tx as bytes
 * `copy(self) -> Tx` - Returns a copy of the Tx
+* `to_string(self) -> String` - return the Tx as a string
     
 Tx has the following class methods:
 

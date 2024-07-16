@@ -1,14 +1,20 @@
-use crate::{
-    python::op_code_names::OP_CODE_NAMES,
-    script::Script,
-    util::{var_int, Result},
+
+use std::{
+    fmt, 
+    io::{Cursor, Read, Write}
 };
 use pyo3::{
     prelude::*,
     types::{PyBytes, PyType},
 };
 use regex::Regex;
-use std::io::{Cursor, Read, Write};
+
+
+use crate::{
+    python::op_code_names::OP_CODE_NAMES,
+    script::Script,
+    util::{var_int, Result},
+};
 
 #[derive(FromPyObject, Debug)]
 pub enum Command {
@@ -91,7 +97,7 @@ fn decode_op(op: &str) -> Command {
 }
 
 #[pyclass(name = "Script", get_all, set_all)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct PyScript {
     pub cmds: Vec<u8>,
 }
@@ -114,6 +120,16 @@ impl PyScript {
         Ok(PyScript { cmds: script })
     }
 }
+
+impl fmt::Debug for PyScript {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let script = self.as_script();
+        let ret = script.string_representation();
+        f.write_str(&ret)
+    }
+}
+
+
 
 #[pymethods]
 impl PyScript {

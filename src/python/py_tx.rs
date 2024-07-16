@@ -238,6 +238,10 @@ impl PyTx {
         self == other
     }
 
+    fn to_string(&self) -> String {
+        format!("{:?}", &self)
+    }
+
     /// Parse Bytes to produce Tx
     // #[new]
     #[classmethod]
