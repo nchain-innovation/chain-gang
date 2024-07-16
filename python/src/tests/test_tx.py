@@ -141,16 +141,25 @@ class TxTest(unittest.TestCase):
         funding_tx = bytes.fromhex("0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000")
         fun_tx = Tx.parse(funding_tx)
         with self.assertRaises(RuntimeError):
-            result = fun_tx.validate([])
+            fun_tx.validate([])
 
     def test_validate_success(self):
         funding_tx = bytes.fromhex("0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000")
         fun_tx = Tx.parse(funding_tx)
-        
         input = bytes.fromhex("0100000001b8c10b49e08bdc4ab61cfbaa1d036fdf9bc1b82351eee4943e0289d381cc5cd0000000006a473044022024ea7fd6ca5accfcd4c557395978c0220d7f7c4a863ab854d4a9da89f561075c02206ffa06562ebbaebbf7e48ce9cbf590a614bcae7f1c5b52317f4a7cb00c5a8a824121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff02c81c8900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a914fbcfc7335afa22c40d3a76053dd4e060f0fc823c88ac00000000")
         input_tx = Tx.parse(input)
         result = fun_tx.validate([input_tx])
         self.assertEqual(result, None)
+
+    def test_txin_print(self):
+        txin1 = TxIn(prev_tx="5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index=0)
+        self.assertEqual(txin1.__repr__(), 'PyTxIn { prev_tx: "5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index: 0, sequence: 4294967295, script_sig: [] }')
+
+    def test_txout_print(self):
+        payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
+        locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
+        txout1 = TxOut(amount=100, script_pubkey=locking_script.get_commands())
+        self.assertEqual(txout1.__repr__(), "PyTxOut { amount: 100, script_pubkey: [OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG] }")
 
 
 if __name__ == "__main__":

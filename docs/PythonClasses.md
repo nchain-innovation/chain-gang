@@ -108,8 +108,14 @@ TxIn has the following properties:
 * `sequence` -  int
 
 TxIn has the following constructor method:
-
 * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
+
+Note txin can be printed using the standard print, for example: 
+```Python
+print(txin)
+PyTxIn { prev_tx: "5c866b70189008586a4951d144df93dcca4d3a1b701e3786566f819450eca9ba", prev_index: 0, sequence: 4294967295, script_sig: [] }
+```
+
 
 ## TxOut
 TxOut represents a bitcoin transaction output.
@@ -123,6 +129,13 @@ TxOut has the following properties:
 TxOut has the following constructor method:
 
 * `__init__(amount: int, script_pubkey: bytes) -> TxOut` - Constructor that takes the fields 
+
+Note txin can be printed using the standard print, for example: 
+```Python
+print(txout)
+PyTxOut { amount: 100, script_pubkey: [OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG] }
+```
+
 
 
 ## Wallet

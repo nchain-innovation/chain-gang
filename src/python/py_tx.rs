@@ -15,6 +15,7 @@ use std::{
     fmt,
     io::Cursor,
 };
+
 // Convert errors to PyErr
 impl std::convert::From<crate::util::Error> for PyErr {
     fn from(err: crate::util::Error) -> PyErr {
@@ -22,7 +23,7 @@ impl std::convert::From<crate::util::Error> for PyErr {
     }
 }
 
-/// TxIn - This represents is a bitcoin transaction input
+/// TxIn - This represents a bitcoin transaction input
 //
 // #[pyclass(name = "TxIn")]
 #[pyclass(name = "TxIn", get_all, set_all, dict)]
@@ -67,10 +68,15 @@ impl PyTxIn {
     fn __eq__(&self, other: &Self) -> bool {
         self == other
     }
+
+    fn __repr__(&self) -> String {
+        format!("{:?}", &self)
+    }
+
 }
 
-/// TxOut - This represents a bitcoin transaction output
 
+/// TxOut - This represents a bitcoin transaction output
 //
 //#[pyclass(name = "TxOut")]
 #[pyclass(name = "TxOut", get_all, set_all, dict)]
@@ -102,6 +108,11 @@ impl PyTxOut {
     fn __eq__(&self, other: &Self) -> bool {
         self == other
     }
+
+    fn __repr__(&self) -> String {
+        format!("{:?}", &self)
+    }
+
 }
 
 // Conversion functions
