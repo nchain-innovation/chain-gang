@@ -10,3 +10,4 @@ v0.3.9 - John's updates add_tx_in, add_tx_out, signing
 v0.4.0 - Added Eq and __repr__ to Tx, TxIn, TxOut and Script and Tx validate
 v0.4.1 - Added Script append_byte, append_data, append_pushdata
 v0.4.2 - Changed to MIT License
+v0.4.3 - Changed to MIT License v2
