@@ -1,11 +1,12 @@
 [package]
 name = "chain-gang"
-version = "0.4.1"
+version = "0.4.2"
 description = "This is a library that enables monitoring of multiple blockchains (BTC, BCH, BSV)."
 # repository = "https://github.com/brentongunning/rust-sv"
 authors = ["Arthur Gordon <a.gordon@nchain.com>"]
 keywords = ["bitcoin", "sv", "cash", "crypto"]
-license = "Proprietary"
+license = "MIT"
+license-file = "LICENSE"
 edition = "2021"
 
 [dependencies]

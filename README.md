@@ -6,6 +6,12 @@ The classes `Script`, `Context`, `Tx`, `TxIn` and `TxOut` are imported from the 
 
 For documentation of the Python Classes see  [here](docs/PythonClasses.md)
 
+# Python Installation
+As this library is hosted on PyPi (https://pypi.org/project/tx-engine/) it can be installed using the following command:
+
+```bash
+pip install tx-engine
+```
 
 # Example Script execution
 
