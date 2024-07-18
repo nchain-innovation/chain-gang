@@ -122,7 +122,7 @@ pub struct PyWallet {
     private_key: SecretKey,
     public_key: PublicKey,
     network: Network,
-    cache: SigHashCache,
+    // cache: SigHashCache,
 }
 
 impl PyWallet {
@@ -149,13 +149,15 @@ impl PyWallet {
         let prev_amount = tx_in.outputs[prev_index].satoshis;
         let prev_lock_script = &tx_in.outputs[prev_index].lock_script;
 
+        let mut cache = SigHashCache::new();
+
         let sighash = sighash(
             tx,
             index,
             &prev_lock_script.0,
             prev_amount,
             sighash_type,
-            &mut self.cache,
+            &mut cache,
         )?;
         // Get private key
         assert!(self.private_key.len() == 32);
@@ -182,13 +184,11 @@ impl PyWallet {
 
         let (network, private_key) = wif_to_network_and_private_key(wif_key)?;
         let public_key = PublicKey::from_secret_key(&secp, &private_key);
-        let cache = SigHashCache::new();
 
         Ok(PyWallet {
             private_key,
             public_key,
             network,
-            cache,
         })
     }
 
