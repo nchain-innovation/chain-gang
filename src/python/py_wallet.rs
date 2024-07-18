@@ -122,7 +122,6 @@ pub struct PyWallet {
     private_key: SecretKey,
     public_key: PublicKey,
     network: Network,
-    // cache: SigHashCache,
 }
 
 impl PyWallet {
