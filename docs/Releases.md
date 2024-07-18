@@ -11,3 +11,4 @@
 * v0.4.1 - Added Script append_byte, append_data, append_pushdata
 * v0.4.2 - Changed to MIT License
 * v0.4.3 - Changed to MIT License v2
+* v0.4.4 - Siging fix
