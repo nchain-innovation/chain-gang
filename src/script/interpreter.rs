@@ -370,7 +370,7 @@ pub fn core_eval<T: Checker>(
                     return Err(Error::ScriptError(msg));
                 }
                 if a != b {
-                    let msg = "Operands are not equal".to_string();
+                    let msg = "OP_EQUALVERIFY operands are not equal".to_string();
                     return Err(Error::ScriptError(msg));
                 }
             }
