@@ -11,7 +11,7 @@ use std::{
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
     script::{op_codes, Script},
-    util::{var_int, Result},
+    util::{var_int, Result, Error},
 };
 
 #[derive(FromPyObject, Debug)]
@@ -175,6 +175,16 @@ impl PyScript {
     /// Return a string presentation of the script
     fn __repr__(&self) -> String {
         format!("{}", &self)
+    }
+
+    fn __getitem__(&self, index: usize) -> PyResult<u8> {
+        match self.cmds.get(index) {
+            Some(value) => Ok(*value),
+            None => {
+                let msg = format!("Index '{}' out of range", index);
+                Err(Error::BadData(msg).into())
+            }
+        }
     }
 
     #[allow(clippy::inherent_to_string_shadow_display)]
