@@ -11,7 +11,7 @@ use std::{
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
     script::{op_codes, Script},
-    util::{var_int, Result, Error},
+    util::{var_int, Error, Result},
 };
 
 #[derive(FromPyObject, Debug)]
@@ -192,7 +192,8 @@ impl PyScript {
         self.__repr__()
     }
 
-    // c_script = a_script + b_script
+    /// Add two scripts together to produce a new script
+    ///  c_script = a_script + b_script
     fn __add__(&self, other: &Self) -> Self {
         let mut script = self.cmds.clone();
         script.extend(other.cmds.clone());
@@ -243,6 +244,16 @@ impl PyScript {
                 self.cmds.extend_from_slice(data);
             }
         }
+    }
+
+    /// Return true if p2pkh
+    fn is_p2pkh(&self) -> bool {
+        let len = self.cmds.len();
+        len == 25
+            && self.cmds[0] == op_codes::OP_DUP
+            && self.cmds[1] == op_codes::OP_HASH160
+            && self.cmds[len - 2] == op_codes::OP_EQUALVERIFY
+            && self.cmds[len - 1] == op_codes::OP_CHECKSIG
     }
 
     /// Converts a String to a Script

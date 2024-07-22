@@ -101,6 +101,16 @@ class ScriptTest(unittest.TestCase):
         self.assertEqual(script1[0], OP_DUP)
         self.assertEqual(script1[1], OP_HASH160)
 
+    def test_is_p2pkh(self):
+        public_key = bytes.fromhex("036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2")
+        script1 = p2pkh_script(hash160(public_key))
+        # [OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG]
+        self.assertTrue(script1.is_p2pkh())
+
+        as_str1 = "OP_PUSHDATA1 0x02 0x01f0 OP_PUSHDATA1 0x02 0x0010 OP_AND"
+        script2 = Script.parse_string(as_str1)
+        self.assertFalse(script2.is_p2pkh())
+
 
 if __name__ == "__main__":
     unittest.main()

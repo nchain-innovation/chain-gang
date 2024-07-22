@@ -32,6 +32,7 @@ Script has the following methods:
 *  `get_commands(self) -> bytes` - Return a copy of the commands in this script
 * `__add__(self, other: Script) -> Script` - Enable script addition e.g. `c_script = a_script + b_script`
 * `to_string(self) -> String` - return the script as a string, that can be parsed by `parse_string()`. Note also that you can just print the script (`print(script)`)
+* `is_p2pkh(self) -> bool` - returns True if script is a Pay to Public Key Hash script
 
 
 Script has the following class methods:
