@@ -30,7 +30,9 @@
 //! ```
 
 use crate::util::{Hash256, Result};
-use secp256k1::{Message, Secp256k1, SecretKey};
+use k256::ecdsa::{SigningKey, Signature,
+    signature::{ SignatureEncoding, hazmat::PrehashSigner},
+};
 
 pub mod p2pkh;
 pub mod sighash;
@@ -41,12 +43,14 @@ pub fn generate_signature(
     sighash: &Hash256,
     sighash_type: u8,
 ) -> Result<Vec<u8>> {
-    let secp = Secp256k1::signing_only();
-    let message = Message::from_slice(&sighash.0)?;
-    let secret_key = SecretKey::from_slice(private_key)?;
-    let mut signature = secp.sign(&message, &secret_key);
-    signature.normalize_s();
-    let mut sig = signature.serialize_der();
+    let message = sighash.0;
+
+    let signing_key = SigningKey::from_slice(private_key)?;
+    let signature: Signature = signing_key.sign_prehash(&message)?;
+    let signature = signature.normalize_s().unwrap_or(signature);
+    let sig_der = signature.to_der();
+    let mut sig = sig_der.to_vec();
+
     sig.push(sighash_type);
     Ok(sig)
 }

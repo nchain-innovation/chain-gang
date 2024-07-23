@@ -1,6 +1,7 @@
 use base58::FromBase58Error;
 use hex::FromHexError;
-use secp256k1;
+use k256;
+//use k256:elliptic_curve::Error;
 use std;
 use std::io;
 use std::string::FromUtf8Error;
@@ -29,7 +30,9 @@ pub enum Error {
     /// Error evaluating the script
     ScriptError(String),
     /// Error in the Secp256k1 library
-    Secp256k1Error(secp256k1::Error),
+    K256Error(k256::ecdsa::Error),
+    K256ECError(k256::elliptic_curve::Error),
+    // Secp256k1Error(secp256k1::Error),
     /// The operation timed out
     Timeout,
     StringError(String),
@@ -50,7 +53,8 @@ impl std::fmt::Display for Error {
             Error::IOError(e) => f.write_str(&format!("IO error: {}", e)),
             Error::ParseIntError(e) => f.write_str(&format!("ParseIntError: {}", e)),
             Error::ScriptError(s) => f.write_str(&format!("Script error: {}", s)),
-            Error::Secp256k1Error(e) => f.write_str(&format!("Secp256k1 error: {}", e)),
+            Error::K256Error(e) => f.write_str(&format!("K256 error: {}", e)),
+            Error::K256ECError(e) => f.write_str(&format!("K256EC error: {}", e)),
             Error::Timeout => f.write_str("Timeout"),
             Error::Unsupported(s) => f.write_str(&format!("Unsuppored: {}", s)),
             Error::StringError(s) => f.write_str(&format!("StringError: {}", s)),
@@ -71,7 +75,8 @@ impl std::error::Error for Error {
             Error::IOError(_) => "IO error",
             Error::ParseIntError(_) => "Parse int error",
             Error::ScriptError(_) => "Script error",
-            Error::Secp256k1Error(_) => "Secp256k1 error",
+            Error::K256Error(_) => "K256 error",
+            Error::K256ECError(_) => "K256EC error",
             Error::Timeout => "Timeout",
             Error::StringError(_) => "StringError",
             Error::Unsupported(_) => "Unsupported",
@@ -84,7 +89,7 @@ impl std::error::Error for Error {
             Error::FromUtf8Error(e) => Some(e),
             Error::IOError(e) => Some(e),
             Error::ParseIntError(e) => Some(e),
-            Error::Secp256k1Error(e) => Some(e),
+            // Error::Secp256k1Error(e) => Some(e),
             _ => None,
         }
     }
@@ -120,9 +125,15 @@ impl From<std::num::ParseIntError> for Error {
     }
 }
 
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Error::Secp256k1Error(e)
+impl From<k256::ecdsa::Error> for Error {
+    fn from(e: k256::ecdsa::Error) -> Self {
+        Error::K256Error(e)
+    }
+}
+
+impl From<k256::elliptic_curve::Error> for Error {
+    fn from(e: k256::elliptic_curve::Error) -> Self {
+        Error::K256ECError(e)
     }
 }
 

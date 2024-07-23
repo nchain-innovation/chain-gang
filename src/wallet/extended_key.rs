@@ -5,11 +5,14 @@ use hmac::{Hmac, Mac};
 use sha2::Sha512;
 
 use base58::{FromBase58, ToBase58};
-use secp256k1::{PublicKey, Secp256k1, SecretKey};
+use k256::{
+    Secp256k1, SecretKey,
+    elliptic_curve::PublicKey,
+};
 use std::fmt;
 use std::io;
 use std::io::{Cursor, Read, Write};
-use std::slice;
+use std::ops::Add;
 
 type HmacSha512 = Hmac<Sha512>;
 /// Maximum private key value (exclusive)
@@ -193,10 +196,13 @@ impl ExtendedKey {
                 Ok(public_key)
             }
             ExtendedKeyType::Private => {
-                let secp = Secp256k1::signing_only();
-                let secp_secret_key = SecretKey::from_slice(&self.0[46..])?;
-                let secp_public_key = PublicKey::from_secret_key(&secp, &secp_secret_key);
-                Ok(secp_public_key.serialize())
+                let secret_key = SecretKey::from_slice(&self.0[46..])?;
+                let public_key = secret_key.public_key();
+                let b = public_key.to_sec1_bytes();
+                let pk_vec = b.to_vec();
+                assert!(pk_vec.len() == 33);
+                let bytes: [u8; 33] = pk_vec[..].try_into().unwrap();
+                Ok(bytes)
             }
         }
     }
@@ -226,11 +232,11 @@ impl ExtendedKey {
         match self.key_type()? {
             ExtendedKeyType::Public => Ok(*self),
             ExtendedKeyType::Private => {
-                let private_key = &self.0[46..];
-                let secp = Secp256k1::signing_only();
-                let secp_secret_key = SecretKey::from_slice(private_key)?;
-                let secp_public_key = PublicKey::from_secret_key(&secp, &secp_secret_key);
-                let public_key = secp_public_key.serialize();
+                let secret_key = SecretKey::from_slice(&self.0[46..])?;
+                let public_key = secret_key.public_key();
+                let b = public_key.to_sec1_bytes();
+                let public_key = b.to_vec();
+                assert!(public_key.len() == 33);
 
                 ExtendedKey::new_public_key(
                     self.network()?,
@@ -255,10 +261,9 @@ impl ExtendedKey {
             let msg = "Cannot derive extended key. Depth already at max.";
             return Err(Error::BadData(msg.to_string()));
         }
-
-        let secp = Secp256k1::signing_only();
         let private_key = &self.0[46..];
         let secp_par_secret_key = SecretKey::from_slice(private_key)?;
+        
         let chain_code = &self.0[13..45];
         let mut key = HmacSha512::new_from_slice(chain_code).expect("hmac512 error");
 
@@ -271,8 +276,11 @@ impl ExtendedKey {
             key.finalize().into_bytes()
         } else {
             let mut v = Vec::<u8>::with_capacity(37);
-            let secp_public_key = PublicKey::from_secret_key(&secp, &secp_par_secret_key);
-            let public_key = secp_public_key.serialize();
+            let secp_public_key = secp_par_secret_key.public_key();
+            let b = secp_public_key.to_sec1_bytes();
+            let public_key = b.to_vec();
+            assert!(public_key.len() == 33);
+
             v.extend_from_slice(&public_key);
             v.write_u32::<BigEndian>(index)?;
             key.update(&v);
@@ -288,14 +296,21 @@ impl ExtendedKey {
             return Err(Error::IllegalState(msg));
         }
 
-        let mut secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
-        secp_child_secret_key.add_assign(private_key)?;
+        let secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
+        let child_sk = *secp_child_secret_key.as_scalar_primitive();
+        let private_sk = secp_par_secret_key.as_scalar_primitive();
+
+        //secp_child_secret_key.add_assign(private_key)?;
+        let child_sk = child_sk.add(private_sk);
+
+        //let child_private_key =
+        //    unsafe { slice::from_raw_parts(secp_child_secret_key.as_ptr(), 32) };
+        let child_bytes = child_sk.to_bytes();
+        let child_private_key = child_bytes.as_slice();
 
         let child_chain_code = &hmac[32..];
         let fingerprint = self.fingerprint()?;
-        let child_private_key =
-            unsafe { slice::from_raw_parts(secp_child_secret_key.as_ptr(), 32) };
-
+        
         ExtendedKey::new_private_key(
             network,
             self.depth() + 1,
@@ -336,12 +351,15 @@ impl ExtendedKey {
             return Err(Error::IllegalState(msg));
         }
 
-        let secp = Secp256k1::signing_only();
-        let child_offset = SecretKey::from_slice(&hmac[..32])?;
-        let child_offset = PublicKey::from_secret_key(&secp, &child_offset);
-        let secp_par_public_key = PublicKey::from_slice(&public_key)?;
-        let secp_child_public_key = secp_par_public_key.combine(&child_offset)?;
-        let child_public_key = secp_child_public_key.serialize();
+        let secret_key = SecretKey::from_slice(&hmac[..32])?;
+        let public_key = secret_key.public_key();
+        let child_offset = public_key.to_projective();
+        let child_offset = child_offset.add(child_offset);
+        let child_public_key = PublicKey::<Secp256k1>::try_from(child_offset)?;
+        let child_bytes = child_public_key.to_sec1_bytes();
+        let pk_vec = child_bytes.to_vec();
+        assert!(pk_vec.len() == 33);
+        let child_public_key: [u8; 33] = pk_vec[..].try_into().unwrap();
 
         let child_chain_code = &hmac[32..];
         let fingerprint = self.fingerprint()?;

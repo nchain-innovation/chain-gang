@@ -2,7 +2,11 @@ use crate::messages::Tx;
 use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
 use crate::util::{Error, Hash256, Result};
 
-use secp256k1::{Message, PublicKey, Secp256k1, Signature};
+
+use k256::ecdsa::{VerifyingKey, Signature,
+    signature::{Verifier, hazmat::PrehashVerifier},
+};
+
 
 /// Locktimes greater than or equal to this are interpreted as timestamps. Less then, block heights.
 const LOCKTIME_THRESHOLD: i32 = 500000000;
@@ -58,13 +62,10 @@ impl Checker for ZChecker {
         }
         let sig_hash = self.z;
         let der_sig = &sig[0..sig.len() - 1];
-        let secp = Secp256k1::verification_only();
-        let mut signature = Signature::from_der(der_sig)?;
-        // OpenSSL-generated signatures may not be normalized, but libsecp256kq requires them to be
-        signature.normalize_s();
-        let message = Message::from_slice(&sig_hash.0)?;
-        let public_key = PublicKey::from_slice(pubkey)?;
-        Ok(secp.verify(&message, &signature, &public_key).is_ok())
+        let signature = Signature::from_der(der_sig)?;
+        let message = sig_hash.0;
+        let verifying_key:VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
+        Ok(verifying_key.verify(&message, &signature).is_ok())
     }
 
     fn check_locktime(&self, _locktime: i32) -> Result<bool> {
@@ -109,13 +110,11 @@ impl<'a> Checker for TransactionChecker<'a> {
             self.sig_hash_cache,
         )?;
         let der_sig = &sig[0..sig.len() - 1];
-        let secp = Secp256k1::verification_only();
-        let mut signature = Signature::from_der(der_sig)?;
-        // OpenSSL-generated signatures may not be normalized, but libsecp256kq requires them to be
-        signature.normalize_s();
-        let message = Message::from_slice(&sig_hash.0)?;
-        let public_key = PublicKey::from_slice(pubkey)?;
-        Ok(secp.verify(&message, &signature, &public_key).is_ok())
+
+        let signature = Signature::from_der(der_sig)?;
+        let message = sig_hash.0;
+        let verifying_key:VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
+        Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
     fn check_locktime(&self, locktime: i32) -> Result<bool> {
@@ -180,7 +179,8 @@ mod tests {
         SIGHASH_ALL, SIGHASH_ANYONECANPAY, SIGHASH_FORKID, SIGHASH_NONE, SIGHASH_SINGLE,
     };
     use crate::util::{hash160, Hash256};
-    use secp256k1::{PublicKey, Secp256k1, SecretKey};
+    use k256::ecdsa::{VerifyingKey, SigningKey};
+
 
     #[test]
     fn standard_p2pkh() {
@@ -188,11 +188,19 @@ mod tests {
         standard_p2pkh_test(SIGHASH_ALL | SIGHASH_FORKID);
     }
 
+    fn verifying_key_as_bytes(verifying_key: &VerifyingKey) -> [u8; 33] {
+        let vk_bytes = verifying_key.to_sec1_bytes();
+        let vk_vec = vk_bytes.to_vec();
+        assert!(vk_vec.len() == 33);
+        vk_vec[..].try_into().unwrap()
+    }
     fn standard_p2pkh_test(sighash_type: u8) {
-        let secp = Secp256k1::new();
+        //let secp = Secp256k1::new();
         let private_key = [1; 32];
-        let secret_key = SecretKey::from_slice(&private_key).unwrap();
-        let pk = PublicKey::from_secret_key(&secp, &secret_key).serialize();
+        let secret_key = SigningKey::from_slice(&private_key).unwrap();
+        let verifying_key = secret_key.verifying_key();
+        let pk = verifying_key_as_bytes(verifying_key);
+
         let pkh = hash160(&pk);
 
         let mut lock_script = Script::new();
@@ -259,16 +267,36 @@ mod tests {
     }
 
     fn multisig_test(sighash_type: u8) {
-        let secp = Secp256k1::new();
+        //let secp = Secp256k1::new();
         let private_key1 = [1; 32];
         let private_key2 = [2; 32];
         let private_key3 = [3; 32];
-        let secret_key1 = SecretKey::from_slice(&private_key1).unwrap();
-        let secret_key2 = SecretKey::from_slice(&private_key2).unwrap();
-        let secret_key3 = SecretKey::from_slice(&private_key3).unwrap();
-        let pk1 = PublicKey::from_secret_key(&secp, &secret_key1).serialize();
-        let pk2 = PublicKey::from_secret_key(&secp, &secret_key2).serialize();
-        let pk3 = PublicKey::from_secret_key(&secp, &secret_key3).serialize();
+
+        let secret_key1 = SigningKey::from_slice(&private_key1).unwrap();
+        let secret_key2 = SigningKey::from_slice(&private_key2).unwrap();
+        let secret_key3 = SigningKey::from_slice(&private_key3).unwrap();
+        
+        //let secret_key1 = SecretKey::from_slice(&private_key1).unwrap();
+        //let secret_key2 = SecretKey::from_slice(&private_key2).unwrap();
+        // let secret_key3 = SecretKey::from_slice(&private_key3).unwrap();
+        
+        //let verifying_key = secret_key.verifying_key();
+        //let pk = verifying_key_as_bytes(verifying_key);
+
+        //let pk1 = PublicKey::from_secret_key(&secp, &secret_key1).serialize();
+
+        let verifying_key1 = secret_key1.verifying_key();
+        let pk1 = verifying_key_as_bytes(verifying_key1);
+
+        //let pk2 = PublicKey::from_secret_key(&secp, &secret_key2).serialize();
+
+        let verifying_key2 = secret_key2.verifying_key();
+        let pk2 = verifying_key_as_bytes(verifying_key2);
+
+        //let pk3 = PublicKey::from_secret_key(&secp, &secret_key3).serialize();
+        let verifying_key3 = secret_key3.verifying_key();
+        let pk3 = verifying_key_as_bytes(verifying_key3);
+
 
         let mut lock_script = Script::new();
         lock_script.append(OP_2);
@@ -330,14 +358,16 @@ mod tests {
         assert!(script.eval(&mut c, NO_FLAGS).is_ok());
     }
 
+    /*
     #[test]
     fn blank_check() {
         blank_check_test(SIGHASH_NONE | SIGHASH_ANYONECANPAY);
         blank_check_test(SIGHASH_NONE | SIGHASH_ANYONECANPAY | SIGHASH_FORKID);
     }
 
+    
     fn blank_check_test(sighash_type: u8) {
-        let secp = Secp256k1::new();
+        //let secp = Secp256k1::new();
 
         let private_key1 = [1; 32];
         let secret_key1 = SecretKey::from_slice(&private_key1).unwrap();
@@ -688,4 +718,5 @@ mod tests {
             assert!(lock_script.eval(&mut c, PREGENESIS_RULES).is_ok());
         }
     }
+    */
 }

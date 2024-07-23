@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
-use secp256k1::{PublicKey, Secp256k1, SecretKey};
-use std::slice;
+use k256::ecdsa::{SigningKey, VerifyingKey};
+
 
 use crate::{
     messages::Tx, // TxIn, TxOut},
@@ -30,7 +30,7 @@ const MAIN_PUBKEY_HASH: u8 = 0x00;
 const TEST_PUBKEY_HASH: u8 = 0x6f;
 
 // TODO: note only tested for compressed key
-fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SecretKey)> {
+fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)> {
     let decode = decode_base58_checksum(wif)?;
     // Get first byte
     let prefix: u8 = *decode.first().ok_or("Invalid wif length")?;
@@ -53,11 +53,11 @@ fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SecretKey)> {
     } else {
         decode[1..].to_vec()
     };
-    let private_key = SecretKey::from_slice(&private_key_as_bytes)?;
+    let private_key = SigningKey::from_slice(&private_key_as_bytes)?;
     Ok((network, private_key))
 }
 
-fn network_and_private_key_to_wif(network: Network, private_key: SecretKey) -> Result<String> {
+fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> Result<String> {
     let prefix: u8 = match network {
         Network::BSV_Mainnet => MAIN_PRIVATE_KEY,
         Network::BSV_Testnet => TEST_PRIVATE_KEY,
@@ -67,10 +67,10 @@ fn network_and_private_key_to_wif(network: Network, private_key: SecretKey) -> R
         }
     };
 
-    let pk_data = unsafe { slice::from_raw_parts(private_key.as_ptr(), private_key.len()) };
+    let pk_data = private_key.to_bytes();
     let mut data = Vec::new();
     data.push(prefix);
-    data.extend_from_slice(pk_data);
+    data.extend_from_slice(&pk_data);
     data.push(0x01);
     Ok(encode_base58_checksum(data.as_slice()))
 }
@@ -119,12 +119,19 @@ pub fn p2pkh_pyscript(h160: &[u8]) -> PyScript {
 
 #[pyclass(name = "Wallet")]
 pub struct PyWallet {
-    private_key: SecretKey,
-    public_key: PublicKey,
+    private_key: SigningKey,
+    public_key: VerifyingKey,
     network: Network,
 }
 
 impl PyWallet {
+
+    fn public_key_serialize(&self) -> [u8; 33] {
+        let vk_bytes = self.public_key.to_sec1_bytes();
+        let vk_vec = vk_bytes.to_vec();
+        vk_vec.try_into().unwrap()
+    }
+
     // sign_transaction_with_inputs(input_txs, tx, self.private_key)
     fn sign_tx_input(
         &mut self,
@@ -159,15 +166,14 @@ impl PyWallet {
             &mut cache,
         )?;
         // Get private key
-        assert!(self.private_key.len() == 32);
-        let private_key_as_bytes: &[u8; 32] =
-            unsafe { slice::from_raw_parts(self.private_key.as_ptr(), 32) }
-                .try_into()
-                .expect("basic array conversion");
+        let private_key_as_bytes: [u8; 32] = self.private_key.to_bytes().into();
+
         // Sign sighash
-        let signature = generate_signature(private_key_as_bytes, &sighash, sighash_type)?;
+        let signature = generate_signature(&private_key_as_bytes, &sighash, sighash_type)?;
         // Create unlocking script for input
-        let public_key = self.public_key.serialize();
+        //let public_key = self.public_key.serialize();
+        let public_key = self.public_key_serialize();
+    
         tx.inputs[index].unlock_script = create_unlock_script(&signature, &public_key);
         Ok(())
     }
@@ -179,10 +185,9 @@ impl PyWallet {
 
     #[new]
     fn new(wif_key: &str) -> PyResult<Self> {
-        let secp = Secp256k1::new();
 
         let (network, private_key) = wif_to_network_and_private_key(wif_key)?;
-        let public_key = PublicKey::from_secret_key(&secp, &private_key);
+        let public_key = *private_key.verifying_key();
 
         Ok(PyWallet {
             private_key,
@@ -220,12 +225,12 @@ impl PyWallet {
     }
 
     fn get_locking_script(&self) -> PyResult<PyScript> {
-        let serial = self.public_key.serialize();
+        let serial = self.public_key_serialize();
         Ok(p2pkh_pyscript(&hash160(&serial)))
     }
 
     fn get_public_key_as_hexstr(&self) -> String {
-        let serial = self.public_key.serialize();
+        let serial = self.public_key_serialize();
         serial
             .into_iter()
             .map(|x| format!("{:02x}", x))
@@ -234,13 +239,13 @@ impl PyWallet {
     }
 
     fn get_address(&self) -> Result<String> {
-        public_key_to_address(&self.public_key.serialize(), self.network)
+        public_key_to_address(&self.public_key_serialize(), self.network)
     }
 
     fn to_wif(&self) -> PyResult<String> {
         Ok(network_and_private_key_to_wif(
             self.network,
-            self.private_key,
+            self.private_key.clone(),
         )?)
     }
 
