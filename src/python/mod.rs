@@ -7,6 +7,7 @@ mod op_code_names;
 mod py_script;
 mod py_tx;
 mod py_wallet;
+mod py_sighash;
 
 use crate::{
     network::Network,
@@ -15,6 +16,7 @@ use crate::{
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, PyWallet},
+        py_sighash::{PySigHash, py_partial_sig_hash, py_full_sig_hash}
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     util::{Error, Hash256, Serializable},
@@ -85,6 +87,8 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_hash160, m)?)?;
     m.add_function(wrap_pyfunction!(py_address_to_public_key_hash, m)?)?;
     m.add_function(wrap_pyfunction!(py_public_key_to_address, m)?)?;
+    m.add_function(wrap_pyfunction!(py_partial_sig_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(py_full_sig_hash, m)?)?;
 
     // Script
     m.add_class::<PyScript>()?;
@@ -95,5 +99,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTx>()?;
     // Wallet class
     m.add_class::<PyWallet>()?;
+    // SigHash Class
+    m.add_class::<PySigHash>()?;
     Ok(())
 }

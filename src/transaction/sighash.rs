@@ -20,6 +20,14 @@ pub const SIGHASH_FORKID: u8 = 0x40;
 /// The 24-bit fork ID for Bitcoin Cash / SV
 const FORK_ID: u32 = 0;
 
+// Other useful flags
+//pub const ALL_FORKID: u8 = SIGHASH_ALL | SIGHASH_FORKID;
+//const NONE_FORKID: u8 = SIGHASH_NONE | SIGHASH_FORKID;
+//const SINGLE_FORKID: u8 = SIGHASH_SINGLE | SIGHASH_FORKID;
+//const ALL_ANYONECANPAY_FORKID: u8 = ALL_FORKID | SIGHASH_ANYONECANPAY;
+//const NONE_ANYONECANPAY_FORKID: u8 = NONE_FORKID | SIGHASH_ANYONECANPAY;
+//const SINGLE_ANYONECANPAY_FORKID: u8 = SINGLE_FORKID | SIGHASH_ANYONECANPAY;
+
 /// Generates a transaction digest for signing
 ///
 /// This will use either BIP-143 or the legacy algorithm depending on if SIGHASH_FORKID is set.
@@ -66,6 +74,44 @@ impl SigHashCache {
             hash_outputs: None,
         }
     }
+    // getter/setter/clear hash_prevouts
+    pub fn hash_prevouts(&self) -> Option<&Hash256>{
+        self.hash_prevouts.as_ref()
+    }
+
+    pub fn set_hash_prevouts(&mut self, hash: Hash256){
+        self.hash_prevouts = Some(hash);
+    }
+
+    pub fn clear_hash_prevouts(&mut self){
+        self.hash_prevouts = None;
+    }
+    //getter/setter/clear hash_sequence
+    pub fn hash_sequence(&self) -> Option<&Hash256>{
+        self.hash_sequence.as_ref()
+    }
+
+    pub fn set_hash_sequence(&mut self, hash: Hash256){
+        self.hash_sequence = Some(hash);
+    }
+
+    pub fn clear_hash_sequence(&mut self){
+        self.hash_sequence = None;
+    }
+
+    //getter/setter/clear hash_outputs
+    pub fn hash_outputs(&self) -> Option<&Hash256>{
+        self.hash_outputs.as_ref()
+    }
+
+    pub fn set_hash_outputs(&mut self, hash: Hash256){
+        self.hash_outputs = Some(hash)
+    }
+
+    pub fn clear_hash_outputs(&mut self){
+        self.hash_outputs = None;
+    }
+
 }
 
 impl Default for SigHashCache {
@@ -253,6 +299,71 @@ fn legacy_sighash(
     // Append the sighash_type and finally double hash the result
     s.write_u32::<LittleEndian>(sighash_type as u32)?;
     Ok(sha256d(&s))
+}
+
+/*
+This function was added to support the PushTX port. It is used in the python code to generate
+the script_sig scripts related to pushtx script_pubkey scripts. It is based on the function
+tx_engine.tx_sign.handle_sig_hash_flag
+ */
+#[allow(dead_code)]
+pub fn partial_sig_hash(tx: &Tx, index: usize, input_sighash: Option<u8>) -> Result<SigHashCache> {
+    if index >= tx.inputs.len() {
+        return Err(Error::BadArgument("input out of tx_in range".to_string()));
+    }
+    let mut cache = SigHashCache::new();
+    let base_type = input_sighash.unwrap() & 31;
+    let anyone_can_pay = input_sighash.unwrap() & SIGHASH_ANYONECANPAY != 0;
+
+
+    // hash of prev_outs
+    if !anyone_can_pay {
+        let mut prev_outputs = Vec::with_capacity(OutPoint::SIZE * tx.inputs.len());
+        for input in tx.inputs.iter() {
+            input.prev_output.write(&mut prev_outputs)?;
+        }
+        cache.hash_prevouts = Some(sha256d(&prev_outputs));   
+    }
+
+    // hash of sequence
+     if !anyone_can_pay && base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
+
+        let mut sequences = Vec::with_capacity(4 * tx.inputs.len());
+        for tx_in in tx.inputs.iter() {
+            sequences.write_u32::<LittleEndian>(tx_in.sequence)?;
+        }
+        cache.hash_sequence = Some(sha256d(&sequences));
+    }
+
+    //hash of outputs
+    if base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
+        let mut size = 0;
+        for tx_out in tx.outputs.iter() {
+            size += tx_out.size();
+        }
+        let mut outputs = Vec::with_capacity(size);
+        for tx_out in tx.outputs.iter() {
+            tx_out.write(&mut outputs)?;
+        }
+        cache.hash_outputs = Some(sha256d(&outputs));
+        
+    } else if base_type == SIGHASH_SINGLE && index < tx.outputs.len() {
+        let mut outputs = Vec::with_capacity(tx.outputs[index].size());
+        tx.outputs[index].write(&mut outputs)?;
+        cache.hash_outputs = Some(sha256d(&outputs));
+    }
+
+    Ok(cache)
+}
+
+pub fn sig_hash_preimage_with_replacement_script(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    satoshis: i64,
+    sighash_type: u8,
+    cache: &mut SigHashCache) -> Result<Hash256> {
+    Ok(bip143_sighash(tx, n_input, script_code, satoshis, sighash_type, cache)?)
 }
 
 #[cfg(test)]
