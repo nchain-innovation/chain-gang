@@ -2,6 +2,8 @@
 
 Notes on the development of `chain-gang` and the `tx_engine` Python interface.
 
+![Usecase](diagrams/overview.png)
+
 # Project directory structure
 ```
 ├── README.md

@@ -1,0 +1,16 @@
+@startuml
+title Overview - chain_gang vs tx_engine
+
+component chain_gang
+note top
+chain_gang is a Rust library 
+end note
+'component tx_engine
+
+tx_engine -left- [chain_gang]
+note bottom
+tx_engine a the Python interface
+to chain_gang
+end note
+
+@enduml
