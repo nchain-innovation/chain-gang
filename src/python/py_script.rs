@@ -32,35 +32,30 @@ fn commands_as_vec(cmds: Vec<Command>) -> Vec<u8> {
     script
 }
 
-/*
-def decode_op(op: str) -> Union[int, bytes]:
-    # Given an op as string convert it to parsable value
-    #   e.g. "OP_2" -> 0x52
-    op = op.strip()
-    if op[:2] == "0x":
-        b: bytes = bytes.fromhex(op[2:])
-        return b
+fn is_pushdata_operation(cmd: &Command) -> Option<usize> {
+    match cmd {
+        Command::Int(v) => match v {
+            &op_codes::OP_PUSHDATA1 => Some(2),
+            &op_codes::OP_PUSHDATA2 => Some(3), 
+            &op_codes::OP_PUSHDATA4 => Some(5), 
+            _ => None,
+        }
+        _ => None,
+    }
+}
 
-    elif op in ALL_OPS:
-        n: int = ALL_OPS[op]
-        return n
+fn handle_pushdata(cmd: &Command, is_pushdata: usize) -> usize {
+    match is_pushdata_operation(cmd) {
+        Some(val) => val,
+        None => if is_pushdata > 0 {
+            return is_pushdata - 1;
+        } else {
+            return 0
+        }
+    }
+}
 
-    else:
-        n = eval(op)
-        if isinstance(n, int):
-            x: bytes = encode_num(n)
-            return x
-        elif isinstance(n, str):
-            y = n.encode("utf-8")
-            return y
-        elif isinstance(n, bytes):
-            return n
-        else:
-            # have not captured conversion
-            assert 1 == 2  # should not get here
-*/
-
-fn decode_op(op: &str) -> Command {
+fn decode_op(op: &str, is_pushdata: usize) -> Command {
     let op = op.trim();
     // println!("decode_op({:?})", &op);
     // Command
@@ -73,22 +68,47 @@ fn decode_op(op: &str) -> Command {
             -1 => return Command::Int(op_codes::OP_1NEGATE),
             0 => return Command::Int(op_codes::OP_0),
             1..=16 => return Command::Int((val + 0x50).try_into().unwrap()), // 1 => OP_1, => 0x81
-            17..=75 => return Command::Int((val).try_into().unwrap()),
+            17..=75 => {
+                if is_pushdata > 0 {
+                    return Command::Int(val.try_into().unwrap());
+                } else {
+                    let retval: Vec<u8> = vec![1, val.try_into().unwrap()];
+                    return Command::Bytes(retval);
+                }
+            },
             _ => {
-                let mut retval = encode_num(val).unwrap();
-                let len: u8 = retval.len().try_into().unwrap();
-                retval.insert(0, len);
-                return Command::Bytes(retval);
+                if is_pushdata > 0 {
+                    let retval = encode_num(val).unwrap();
+                    return Command::Bytes(retval);
+
+                } else {
+                    let mut retval = encode_num(val).unwrap();
+                    let len: u8 = retval.len().try_into().unwrap();
+                    retval.insert(0, len);
+                    return Command::Bytes(retval);
+                }
             }
         }
     }
     // Hex digit, digits
     if op[..2] == *"0x" {
+        if is_pushdata > 0 {
+            let retval: Vec<u8> = hex::decode(&op[2..]).unwrap();
+            return Command::Bytes(retval);
+
+        } else {
+            let len: u8 = (op[2..].len() / 2).try_into().unwrap();
+            let mut retval: Vec<u8> = hex::decode(&op[2..]).unwrap();
+            retval.insert(0, len);
+            return Command::Bytes(retval);
+        }
+        /*
         if op.len() == 4 {
             return Command::Int(u8::from_str_radix(&op[2..], 16).unwrap());
         } else {
             return Command::Bytes(hex::decode(&op[2..]).unwrap());
         }
+        */
     }
     // Byte array
     if op[..1] == *"b" {
@@ -268,11 +288,18 @@ impl PyScript {
     fn parse_string(_cls: &Bound<'_, PyType>, in_string: &str) -> PyResult<Self> {
         let stripped = in_string.trim();
         let separator = Regex::new(r"[ ,\n]+").unwrap();
+
         let splits: Vec<_> = separator
             .split(stripped)
             .filter(|x| x.trim() != "")
             .collect();
-        let decoded: Vec<_> = splits.into_iter().map(decode_op).collect();
+        let mut decoded: Vec<Command> = Vec::new();
+        let mut is_pushdata: usize = 0;
+        for s in splits {
+            let op = decode_op(s, is_pushdata);
+            is_pushdata = handle_pushdata(&op, is_pushdata);
+            decoded.push(op);
+        }
         let script = commands_as_vec(decoded);
 
         Ok(PyScript { cmds: script })
