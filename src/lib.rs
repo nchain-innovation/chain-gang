@@ -13,8 +13,8 @@ extern crate murmur3;
 extern crate rand;
 
 extern crate base58;
-extern crate ripemd;
 extern crate k256;
+extern crate ripemd;
 extern crate snowflake;
 
 #[cfg(feature = "python")]

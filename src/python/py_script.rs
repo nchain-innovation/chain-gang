@@ -10,7 +10,7 @@ use std::{
 
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
-    script::{op_codes, Script},
+    script::{op_codes, stack::encode_num, Script},
     util::{var_int, Error, Result},
 };
 
@@ -67,13 +67,20 @@ fn decode_op(op: &str) -> Command {
     if let Some(val) = OP_CODE_NAMES.get(op) {
         return Command::Int(*val);
     }
-    // One char
-    if op.len() == 1 {
-        let mut val = op.parse::<u8>().unwrap();
-        if let 1..=16 = val {
-            val += 0x50; // OP_1,
+    // Is an int
+    if let Ok(val) = op.parse::<i64>() {
+        match val {
+            -1 => return Command::Int(op_codes::OP_1NEGATE),
+            0 => return Command::Int(op_codes::OP_0),
+            1..=16 => return Command::Int((val + 0x50).try_into().unwrap()), // 1 => OP_1, => 0x81
+            17..=75 => return Command::Int((val).try_into().unwrap()),
+            _ => {
+                let mut retval = encode_num(val).unwrap();
+                let len: u8 = retval.len().try_into().unwrap();
+                retval.insert(0, len);
+                return Command::Bytes(retval);
+            }
         }
-        return Command::Int(val);
     }
     // Hex digit, digits
     if op[..2] == *"0x" {

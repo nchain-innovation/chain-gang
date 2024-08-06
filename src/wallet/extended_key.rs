@@ -5,10 +5,7 @@ use hmac::{Hmac, Mac};
 use sha2::Sha512;
 
 use base58::{FromBase58, ToBase58};
-use k256::{
-    Secp256k1, SecretKey,
-    elliptic_curve::PublicKey,
-};
+use k256::{elliptic_curve::PublicKey, Secp256k1, SecretKey};
 use std::fmt;
 use std::io;
 use std::io::{Cursor, Read, Write};
@@ -263,7 +260,7 @@ impl ExtendedKey {
         }
         let private_key = &self.0[46..];
         let secp_par_secret_key = SecretKey::from_slice(private_key)?;
-        
+
         let chain_code = &self.0[13..45];
         let mut key = HmacSha512::new_from_slice(chain_code).expect("hmac512 error");
 
@@ -310,7 +307,7 @@ impl ExtendedKey {
 
         let child_chain_code = &hmac[32..];
         let fingerprint = self.fingerprint()?;
-        
+
         ExtendedKey::new_private_key(
             network,
             self.depth() + 1,

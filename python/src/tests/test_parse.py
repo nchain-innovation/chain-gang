@@ -4,6 +4,7 @@ import sys
 sys.path.append("..")
 
 from tx_engine import Script, Context
+from tx_engine.engine.op_codes import OP_1, OP_16, OP_1NEGATE
 
 
 class ParseTest(unittest.TestCase):
@@ -48,6 +49,22 @@ class ParseTest(unittest.TestCase):
         context = Context(script=script3)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1], [2]])
+
+    def test_numbers(self):
+        script1 = Script.parse_string("1")
+        self.assertEqual(script1.cmds, [OP_1])
+
+        script1 = Script.parse_string("16")
+        self.assertEqual(script1.cmds, [OP_16])
+
+        script1 = Script.parse_string("-1")
+        self.assertEqual(script1.cmds, [OP_1NEGATE])
+
+        script1 = Script.parse_string("17")
+        self.assertEqual(script1.cmds, [17])
+
+        script1 = Script.parse_string("1000")
+        self.assertEqual(script1.cmds, [2, 232, 3])
 
 
 if __name__ == '__main__':

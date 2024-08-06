@@ -13,3 +13,6 @@
 * v0.4.3 - Changed to MIT License v2
 * v0.4.4 - Signing fix
 * v0.4.5 - Script index and is_p2pkh added
+* v0.4.5 - Remove dependency on secp256k1 library (which cc-ed OpenSSL)
+* v0.4.6 - Bump version due to mistake in tagging v0.4.5
+* v0.4.7 - Fix number parsing in Script.parse_string()

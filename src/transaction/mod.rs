@@ -30,8 +30,9 @@
 //! ```
 
 use crate::util::{Hash256, Result};
-use k256::ecdsa::{SigningKey, Signature,
-    signature::{ SignatureEncoding, hazmat::PrehashSigner},
+use k256::ecdsa::{
+    signature::{hazmat::PrehashSigner, SignatureEncoding},
+    Signature, SigningKey,
 };
 
 pub mod p2pkh;

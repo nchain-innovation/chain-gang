@@ -2,11 +2,10 @@ use crate::messages::Tx;
 use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
 use crate::util::{Error, Hash256, Result};
 
-
-use k256::ecdsa::{VerifyingKey, Signature,
-    signature::{Verifier, hazmat::PrehashVerifier},
+use k256::ecdsa::{
+    signature::{hazmat::PrehashVerifier, Verifier},
+    Signature, VerifyingKey,
 };
-
 
 /// Locktimes greater than or equal to this are interpreted as timestamps. Less then, block heights.
 const LOCKTIME_THRESHOLD: i32 = 500000000;
@@ -64,7 +63,7 @@ impl Checker for ZChecker {
         let der_sig = &sig[0..sig.len() - 1];
         let signature = Signature::from_der(der_sig)?;
         let message = sig_hash.0;
-        let verifying_key:VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
+        let verifying_key: VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
         Ok(verifying_key.verify(&message, &signature).is_ok())
     }
 
@@ -113,7 +112,7 @@ impl<'a> Checker for TransactionChecker<'a> {
 
         let signature = Signature::from_der(der_sig)?;
         let message = sig_hash.0;
-        let verifying_key:VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
+        let verifying_key: VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
@@ -179,8 +178,7 @@ mod tests {
         SIGHASH_ALL, SIGHASH_ANYONECANPAY, SIGHASH_FORKID, SIGHASH_NONE, SIGHASH_SINGLE,
     };
     use crate::util::{hash160, Hash256};
-    use k256::ecdsa::{VerifyingKey, SigningKey};
-
+    use k256::ecdsa::{SigningKey, VerifyingKey};
 
     #[test]
     fn standard_p2pkh() {
@@ -275,11 +273,11 @@ mod tests {
         let secret_key1 = SigningKey::from_slice(&private_key1).unwrap();
         let secret_key2 = SigningKey::from_slice(&private_key2).unwrap();
         let secret_key3 = SigningKey::from_slice(&private_key3).unwrap();
-        
+
         //let secret_key1 = SecretKey::from_slice(&private_key1).unwrap();
         //let secret_key2 = SecretKey::from_slice(&private_key2).unwrap();
         // let secret_key3 = SecretKey::from_slice(&private_key3).unwrap();
-        
+
         //let verifying_key = secret_key.verifying_key();
         //let pk = verifying_key_as_bytes(verifying_key);
 
@@ -296,7 +294,6 @@ mod tests {
         //let pk3 = PublicKey::from_secret_key(&secp, &secret_key3).serialize();
         let verifying_key3 = secret_key3.verifying_key();
         let pk3 = verifying_key_as_bytes(verifying_key3);
-
 
         let mut lock_script = Script::new();
         lock_script.append(OP_2);
@@ -365,7 +362,7 @@ mod tests {
         blank_check_test(SIGHASH_NONE | SIGHASH_ANYONECANPAY | SIGHASH_FORKID);
     }
 
-    
+
     fn blank_check_test(sighash_type: u8) {
         //let secp = Secp256k1::new();
 

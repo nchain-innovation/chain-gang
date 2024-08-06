@@ -25,7 +25,7 @@ class WalletTest(unittest.TestCase):
         hash_pk = hash160(pk)
         self.assertEqual(hash_pk.hex(), "7d981c463355c618e9666044315ef1ffc523e870")
         # Matches funding_tx output 1
-        
+
         # print(f"fund_tx.id() = {fund_tx.id()}")
         # fund_tx.id() = b8d763d3ca229fa43f5b9c886d7848244c9329c5aa349a650faa38859f459c03
 

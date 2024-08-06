@@ -1,6 +1,5 @@
-use pyo3::prelude::*;
 use k256::ecdsa::{SigningKey, VerifyingKey};
-
+use pyo3::prelude::*;
 
 use crate::{
     messages::Tx, // TxIn, TxOut},
@@ -125,7 +124,6 @@ pub struct PyWallet {
 }
 
 impl PyWallet {
-
     fn public_key_serialize(&self) -> [u8; 33] {
         let vk_bytes = self.public_key.to_sec1_bytes();
         let vk_vec = vk_bytes.to_vec();
@@ -173,7 +171,7 @@ impl PyWallet {
         // Create unlocking script for input
         //let public_key = self.public_key.serialize();
         let public_key = self.public_key_serialize();
-    
+
         tx.inputs[index].unlock_script = create_unlock_script(&signature, &public_key);
         Ok(())
     }
@@ -185,7 +183,6 @@ impl PyWallet {
 
     #[new]
     fn new(wif_key: &str) -> PyResult<Self> {
-
         let (network, private_key) = wif_to_network_and_private_key(wif_key)?;
         let public_key = *private_key.verifying_key();
 
