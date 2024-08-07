@@ -17,3 +17,4 @@
 * v0.4.6 - Bump version due to mistake in tagging v0.4.5
 * v0.4.7 - Fix number parsing in Script.parse_string()
 * v0.4.8 - Further number parsing in Script.parse_string()
+* v0.4.9 - Fix OP_SUB

@@ -421,8 +421,8 @@ pub fn core_eval<T: Checker>(
                 stack.push(encode_bigint(sum));
             }
             OP_SUB => {
-                let b = pop_bigint(&mut stack)?;
                 let a = pop_bigint(&mut stack)?;
+                let b = pop_bigint(&mut stack)?;
                 let difference = b - a;
                 stack.push(encode_bigint(difference));
             }

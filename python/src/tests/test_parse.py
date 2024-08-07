@@ -83,6 +83,12 @@ class ParseTest(unittest.TestCase):
         # Should leave [1] on the stack
         self.assertEqual(context.raw_stack, [[1]])
 
+    def test_federico3(self):
+        script1 = Script.parse_string('OP_2 OP_1 OP_SUB')
+        context = Context(script=script1)
+        context.evaluate()
+        self.assertEqual(context.stack, [1])
+
 
 if __name__ == '__main__':
     unittest.main()
