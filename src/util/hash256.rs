@@ -10,7 +10,7 @@ use std::io::{Read, Write};
 /// 256-bit hash for blocks and transactions
 ///
 /// It is interpreted as a single little-endian number for display.
-#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct Hash256(pub [u8; 32]);
 
 impl Hash256 {
