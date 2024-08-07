@@ -34,12 +34,12 @@ fn commands_as_vec(cmds: Vec<Command>) -> Vec<u8> {
 
 fn is_pushdata_operation(cmd: &Command) -> Option<usize> {
     match cmd {
-        Command::Int(v) => match v {
+        Command::Int(v) => match *v {
             &op_codes::OP_PUSHDATA1 => Some(2),
-            &op_codes::OP_PUSHDATA2 => Some(3), 
-            &op_codes::OP_PUSHDATA4 => Some(5), 
+            &op_codes::OP_PUSHDATA2 => Some(3),
+            &op_codes::OP_PUSHDATA4 => Some(5),
             _ => None,
-        }
+        },
         _ => None,
     }
 }
@@ -47,10 +47,12 @@ fn is_pushdata_operation(cmd: &Command) -> Option<usize> {
 fn handle_pushdata(cmd: &Command, is_pushdata: usize) -> usize {
     match is_pushdata_operation(cmd) {
         Some(val) => val,
-        None => if is_pushdata > 0 {
-            return is_pushdata - 1;
-        } else {
-            return 0
+        None => {
+            if is_pushdata > 0 {
+                is_pushdata - 1
+            } else {
+                0
+            }
         }
     }
 }
@@ -75,12 +77,11 @@ fn decode_op(op: &str, is_pushdata: usize) -> Command {
                     let retval: Vec<u8> = vec![1, val.try_into().unwrap()];
                     return Command::Bytes(retval);
                 }
-            },
+            }
             _ => {
                 if is_pushdata > 0 {
                     let retval = encode_num(val).unwrap();
                     return Command::Bytes(retval);
-
                 } else {
                     let mut retval = encode_num(val).unwrap();
                     let len: u8 = retval.len().try_into().unwrap();
@@ -95,7 +96,6 @@ fn decode_op(op: &str, is_pushdata: usize) -> Command {
         if is_pushdata > 0 {
             let retval: Vec<u8> = hex::decode(&op[2..]).unwrap();
             return Command::Bytes(retval);
-
         } else {
             let len: u8 = (op[2..].len() / 2).try_into().unwrap();
             let mut retval: Vec<u8> = hex::decode(&op[2..]).unwrap();

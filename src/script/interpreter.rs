@@ -351,11 +351,7 @@ pub fn core_eval<T: Checker>(
                 check_stack_size(2, &stack)?;
                 let a = stack.pop().unwrap();
                 let b = stack.pop().unwrap();
-                if a.len() != b.len() {
-                    let msg = "OP_EQUAL failed, different sizes".to_string();
-                    return Err(Error::ScriptError(msg));
-                }
-                if a == b {
+                if a == b && a.len() == b.len() {
                     stack.push(encode_num(1)?);
                 } else {
                     stack.push(encode_num(0)?);

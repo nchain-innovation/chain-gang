@@ -234,14 +234,18 @@ impl Script {
                 OP_EQUALVERIFY => ret.push_str("OP_EQUALVERIFY"),
                 OP_1ADD => ret.push_str("OP_1ADD"),
                 OP_1SUB => ret.push_str("OP_1SUB"),
+
                 OP_NEGATE => ret.push_str("OP_NEGATE"),
                 OP_ABS => ret.push_str("OP_ABS"),
                 OP_NOT => ret.push_str("OP_NOT"),
                 OP_0NOTEQUAL => ret.push_str("OP_0NOTEQUAL"),
+
                 OP_ADD => ret.push_str("OP_ADD"),
                 OP_SUB => ret.push_str("OP_SUB"),
+                OP_MUL => ret.push_str("OP_MUL"),
                 OP_DIV => ret.push_str("OP_DIV"),
                 OP_MOD => ret.push_str("OP_MOD"),
+
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
                 OP_BOOLOR => ret.push_str("OP_BOOLOR"),
                 OP_NUMEQUAL => ret.push_str("OP_NUMEQUAL"),
