@@ -20,3 +20,5 @@
 * v0.4.9 - Fix OP_SUB
 * v0.5.0 - Forgot to update crate, Version bump
 * v0.5.1 - Use Python encode_num
+* v0.5.2 - Fix OP_MUL and OP_EQUAL
+* v0.5.3 - Version bump, build failure
