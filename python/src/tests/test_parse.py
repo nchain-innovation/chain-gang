@@ -3,7 +3,7 @@ import unittest
 import sys
 sys.path.append("..")
 
-from tx_engine import Script, Context
+from tx_engine import Script, Context, encode_num
 from tx_engine.engine.op_codes import (
     OP_1, OP_16, OP_1NEGATE,
     OP_DEPTH, OP_1SUB, OP_PICK, OP_EQUALVERIFY, OP_ROT, OP_TOALTSTACK,
@@ -88,6 +88,10 @@ class ParseTest(unittest.TestCase):
         context = Context(script=script1)
         context.evaluate()
         self.assertEqual(context.stack, [1])
+
+    def test_federico4(self):
+        x = encode_num(53758635199196621832532654341949827999954483761840054390272371671254106983912)
+        self.assertEqual(x, b'\xe8ME\xca\xabI\x1a7:$#+\x91\xe2\xab`%\xce`3Y\xc0\x064\xde\x0f\x8fU+O\xdav')
 
 
 if __name__ == '__main__':

@@ -10,13 +10,28 @@ MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS = 750 * 1000
 MAXIMUM_ELEMENT_SIZE = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 
-from tx_engine.tx_engine import py_encode_num, py_decode_num
+from tx_engine.tx_engine import py_decode_num
 
 
 def encode_num(num: int) -> bytes:
     """ Encode a number, return a bytearray in little endian
     """
-    return py_encode_num(num)
+    if num == 0:
+        return b""
+    abs_num = abs(num)
+    negative = num < 0
+    result = bytearray()
+    while abs_num:
+        result.append(abs_num & 0xFF)
+        abs_num >>= 8
+    if result[-1] & 0x80:
+        if negative:
+            result.append(0x80)
+        else:
+            result.append(0)
+    elif negative:
+        result[-1] |= 0x80
+    return bytes(result)
 
 
 def is_minimally_encoded(element, max_element_size=MAXIMUM_ELEMENT_SIZE) -> bool:
