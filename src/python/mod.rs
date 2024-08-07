@@ -17,7 +17,7 @@ use crate::{
         py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, PyWallet},
     },
     script::{
-        stack::{decode_num, encode_num, Stack},
+        stack::Stack,
         Script, TransactionlessChecker, ZChecker, NO_FLAGS,
     },
     util::{Error, Hash256, Serializable},
@@ -25,15 +25,6 @@ use crate::{
 
 pub type Bytes = Vec<u8>;
 
-#[pyfunction]
-fn py_encode_num(val: i64) -> PyResult<Bytes> {
-    Ok(encode_num(val)?)
-}
-
-#[pyfunction]
-fn py_decode_num(s: &[u8]) -> PyResult<i64> {
-    Ok(decode_num(s)?)
-}
 
 #[pyfunction(name = "p2pkh_script")]
 fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
@@ -93,8 +84,6 @@ fn py_script_eval(
 #[pymodule]
 #[pyo3(name = "tx_engine")]
 fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(py_encode_num, m)?)?;
-    m.add_function(wrap_pyfunction!(py_decode_num, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval, m)?)?;
     m.add_function(wrap_pyfunction!(py_p2pkh_pyscript, m)?)?;
     m.add_function(wrap_pyfunction!(py_hash160, m)?)?;

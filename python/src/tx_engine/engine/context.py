@@ -1,6 +1,8 @@
 from typing import Optional
 
-from tx_engine.tx_engine import py_script_eval, py_decode_num, Script
+from tx_engine.tx_engine import py_script_eval, Script
+from tx_engine.engine.util import decode_num
+
 
 from .engine_types import Commands, Stack, StackElement
 from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
@@ -8,7 +10,7 @@ from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
 
 def decode_element(elem: StackElement) -> int:
     try:
-        retval = py_decode_num(bytes(elem))
+        retval = decode_num(bytes(elem))
     except RuntimeError as e:
         print(f"runtime error {e}")
         retval = elem

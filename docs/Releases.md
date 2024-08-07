@@ -22,3 +22,4 @@
 * v0.5.1 - Use Python encode_num
 * v0.5.2 - Fix OP_MUL and OP_EQUAL
 * v0.5.3 - Version bump, build failure
+* v0.5.4 - OP_EQUALVERIFY, Python decode_num

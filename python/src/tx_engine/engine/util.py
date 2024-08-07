@@ -10,9 +10,6 @@ MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS = 750 * 1000
 MAXIMUM_ELEMENT_SIZE = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 
-from tx_engine.tx_engine import py_decode_num
-
-
 def encode_num(num: int) -> bytes:
     """ Encode a number, return a bytearray in little endian
     """
@@ -63,7 +60,32 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
             raise ValueError(f"Value is not minimally encoded: {element.hex()}")
         else:
             raise ValueError(f"Value is not minimally encoded: {element}")
-    return py_decode_num(element)
+
+    if isinstance(element, int):
+        return element
+
+    elif isinstance(element, bytes):
+        try:
+            b = element
+            big_endian = b[::-1]
+        except TypeError:
+            # TypeError: 'int' object is not subscriptable
+            return int(element)
+        if big_endian[0] & 0x80:
+            negative = True
+            result = big_endian[0] & 0x7F
+        else:
+            negative = False
+            result = big_endian[0]
+        for c in big_endian[1:]:
+            result <<= 8
+            result += c
+        if negative:
+            return -result
+        else:
+            return result
+    else:
+        raise ValueError(f"Value is of unknown type: {element} {type(element)}")
 
 
 def insert_num(val: int) -> List[int]:
