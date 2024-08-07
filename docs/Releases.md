@@ -18,3 +18,4 @@
 * v0.4.7 - Fix number parsing in Script.parse_string()
 * v0.4.8 - Further number parsing in Script.parse_string()
 * v0.4.9 - Fix OP_SUB
+* v0.5.0 - Forgot to update crate, Version bump
