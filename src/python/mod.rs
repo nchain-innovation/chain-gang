@@ -16,15 +16,11 @@ use crate::{
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, PyWallet},
     },
-    script::{
-        stack::Stack,
-        Script, TransactionlessChecker, ZChecker, NO_FLAGS,
-    },
+    script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     util::{Error, Hash256, Serializable},
 };
 
 pub type Bytes = Vec<u8>;
-
 
 #[pyfunction(name = "p2pkh_script")]
 fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {

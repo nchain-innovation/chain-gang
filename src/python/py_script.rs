@@ -97,18 +97,39 @@ fn decode_op(op: &str, is_pushdata: usize) -> Command {
             let retval: Vec<u8> = hex::decode(&op[2..]).unwrap();
             return Command::Bytes(retval);
         } else {
-            let len: u8 = (op[2..].len() / 2).try_into().unwrap();
-            let mut retval: Vec<u8> = hex::decode(&op[2..]).unwrap();
-            retval.insert(0, len);
+            let len = op[2..].len() / 2;
+            let data: Vec<u8> = hex::decode(&op[2..]).unwrap();
+            let mut retval: Vec<u8> = Vec::new();
+            match len {
+                0 => {
+                    retval.push(op_codes::OP_0);
+                }
+                1..=75 => {
+                    retval.push(op_codes::OP_PUSH + len as u8);
+                    retval.extend(data);
+                }
+                76..=255 => {
+                    retval.push(op_codes::OP_PUSHDATA1);
+                    retval.push(len as u8);
+                    retval.extend(data);
+                }
+                256..=65535 => {
+                    retval.push(op_codes::OP_PUSHDATA2);
+                    retval.push(len as u8);
+                    retval.push((len >> 8) as u8);
+                    retval.extend(data);
+                }
+                _ => {
+                    retval.push(op_codes::OP_PUSHDATA4);
+                    retval.push(len as u8);
+                    retval.push((len >> 8) as u8);
+                    retval.push((len >> 16) as u8);
+                    retval.push((len >> 24) as u8);
+                    retval.extend(data);
+                }
+            }
             return Command::Bytes(retval);
         }
-        /*
-        if op.len() == 4 {
-            return Command::Int(u8::from_str_radix(&op[2..], 16).unwrap());
-        } else {
-            return Command::Bytes(hex::decode(&op[2..]).unwrap());
-        }
-        */
     }
     // Byte array
     if op[..1] == *"b" {

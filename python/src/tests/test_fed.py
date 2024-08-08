@@ -47,6 +47,14 @@ class FedTest(unittest.TestCase):
         script1 = Script.parse_string('OP_MUL')
         self.assertEqual(script1.cmds, [OP_MUL])
 
+    def test_federico6(self):
+        q = encode_num(41898490967918953402344214791240637128170709919953949071783502921025352812571106773058893763790338921418070971888253786114353726529584385201591605722013126468931404347949840543007986327743462853720628051692141265303114721689601)
+        script1 = Script.parse_string("0x" + q.hex())
+
+        script2 = Script()
+        script2.append_pushdata(q)
+        self.assertEqual(script1, script2)
+
 
 if __name__ == '__main__':
     unittest.main()
