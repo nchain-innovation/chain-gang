@@ -5,7 +5,7 @@ import sys
 sys.path.append("..")
 
 
-from tx_engine import Wallet, hash160, Tx, TxIn, TxOut
+from tx_engine import Wallet, hash160, Tx, TxIn, TxOut, Script
 
 
 class WalletTest(unittest.TestCase):
@@ -30,13 +30,13 @@ class WalletTest(unittest.TestCase):
         # fund_tx.id() = b8d763d3ca229fa43f5b9c886d7848244c9329c5aa349a650faa38859f459c03
 
         #  fn new(prev_tx: [u8; 32], prev_index: u32, script: &[u8], sequence: u32) -> Self
-        vins = [TxIn(prev_tx=fund_tx.id(), prev_index=1, script=b'', sequence=0xFFFFFFFF)]
+        vins = [TxIn(prev_tx=fund_tx.id(), prev_index=1, script=Script([]), sequence=0xFFFFFFFF)]
         amt = 50
 
         # print(f"wallet.get_locking_script().get_commands() = {wallet.get_locking_script().get_commands().hex()}")
         # wallet.get_locking_script().get_commands() = 76a9147d981c463355c618e9666044315ef1ffc523e87088ac
         # fn new(amount: i64, script_pubkey: &[u8]) -> Self
-        vouts = [TxOut(amount=amt, script_pubkey=wallet.get_locking_script().get_commands())]
+        vouts = [TxOut(amount=amt, script_pubkey=wallet.get_locking_script())]
 
         # fn new(version: u32, tx_ins: Vec<PyTxIn>, tx_outs: Vec<PyTxOut>, locktime: u32) -> Self
         tx = Tx(version=1, tx_ins=vins, tx_outs=vouts, locktime=0)
@@ -61,11 +61,11 @@ class WalletTest(unittest.TestCase):
         # Matches funding_tx output 1
 
         #  fn new(prev_tx: [u8; 32], prev_index: u32, script: &[u8], sequence: u32) -> Self
-        vins = [TxIn(prev_tx=fund_tx.id(), prev_index=1, script=b'', sequence=0xFFFFFFFF)]
+        vins = [TxIn(prev_tx=fund_tx.id(), prev_index=1, script=Script([]), sequence=0xFFFFFFFF)]
         amt = 50
 
         # fn new(amount: i64, script_pubkey: &[u8]) -> Self
-        vouts = [TxOut(amount=amt, script_pubkey=wallet.get_locking_script().get_commands())]
+        vouts = [TxOut(amount=amt, script_pubkey=wallet.get_locking_script())]
 
         # fn new(version: u32, tx_ins: Vec<PyTxIn>, tx_outs: Vec<PyTxOut>, locktime: u32) -> Self
         tx = Tx(version=1, tx_ins=vins, tx_outs=vouts, locktime=0)

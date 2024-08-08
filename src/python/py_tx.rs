@@ -39,7 +39,6 @@ impl PyTxIn {
     fn as_txin(&self) -> TxIn {
         // convert hexstr to bytes and reverse
         let hash = Hash256::decode(&self.prev_tx).expect("Error decoding hexstr prev outpoint");
-
         TxIn {
             prev_output: OutPoint {
                 hash,
@@ -54,14 +53,13 @@ impl PyTxIn {
 #[pymethods]
 impl PyTxIn {
     #[new]
-    #[pyo3(signature = (prev_tx, prev_index, script=vec![], sequence=0xFFFFFFFF))]
-    fn new(prev_tx: &str, prev_index: u32, script: Vec<u8>, sequence: u32) -> Self {
-        let script_sig = PyScript::new(&script);
+    #[pyo3(signature = (prev_tx, prev_index, script=PyScript::new(&[]), sequence=0xFFFFFFFF))]
+    fn new(prev_tx: &str, prev_index: u32, script: PyScript, sequence: u32) -> Self {
         PyTxIn {
             prev_tx: prev_tx.to_string(),
             prev_index,
             sequence,
-            script_sig,
+            script_sig: script,
         }
     }
 
@@ -96,10 +94,10 @@ impl PyTxOut {
 #[pymethods]
 impl PyTxOut {
     #[new]
-    fn new(amount: i64, script_pubkey: &[u8]) -> Self {
+    fn new(amount: i64, script_pubkey: PyScript) -> Self {
         PyTxOut {
             amount,
-            script_pubkey: PyScript::new(script_pubkey),
+            script_pubkey,
         }
     }
 

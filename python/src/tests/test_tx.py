@@ -59,7 +59,7 @@ class TxTest(unittest.TestCase):
         locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
         vouts = []
         amt = 100
-        vouts.append(TxOut(amount=amt, script_pubkey=locking_script.get_commands()))
+        vouts.append(TxOut(amount=amt, script_pubkey=locking_script))
 
     def test_read_vin(self):
         funding_tx = "0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
@@ -97,7 +97,7 @@ class TxTest(unittest.TestCase):
         # * `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields
         payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
         locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
-        txout = TxOut(amount=100, script_pubkey=locking_script.get_commands())
+        txout = TxOut(amount=100, script_pubkey=locking_script)
 
         tx.add_tx_out(txout)
         self.assertEqual(len(tx.tx_outs), 1)
@@ -113,8 +113,8 @@ class TxTest(unittest.TestCase):
     def test_txout_eq(self):
         payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
         locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
-        txout1 = TxOut(amount=100, script_pubkey=locking_script.get_commands())
-        txout2 = TxOut(amount=101, script_pubkey=locking_script.get_commands())
+        txout1 = TxOut(amount=100, script_pubkey=locking_script)
+        txout2 = TxOut(amount=101, script_pubkey=locking_script)
         self.assertNotEqual(txout1, txout2)
         txout2.amount = 100
         self.assertEqual(txout1, txout2)
@@ -158,7 +158,7 @@ class TxTest(unittest.TestCase):
     def test_txout_print(self):
         payment_addr = "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
         locking_script = p2pkh_script(address_to_public_key_hash(payment_addr))
-        txout1 = TxOut(amount=100, script_pubkey=locking_script.get_commands())
+        txout1 = TxOut(amount=100, script_pubkey=locking_script)
         self.assertEqual(txout1.__repr__(), "PyTxOut { amount: 100, script_pubkey: [OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG] }")
 
 
