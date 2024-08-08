@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, MutableMapping, Any
+from typing import Dict, Optional, MutableMapping, Any, List
 
 ConfigType = MutableMapping[str, Any]
 
@@ -69,4 +69,11 @@ class BlockchainInterface(ABC):
     '''
     @abstractmethod
     def get_block_header(self, block_hash: str) -> Dict:
+        pass
+
+    ''' abstract method definition for executing verify script.
+        This call is not available from WoC
+    '''
+    @abstractmethod
+    def verifyscript(self, scripts: list, stopOnFirstInvalid: bool = True, totalTimeout: int = 100) -> List[Any]:
         pass

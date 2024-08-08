@@ -2,7 +2,8 @@ import logging
 import functools
 from . import woc
 from .blockchain_interface import BlockchainInterface
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -23,7 +24,7 @@ class WoCInterface(BlockchainInterface):
             LOGGER.warning("No address type specified Setting the network type to test")
             self.network_type = "test"
 
-    def is_testnet(self):
+    def is_testnet(self) -> bool:
         assert self.network_type is not None
         if self.network_type == "test":
             return True
@@ -86,3 +87,6 @@ class WoCInterface(BlockchainInterface):
             NB -> It's more than the block header.
         '''
         return woc.get_block_header(blockhash, testnet=self.is_testnet())
+
+    def verifyscript(self, scripts: list, stopOnFirstInvalid: bool = True, totalTimeout: int = 100) -> List[Any]:
+        raise NotImplementedError("verifyscript not implemented for the WoC interface")

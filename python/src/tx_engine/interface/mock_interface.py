@@ -2,7 +2,7 @@
 from io import BytesIO
 
 
-from typing import Dict, List
+from typing import Dict, List, Any
 from .blockchain_interface import BlockchainInterface
 from tx_engine import Tx
 
@@ -106,3 +106,6 @@ class MockInterface(BlockchainInterface):
 
     def get_merkle_proof(self, block_hash: str, tx_id: str) -> str:
         raise NotImplementedError('get_merkle_proof not implemented for the mock client api')
+
+    def verifyscript(self, scripts: list, stopOnFirstInvalid: bool = True, totalTimeout: int = 100) -> List[Any]:
+        raise NotImplementedError("verifyscript not implemented for the WoC interface")
