@@ -102,7 +102,7 @@ To force a release the git version needs to be tagged.
 
 ```bash
 git push
-git tag -a v0.5.1 -m "Python interface"
+git tag -a v0.5.5 -m "Interface, RPCInterface, verify script and flags, TxIn & TxOut - script in constructor"
 git push --tags
 ```
 

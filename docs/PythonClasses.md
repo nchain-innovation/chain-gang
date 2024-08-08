@@ -119,13 +119,13 @@ TxIn represents is a bitcoin transaction input.
 
 TxIn has the following properties:
 
-* `prev_tx` - bytes
+* `prev_tx` - Transaction Id as hex string
 * `prev_index` - unsigned int
 * `script_sig` - Script
 * `sequence` -  int
 
 TxIn has the following constructor method:
-* `__init__(prev_tx: bytes, prev_index: int, script_sig: bytes= [], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
+* `__init__(prev_tx: String, prev_index: int, script_sig: Script=[], sequence: int=0xFFFFFFFF) -> TxIn` - Constructor that takes the fields 
 
 Note txin can be printed using the standard print, for example: 
 ```Python
@@ -145,7 +145,7 @@ TxOut has the following properties:
 
 TxOut has the following constructor method:
 
-* `__init__(amount: int, script_pubkey: bytes) -> TxOut` - Constructor that takes the fields 
+* `__init__(amount: int, script_pubkey: Script) -> TxOut` - Constructor that takes the fields 
 
 Note txin can be printed using the standard print, for example: 
 ```Python

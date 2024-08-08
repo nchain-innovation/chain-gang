@@ -23,3 +23,4 @@
 * v0.5.2 - Fix OP_MUL and OP_EQUAL
 * v0.5.3 - Version bump, build failure
 * v0.5.4 - OP_EQUALVERIFY, Python decode_num
+* v0.5.5 - Interface, RPCInterface, verify script and flags, TxIn & TxOut - script in constructor
