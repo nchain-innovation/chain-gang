@@ -68,7 +68,7 @@ impl PyTxIn {
     }
 
     fn __repr__(&self) -> String {
-        format!("{:?}", &self)
+        format!(r#"PyTxIn {{ prev_tx: "{}", prev_index: {}, sequence: {}, script_sig: "{}" }}"#, self.prev_tx, self.prev_index, self.sequence, self.script_sig)
     }
 }
 
@@ -106,7 +106,7 @@ impl PyTxOut {
     }
 
     fn __repr__(&self) -> String {
-        format!("{:?}", &self)
+        format!(r#"PyTxOut {{ amount: {}, script_pubkey: "{}" }}"#, self.amount, self.script_pubkey)
     }
 }
 
@@ -255,7 +255,27 @@ impl PyTx {
     }
 
     fn __repr__(&self) -> String {
-        format!("{}", &self)
+        // - PyTx { version: 1, tx_ins: 
+        // [PyTxIn { prev_tx: "d1c789a9c60383bf715f3f6ad9d14b91fe55f3deb369fe5d9280cb1a01793f81", prev_index: 0, sequence: 4294967294, script_sig: 0x48 0x3045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01 0x21 0x0349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278a }], 
+        // tx_outs: [PyTxOut { amount: 32454049, script_pubkey: OP_DUP OP_HASH160 0x14 0xbc3b654dca7e56b04dca18f2566cdaf02e8d9ada OP_EQUALVERIFY OP_CHECKSIG }, PyTxOut { amount: 10011545, script_pubkey: OP_DUP OP_HASH160 0x14 0x1c4bc762dd5423e332166702cb75f40df79fea12 OP_EQUALVERIFY OP_CHECKSIG }
+        // ], locktime: 410393 }
+        let mut retval = format!(r#"PyTx {{ version: {}, tx_ins: ["#, self.version);
+        for txin in &self.tx_ins {
+            retval += &txin.__repr__();
+            if txin != self.tx_ins.last().unwrap() {
+                retval += ", ";
+            }
+        }
+        retval += "], tx_outs: [";
+        for txout in &self.tx_outs {
+            retval += &txout.__repr__();
+            if txout != self.tx_outs.last().unwrap() {
+                retval += ", ";
+            }
+
+        }
+        retval += &format!("], locktime: {} }}", self.locktime);
+        retval
     }
 
     #[allow(clippy::inherent_to_string_shadow_display)]

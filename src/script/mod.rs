@@ -106,11 +106,11 @@ impl Script {
         self::interpreter::core_eval(&self.0, checker, flags, break_at)
     }
 
+    // Used by PyScript
     pub fn string_representation(&self) -> String {
         let script = &self.0;
         let mut ret = String::new();
         let mut i = 0;
-        ret.push('[');
         while i < script.len() {
             if i != 0 {
                 ret.push(' ')
@@ -283,7 +283,6 @@ impl Script {
                 ret.push_str(&format!(" {}", item));
             }
         }
-        ret.push(']');
         ret
     }
 }
@@ -410,10 +409,13 @@ impl fmt::Debug for Script {
                 OP_ABS => ret.push_str("OP_ABS"),
                 OP_NOT => ret.push_str("OP_NOT"),
                 OP_0NOTEQUAL => ret.push_str("OP_0NOTEQUAL"),
+
                 OP_ADD => ret.push_str("OP_ADD"),
                 OP_SUB => ret.push_str("OP_SUB"),
+                OP_MUL => ret.push_str("OP_MUL"),
                 OP_DIV => ret.push_str("OP_DIV"),
                 OP_MOD => ret.push_str("OP_MOD"),
+
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
                 OP_BOOLOR => ret.push_str("OP_BOOLOR"),
                 OP_NUMEQUAL => ret.push_str("OP_NUMEQUAL"),

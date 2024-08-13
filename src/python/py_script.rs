@@ -34,6 +34,7 @@ fn commands_as_vec(cmds: Vec<Command>) -> Vec<u8> {
 
 fn is_pushdata_operation(cmd: &Command) -> Option<usize> {
     match cmd {
+        #[allow(clippy::match_ref_pats)]
         Command::Int(v) => match v {
             &op_codes::OP_PUSHDATA1 => Some(2),
             &op_codes::OP_PUSHDATA2 => Some(3),
