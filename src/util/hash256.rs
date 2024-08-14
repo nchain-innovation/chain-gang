@@ -2,10 +2,13 @@ use crate::util::{Error, Result, Serializable};
 use hex;
 // use ring::digest::{digest, SHA256};
 use sha2::{Digest, Sha256};
-use std::cmp::Ordering;
-use std::fmt;
-use std::io;
-use std::io::{Read, Write};
+use std::{
+    cmp::Ordering,
+    fmt, io,
+    io::{Read, Write},
+};
+
+use db_key::Key;
 
 /// 256-bit hash for blocks and transactions
 ///
@@ -83,6 +86,20 @@ impl PartialOrd for Hash256 {
 impl fmt::Debug for Hash256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.encode())
+    }
+}
+
+// For use in LevelDB database
+impl Key for Hash256 {
+    fn from_u8(key: &[u8]) -> Hash256 {
+        assert!(key.len() == 32);
+        let mut bytes = [0; 32];
+        bytes.clone_from_slice(key);
+        Hash256(bytes)
+    }
+
+    fn as_slice<T, F: Fn(&[u8]) -> T>(&self, f: F) -> T {
+        f(&self.0)
     }
 }
 
