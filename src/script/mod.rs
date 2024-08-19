@@ -135,8 +135,6 @@ impl Script {
                 OP_15 => ret.push_str("OP_15"),
                 OP_16 => ret.push_str("OP_16"),
                 len @ 1..=75 => {
-                    ret.push_str(&format!("{:#04x} ", len));
-
                     if i + 1 + len as usize <= script.len() {
                         ret.push_str("0x");
                         ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));

@@ -55,6 +55,11 @@ class FedTest(unittest.TestCase):
         script2.append_pushdata(q)
         self.assertEqual(script1, script2)
 
+    def test_federico7(self):
+        script1 = Script.parse_string('1000')
+        script2 = Script.parse_string(script1.to_string())
+        self.assertEqual(script1, script2)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -13,7 +13,7 @@ def decode_element(elem: StackElement) -> int:
         retval = decode_num(bytes(elem))
     except RuntimeError as e:
         print(f"runtime error {e}")
-        retval = elem
+        retval = elem  # type: ignore[assignment]
         print(f"elem={elem}, retval={retval}, type={type(retval)}")  # type: ignore[str-bytes-safe]
     return retval
 

@@ -47,7 +47,7 @@ class ScriptTest(unittest.TestCase):
         public_key = bytes.fromhex("036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2")
         script1 = p2pkh_script(hash160(public_key))
         as_str = script1.to_string()
-        self.assertEqual(as_str, "OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG")
+        self.assertEqual(as_str, "OP_DUP OP_HASH160 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG")
 
     def test_script_to_string_op_pushdata1(self):
         as_str1 = "OP_PUSHDATA1 0x02 0x01f0 OP_PUSHDATA1 0x02 0x0010 OP_AND"
@@ -78,13 +78,13 @@ class ScriptTest(unittest.TestCase):
         script1 = Script()
         script1.append_data(bytes.fromhex("01f0"))
         as_str1 = script1.to_string()
-        self.assertEqual(as_str1, "0x01 0xf0")
+        self.assertEqual(as_str1, "0xf0")
 
     def test_append_pushdata(self):
         script1 = Script()
         script1.append_pushdata(bytes.fromhex("01f0"))
         as_str1 = script1.to_string()
-        self.assertEqual(as_str1, "0x02 0x01f0")
+        self.assertEqual(as_str1, "0x01f0")
 
     def test_index_operator(self):
         public_key = bytes.fromhex("036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2")
