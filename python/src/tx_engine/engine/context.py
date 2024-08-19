@@ -24,7 +24,7 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
     retval = bytearray()
     for c in cmds:
         if isinstance(c, int):
-            retval += c.to_bytes(1, "big")
+            retval += c.to_bytes(1, byteorder='big')
         elif isinstance(c, list):
             retval += cmds_as_bytes(c)
         else:
@@ -32,9 +32,9 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
             # Otherwise would expect OP_PUSHDATA preceeding
             if len(c) < 0x4c:
                 if len(retval) == 0:
-                    retval += len(c).to_bytes(1, "big")
+                    retval += len(c).to_bytes(1, byteorder='big')
                 elif not retval[-1] in [OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4] and retval[-1] != len(c):
-                    retval += len(c).to_bytes(1, "big")
+                    retval += len(c).to_bytes(1,byteorder='big')
             retval += c
     return bytes(retval)
 
