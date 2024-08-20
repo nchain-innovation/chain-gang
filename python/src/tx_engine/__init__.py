@@ -8,7 +8,7 @@ from tx_engine.tx_engine import SigHashCache # noqa: F401
 from tx_engine.tx_engine import partial_sig_hash, full_sig_hash #noqa: F401
 from tx_engine.engine.context import Context  # noqa: F401
 from tx_engine.engine.util import encode_num, decode_num  # noqa: F401
-
+from tx_engine.tx.sighash import SIGHASH #noqa: F401
 from tx_engine.interface.interface_factory import interface_factory   # noqa: F401
 from tx_engine.interface.woc_interface import WoCInterface   # noqa: F401
 from tx_engine.interface.mock_interface import MockInterface   # noqa: F401

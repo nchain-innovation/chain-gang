@@ -11,7 +11,6 @@ use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
 };
-//#[allow(dead_code)]
 
 
 pub fn compute_partial_pre_image(input_tx: Tx, index: usize, sighashflag: Option<u8>) -> PyResult<PySigHash>{
