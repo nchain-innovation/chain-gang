@@ -1,10 +1,9 @@
 use crate::messages::{Block, BlockHeader, OutPoint, Tx, TxIn, TxOut};
 use crate::network::SeedIter;
 use crate::script::Script;
-use std::fmt;
-// use crate::util::{Error, Hash256, Result};
 use crate::util::Hash256;
 use hex;
+use std::fmt;
 
 #[allow(non_camel_case_types)]
 /// Network type

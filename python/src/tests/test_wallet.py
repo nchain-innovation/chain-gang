@@ -84,6 +84,11 @@ class WalletTest(unittest.TestCase):
         result = new_tx2.validate([fund_tx])
         self.assertIsNone(result)
 
+    def test_generate_keypair(self):
+        w1 = Wallet.generate_keypair("BSV_Testnet")
+        w2 = Wallet.generate_keypair("BSV_Testnet")
+        self.assertNotEqual(w1.get_address(), w2.get_address())
+
 
 if __name__ == "__main__":
     unittest.main()

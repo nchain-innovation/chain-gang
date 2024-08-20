@@ -25,3 +25,4 @@
 * v0.5.4 - OP_EQUALVERIFY, Python decode_num
 * v0.5.5 - Interface, RPCInterface, verify script and flags, TxIn & TxOut - script in constructor
 * v0.5.6 - Remove lengths in to_string, fixes for Python 3.10, Replace [] with "" for scripts in Tx
+* v0.5.7 - Add Wallet.generate_keypair() and Python dependencies

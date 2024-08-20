@@ -167,7 +167,7 @@ Wallet class has the following methods:
 * `get_public_key_as_hexstr(self) -> String` - Return the public key as a hex string
 * `get_address(self) -> String` - Return the address based on the public key
 * `to_wif(self) -> String` - Return the private key in WIF format
-
+* `Wallet.generate_keypair(network) -> Wallet` - Given network (BSV_Testnet) return a keypair in Wallet format
 
 ## Interface Factory
 The InterfaceFactory is class for creating interfaces to the BSV blockchain (`BlockchainInterface`).

@@ -1,6 +1,3 @@
-use k256::ecdsa::{SigningKey, VerifyingKey};
-use pyo3::prelude::*;
-
 use crate::{
     messages::Tx, // TxIn, TxOut},
     network::Network,
@@ -21,6 +18,9 @@ use crate::{
     },
     util::{Error, Result},
 };
+use k256::ecdsa::{SigningKey, VerifyingKey};
+use pyo3::{prelude::*, types::PyType};
+use rand_core::OsRng;
 
 const MAIN_PRIVATE_KEY: u8 = 0x80;
 const TEST_PRIVATE_KEY: u8 = 0xef;
@@ -110,6 +110,19 @@ pub fn p2pkh_pyscript(h160: &[u8]) -> PyScript {
     script.append_data(h160);
     script.append_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
     PyScript::new(&script.0)
+}
+
+pub fn str_to_network(network: &str) -> Option<Network> {
+    match network {
+        "BSV_Mainnet" => Some(Network::BSV_Mainnet),
+        "BSV_Testnet" => Some(Network::BSV_Testnet),
+        "BSV_STN" => Some(Network::BSV_STN),
+        "BTC_Mainnet" => Some(Network::BTC_Mainnet),
+        "BTC_Testnet" => Some(Network::BTC_Testnet),
+        "BCH_Mainnet" => Some(Network::BCH_Mainnet),
+        "BCH_Testnet" => Some(Network::BCH_Testnet),
+        _ => None,
+    }
 }
 
 /// This class represents the Wallet functionality,
@@ -246,21 +259,22 @@ impl PyWallet {
         )?)
     }
 
-    /*
-    fn generate_key(network: Network) -> PyResult<Self> {
-        let secp = Secp256k1::new();
-        let mut rng = OsRng::new()?;
-        let (private_key, public_key) = secp.generate_keypair(&mut rng);
+    #[classmethod]
+    fn generate_keypair(_cls: &Bound<'_, PyType>, network: &str) -> PyResult<Self> {
+        if let Some(netwrk) = str_to_network(network) {
+            let private_key = SigningKey::random(&mut OsRng);
+            let public_key = *private_key.verifying_key();
 
-        let address = public_key_to_address(&public_key.serialize(), network)?;
-        Ok(PyWallet {
-            secp,
-            private_key,
-            address,
-            network,
-        })
+            Ok(PyWallet {
+                private_key,
+                public_key,
+                network: netwrk,
+            })
+        } else {
+            let msg = format!("Unknown network {}", network);
+            Err(Error::BadData(msg).into())
+        }
     }
-    */
 }
 
 #[cfg(test)]

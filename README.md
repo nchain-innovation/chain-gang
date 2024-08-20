@@ -13,6 +13,62 @@ As this library is hosted on PyPi (https://pypi.org/project/tx-engine/) it can b
 pip install tx-engine
 ```
 
+## Example Tx class usage
+So to parse a hex string to Tx:
+
+```python
+from tx_engine import Tx
+
+src_tx = "0100000001c7151ebaf14dbfe922bd90700a7580f6db7d5a1b898ce79cb9ce459e17f12909000000006b4830450221008b001e8d8110804ac66e467cd2452f468cba4a2a1d90d59679fe5075d24e5f5302206eb04e79214c09913fad1e3c0c2498be7f457ed63323ac6f2d9a38d53586a58d41210395deb00349c0ae73412a55bec70a7793fc6860a193d29dd61d73c6271ffcbd4cffffffff0103000000000000001976a91496795fb99fd6c0f214f7a0e96019f642225f52d288ac00000000"
+tx_bytes = bytes.fromhex(src_tx)
+
+tx = tx.parse(tx_bytes)
+print(tx)
+
+PyTx { version: 1, tx_ins: [PyTxIn { prev_tx: "0929f1179e45ceb99ce78c891b5a7ddbf680750a7090bd22e9bf4df1ba1e15c7", prev_index: 0, sequence: 4294967295, script_sig: [0x48 0x30450221008b001e8d8110804ac66e467cd2452f468cba4a2a1d90d59679fe5075d24e5f5302206eb04e79214c09913fad1e3c0c2498be7f457ed63323ac6f2d9a38d53586a58d41 0x21 0x0395deb00349c0ae73412a55bec70a7793fc6860a193d29dd61d73c6271ffcbd4c] }], tx_outs: [PyTxOut { amount: 3, script_pubkey: [OP_DUP OP_HASH160 0x14 0x96795fb99fd6c0f214f7a0e96019f642225f52d2 OP_EQUALVERIFY OP_CHECKSIG] }], locktime: 0 }
+```
+
+
+## Tx
+
+Tx represents a bitcoin transaction.
+
+Tx has the following properties:
+* `version` - unsigned integer
+* `tx_ins` - array of `TxIn` classes,
+* `tx_outs` - array of `TxOut` classes
+* `locktime` - unsigned integer
+
+Tx has the following methods:
+
+* `__init__(version: int, tx_ins: [TxIn], tx_outs: [TxOut], locktime: int=0) -> Tx` - Constructor that takes the fields 
+* `id(self) -> str` - Return human-readable hexadecimal of the transaction hash
+* `hash(self) -> bytes` - Return transaction hash as bytes
+* `is_coinbase(self) -> bool` - Returns true if it is a coinbase transaction
+* `serialize(self) -> bytes` - Returns Tx as bytes
+* `copy(self) -> Tx` - Returns a copy of the Tx
+* `to_string(self) -> String` - return the Tx as a string. Note also that you can just print the tx (`print(tx)`).
+* `validate(self, [Tx]) -> Result` - provide the input txs, returns None on success and throws a RuntimeError exception on failure. Note can not validate coinbase or pre-genesis transactions.
+
+    
+Tx has the following class methods:
+
+* `Tx.parse(in_bytes: bytes) -> Tx`  - Parse bytes to produce Tx
+
+So to parse a hex string to Tx:
+```Python
+from tx_engine import Tx
+
+src_tx = "0100000001c7151ebaf14dbfe922bd90700a7580f6db7d5a1b898ce79cb9ce459e17f12909000000006b4830450221008b001e8d8110804ac66e467cd2452f468cba4a2a1d90d59679fe5075d24e5f5302206eb04e79214c09913fad1e3c0c2498be7f457ed63323ac6f2d9a38d53586a58d41210395deb00349c0ae73412a55bec70a7793fc6860a193d29dd61d73c6271ffcbd4cffffffff0103000000000000001976a91496795fb99fd6c0f214f7a0e96019f642225f52d288ac00000000"
+tx_bytes = bytes.fromhex(src_tx)
+
+tx = tx.parse(tx_bytes)
+print(tx)
+
+PyTx { version: 1, tx_ins: [PyTxIn { prev_tx: "0929f1179e45ceb99ce78c891b5a7ddbf680750a7090bd22e9bf4df1ba1e15c7", prev_index: 0, sequence: 4294967295, script_sig: [0x48 0x30450221008b001e8d8110804ac66e467cd2452f468cba4a2a1d90d59679fe5075d24e5f5302206eb04e79214c09913fad1e3c0c2498be7f457ed63323ac6f2d9a38d53586a58d41 0x21 0x0395deb00349c0ae73412a55bec70a7793fc6860a193d29dd61d73c6271ffcbd4c] }], tx_outs: [PyTxOut { amount: 3, script_pubkey: [OP_DUP OP_HASH160 0x14 0x96795fb99fd6c0f214f7a0e96019f642225f52d2 OP_EQUALVERIFY OP_CHECKSIG] }], locktime: 0 }
+```
+
+
 # Example Script execution
 
 ```python
@@ -54,34 +110,6 @@ self.assertEqual(context.raw_stack, [[1,2]])
 ### Inserting Numbers into Script
 
 * `encode_num()` is now `insert_num()`
-
-
-# Tx
-Bitcoin transactions are represented by the `Tx` class.
-Where possible the existing `tx_engine` attributes and methods have be maintained 
-for the classes `Tx`, `TxIn` and `TxOut`.
-
-The following attributes and methods have been removed:
-* demopFunc/demopper, isTestNet
-* tx_fetcher, fetch_tx(), value(), script_pubkey(), add_extrac_script_sig_info()
-* serialised_demopped(), fee(), coinbase_height()
-
-`BytesIO` has been replaced by `bytes`
-
-
-
-## Example Tx class usage
-```python
-
-from tx_engine import Tx
-
-
-raw_tx = bytes.fromhex(
-    "0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600"
-)
-tx = Tx.parse(raw_tx)
-assert tx.version == 1
-```
 
 
 # Script Debugger
