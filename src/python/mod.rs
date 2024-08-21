@@ -16,7 +16,7 @@ use crate::{
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, PyWallet},
-        py_sighash::{PySigHash, py_partial_sig_hash, py_full_sig_hash}
+        py_sighash::{PySigHash, py_partial_sig_hash, py_full_sig_hash, py_sig_hash_preimage}
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     util::{Error, Hash256, Serializable},
@@ -89,6 +89,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_public_key_to_address, m)?)?;
     m.add_function(wrap_pyfunction!(py_partial_sig_hash, m)?)?;
     m.add_function(wrap_pyfunction!(py_full_sig_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(py_sig_hash_preimage,m)?)?;
 
     // Script
     m.add_class::<PyScript>()?;

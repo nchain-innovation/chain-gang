@@ -366,6 +366,106 @@ pub fn sig_hash_preimage_with_replacement_script(
     Ok(bip143_sighash(tx, n_input, script_code, satoshis, sighash_type, cache)?)
 }
 
+// this code is duplicated at the moment from bip143_sighash above,
+pub fn sig_hash_preimage(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    satoshis: i64,
+    sighash_type: u8,
+    cache: &mut SigHashCache) ->Result<Vec<u8>> {
+    if n_input >= tx.inputs.len() {
+        return Err(Error::BadArgument("input out of tx_in range".to_string()));
+    }
+
+    let mut s = Vec::with_capacity(tx.size());
+    let base_type = sighash_type & 31;
+    let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
+
+    // Remove all instances of OP_CODESEPARATOR from the script_code
+    let mut sub_script = Vec::with_capacity(script_code.len());
+    let mut i = 0;
+    while i < script_code.len() {
+        let next = next_op(i, script_code);
+        if script_code[i] != op_codes::OP_CODESEPARATOR {
+            sub_script.extend_from_slice(&script_code[i..next]);
+        }
+        i = next;
+    }
+
+    // Serialize the version
+    s.write_u32::<LittleEndian>(tx.version)?;
+    // 2. Serialize hash of prevouts
+    if !anyone_can_pay {
+        if cache.hash_prevouts.is_none() {
+            let mut prev_outputs = Vec::with_capacity(OutPoint::SIZE * tx.inputs.len());
+            for input in tx.inputs.iter() {
+                input.prev_output.write(&mut prev_outputs)?;
+            }
+            cache.hash_prevouts = Some(sha256d(&prev_outputs));
+        }
+        s.write_all(&cache.hash_prevouts.unwrap().0)?;
+    } else {
+        s.write_all(&[0; 32])?;
+    }
+
+    // 3. Serialize hash of sequences
+    if !anyone_can_pay && base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
+        if cache.hash_sequence.is_none() {
+            let mut sequences = Vec::with_capacity(4 * tx.inputs.len());
+            for tx_in in tx.inputs.iter() {
+                sequences.write_u32::<LittleEndian>(tx_in.sequence)?;
+            }
+            cache.hash_sequence = Some(sha256d(&sequences));
+        }
+        s.write_all(&cache.hash_sequence.unwrap().0)?;
+    } else {
+        s.write_all(&[0; 32])?;
+    }
+
+    // 4. Serialize prev output
+    tx.inputs[n_input].prev_output.write(&mut s)?;
+
+    // 5. Serialize input script
+    var_int::write(script_code.len() as u64, &mut s)?;
+    s.write_all(script_code)?;
+
+    // 6. Serialize satoshis
+    s.write_i64::<LittleEndian>(satoshis)?;
+
+    // 7. Serialize sequence
+    s.write_u32::<LittleEndian>(tx.inputs[n_input].sequence)?;
+
+    // 8. Serialize hash of outputs
+    if base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
+        if cache.hash_outputs.is_none() {
+            let mut size = 0;
+            for tx_out in tx.outputs.iter() {
+                size += tx_out.size();
+            }
+            let mut outputs = Vec::with_capacity(size);
+            for tx_out in tx.outputs.iter() {
+                tx_out.write(&mut outputs)?;
+            }
+            cache.hash_outputs = Some(sha256d(&outputs));
+        }
+        s.write_all(&cache.hash_outputs.unwrap().0)?;
+    } else if base_type == SIGHASH_SINGLE && n_input < tx.outputs.len() {
+        let mut outputs = Vec::with_capacity(tx.outputs[n_input].size());
+        tx.outputs[n_input].write(&mut outputs)?;
+        s.write_all(&sha256d(&outputs).0)?;
+    } else {
+        s.write_all(&[0; 32])?;
+    }
+
+    // 9. Serialize lock_time
+    s.write_u32::<LittleEndian>(tx.lock_time)?;
+
+    // 10. Serialize hash type
+    s.write_u32::<LittleEndian>((FORK_ID << 8) | sighash_type as u32)?;
+    Ok(s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

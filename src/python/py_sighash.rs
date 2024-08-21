@@ -1,7 +1,7 @@
 use crate::{
     python::PyTx,
     util::Hash256,
-    transaction::sighash::{partial_sig_hash, SigHashCache, sighash},
+    transaction::sighash::{partial_sig_hash, sig_hash_preimage, SigHashCache, sighash},
     python::py_script::PyScript,
     script::Script
 };
@@ -10,8 +10,8 @@ use crate::messages::Tx;
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
+    types::PyBytes,
 };
-
 
 pub fn compute_partial_pre_image(input_tx: Tx, index: usize, sighashflag: Option<u8>) -> PyResult<PySigHash>{
 
@@ -37,7 +37,7 @@ pub struct PySigHash {
 }
 
 impl PySigHash {
-    //#[allow(dead_code)]
+    #[allow(dead_code)]
     fn as_sighashcache(&self) -> SigHashCache {
         let mut cache = SigHashCache::new();
         cache.set_hash_prevouts(self.hash_prevouts.map(Hash256).unwrap_or_else(|| Hash256([0; 32])));
@@ -109,6 +109,16 @@ pub fn py_full_sig_hash(_py: Python, tx: &PyTx, index: usize, script_pubkey: PyS
         &mut cache,
     );
     Ok(sig_hash.map(|hash| hash.0)?)
+}
+
+#[pyfunction(name="sig_hash_preimage")]
+pub fn py_sig_hash_preimage(_py: Python, tx: &PyTx, index:usize, script_pubkey: PyScript, prev_amount: i64, sighash_value: Option<u8>) ->  PyResult<PyObject> {
+    let input_tx: Tx = tx.as_tx();
+    let prev_lock_script: Script = script_pubkey.as_script();
+    let mut cache = SigHashCache::new();
+    let sigh_hash = sig_hash_preimage(&input_tx, index, &prev_lock_script.0, prev_amount, sighash_value.unwrap(), &mut cache); 
+    let bytes = PyBytes::new_bound(_py, &sigh_hash.unwrap());
+    Ok(bytes.into())
 }
 
 

@@ -3,11 +3,13 @@ from typing import Optional
 from tx_engine import Script
 from tx_engine.engine.util import (
     GROUP_ORDER_INT,
-    HALF_GROUP_ORDER_INT
+    HALF_GROUP_ORDER_INT,
+    Gx_bytes,
+    encode_num
 )
 
 
-def reverseEndianness(length: int) -> Script:
+def reverse_endianness(length: int) -> Script:
     """
     Input parameters:
         - Stack: x
@@ -62,7 +64,7 @@ def xToPubKey() -> Script:
     return out
 
 
-def ensurePositive() -> Script:
+def ensure_is_positive() -> Script:
     """
     Input parameters:
         - Stack: x
@@ -194,3 +196,20 @@ def roll(position: int, nElements: int) -> Script:
         nElements = 2, position = 2 --> OP_2 OP_ROLL OP_2 OP_ROLL
     '''
     return Script.parse_string(' '.join([str(position), 'OP_ROLL'] * nElements))
+
+def nums_to_script(nums: list[int]) -> Script:
+
+    '''
+        Takes a list of number and returns the script pushing those numbers to the stack
+    '''
+
+    out = Script()
+    for n in nums:
+        if n == -1:
+            out += Script.parse_string('-1')
+        elif 0 <= n <= 16:
+            out += Script.parse_string(str(n))
+        else:
+            out.append_pushdata(encode_num(n))
+
+    return out
