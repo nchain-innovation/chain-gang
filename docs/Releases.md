@@ -27,3 +27,4 @@
 * v0.5.6 - Remove lengths in to_string, fixes for Python 3.10, Replace [] with "" for scripts in Tx
 * v0.5.7 - Add Wallet.generate_keypair() and Python dependencies
 * v0.5.8 - Resolve Python dependencies, fix pushdata in Script.to_string()
+* v0.5.9 - Address OP_BIN2NUM issue
