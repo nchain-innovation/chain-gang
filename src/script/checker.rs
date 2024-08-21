@@ -172,12 +172,12 @@ mod tests {
     use super::*;
     use crate::messages::{OutPoint, TxIn, TxOut};
     use crate::script::op_codes::*;
-    use crate::script::{Script, NO_FLAGS, PREGENESIS_RULES};
+    use crate::script::{Script, NO_FLAGS};
     use crate::transaction::generate_signature;
     use crate::transaction::sighash::{
-        SIGHASH_ALL, SIGHASH_ANYONECANPAY, SIGHASH_FORKID, SIGHASH_NONE, SIGHASH_SINGLE,
+        SIGHASH_ALL, SIGHASH_FORKID,
     };
-    use crate::util::{hash160, Hash256};
+    use crate::util::hash160;
     use k256::ecdsa::{SigningKey, VerifyingKey};
 
     #[test]

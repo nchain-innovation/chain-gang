@@ -215,7 +215,7 @@ class BSVTests(unittest.TestCase):
         script = Script([OP_PUSHDATA1, b'\x05', b"\x00\x00\x00\x00\x02", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [2])
+        self.assertEqual(context.stack, [0x200000000])
 
     def test_bin2num_example2(self):
         """ example 2
@@ -225,13 +225,13 @@ class BSVTests(unittest.TestCase):
         script = Script([OP_PUSHDATA1, 0x03, b"\x80\x00\x05", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [-5])
+        self.assertEqual(context.stack, [0x50080])
 
     def test_bin2num_part2(self):
         script = Script([OP_PUSHDATA1, b'\x05', b"\x02\x00\x00\x00\x00", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0, 0, 0, 0, 2]])
+        self.assertEqual(context.raw_stack, [[2]])
 
     def test_bin2num_unittest_1(self):
         """ unit test 1 from
@@ -269,53 +269,53 @@ class BSVTests(unittest.TestCase):
         self.assertEqual(context.raw_stack, [[]])
 
     def test_bin2num_part5(self):
-        script = Script([OP_PUSHDATA1, 0x07, b"\x00\x00\x00\x00\x00\x00\x01", OP_BIN2NUM])
+        script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x80", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[1]])
+        self.assertEqual(context.raw_stack, [[0x81]])
 
     def test_bin2num_part6(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x00", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0, 0, 0, 0, 0, 0, 1]])
+        self.assertEqual(context.raw_stack, [[1]])
 
     def test_bin2num_part8(self):
         script = Script([OP_PUSHDATA1, 0x03, b"\x05\x00\x80", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0x80, 0, 5]])
+        self.assertEqual(context.raw_stack, [[0x85]])
 
     def test_bin2num_part9(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x80\x00\x00\x00\x00\x00\x01", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [-1])
+        self.assertEqual(context.stack, [0x1000000000080])
 
     def test_bin2num_part10(self):
-        script = Script([OP_PUSHDATA1, 0x07, b"\x80\x00\x00\x00\x00\x01\x01", OP_BIN2NUM])
+        script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x01\x81", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [-257])
+        self.assertEqual(context.stack, [-0x1010000000001])
 
     def test_bin2num_part11(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x80", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0x80, 0, 0, 0, 0, 0, 1]])
+        self.assertEqual(context.raw_stack, [[129]])
 
     def test_bin2num_part12(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x01\x80", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0x80, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01]])
+        self.assertEqual(context.raw_stack, [[1, 0x00, 0x00, 0x00, 0x00, 0x81]])
 
     def test_bin2num_part13(self):
         # a OP_BIN2NUM -> failure, pre genesis as limited to 4 bytes
         script = Script([OP_PUSHDATA1, 0x0A, b"\x01\x00\x00\x01\x00\x00\x00\x00\x01\x01", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01]])
+        self.assertEqual(context.raw_stack, [[0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01]])
 
     def test_num2bin_1(self):
         """ Check of num2bin - https://github.com/dashpay/dips/blob/master/dip-0020.md
@@ -353,7 +353,7 @@ class BSVTests(unittest.TestCase):
         """ Convert a byte array to number and back to byte array to see if it removes the leading 0s
         """
         # Check the ablity to remove leading 0s
-        script = Script([OP_PUSHDATA1, 0x07, b"\x00\x00\x00\x00\x00\x00\x01", OP_BIN2NUM, OP_2, OP_NUM2BIN])
+        script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x00", OP_BIN2NUM, OP_2, OP_NUM2BIN])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 1]])
@@ -362,7 +362,7 @@ class BSVTests(unittest.TestCase):
         """ Convert a byte array to number and back to byte array to see if it removes the leading 0s
         """
         # Check the ablity to remove leading 0s, repeat with one byte
-        script = Script([OP_PUSHDATA1, 0x07, b"\x00\x00\x00\x00\x00\x00\x01", OP_BIN2NUM, OP_1, OP_NUM2BIN])
+        script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x00", OP_BIN2NUM, OP_1, OP_NUM2BIN])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1]])
