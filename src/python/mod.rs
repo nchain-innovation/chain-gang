@@ -1,5 +1,5 @@
 use pyo3::{prelude::*, types::PyBytes};
-use std::io::Cursor;
+//use std::io::Cursor;
 
 mod base58_checksum;
 mod hashes;
@@ -19,7 +19,8 @@ use crate::{
         py_sighash::{PySigHash, py_partial_sig_hash, py_full_sig_hash, py_sig_hash_preimage}
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
-    util::{Error, Hash256, Serializable},
+    //util::{Error, Hash256, Serializable},
+    util::{Error, Hash256},
 };
 
 pub type Bytes = Vec<u8>;
@@ -71,7 +72,17 @@ fn py_script_eval(
     // Pick the appropriate transaction checker
     match z {
         Some(sig_hash) => {
-            let z = Hash256::read(&mut Cursor::new(sig_hash))?;
+            // Ensure the slice is exactly 32 bytes long
+            let z_bytes = sig_hash;
+            let z_array: [u8; 32] = match z_bytes.try_into() {
+                Ok(array) => array,
+                Err(_) => {
+                    // Handle the error if `z_bytes` is not 32 bytes long
+                    panic!("z_bytes must be exactly 32 bytes long");
+                }
+            };
+
+            let z = Hash256(z_array);
             Ok(script.eval_with_stack(&mut ZChecker { z }, NO_FLAGS, break_at)?)
         }
         None => Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, break_at)?),

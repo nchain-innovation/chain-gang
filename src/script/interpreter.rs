@@ -635,6 +635,7 @@ pub fn core_eval<T: Checker>(
                 if prefork(&sig) {
                     cleaned_script = remove_sig(&sig, &cleaned_script);
                 }
+
                 match checker.check_sig(&sig, &pubkey, &cleaned_script)? {
                     true => stack.push(encode_num(1)?),
                     false => stack.push(encode_num(0)?),
