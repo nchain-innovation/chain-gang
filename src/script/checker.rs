@@ -3,7 +3,7 @@ use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
 use crate::util::{Error, Hash256, Result};
 
 use k256::ecdsa::{
-    signature::{hazmat::PrehashVerifier, Verifier},
+    signature::hazmat::PrehashVerifier,
     Signature, VerifyingKey,
 };
 

@@ -78,7 +78,7 @@ fn py_script_eval(
                 Ok(array) => array,
                 Err(_) => {
                     // Handle the error if `z_bytes` is not 32 bytes long
-                    panic!("z_bytes must be exactly 32 bytes long");
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("z_bytes must be exactly 32 bytes long"));
                 }
             };
 
