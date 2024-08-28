@@ -132,86 +132,9 @@ fn bip143_sighash(
     sighash_type: u8,
     cache: &mut SigHashCache,
 ) -> Result<Hash256> {
-    if n_input >= tx.inputs.len() {
-        return Err(Error::BadArgument("input out of tx_in range".to_string()));
-    }
-
-    let mut s = Vec::with_capacity(tx.size());
-    let base_type = sighash_type & 31;
-    let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
-
-    // 1. Serialize version
-    s.write_u32::<LittleEndian>(tx.version)?;
-
-    // 2. Serialize hash of prevouts
-    if !anyone_can_pay {
-        if cache.hash_prevouts.is_none() {
-            let mut prev_outputs = Vec::with_capacity(OutPoint::SIZE * tx.inputs.len());
-            for input in tx.inputs.iter() {
-                input.prev_output.write(&mut prev_outputs)?;
-            }
-            cache.hash_prevouts = Some(sha256d(&prev_outputs));
-        }
-        s.write_all(&cache.hash_prevouts.unwrap().0)?;
-    } else {
-        s.write_all(&[0; 32])?;
-    }
-
-    // 3. Serialize hash of sequences
-    if !anyone_can_pay && base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
-        if cache.hash_sequence.is_none() {
-            let mut sequences = Vec::with_capacity(4 * tx.inputs.len());
-            for tx_in in tx.inputs.iter() {
-                sequences.write_u32::<LittleEndian>(tx_in.sequence)?;
-            }
-            cache.hash_sequence = Some(sha256d(&sequences));
-        }
-        s.write_all(&cache.hash_sequence.unwrap().0)?;
-    } else {
-        s.write_all(&[0; 32])?;
-    }
-
-    // 4. Serialize prev output
-    tx.inputs[n_input].prev_output.write(&mut s)?;
-
-    // 5. Serialize input script
-    var_int::write(script_code.len() as u64, &mut s)?;
-    s.write_all(script_code)?;
-
-    // 6. Serialize satoshis
-    s.write_i64::<LittleEndian>(satoshis)?;
-
-    // 7. Serialize sequence
-    s.write_u32::<LittleEndian>(tx.inputs[n_input].sequence)?;
-
-    // 8. Serialize hash of outputs
-    if base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
-        if cache.hash_outputs.is_none() {
-            let mut size = 0;
-            for tx_out in tx.outputs.iter() {
-                size += tx_out.size();
-            }
-            let mut outputs = Vec::with_capacity(size);
-            for tx_out in tx.outputs.iter() {
-                tx_out.write(&mut outputs)?;
-            }
-            cache.hash_outputs = Some(sha256d(&outputs));
-        }
-        s.write_all(&cache.hash_outputs.unwrap().0)?;
-    } else if base_type == SIGHASH_SINGLE && n_input < tx.outputs.len() {
-        let mut outputs = Vec::with_capacity(tx.outputs[n_input].size());
-        tx.outputs[n_input].write(&mut outputs)?;
-        s.write_all(&sha256d(&outputs).0)?;
-    } else {
-        s.write_all(&[0; 32])?;
-    }
-
-    // 9. Serialize lock_time
-    s.write_u32::<LittleEndian>(tx.lock_time)?;
-
-    // 10. Serialize hash type
-    s.write_u32::<LittleEndian>((FORK_ID << 8) | sighash_type as u32)?;
-
+    // The intention is to return any error(s) without any extra processing & according to the 
+    // docs the '?' operator is the most idiomatic & concise. 
+    let s = sig_hash_preimage(tx, n_input, script_code,satoshis,sighash_type, cache)?;
     Ok(sha256d(&s))
 }
 
@@ -301,72 +224,8 @@ fn legacy_sighash(
     Ok(sha256d(&s))
 }
 
-/*
-This function was added to support the PushTX port. It is used in the python code to generate
-the script_sig scripts related to pushtx script_pubkey scripts. It is based on the function
-tx_engine.tx_sign.handle_sig_hash_flag
- */
-#[allow(dead_code)]
-pub fn partial_sig_hash(tx: &Tx, index: usize, input_sighash: Option<u8>) -> Result<SigHashCache> {
-    if index >= tx.inputs.len() {
-        return Err(Error::BadArgument("input out of tx_in range".to_string()));
-    }
-    let mut cache = SigHashCache::new();
-    let base_type = input_sighash.unwrap() & 31;
-    let anyone_can_pay = input_sighash.unwrap() & SIGHASH_ANYONECANPAY != 0;
 
-
-    // hash of prev_outs
-    if !anyone_can_pay {
-        let mut prev_outputs = Vec::with_capacity(OutPoint::SIZE * tx.inputs.len());
-        for input in tx.inputs.iter() {
-            input.prev_output.write(&mut prev_outputs)?;
-        }
-        cache.hash_prevouts = Some(sha256d(&prev_outputs));   
-    }
-
-    // hash of sequence
-     if !anyone_can_pay && base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
-
-        let mut sequences = Vec::with_capacity(4 * tx.inputs.len());
-        for tx_in in tx.inputs.iter() {
-            sequences.write_u32::<LittleEndian>(tx_in.sequence)?;
-        }
-        cache.hash_sequence = Some(sha256d(&sequences));
-    }
-
-    //hash of outputs
-    if base_type != SIGHASH_SINGLE && base_type != SIGHASH_NONE {
-        let mut size = 0;
-        for tx_out in tx.outputs.iter() {
-            size += tx_out.size();
-        }
-        let mut outputs = Vec::with_capacity(size);
-        for tx_out in tx.outputs.iter() {
-            tx_out.write(&mut outputs)?;
-        }
-        cache.hash_outputs = Some(sha256d(&outputs));
-        
-    } else if base_type == SIGHASH_SINGLE && index < tx.outputs.len() {
-        let mut outputs = Vec::with_capacity(tx.outputs[index].size());
-        tx.outputs[index].write(&mut outputs)?;
-        cache.hash_outputs = Some(sha256d(&outputs));
-    }
-
-    Ok(cache)
-}
-
-pub fn sig_hash_preimage_with_replacement_script(
-    tx: &Tx,
-    n_input: usize,
-    script_code: &[u8],
-    satoshis: i64,
-    sighash_type: u8,
-    cache: &mut SigHashCache) -> Result<Hash256> {
-    Ok(bip143_sighash(tx, n_input, script_code, satoshis, sighash_type, cache)?)
-}
-
-// this code is duplicated at the moment from bip143_sighash above,
+// this code was duplicated from bip143_sighash above (that function now calls this one)
 pub fn sig_hash_preimage(
     tx: &Tx,
     n_input: usize,
