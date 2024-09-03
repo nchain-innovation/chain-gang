@@ -77,6 +77,11 @@ class FedTest(unittest.TestCase):
         context = Context(script=script1)
         self.assertTrue(context.evaluate())
 
+    def test_federico10(self):
+        test = Script.parse_string('OP_1 OP_2 OP_NUM2BIN 0x0100 OP_EQUAL')
+        context = Context(script=test)
+        self.assertTrue(context.evaluate())
+
 
 if __name__ == '__main__':
     unittest.main()

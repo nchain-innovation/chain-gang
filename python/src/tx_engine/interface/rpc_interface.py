@@ -71,10 +71,6 @@ class RPCInterface(BlockchainInterface):
             f"http://{self.user}:{self.password}@{self.address}"
         )
 
-        self.rpc_connection = AuthServiceProxy(
-            f"http://{self.user}:{self.password}@{self.address}"
-        )
-
     def is_testnet(self) -> bool:
         assert self.network_type is not None
         if self.network_type == "test":
@@ -272,5 +268,5 @@ class RPCInterface(BlockchainInterface):
         return self.rpc_connection.getblockheader(block_hash)
 
     @retry_call
-    def verifyscript(self, scripts: list, stopOnFirstInvalid: bool = True, totalTimeout: int = 100) -> List[Any]:
+    def verifyscript(self, scripts: List[Any], stopOnFirstInvalid: bool = True, totalTimeout: int = 100) -> List[Any]:
         return self.rpc_connection.verifyscript(scripts, stopOnFirstInvalid, totalTimeout)

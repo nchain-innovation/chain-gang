@@ -578,9 +578,11 @@ pub fn core_eval<T: Checker>(
                 // Add zeros
                 let diff = m.to_usize().unwrap() - n.len();
                 v.extend(std::iter::repeat(0).take(diff));
+                // Prepend the value
                 for b in n.iter().rev() {
-                    v.push(*b);
+                    v.insert(0, *b);
                 }
+                // Add the sign 
                 v[0] |= neg;
                 stack.push(v);
             }

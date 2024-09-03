@@ -82,3 +82,6 @@ docs/_build/
 
 # Pyenv
 .python-version
+
+# playground
+python/src/playground

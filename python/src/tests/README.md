@@ -25,3 +25,8 @@ $ source ~/penv/bin/activate
 $ cd python/src/tests
 $ python3 test_op.py ScriptOPTests.test_nop
 ```
+
+With verbose output
+```bash
+python3 -m unittest test_fed.py -vvv
+```

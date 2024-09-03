@@ -153,8 +153,6 @@ print(txout)
 PyTxOut { amount: 100, script_pubkey: [OP_DUP OP_HASH160 0x14 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG] }
 ```
 
-
-
 ## Wallet
 This class represents the Wallet functionality, including handling of private and public keys and signing transactions.
 

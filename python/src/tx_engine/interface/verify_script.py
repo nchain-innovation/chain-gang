@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Dict, Any
 
 
 class SCRIPT_FLAGS(int, Enum):
@@ -112,12 +113,12 @@ class SCRIPT_FLAGS(int, Enum):
 
 def verifyscript_params(
         tx_hash: str,
-         index: int,
+        index: int,
         lock_script: str,
         lock_script_amt: int,
         block_height: int = -1,
         script_flags: int = -1,
-        report_flags: bool = False) -> dict:
+        report_flags: bool = False) -> Dict[str, Any]:
     """ Given the provided details return the verifyscript parameters as a dictionary
     """
     scripts = {"tx": tx_hash, "n": index}

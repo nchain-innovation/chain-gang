@@ -330,7 +330,7 @@ class BSVTests(unittest.TestCase):
         script = Script([OP_2, OP_4, OP_NUM2BIN])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0x00, 0x00, 0x00, 0x02]])
+        self.assertEqual(context.raw_stack, [[0x02, 0x00, 0x00, 0x00]])
 
     def test_num2bin_2(self):
         """ Check of num2bin
@@ -338,7 +338,7 @@ class BSVTests(unittest.TestCase):
         script = Script([OP_PUSHDATA1, 0x01, b"\x85", OP_4, OP_NUM2BIN])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0x80, 0x00, 0x00, 0x05]])
+        self.assertEqual(context.raw_stack, [[0x85, 0x00, 0x00, 0x00]])
 
     def test_num2bin_3(self):
         """ Check of num2bin
@@ -356,7 +356,7 @@ class BSVTests(unittest.TestCase):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x00", OP_BIN2NUM, OP_2, OP_NUM2BIN])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[0, 1]])
+        self.assertEqual(context.raw_stack, [[1, 0]])
 
     def test_bin2num_round_trip_2(self):
         """ Convert a byte array to number and back to byte array to see if it removes the leading 0s
