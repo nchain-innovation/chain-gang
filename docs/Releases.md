@@ -28,3 +28,5 @@
 * v0.5.7 - Add Wallet.generate_keypair() and Python dependencies
 * v0.5.8 - Resolve Python dependencies, fix pushdata in Script.to_string()
 * v0.5.9 - Address OP_BIN2NUM issue
+* v0.6.0 - Address OP_NUM2BIN issue
+* v0.6.1 - Bump version as missed cargo.toml file
