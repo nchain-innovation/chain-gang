@@ -582,7 +582,7 @@ pub fn core_eval<T: Checker>(
                 for b in n.iter().rev() {
                     v.insert(0, *b);
                 }
-                // Add the sign 
+                // Add the sign
                 v[0] |= neg;
                 stack.push(v);
             }
@@ -1099,16 +1099,16 @@ mod tests {
         pass(&[OP_1NEGATE, OP_0, OP_MAX, OP_0, OP_EQUAL]);
         pass(&[OP_0, OP_0, OP_1, OP_WITHIN]);
         pass(&[OP_0, OP_1NEGATE, OP_1, OP_WITHIN]);
-        
+
         pass(&[OP_PUSH + 9, 0, 0, 0, 0, 0, 0, 0, 0, 1, OP_BIN2NUM]);
-        
+
         //pass(&[OP_PUSH + 4, 128, 0, 0, 1, OP_BIN2NUM, OP_1NEGATE, OP_EQUAL]);
-        
+
         pass(&[OP_PUSH + 7, 0, 0, 0, 0, 0, 0, 0, OP_BIN2NUM, OP_0, OP_EQUAL]);
         pass(&[OP_PUSH + 5, 129, 0, 0, 0, 0, OP_BIN2NUM]);
         pass(&[OP_1, OP_16, OP_NUM2BIN]);
         pass(&[OP_0, OP_4, OP_NUM2BIN, OP_0, OP_NUMEQUAL]);
-        
+
         // pass(&[OP_1, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
         // pass(&[OP_1NEGATE, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
 

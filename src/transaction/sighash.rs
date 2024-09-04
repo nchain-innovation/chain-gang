@@ -37,7 +37,7 @@ const FORK_ID: u32 = 0;
 /// * `tx` - Spending transaction
 /// * `n_input` - Spending input index
 /// * `script_code` - The lock_script of the output being spent. This may be a subset of the
-/// lock_script if OP_CODESEPARATOR is used.
+///   lock_script if OP_CODESEPARATOR is used.
 /// * `satoshis` - The satoshi amount in the output being spent
 /// * `sighash_type` - Sighash flags
 /// * `cache` - Cache to store intermediate values for future sighash calls.
@@ -75,43 +75,42 @@ impl SigHashCache {
         }
     }
     // getter/setter/clear hash_prevouts
-    pub fn hash_prevouts(&self) -> Option<&Hash256>{
+    pub fn hash_prevouts(&self) -> Option<&Hash256> {
         self.hash_prevouts.as_ref()
     }
 
-    pub fn set_hash_prevouts(&mut self, hash: Hash256){
+    pub fn set_hash_prevouts(&mut self, hash: Hash256) {
         self.hash_prevouts = Some(hash);
     }
 
-    pub fn clear_hash_prevouts(&mut self){
+    pub fn clear_hash_prevouts(&mut self) {
         self.hash_prevouts = None;
     }
     //getter/setter/clear hash_sequence
-    pub fn hash_sequence(&self) -> Option<&Hash256>{
+    pub fn hash_sequence(&self) -> Option<&Hash256> {
         self.hash_sequence.as_ref()
     }
 
-    pub fn set_hash_sequence(&mut self, hash: Hash256){
+    pub fn set_hash_sequence(&mut self, hash: Hash256) {
         self.hash_sequence = Some(hash);
     }
 
-    pub fn clear_hash_sequence(&mut self){
+    pub fn clear_hash_sequence(&mut self) {
         self.hash_sequence = None;
     }
 
     //getter/setter/clear hash_outputs
-    pub fn hash_outputs(&self) -> Option<&Hash256>{
+    pub fn hash_outputs(&self) -> Option<&Hash256> {
         self.hash_outputs.as_ref()
     }
 
-    pub fn set_hash_outputs(&mut self, hash: Hash256){
+    pub fn set_hash_outputs(&mut self, hash: Hash256) {
         self.hash_outputs = Some(hash)
     }
 
-    pub fn clear_hash_outputs(&mut self){
+    pub fn clear_hash_outputs(&mut self) {
         self.hash_outputs = None;
     }
-
 }
 
 impl Default for SigHashCache {
@@ -132,9 +131,9 @@ fn bip143_sighash(
     sighash_type: u8,
     cache: &mut SigHashCache,
 ) -> Result<Hash256> {
-    // The intention is to return any error(s) without any extra processing & according to the 
-    // docs the '?' operator is the most idiomatic & concise. 
-    let s = sig_hash_preimage(tx, n_input, script_code,satoshis,sighash_type, cache)?;
+    // The intention is to return any error(s) without any extra processing & according to the
+    // docs the '?' operator is the most idiomatic & concise.
+    let s = sig_hash_preimage(tx, n_input, script_code, satoshis, sighash_type, cache)?;
     Ok(sha256d(&s))
 }
 
@@ -224,7 +223,6 @@ fn legacy_sighash(
     Ok(sha256d(&s))
 }
 
-
 // this code was duplicated from bip143_sighash above (that function now calls this one)
 pub fn sig_hash_preimage(
     tx: &Tx,
@@ -232,7 +230,8 @@ pub fn sig_hash_preimage(
     script_code: &[u8],
     satoshis: i64,
     sighash_type: u8,
-    cache: &mut SigHashCache) ->Result<Vec<u8>> {
+    cache: &mut SigHashCache,
+) -> Result<Vec<u8>> {
     if n_input >= tx.inputs.len() {
         return Err(Error::BadArgument("input out of tx_in range".to_string()));
     }

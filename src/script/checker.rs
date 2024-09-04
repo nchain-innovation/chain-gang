@@ -2,10 +2,7 @@ use crate::messages::Tx;
 use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
 use crate::util::{Error, Hash256, Result};
 
-use k256::ecdsa::{
-    signature::hazmat::PrehashVerifier,
-    Signature, VerifyingKey,
-};
+use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 
 /// Locktimes greater than or equal to this are interpreted as timestamps. Less then, block heights.
 const LOCKTIME_THRESHOLD: i32 = 500000000;
@@ -70,17 +67,17 @@ impl Checker for ZChecker {
             Ok(sig) => sig,
             Err(e) => {
                 println!("Failed to parse the signature: {}", e);
-                return Err(e.into());  // Return the error to the caller
+                return Err(e.into()); // Return the error to the caller
             }
         };
 
         let message = sig_hash.0;
-    
-        let verifying_key = match VerifyingKey::from_sec1_bytes(pubkey){
+
+        let verifying_key = match VerifyingKey::from_sec1_bytes(pubkey) {
             Ok(verkey) => verkey,
             Err(e) => {
                 println!("Failed to parse the public key {}", e);
-                return Err(e.into()); 
+                return Err(e.into());
             }
         };
 
@@ -195,9 +192,7 @@ mod tests {
     use crate::script::op_codes::*;
     use crate::script::{Script, NO_FLAGS};
     use crate::transaction::generate_signature;
-    use crate::transaction::sighash::{
-        SIGHASH_ALL, SIGHASH_FORKID,
-    };
+    use crate::transaction::sighash::{SIGHASH_ALL, SIGHASH_FORKID};
     use crate::util::hash160;
     use k256::ecdsa::{SigningKey, VerifyingKey};
 

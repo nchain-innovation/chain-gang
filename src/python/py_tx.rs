@@ -341,4 +341,3 @@ impl PyTx {
         Ok(pytx)
     }
 }
-
