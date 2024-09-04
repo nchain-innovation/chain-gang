@@ -3,7 +3,7 @@ use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
 use crate::util::{Error, Hash256, Result};
 
 use k256::ecdsa::{
-    signature::{hazmat::PrehashVerifier, Verifier},
+    signature::hazmat::PrehashVerifier,
     Signature, VerifyingKey,
 };
 
@@ -59,12 +59,33 @@ impl Checker for ZChecker {
         if sig.is_empty() {
             return Err(Error::ScriptError("Signature too short".to_string()));
         }
+        let sighash_type = sig[sig.len() - 1];
+        if sighash_type & SIGHASH_FORKID == 0 {
+            return Err(Error::ScriptError("SIGHASH_FORKID not present".to_string()));
+        }
+
         let sig_hash = self.z;
         let der_sig = &sig[0..sig.len() - 1];
-        let signature = Signature::from_der(der_sig)?;
+        let signature = match Signature::from_der(der_sig) {
+            Ok(sig) => sig,
+            Err(e) => {
+                println!("Failed to parse the signature: {}", e);
+                return Err(e.into());  // Return the error to the caller
+            }
+        };
+
         let message = sig_hash.0;
-        let verifying_key: VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
-        Ok(verifying_key.verify(&message, &signature).is_ok())
+    
+        let verifying_key = match VerifyingKey::from_sec1_bytes(pubkey){
+            Ok(verkey) => verkey,
+            Err(e) => {
+                println!("Failed to parse the public key {}", e);
+                return Err(e.into()); 
+            }
+        };
+
+        //assert_eq!(verifying_key.verify_prehash(&message, &Signature::from_der(der_sig).expect("Invalid signature")).is_ok(), true);
+        Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
     fn check_locktime(&self, _locktime: i32) -> Result<bool> {
