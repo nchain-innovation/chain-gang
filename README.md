@@ -68,6 +68,33 @@ print(tx)
 PyTx { version: 1, tx_ins: [PyTxIn { prev_tx: "0929f1179e45ceb99ce78c891b5a7ddbf680750a7090bd22e9bf4df1ba1e15c7", prev_index: 0, sequence: 4294967295, script_sig: [0x48 0x30450221008b001e8d8110804ac66e467cd2452f468cba4a2a1d90d59679fe5075d24e5f5302206eb04e79214c09913fad1e3c0c2498be7f457ed63323ac6f2d9a38d53586a58d41 0x21 0x0395deb00349c0ae73412a55bec70a7793fc6860a193d29dd61d73c6271ffcbd4c] }], tx_outs: [PyTxOut { amount: 3, script_pubkey: [OP_DUP OP_HASH160 0x14 0x96795fb99fd6c0f214f7a0e96019f642225f52d2 OP_EQUALVERIFY OP_CHECKSIG] }], locktime: 0 }
 ```
 
+## Tx utility functions.
+
+There are some utility functions that can be called with a transaction. They return the sighash pre-image of a transaction and the double sha256 of the sighash pre-image
+of a transaction. This is the value that is signed when creating a transactions.
+
+```Python
+from tx_engine import Tx, TxIn, TxOut, sig_hash_preimage, sig_hash, Script, SIGHASH
+
+src_tx = "0100000001c7151ebaf14dbfe922bd90700a7580f6db7d5a1b898ce79cb9ce459e17f12909000000006b4830450221008b001e8d8110804ac66e467cd2452f468cba4a2a1d90d59679fe5075d24e5f5302206eb04e79214c09913fad1e3c0c2498be7f457ed63323ac6f2d9a38d53586a58d41210395deb00349c0ae73412a55bec70a7793fc6860a193d29dd61d73c6271ffcbd4cffffffff0103000000000000001976a91496795fb99fd6c0f214f7a0e96019f642225f52d288ac00000000"
+tx_bytes = bytes.fromhex(src_tx)
+
+tx = Tx.parse(tx_bytes)
+
+sig_hash_val = sig_hash(
+        tx=tx,
+        index=0,
+        script_pubkey=Script(),
+        prev_amount=prev_value,
+        sighash_value=SIGHASH.ALL_FORKID
+    )
+
+preimage_sighash = sig_hash_preimage(tx=tx,
+        index=0,
+        script_pubkey=pushtx_lock,
+        prev_amount=prev_value,
+        sighash_value=SIGHASH.ALL_FORKID)
+```
 
 # Example Script execution
 
