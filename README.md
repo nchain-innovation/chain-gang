@@ -70,8 +70,11 @@ PyTx { version: 1, tx_ins: [PyTxIn { prev_tx: "0929f1179e45ceb99ce78c891b5a7ddbf
 
 ## Tx utility functions.
 
-There are some utility functions that can be called with a transaction. They return the sighash pre-image of a transaction and the double sha256 of the sighash pre-image
-of a transaction. This is the value that is signed when creating a transactions.
+There are some utility functions that can be called with a transaction. 
+* `sig_hash` - return the sighash pre-image of a transaction
+* `sig_hash_preimage` - return the double sha256 of the sighash pre-image of the transaction. This is the value that is signed when creating a transaction.
+
+These functions are shown below:
 
 ```Python
 from tx_engine import Tx, sig_hash_preimage, sig_hash, Script, SIGHASH
