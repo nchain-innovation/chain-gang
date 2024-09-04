@@ -4,7 +4,6 @@ from tx_engine import Script
 from tx_engine.engine.util import (
     GROUP_ORDER_INT,
     HALF_GROUP_ORDER_INT,
-    Gx_bytes,
     encode_num
 )
 
@@ -60,7 +59,7 @@ def xToPubKey() -> Script:
         - x and y are the coordinates of a point on the secp256k1 curve
         - x and y are passed as integers, i.e., minimally encoded and in little endian
     """
-    out = Script.parse_string('OP_2 OP_MOD OP_IF OP_3 OP_ELSE OP_2 OP_ENDIF OP_SWAP') + paddingToBytes(n=32, byte_order='little') + reverseEndianness(32) + Script.parse_string('OP_CAT')
+    out = Script.parse_string('OP_2 OP_MOD OP_IF OP_3 OP_ELSE OP_2 OP_ENDIF OP_SWAP') + paddingToBytes(n=32, byte_order='little') + reverse_endianness(32) + Script.parse_string('OP_CAT')
     return out
 
 
@@ -196,6 +195,7 @@ def roll(position: int, nElements: int) -> Script:
         nElements = 2, position = 2 --> OP_2 OP_ROLL OP_2 OP_ROLL
     '''
     return Script.parse_string(' '.join([str(position), 'OP_ROLL'] * nElements))
+
 
 def nums_to_script(nums: list[int]) -> Script:
 

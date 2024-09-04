@@ -34,7 +34,7 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
                 if len(retval) == 0:
                     retval += len(c).to_bytes(1, byteorder='big')
                 elif not retval[-1] in [OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4] and retval[-1] != len(c):
-                    retval += len(c).to_bytes(1,byteorder='big')
+                    retval += len(c).to_bytes(1, byteorder='big')
             retval += c
     return bytes(retval)
 
