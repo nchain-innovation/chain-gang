@@ -31,3 +31,4 @@
 * v0.6.0 - Address OP_NUM2BIN issue
 * v0.6.1 - Bump version as missed cargo.toml file
 * v0.6.2 - Added sig_hash functions to support for exotic script development, fixed a problem with transaction checker when setting a 'z' value externally
+* v0.6.3 - Added Tx.parse_hexstr
