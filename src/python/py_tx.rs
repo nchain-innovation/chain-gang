@@ -25,7 +25,6 @@ impl std::convert::From<crate::util::Error> for PyErr {
 
 /// TxIn - This represents a bitcoin transaction input
 //
-// #[pyclass(name = "TxIn")]
 #[pyclass(name = "TxIn", get_all, set_all, dict)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxIn {
@@ -339,5 +338,22 @@ impl PyTx {
         let tx = Tx::read(&mut Cursor::new(&bytes))?;
         let pytx = tx_as_pytx(&tx);
         Ok(pytx)
+    }
+
+    /// Parse HexStr to produce Tx
+    // #[new]
+    #[classmethod]
+    fn parse_hexstr(_cls: &Bound<'_, PyType>, hexstr: &str) -> PyResult<Self> {
+        match hex::decode(hexstr) {
+            Ok(bytes) => {
+                let tx = Tx::read(&mut Cursor::new(&bytes))?;
+                let pytx = tx_as_pytx(&tx);
+                Ok(pytx)
+            }
+            Err(e) => {
+                let msg = format!("Error decoding hexstr {}", &e);
+                Err(Error::BadData(msg).into());
+            }
+        }
     }
 }
