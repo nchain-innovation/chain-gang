@@ -352,7 +352,7 @@ impl PyTx {
             }
             Err(e) => {
                 let msg = format!("Error decoding hexstr {}", &e);
-                Err(Error::BadData(msg).into());
+                Err(Error::BadData(msg).into())
             }
         }
     }
