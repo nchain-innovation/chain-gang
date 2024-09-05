@@ -162,6 +162,16 @@ class TxTest(unittest.TestCase):
         txout1 = TxOut(amount=100, script_pubkey=locking_script)
         self.assertEqual(txout1.__repr__(), 'PyTxOut { amount: 100, script_pubkey: "OP_DUP OP_HASH160 0x10375cfe32b917cd24ca1038f824cd00f7391859 OP_EQUALVERIFY OP_CHECKSIG" }')
 
+    def test_parse_hexstr_to_string(self):
+        tx_hexstr = "0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600"
+        tx = Tx.parse_hexstr(tx_hexstr)
+        string1 = tx.to_string()
+        self.assertEqual(string1, 'PyTx { version: 1, tx_ins: [PyTxIn { prev_tx: "d1c789a9c60383bf715f3f6ad9d14b91fe55f3deb369fe5d9280cb1a01793f81", prev_index: 0, sequence: 4294967294, script_sig: "0x3045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01 0x0349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278a" }], tx_outs: [PyTxOut { amount: 32454049, script_pubkey: "OP_DUP OP_HASH160 0xbc3b654dca7e56b04dca18f2566cdaf02e8d9ada OP_EQUALVERIFY OP_CHECKSIG" }, PyTxOut { amount: 10011545, script_pubkey: "OP_DUP OP_HASH160 0x1c4bc762dd5423e332166702cb75f40df79fea12 OP_EQUALVERIFY OP_CHECKSIG" }], locktime: 410393 }')
+
+    def test_parse_hexstr_failure(self):
+        tx_hexstr = "010000000"
+        self.assertRaises(RuntimeError, Tx.parse_hexstr, tx_hexstr)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -81,7 +81,6 @@ impl Checker for ZChecker {
             }
         };
 
-        //assert_eq!(verifying_key.verify_prehash(&message, &Signature::from_der(der_sig).expect("Invalid signature")).is_ok(), true);
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
