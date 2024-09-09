@@ -29,6 +29,17 @@ const MAIN_PUBKEY_HASH: u8 = 0x00;
 const TEST_PUBKEY_HASH: u8 = 0x6f;
 
 // TODO: note only tested for compressed key
+// Given a WIF, return bytes rather than SigningKey
+pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>>{
+    // Ok(private_key) => Ok(private_key),
+    //   match SigningKey::from_slice(&private_key_as_bytes) {
+    //    Err(e) => Err(format!("Failed to create SigningKey: {}", e)), // Custom error message
+    //}
+    let (_, private_key) = wif_to_network_and_private_key(wif)?;
+    let private_key_as_bytes = private_key.to_bytes();
+    Ok(private_key_as_bytes.to_vec())
+}
+
 fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)> {
     let decode = decode_base58_checksum(wif)?;
     // Get first byte
@@ -73,6 +84,8 @@ fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> 
     data.push(0x01);
     Ok(encode_base58_checksum(data.as_slice()))
 }
+
+
 
 // Given public_key and network return address as a string
 pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> {
@@ -211,7 +224,6 @@ impl PyWallet {
         // Convert PyTx -> Tx
         let input_tx = input_pytx.as_tx();
         let mut tx = pytx.as_tx();
-        // Set sighash flags -> Why SIGASH_NONE?
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         self.sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
         let updated_txpy = tx_as_pytx(&tx);
