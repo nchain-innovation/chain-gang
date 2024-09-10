@@ -33,3 +33,4 @@
 * v0.6.2 - Added sig_hash functions to support for exotic script development, fixed a problem with transaction checker when setting a 'z' value externally
 * v0.6.3 - Added Tx.parse_hexstr - broken!
 * v0.6.4 - Added Tx.parse_hexstr
+* v0.6.5 - wif_to_bytes wallet function added TxIn to Output function added, minor version bump
