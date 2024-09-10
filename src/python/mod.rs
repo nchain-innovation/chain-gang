@@ -146,8 +146,8 @@ pub fn py_sig_hash(
 
 #[pyfunction(name = "wif_to_bytes")]
 pub fn py_wif_to_bytes(_py: Python, wif: &str) -> PyResult<PyObject>{
-    let key_bytes = wif_to_bytes(wif);
-    let bytes = PyBytes::new_bound(_py, &key_bytes.unwrap()); 
+    let key_bytes = wif_to_bytes(wif)?;
+    let bytes = PyBytes::new_bound(_py, &key_bytes); 
     Ok(bytes.into())
 }
 
