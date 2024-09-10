@@ -31,10 +31,6 @@ const TEST_PUBKEY_HASH: u8 = 0x6f;
 // TODO: note only tested for compressed key
 // Given a WIF, return bytes rather than SigningKey
 pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>>{
-    // Ok(private_key) => Ok(private_key),
-    //   match SigningKey::from_slice(&private_key_as_bytes) {
-    //    Err(e) => Err(format!("Failed to create SigningKey: {}", e)), // Custom error message
-    //}
     let (_, private_key) = wif_to_network_and_private_key(wif)?;
     let private_key_as_bytes = private_key.to_bytes();
     Ok(private_key_as_bytes.to_vec())
