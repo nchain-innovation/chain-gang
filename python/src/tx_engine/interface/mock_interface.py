@@ -1,7 +1,4 @@
 #!/usr/bin/python3
-from io import BytesIO
-
-
 from typing import Dict, List, Any
 from .blockchain_interface import BlockchainInterface
 from tx_engine import Tx
@@ -10,7 +7,7 @@ from tx_engine import Tx
 def tx_hex_to_txid(tx_hex: str) -> str:
     """ Given tx as hex str return the txid
     """
-    tx = Tx.parse(BytesIO(bytes.fromhex(tx_hex)))
+    tx = Tx.parse_hexstr(tx_hex)
     return tx.id()
 
 
