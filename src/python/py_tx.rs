@@ -72,6 +72,10 @@ impl PyTxIn {
             self.prev_tx, self.prev_index, self.sequence, self.script_sig
         )
     }
+
+    fn as_outpoint(&self) -> String{
+        format!(r#"{}:{}"#, self.prev_tx, self.prev_index)
+    }
 }
 
 /// TxOut - This represents a bitcoin transaction output
