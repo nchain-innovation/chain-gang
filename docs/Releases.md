@@ -34,3 +34,4 @@
 * v0.6.3 - Added Tx.parse_hexstr - broken!
 * v0.6.4 - Added Tx.parse_hexstr
 * v0.6.5 - wif_to_bytes wallet function added TxIn to Output function added, minor version bump
+* v0.6.6 - wif_to_bytes wallet function added TxIn to Output function added, minor version bump (forgot to bump the version in cargo.toml)
