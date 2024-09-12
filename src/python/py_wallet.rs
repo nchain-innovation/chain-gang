@@ -21,9 +21,13 @@ use crate::{
 use k256::ecdsa::{SigningKey, VerifyingKey};
 use pyo3::{prelude::*, types::PyType};
 use rand_core::OsRng;
+use pbkdf2::pbkdf2;
+use hmac::Hmac;
+use sha2::Sha256;
+use std::num::NonZeroU32; 
 
-const MAIN_PRIVATE_KEY: u8 = 0x80;
-const TEST_PRIVATE_KEY: u8 = 0xef;
+pub const MAIN_PRIVATE_KEY: u8 = 0x80;
+pub const TEST_PRIVATE_KEY: u8 = 0xef;
 
 const MAIN_PUBKEY_HASH: u8 = 0x00;
 const TEST_PUBKEY_HASH: u8 = 0x6f;
@@ -34,6 +38,41 @@ pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>> {
     let (_, private_key) = wif_to_network_and_private_key(wif)?;
     let private_key_as_bytes = private_key.to_bytes();
     Ok(private_key_as_bytes.to_vec())
+}
+
+// Given bytes generate a WIF (for a private key)
+pub fn bytes_to_wif(key_as_bytes: &[u8], prefix_as_bytes: u8) -> String {
+    let mut wif_bytes = Vec::new();
+    wif_bytes.push(prefix_as_bytes);
+    wif_bytes.extend_from_slice(&key_as_bytes);
+    wif_bytes.push(0x01);
+
+    // Encode in Base58 with checksum
+    encode_base58_checksum(&wif_bytes)
+
+}
+
+pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String{
+    let pw_bytes = password.as_bytes();
+    let salt_bytes = nonce.as_bytes();
+    let iterations = NonZeroU32::new(100_000).unwrap();
+    let mut dk = [0u8; 32]; // 256-bit key
+    pbkdf2::<Hmac<Sha256>>(pw_bytes, salt_bytes, iterations.into(), &mut dk).expect("HMAC can be initialized with any key length");
+
+    // Choose prefix bytes based on network (mainnet or testnet)
+    let prefix_as_bytes = match network {
+        "test" => TEST_PRIVATE_KEY,
+        _ => MAIN_PRIVATE_KEY,
+    };
+
+
+    let mut wif_bytes = Vec::new();
+    wif_bytes.push(prefix_as_bytes);
+    wif_bytes.extend_from_slice(&dk);
+    wif_bytes.push(0x01);
+
+    // Encode in Base58 with checksum
+    encode_base58_checksum(&wif_bytes)
 }
 
 fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)> {

@@ -1,5 +1,4 @@
 use pyo3::{prelude::*, types::PyBytes};
-//use std::io::Cursor;
 
 mod base58_checksum;
 mod hashes;
@@ -15,10 +14,7 @@ use crate::{
         hashes::{hash160, sha256d},
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
-        py_wallet::{
-            address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, wif_to_bytes,
-            PyWallet,
-        },
+        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, wif_to_bytes, bytes_to_wif, generate_wif, PyWallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     transaction::sighash::{sig_hash_preimage, sighash, SigHashCache},
@@ -152,6 +148,34 @@ pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<PyObject> {
     let key_bytes = wif_to_bytes(wif)?;
     let bytes = PyBytes::new_bound(py, &key_bytes);
     Ok(bytes.into())
+}
+
+#[pyfunction(name = "bytes_to_wif")]
+pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
+    // network conversion
+    let network_prefix = match network {
+        "BSV_Mainnet" => MAIN_PRIVATE_KEY,
+        "BSV_Testnet" => TEST_PRIVATE_KEY,
+        _ => {
+            let msg = format!("Unknown network: {}", network);
+            return Err(Error::BadData(msg).into());
+        }
+    };
+    Ok(bytes_to_wif(key_bytes, network_prefix))
+}
+
+#[pyfunction(name = "wif_from_pw_nonce")]
+pub fn py_generate_wif_from_pw_nonce(_py: Python, password: &str, nonce: &str, network: Option<&str>) -> String {
+    // Provide default value if `network` is None
+    let network = network.unwrap_or("testnet");
+
+    // Example logic: derive WIF based on password, nonce, and network
+    let wif = match network {
+        "mainnet" => generate_wif(password, nonce, "mainnet"),
+        _ => generate_wif(password, nonce, "testnet"), // Default to "testnet"
+    };
+
+    wif
 }
 
 /// A Python module for interacting with the Rust chain-gang BSV script interpreter
