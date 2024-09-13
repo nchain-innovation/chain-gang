@@ -191,6 +191,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_sig_hash_preimage, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash, m)?)?;
     m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(py_bytes_to_wif, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 
