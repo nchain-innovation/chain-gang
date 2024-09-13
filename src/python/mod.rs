@@ -192,6 +192,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_sig_hash, m)?)?;
     m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(py_bytes_to_wif, m)?)?;
+    m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 
