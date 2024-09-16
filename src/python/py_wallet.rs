@@ -19,6 +19,9 @@ use crate::{
     util::{Error, Result},
 };
 use k256::ecdsa::{SigningKey, VerifyingKey};
+use k256::elliptic_curve::generic_array::GenericArray;
+use typenum::U32; 
+
 use pyo3::{prelude::*, types::PyType};
 use rand_core::OsRng;
 use pbkdf2::pbkdf2;
@@ -321,6 +324,29 @@ impl PyWallet {
             })
         } else {
             let msg = format!("Unknown network {}", network);
+            Err(Error::BadData(msg).into())
+        }
+    }
+
+    #[classmethod]
+    fn create_wallet_from_bytes(_cls: &Bound<'_, PyType>, network: &str, key_bytes: &[u8]) -> PyResult<Self>{
+        if let Some(netwrk) = str_to_network(network){
+            // Ensure the length of key_bytes is 32 bytes
+            if key_bytes.len() != 32 {
+                let msg = "Private key must be 32 bytes long".to_string();
+                return Err(Error::BadData(msg).into());
+            }
+            // Convert &[u8] to a GenericArray<u8, 32>
+            let key_array: &GenericArray<u8,U32> = GenericArray::from_slice(&key_bytes);
+            let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
+            let public_key = *private_key.verifying_key(); 
+            Ok(PyWallet{
+                private_key,
+                public_key,
+                network: netwrk,
+            })
+        }else{
+            let msg = format!("Unknow network {}", network);
             Err(Error::BadData(msg).into())
         }
     }
