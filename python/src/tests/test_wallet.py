@@ -1,4 +1,5 @@
-
+""" Tests of wallet functionality
+"""
 
 import unittest
 import sys

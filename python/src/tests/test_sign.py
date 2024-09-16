@@ -1,3 +1,9 @@
+""" Test of the following functionality
+        * p2pkh_script
+        * h160
+        * address_to_public_key_hash
+"""
+
 import unittest
 import sys
 sys.path.append("..")
@@ -5,12 +11,6 @@ import logging
 
 from tx_engine import p2pkh_script, hash160, address_to_public_key_hash, public_key_to_address
 
-"""
-Quick test of the following functionality
-* p2pkh_script
-* h160
-* address_to_public_key_hash
-"""
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -19,6 +19,12 @@ log.addHandler(stream_handler)
 
 
 class SignTest(unittest.TestCase):
+    """ Test of the following functionality
+            * p2pkh_script
+            * h160
+            * address_to_public_key_hash
+    """
+
     def test_p2pkh(self):
         public_key = bytes.fromhex("036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2")
         script = p2pkh_script(hash160(public_key))

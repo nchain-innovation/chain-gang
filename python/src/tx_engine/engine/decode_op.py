@@ -1,3 +1,5 @@
+""" Decodes an OP_ to a parsable value for script interpreter
+"""
 from typing import Union
 
 from .util import encode_num
@@ -19,20 +21,17 @@ def decode_op(op: str) -> Union[int, bytes]:
         b: bytes = bytes.fromhex(op[2:])
         return b
 
-    elif op in ALL_OPS:
+    if op in ALL_OPS:
         n: int = ALL_OPS[op]
         return n
 
-    else:
-        n = eval(op)
-        if isinstance(n, int):
-            x: bytes = encode_num(n)
-            return x
-        elif isinstance(n, str):
-            y = n.encode("utf-8")
-            return y
-        elif isinstance(n, bytes):
-            return n
-        else:
-            # have not captured conversion
-            assert 1 == 2  # should not get here
+    n = eval(op)
+    if isinstance(n, int):
+        x: bytes = encode_num(n)
+        return x
+    if isinstance(n, str):
+        y = n.encode("utf-8")
+        return y
+    if isinstance(n, bytes):
+        return n
+    raise RuntimeError("Should not get here")

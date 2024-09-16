@@ -1,3 +1,5 @@
+""" OP code number to name mapping
+"""
 from typing import Dict
 
 OP_CODE_NAMES: Dict[int, str] = {

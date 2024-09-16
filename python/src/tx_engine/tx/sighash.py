@@ -1,3 +1,5 @@
+""" SigHash flags for Transactions
+"""
 from enum import Enum
 
 

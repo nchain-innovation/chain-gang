@@ -1,23 +1,25 @@
-from typing import List
+""" Engine utility scripts and constants
+"""
+from typing import List, Final
 
 from .engine_types import StackElement
 
 # Maximum script number length before Genesis (equal to CScriptNum::MAXIMUM_ELEMENT_SIZE)
-MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS = 4
+MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS: Final = 4
 # Maximum script number length after Genesis
-MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS = 750 * 1000
+MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS: Final = 750 * 1000
 # Maximum size that we are using
-MAXIMUM_ELEMENT_SIZE = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
+MAXIMUM_ELEMENT_SIZE: Final = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 # Curve constants
 # perhaps we can source these from the secp256k1 library rather than here?
-PRIME_INT = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-GROUP_ORDER_INT = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-HALF_GROUP_ORDER_INT = GROUP_ORDER_INT // 2
-Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798
-Gx_bytes = bytes.fromhex('79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798')
-Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
-GUncompressed = "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+PRIME_INT: Final = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+GROUP_ORDER_INT: Final = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+HALF_GROUP_ORDER_INT: Final = GROUP_ORDER_INT // 2
+Gx: Final = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798
+Gx_bytes: Final = bytes.fromhex('79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798')
+Gy: Final = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
+GUncompressed: Final = "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
 
 
 def encode_num(num: int) -> bytes:
@@ -68,13 +70,12 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
     if check_encoding and not is_minimally_encoded(element):
         if isinstance(element, bytes):
             raise ValueError(f"Value is not minimally encoded: {element.hex()}")
-        else:
-            raise ValueError(f"Value is not minimally encoded: {element}")
+        raise ValueError(f"Value is not minimally encoded: {element}")
 
     if isinstance(element, int):
         return element
 
-    elif isinstance(element, bytes):
+    if isinstance(element, bytes):
         try:
             b = element
             big_endian = b[::-1]
@@ -92,8 +93,7 @@ def decode_num(element: StackElement, check_encoding=False) -> int:
             result += c
         if negative:
             return -result
-        else:
-            return result
+        return result
     else:
         raise ValueError(f"Value is of unknown type: {element} {type(element)}")
 

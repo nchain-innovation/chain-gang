@@ -1,9 +1,11 @@
+""" Contains the state of the current debugging session
+"""
+
 import logging
 from typing import Optional
 
-from debugger.stack_frame import StackFrame
 from tx_engine import Script
-
+from debugger.stack_frame import StackFrame
 from debugger.breakpoints import Breakpoints
 
 LOGGER = logging.getLogger(__name__)
@@ -13,29 +15,37 @@ class DebuggingContext:
     """ This is the state of the current debugging session
     """
     def __init__(self):
+        """ Intial setup
+        """
         self.noisy: bool = True  # print operations as they are executed
         self.sf = StackFrame()
 
     def get_stack(self):
+        """ Return the main stack
+        """
         return self.sf.context.get_stack()[:]
 
     def get_raw_stack(self):
-        # return the stack without the values converted to human readable form
+        """ Return the stack without the values converted to human readable form
+        """
         return self.sf.context.raw_stack[:]
 
     def get_altstack(self):
+        """ Return the alt stack
+        """
         return self.sf.context.get_altstack()[:]
 
     @property
     def breakpoints(self) -> Breakpoints:
+        """ Provides access to the breakpoints in the current stack frame
+        """
         return self.sf.breakpoints
 
     @property
     def ip(self) -> Optional[int]:
+        """ Returns the current Instruction Pointer
+        """
         return self.sf.ip
-
-    def run_to_breakpoint(self):
-        pass
 
     def step(self) -> bool:
         """ Step over the next instruction
@@ -90,6 +100,8 @@ class DebuggingContext:
                 self.sf.print_breakpoint()
 
     def get_number_of_operations(self) -> int:
+        """ Return the number of operatations in this script
+        """
         return len(self.sf.script_state.get_commands())
 
     def interpret_line(self, user_input: str) -> None:

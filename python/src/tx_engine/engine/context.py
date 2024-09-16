@@ -1,3 +1,6 @@
+""" This is the execution context for the script
+"""
+
 from typing import Optional
 
 from tx_engine.tx_engine import py_script_eval, Script
@@ -9,6 +12,8 @@ from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
 
 
 def decode_element(elem: StackElement) -> int:
+    """ Attempt to map a stack element to an int
+    """
     try:
         retval = decode_num(bytes(elem))
     except RuntimeError as e:
@@ -43,6 +48,8 @@ class Context:
     """ This class captures an execution context for the script
     """
     def __init__(self, script: None | Script = None, cmds: None | Commands = None, ip_limit: None | int = None, z: None | bytes = None):
+        """ Intial setup
+        """
         self.cmds: Commands
         self.ip_limit: Optional[int]
         self.z: Optional[bytes]
@@ -62,9 +69,13 @@ class Context:
         self.z = z if z else None
 
     def set_commands(self, cmds: Commands) -> None:
+        """ Set the commands
+        """
         self.cmds = cmds[:]
 
     def reset_stacks(self) -> None:
+        """ Reset the stacks
+        """
         self.stack = []
         self.alt_stack = []
         self.raw_stack = []
@@ -86,8 +97,7 @@ class Context:
             if not quiet:
                 print(f"script_eval exception '{e}'")
             return False
-        else:
-            return True
+        return True
 
     def evaluate(self, quiet: bool = False) -> bool:
         """ evaluate calls Evaluate_core and checks the stack has the correct value on return

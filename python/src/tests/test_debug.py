@@ -1,5 +1,5 @@
-
-
+""" Tests of the debugger context
+"""
 import unittest
 
 import sys
@@ -16,6 +16,9 @@ from tx_engine.engine.op_codes import (
 
 
 class DebugTest(unittest.TestCase):
+    """ Tests of the debugger context
+    """
+
     def test_ip_limit_1(self):
         script = Script([OP_1, OP_2, OP_3, OP_4])
         context = Context(script=script, ip_limit=1)
