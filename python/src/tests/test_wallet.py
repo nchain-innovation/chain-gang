@@ -90,6 +90,11 @@ class WalletTest(unittest.TestCase):
         w2 = Wallet.generate_keypair("BSV_Testnet")
         self.assertNotEqual(w1.get_address(), w2.get_address())
 
+    def test_get_network(self):
+        wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3"
+        wallet = Wallet(wif)
+        self.assertEqual(wallet.get_network(), "BSV_Testnet")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -165,6 +165,8 @@ Wallet class has the following methods:
 * `get_public_key_as_hexstr(self) -> String` - Return the public key as a hex string
 * `get_address(self) -> String` - Return the address based on the public key
 * `to_wif(self) -> String` - Return the private key in WIF format
+* `get_network(self) -> String` - Returns the current network associated with this keypair
+
 * `Wallet.generate_keypair(network) -> Wallet` - Given network (BSV_Testnet) return a keypair in Wallet format
 
 ## Interface Factory

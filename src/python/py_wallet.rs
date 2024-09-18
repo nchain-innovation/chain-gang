@@ -134,6 +134,7 @@ pub fn str_to_network(network: &str) -> Option<Network> {
     }
 }
 
+
 /// This class represents the Wallet functionality,
 /// including handling of Private and Public keys
 /// and signing transactions
@@ -265,6 +266,10 @@ impl PyWallet {
             self.network,
             self.private_key.clone(),
         )?)
+    }
+
+    fn get_network(&self) -> String {
+        format!("{}", self.network)
     }
 
     #[classmethod]
