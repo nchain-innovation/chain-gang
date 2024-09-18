@@ -73,7 +73,7 @@ impl PyTxIn {
         )
     }
 
-    fn as_outpoint(&self) -> String{
+    fn as_outpoint(&self) -> String {
         format!(r#"{}:{}"#, self.prev_tx, self.prev_index)
     }
 }
