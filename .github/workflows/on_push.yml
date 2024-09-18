@@ -59,7 +59,7 @@ jobs:
         with:
           command: build --target-dir=target
       - name: Install wheel
-        run: pip install --root-user-action=ignore --find-links=file://target/wheels tx-engine
+        run: pip install --root-user-action=ignore --find-links=target/wheels tx-engine
       - name: Python tests
         working-directory: python
         run: ./tests.sh
