@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+""" Tests for BSV specific OPs
+"""
 import sys
 
 sys.path.append("..")

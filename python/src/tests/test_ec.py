@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 import unittest
+from typing import Optional
+
 import sys
 sys.path.append("..")
 
-
-from typing import Optional
 from tx_engine import Script, Context, encode_num
-import sys
 
 
 def pick(position: int, nElements: int) -> Script:

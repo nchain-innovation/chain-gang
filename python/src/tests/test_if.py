@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+""" Test if bools and OP_IF
+"""
 import unittest
 import sys
 sys.path.append("..")

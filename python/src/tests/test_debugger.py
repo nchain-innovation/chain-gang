@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+""" Tests of the debugger
+"""
 import unittest
 
 import sys
@@ -12,6 +13,8 @@ EXAMPLE_SWAP = "../../examples/swap.bs"
 
 
 class DebuggerTests(unittest.TestCase):
+    """ Tests of the debugger
+    """
     def setUp(self):
         self.dbif = DebuggerInterface()
         self.dbif.set_noisy(False)

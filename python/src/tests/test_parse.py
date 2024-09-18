@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+""" Tests of parsing scripts
+"""
 import unittest
 import sys
 sys.path.append("..")
@@ -10,6 +11,9 @@ from tx_engine.engine.op_codes import (
 
 
 class ParseTest(unittest.TestCase):
+    """ Tests of parsing scripts
+    """
+
     def test_comma_separated(self):
         s = "OP_PUSHDATA1 0x1A 'abcdefghijklmnopqrstuvwxyz',OP_SHA1, OP_PUSHDATA1, 0x14, 0x32d10c7b8cf96570ca04ce37f2a19d84240d3a89, OP_EQUAL"
         script = Script.parse_string(s)

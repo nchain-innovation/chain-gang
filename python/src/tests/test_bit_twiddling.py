@@ -1,11 +1,10 @@
-#!/usr/bin/python3
+""" Tests of bit operations
+"""
+import unittest
 import sys
 sys.path.append("..")
 
-import unittest
 from tx_engine import Context, Script
-
-
 from tx_engine.engine.op_codes import (
     OP_1,
     OP_2,
@@ -24,6 +23,8 @@ from tx_engine.engine.op_codes import (
 
 
 class BitTwiddlingTests(unittest.TestCase):
+    """ Tests of bit operations
+    """
 
     def test_and_part1(self):
         """ Check of bitwise AND

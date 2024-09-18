@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+""" This provides an interface to the debugger
+"""
 import logging
 import sys
 try:
@@ -9,11 +10,12 @@ except ModuleNotFoundError:
 
 from typing import List
 sys.path.append("..")
+
 from debugger.debug_context import DebuggingContext
 from debugger.util import has_extension
 
-LOGGER = logging.getLogger(__name__)
 
+LOGGER = logging.getLogger(__name__)
 
 USAGE = """ usage: ./debugger.py -file <input_file.ms>"
 
@@ -50,11 +52,15 @@ class DebuggerInterface:
     """ Provides the interface to the debugger
     """
     def __init__(self):
+        """ Initial setup
+        """
         self.db_context = DebuggingContext()
         # Display the stack in hex
         self.hex_stack = False
 
     def set_noisy(self, boolean: bool) -> None:
+        """ Set the noisy flag, set to false in unit tests to prevent printouts
+        """
         self.db_context.noisy = boolean
 
     def print_status(self) -> None:
@@ -70,6 +76,8 @@ class DebuggerInterface:
             print(f"altstack = {altstack}, stack = {stack}")
 
     def load_script_file(self, fname: str) -> None:
+        """ Load a script file
+        """
         bits = fname.split(".")
 
         if len(bits) > 1:
@@ -88,6 +96,8 @@ class DebuggerInterface:
         return self.db_context.has_script()
 
     def run(self) -> None:
+        """ Run a script
+        """
         if self.has_script():
             self.db_context.reset()
             self.db_context.run()
@@ -95,6 +105,8 @@ class DebuggerInterface:
             print("No script loaded.")
 
     def reset(self) -> None:
+        """ Reset debugger to start of script
+        """
         LOGGER.info("reset")
         if self.has_script():
             self.db_context.reset()
@@ -134,6 +146,8 @@ class DebuggerInterface:
             print('At end of script, use "reset" to run again.')
 
     def add_breakpoint(self, user_input: List[str]) -> None:
+        """ Add a breakpoint
+        """
         if not self.has_script():
             print("No script loaded.")
             return
@@ -147,11 +161,10 @@ class DebuggerInterface:
             if self.db_context.is_not_runable():
                 print('Script is not running.')
                 return
+            if isinstance(self.db_context.ip, int):
+                n = max(self.db_context.ip - 1, 0)
             else:
-                if isinstance(self.db_context.ip, int):
-                    n = max(self.db_context.ip - 1, 0)
-                else:
-                    n = 0
+                n = 0
 
         bpid = self.db_context.breakpoints.add(n)
         if bpid is None:
@@ -161,6 +174,8 @@ class DebuggerInterface:
                 print(f"Added breakpoint {bpid} at {n}")
 
     def list_breakpoints(self) -> None:
+        """ List all breakpoints
+        """
         bps = self.db_context.breakpoints.get_all()
         if len(bps) == 0:
             print("No breakpoints.")
@@ -169,6 +184,8 @@ class DebuggerInterface:
                 print(f"Breakpoint: {k} operation number: {v}")
 
     def delete_breakpoint(self, user_input: List[str]) -> None:
+        """ Delete a breakpoint
+        """
         if len(user_input) < 2:
             print("Provide the n of the breakpoint to delete.")
         else:
@@ -182,6 +199,8 @@ class DebuggerInterface:
                 print(f"Breakpoint {n} not found.")
 
     def interpreter_mode(self, user_input: List[str]) -> None:
+        """ Interpret user input as bitcoin script
+        """
         if len(user_input) > 1:
             # interpret line
             s = user_input[1:]
@@ -189,6 +208,8 @@ class DebuggerInterface:
             self.db_context.interpret_line(line)
 
     def process_input(self, user_input: List[str]) -> None:
+        """ process user input
+        """
         if user_input[0] in ("h", "help"):
             print(HELP)
         elif user_input[0] == "file":

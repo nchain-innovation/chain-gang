@@ -1,3 +1,5 @@
+""" Test of Interfaces
+"""
 import unittest
 import sys
 sys.path.append("..")
@@ -6,6 +8,9 @@ from tx_engine import interface_factory, WoCInterface, MockInterface
 
 
 class InterfaceTest(unittest.TestCase):
+    """ Test of Interfaces
+    """
+
     def test_interface_factory_woc(self):
         config = {
             "interface_type": "woc",

@@ -1,15 +1,21 @@
-from .blockchain_interface import BlockchainInterface
-
-from http.client import CannotSendRequest
+"""This is an RPC (Regtest, etc) interface to the BSV network
+"""
+from typing import Dict, List, Any
 import logging
 import time
+
+from http.client import CannotSendRequest
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
-from typing import Dict, List, Any
+
+from .blockchain_interface import BlockchainInterface
+
 
 LOGGER = logging.getLogger(__name__)
 
 
-class RPC_RETURN_INFO:
+class RPCReturnInfo:
+    """ Info returned from RPC call
+    """
     def __init__(self, message):
         self.content = message
         self.status_code = -1
@@ -37,8 +43,6 @@ def retry_call(func):
 
 
 class RPCInterface(BlockchainInterface):
-    """This is an RPC (Regtest, etc) interface to the BSV network"""
-
     """This client talks to the bitcoin node via rpc
     full list of available commands:
     https://en.bitcoin.it/wiki/Original_Bitcoin_client/API_calls_list
@@ -73,21 +77,17 @@ class RPCInterface(BlockchainInterface):
 
     def is_testnet(self) -> bool:
         assert self.network_type is not None
-        if self.network_type == "test":
-            return True
-        else:
-            return False
+        return self.network_type == "test"
 
     def _calc_block_height(self, block_height, confs):
         if confs == 0:
             return confs
-        else:
-            return block_height - confs - 1
+        return block_height - confs - 1
 
     def _as_satoshis(self, value):
         """Return the bitcoin amount in satoshis"""
-        SATOSHIS = 100000000
-        return int(value * SATOSHIS)
+        satoshis = 100000000
+        return int(value * satoshis)
 
     def get_unspent(self, address=None):
         """Private function to return unspent"""
@@ -106,8 +106,7 @@ class RPCInterface(BlockchainInterface):
             else:
                 if address is None:
                     return unspent
-                else:
-                    return list(filter(lambda x: x["address"] == address, unspent))
+                return list(filter(lambda x: x["address"] == address, unspent))
 
     def _get_chain_info(self) -> Dict:
         return self.rpc_connection.getblockchaininfo()
@@ -139,7 +138,6 @@ class RPCInterface(BlockchainInterface):
     def get_balance(self, address, confirmations=6):
         """Return the confirmed and unconfirmed balance associated with this address"""
         unspent_address = self.get_unspent(address)
-
         confirmed = sum(
             [
                 x["amount"] if x["confirmations"] >= confirmations else 0
@@ -172,36 +170,39 @@ class RPCInterface(BlockchainInterface):
     # extra
     @retry_call
     def get_raw_transaction(self, txid: str) -> str:
+        """ Given txid return associated transaction
+        """
         return self.rpc_connection.getrawtransaction(txid)
 
-    """ Returns a dictionary describing the unspent tx out point
-    """
     @retry_call
     def get_tx_out(self, txid: str, txindex: int) -> Dict:
+        """ Returns a dictionary describing the unspent tx out point
+        """
         return self.rpc_connection.gettxout(txid, txindex)
 
-    """ Returns the best block hash
-    """
     @retry_call
     def get_best_block_hash(self) -> str:
+        """ Returns the best block hash
+        """
         chain_info = self._get_chain_info()
         return chain_info["bestblockhash"]
 
-    """ returns the merkle proof for a tx
-    """
     @retry_call
     def get_merkle_proof(self, block_hash: str, tx_id: str) -> str:
+        """ returns the merkle proof for a tx
+        """
+
         return self.rpc_connection.gettxoutproof([tx_id], block_hash)
 
     def broadcast_tx(self, hexstring: str):
         for _ in range(5):
             try:
                 message = self.rpc_connection.sendrawtransaction(hexstring)
-                api_return = RPC_RETURN_INFO(message)
+                api_return = RPCReturnInfo(message)
                 api_return.status_code = 200
                 return api_return
             except JSONRPCException as err:
-                api_return = RPC_RETURN_INFO(err.message)
+                api_return = RPCReturnInfo(err.message)
                 api_return.status_code = err.code
                 return api_return
             except BrokenPipeError as err:
@@ -228,14 +229,20 @@ class RPCInterface(BlockchainInterface):
     # Comands used in regtest container
     @retry_call
     def get_info(self):
+        """ Return information about the mining node
+        """
         return self.rpc_connection.getinfo()
 
     @retry_call
     def get_mining_info(self):
+        """ Return mining information
+        """
         return self.rpc_connection.getmininginfo()
 
     @retry_call
     def get_wallet_info(self):
+        """ Return mining wallet information
+        """
         return self.rpc_connection.getwalletinfo()
 
     def get_new_address(self):
@@ -258,15 +265,23 @@ class RPCInterface(BlockchainInterface):
 
     @retry_call
     def get_raw_mempool(self):
+        """ Return the mempool
+        """
         return self.rpc_connection.getrawmempool()
 
     def generate_blocks(self, n=1):
+        """ Generate n blocks
+        """
         return self.rpc_connection.generate(n)
 
     @retry_call
     def get_block_header(self, block_hash: str):
+        """ Given the block hash return the associated block header
+        """
         return self.rpc_connection.getblockheader(block_hash)
 
     @retry_call
-    def verifyscript(self, scripts: List[Any], stopOnFirstInvalid: bool = True, totalTimeout: int = 100) -> List[Any]:
-        return self.rpc_connection.verifyscript(scripts, stopOnFirstInvalid, totalTimeout)
+    def verifyscript(self, scripts: List[Any], stop_on_first_invalid: bool = True, timeout: int = 100) -> List[Any]:
+        """ Verify the provided script, based on provided context
+        """
+        return self.rpc_connection.verifyscript(scripts, stop_on_first_invalid, timeout)

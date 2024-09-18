@@ -1,19 +1,20 @@
-import logging
-import requests
-import time
-from typing import Optional, Dict
 """ What's on Chain interface
 """
+import logging
+import time
+from typing import Optional, Dict
+import requests
 
 
 LOGGER = logging.getLogger(__name__)
 
 
 def get_url(testnet: bool = True) -> str:
+    """ Based on the network return the URL string
+    """
     if testnet:
         return "https://api.whatsonchain.com/v1/bsv/test"
-    else:
-        return "https://api.whatsonchain.com/v1/bsv/main"
+    return "https://api.whatsonchain.com/v1/bsv/main"
 
 
 def get_response(url: str):

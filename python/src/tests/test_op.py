@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+""" Tests of standard OP codes
+"""
 import sys
 sys.path.append("..")
 

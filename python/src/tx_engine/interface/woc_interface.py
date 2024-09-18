@@ -1,8 +1,12 @@
+""" The Whats On Chain (WoC) interface to the BSV network
+"""
+
 import logging
 import functools
+from typing import Dict, Optional, List, Any
+
 from . import woc
 from .blockchain_interface import BlockchainInterface
-from typing import Dict, Optional, List, Any
 
 LOGGER = logging.getLogger(__name__)
 
@@ -11,11 +15,14 @@ class WoCInterface(BlockchainInterface):
     """This is the Whats on chain interface to the BSV network"""
 
     def __init__(self):
+        """ Initial setup
+        """
         self.rawtx_cache = {}
         self.network_type = None
-        pass
 
     def set_config(self, config):
+        """ Set the network configuration
+        """
         if config["network_type"] == "testnet":
             self.network_type = "test"
         elif config["network_type"] == "mainnet":
@@ -25,11 +32,10 @@ class WoCInterface(BlockchainInterface):
             self.network_type = "test"
 
     def is_testnet(self) -> bool:
+        """ Return true if the current network is testnet
+        """
         assert self.network_type is not None
-        if self.network_type == "test":
-            return True
-        else:
-            return False
+        return self.network_type == "test"
 
     def get_addr_history(self, address):
         """Return the transaction history with this address"""
@@ -88,5 +94,5 @@ class WoCInterface(BlockchainInterface):
         '''
         return woc.get_block_header(blockhash, testnet=self.is_testnet())
 
-    def verifyscript(self, scripts: list, stopOnFirstInvalid: bool = True, totalTimeout: int = 100) -> List[Any]:
+    def verifyscript(self, scripts: list, stop_on_first_invalid: bool = True, timeout: int = 100) -> List[Any]:
         raise NotImplementedError("verifyscript not implemented for the WoC interface")
