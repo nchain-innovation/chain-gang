@@ -64,7 +64,7 @@ jobs:
         working-directory: target/wheels
         env:
           WHEEL_FILE: ${{ steps.find-wheel.stdout }}
-        run: pip install tx-engine --root-user-action=ignore -f file://.
+        run: pip install tx-engine --root-user-action=ignore -f file://target/wheels
       - name: Python tests
         working-directory: python
         run: ./tests.sh
