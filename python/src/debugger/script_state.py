@@ -30,11 +30,11 @@ def print_cmd(i: int, cmd, indent: int = 0) -> int:
     if isinstance(cmd, str):
         if cmd in ("OP_ELSE", "OP_ENDIF"):
             indent -= 2
-        print(f"{i}: {' '*indent}{cmd}")
+        print(f"{i}: {' ' * indent}{cmd}")
         if cmd in ("OP_IF", "OP_NOTIF", "OP_ELSE"):
             indent += 2
     else:
-        print(f"{i}: {' '*indent}{int.from_bytes(cmd, byteorder='little')} (0x{cmd.hex()}, {cmd})")
+        print(f"{i}: {' ' * indent}{int.from_bytes(cmd, byteorder='little')} (0x{cmd.hex()}, {cmd})")
     return indent
 
 
