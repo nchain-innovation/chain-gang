@@ -49,7 +49,7 @@ jobs:
       env:
         WHEEL_FILE: ${{ steps.find-wheel.stdout }}
       run: |
-        pip install tx-engine --root-user-action=ignore -file:$WHEEL_FILE
+        pip install tx-engine --root-user-action=ignore -f file://$WHEEL_FILE
 
   # test:
     - name: python-tests
