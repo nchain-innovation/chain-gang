@@ -15,7 +15,10 @@ use crate::{
         hashes::{hash160, sha256d},
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
-        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, wif_to_bytes, PyWallet},
+        py_wallet::{
+            address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, wif_to_bytes,
+            PyWallet,
+        },
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     transaction::sighash::{sig_hash_preimage, sighash, SigHashCache},
@@ -145,9 +148,9 @@ pub fn py_sig_hash(
 }
 
 #[pyfunction(name = "wif_to_bytes")]
-pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<PyObject>{
+pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<PyObject> {
     let key_bytes = wif_to_bytes(wif)?;
-    let bytes = PyBytes::new_bound(py, &key_bytes); 
+    let bytes = PyBytes::new_bound(py, &key_bytes);
     Ok(bytes.into())
 }
 
@@ -163,7 +166,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_public_key_to_address, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash_preimage, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash, m)?)?;
-    m.add_function(wrap_pyfunction!(py_wif_to_bytes,m)?)?;
+    m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 

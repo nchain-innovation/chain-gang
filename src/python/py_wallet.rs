@@ -30,7 +30,7 @@ const TEST_PUBKEY_HASH: u8 = 0x6f;
 
 // TODO: note only tested for compressed key
 // Given a WIF, return bytes rather than SigningKey
-pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>>{
+pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>> {
     let (_, private_key) = wif_to_network_and_private_key(wif)?;
     let private_key_as_bytes = private_key.to_bytes();
     Ok(private_key_as_bytes.to_vec())
@@ -80,8 +80,6 @@ fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> 
     data.push(0x01);
     Ok(encode_base58_checksum(data.as_slice()))
 }
-
-
 
 // Given public_key and network return address as a string
 pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> {
@@ -265,6 +263,10 @@ impl PyWallet {
             self.network,
             self.private_key.clone(),
         )?)
+    }
+
+    fn get_network(&self) -> String {
+        format!("{}", self.network)
     }
 
     #[classmethod]
