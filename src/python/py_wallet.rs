@@ -174,6 +174,7 @@ pub fn str_to_network(network: &str) -> Option<Network> {
     }
 }
 
+
 /// This class represents the Wallet functionality,
 /// including handling of Private and Public keys
 /// and signing transactions

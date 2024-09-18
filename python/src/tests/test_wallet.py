@@ -145,5 +145,11 @@ class WalletTest(unittest.TestCase):
         w = Wallet("L5SWJi6972T55DTftAGbTggWRZtCRr3GtShADUqhPnbWDZAciATX")
         self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
 
+    def test_get_network(self):
+        wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3"
+        wallet = Wallet(wif)
+        self.assertEqual(wallet.get_network(), "BSV_Testnet")
+
+
 if __name__ == "__main__":
     unittest.main()
