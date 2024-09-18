@@ -1,0 +1,64 @@
+name: On Push
+on: [push]
+permissions:
+  contents: read
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo "Triggered by a ${{ github.event_name }} event"
+    - run: echo "Branch ${{ github.ref }}, Repo ${{ github.repository }}"
+
+    - name: Checkout branch code
+      uses: actions/checkout@v4
+
+    - name: Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+  # lint:
+    - name: lint
+      working-directory: ./python
+      run: |
+        pip install mypy flake8 types-requests --root-user-action=ignore
+        flake8 --ignore=E501,E131,E402,E722 src ../tools
+        mypy --check-untyped-defs --ignore-missing-imports src ../tools 
+
+    - run: echo "Job status ${{ job.status }}"
+    
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        cache: true
+    
+  # build:
+    - name: Build wheels
+      uses: PyO3/maturin-action@v1
+      with:
+        command: build --target-dir=./target
+    
+    - name: find wheel
+      id: find-wheel
+      working-directory: ./target/wheels
+      run: ls
+
+    - name: install-wheel
+      working-directory: ./target/wheels
+      env:
+        WHEEL_FILE: ${{ steps.find-wheel.stdout }}
+      run: |
+        pip install tx-engine --root-user-action=ignore -file:$WHEEL_FILE
+
+  # test:
+    - name: python-tests
+      working-directory: ./python
+      run: |
+        ./tests.sh
+
+    - name: rust-tests
+      run: |
+        cargo test
+
+    - run: echo "Job status ${{ job.status }}"
