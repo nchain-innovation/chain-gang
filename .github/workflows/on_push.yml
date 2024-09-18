@@ -53,7 +53,7 @@ jobs:
           toolchain: stable
           cache: true
       - name: Clear wheel dir
-        run: rm target/wheels/*
+        run: rm target/wheels/* | true
       - name: Maturin build
         uses: PyO3/maturin-action@v1
         with:
