@@ -52,19 +52,16 @@ jobs:
         with:
           toolchain: stable
           cache: true
+      - name: Clear wheel dir
+        run: |
+          mkdir target/wheels
+          rm target/wheels/*
       - name: Maturin build
         uses: PyO3/maturin-action@v1
         with:
           command: build --target-dir=target
-      - name: Find wheel
-        id: find-wheel
-        working-directory: target/wheels
-        run: ls
       - name: Install wheel
-        working-directory: target/wheels
-        env:
-          WHEEL_FILE: ${{ steps.find-wheel.stdout }}
-        run: pip install tx-engine --root-user-action=ignore -e .
+        run: pip install --root-user-action=ignore --find-links=file://./target/wheels tx-engine
       - name: Python tests
         working-directory: python
         run: ./tests.sh
