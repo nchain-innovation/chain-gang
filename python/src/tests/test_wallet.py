@@ -111,11 +111,39 @@ class WalletTest(unittest.TestCase):
         self.assertEqual(w.get_address(), expected_output)
 
     def test_get_network(self):
-        wtest = Wallet("cVvay9F4wkxrC6cLwThUnRHEajQ8FNoDEg1pbsgYjh7xYtkQ9LVZ")
-        wmain = Wallet("L5ZbWEFDWhGb2f95Z3tMR6nAxW6iavhXAdsMVTE3EaTxJ9deQtub")
+        wtest = Wallet("cVoVmd5zY69LEevwGa5iq1Ba3oBc6J8xxUqdKuJCtuFWUJJngPPP")
+        wmain = Wallet("L5SWJi6972T55DTftAGbTggWRZtCRr3GtShADUqhPnbWDZAciATX")
     
         self.assertEqual(wtest.get_network(), "BSV_Testnet")
         self.assertEqual(wmain.get_network(), "BSV_Mainnet")
+
+    def test_create_wallet_from_int(self):
+        w = Wallet(110943977574299588079135027069764758606913326570652510108968462252246438125737, network="BSV_Testnet")
+        self.assertEqual(w.get_address(), "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s")
+
+    def test_create_wallet_from_int_mainnet(self):
+        w = Wallet(110943977574299588079135027069764758606913326570652510108968462252246438125737, network="BSV_Mainnet")
+        self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
+
+    def test_create_wallet_from_hex(self):
+        w = Wallet("f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9", network="BSV_Testnet")
+        self.assertEqual(w.get_address(), "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s")
+
+    def test_create_wallet_from_hex_mainnet(self):
+        w = Wallet("f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9", network="BSV_Mainnet")
+        self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
+
+    def test_wallet_to_int(self):
+        w = Wallet("cVoVmd5zY69LEevwGa5iq1Ba3oBc6J8xxUqdKuJCtuFWUJJngPPP")
+        self.assertEqual(w.to_int(), 110943977574299588079135027069764758606913326570652510108968462252246438125737)
+
+    def test_wallet_to_hex(self):
+        w = Wallet("cVoVmd5zY69LEevwGa5iq1Ba3oBc6J8xxUqdKuJCtuFWUJJngPPP")
+        self.assertEqual(w.to_hex(), "f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")
+
+    def test_create_wallet_mainnet(self):
+        w = Wallet("L5SWJi6972T55DTftAGbTggWRZtCRr3GtShADUqhPnbWDZAciATX")
+        self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
 
 if __name__ == "__main__":
     unittest.main()
