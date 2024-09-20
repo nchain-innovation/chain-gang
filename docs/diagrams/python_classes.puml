@@ -1,0 +1,135 @@
+@startuml
+title Python tx_engine Classes
+
+
+class Script {
+cmds: bytes
+
+__init__(self, cmds: bytes) -> Script
+append_byte(self, byte: byte)
+append_data(self, data: bytes)
+append_pushdata(self, data: bytes)
+raw_serialize(self) -> bytes
+serialize(self) -> bytes
+get_commands(self) -> bytes
+__add__(self, other: Script) -> Script
+to_string(self) -> String
+is_p2pkh(self) -> bool
+
+{static}parse_string(in_string: str) -> Script
+{static}parse(in_bytes: bytes) -> Script
+}
+
+
+class Context {
+cmds: bytes
+ip_limit: int
+z: bytes
+stack: List
+alt_stack: List
+raw_stack: List
+raw_alt_stack: List
+
+__init__(self, script: Script, cmds: Commands, ip_limit: int, z: bytes)
+evaluate_core(self, quiet: bool) -> bool
+evaluate(self, quiet: bool) -> bool
+get_stack(self) -> Stack
+get_altstack(self) -> Stack
+}
+
+Context -left-> Script: Executes
+
+class Tx {
+version: int
+tx_ins: List[TxIn]
+tx_outs: List[TxIn]
+locktime: int
+
+__init__(version: int, tx_ins: [TxIn], tx_outs: [TxOut], locktime: int) -> Tx
+id(self) -> str
+hash(self) -> bytes
+is_coinbase(self) -> bool
+serialize(self) -> bytes
+copy(self) -> Tx
+to_string(self) -> String
+validate(self, [Tx]) -> Result
+{static}parse(in_bytes: bytes) -> Tx
+{static}parse_hexstr(in_hexstr: String) -> Tx
+}
+
+
+class TxIn {
+prev_tx: str
+prev_index: int
+script_sig: Script
+sequence:  int
+
+__init__(prev_tx: String, prev_index: int, script_sig: Script, sequence: int) -> TxIn
+}
+
+class TxOut {
+amount: int
+script_pubkey: Script
+__init__(amount: int, script_pubkey: Script) -> TxOut
+}
+
+TxIn o-- Script : HasA
+TxOut o-- Script : HasA
+
+Tx o-- TxIn : HasA
+Tx o-- TxOut : HasA
+
+class Wallet {
+__init__(wif_key: str) -> Wallet` - Constructor that takes a private key in WIF format
+sign_tx(self, index: int, input_tx: Tx, tx: Tx) -> Tx
+sign_tx_sighash(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int) -> Tx
+get_locking_script(self) -> Script
+get_public_key_as_hexstr(self) -> String
+get_address(self) -> String
+to_wif(self) -> String
+get_network(self) -> String
+{static}generate_keypair(network) -> Wallet
+}
+
+Wallet -right-> Tx : Signs
+
+class InterfaceFactory {
+set_config(self, config: ConfigType) -> BlockchainInterface
+}
+
+abstract class BlockchainInterface {
+__init__(self)` - Constructor that takes no parameters
+set_config(self, config)
+get_addr_history(self, address)
+is_testnet(self) -> bool
+get_utxo(self, address)
+get_balance(self, address)
+get_block_count(self)
+get_best_block_hash(self)
+get_merkle_proof(self, block_hash: str, tx_id: str) -> str
+get_transaction(self, txid: str)
+get_raw_transaction(self, txid: str) -> Optional[str]
+broadcast_tx(self, transaction: str)
+get_block(self, blockhash: str) -> Dict
+get_block_header(self, blockhash: str) -> Dict
+}
+
+
+InterfaceFactory -up-> WoCInterface: Creates
+InterfaceFactory -up-> MockInterface: Creates
+InterfaceFactory -up-> RPCInterface: Creates
+
+BlockchainInterface -left-> Tx: Uses
+BlockchainInterface <|-- WoCInterface
+BlockchainInterface <|-- MockInterface 
+BlockchainInterface <|-- RPCInterface 
+
+
+class OtherFunctions {
+address_to_public_key_hash(address: str) -> bytes
+hash160(data: bytes) -> bytes
+p2pkh_script(h160: bytes) -> Script
+public_key_to_address(public_key: bytes, network: str) -> String
+}
+
+@enduml
