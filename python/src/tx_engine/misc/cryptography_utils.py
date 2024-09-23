@@ -23,4 +23,4 @@ def create_wallet_from_pem_bytes(pem_data: bytes, network: str) -> Wallet:
     # Convert the scalar value to bytes
     private_key_bytes = private_key_scalar.to_bytes((private_key_scalar.bit_length() + 7) // 8, byteorder='big')
 
-    return Wallet.create_wallet_from_bytes(network, private_key_bytes)
+    return Wallet.wallet_from_bytes(network, private_key_bytes)

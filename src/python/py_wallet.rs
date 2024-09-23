@@ -394,7 +394,7 @@ impl PyWallet {
     }
 
     #[classmethod]
-    fn create_wallet_from_bytes(_cls: &Bound<'_, PyType>, network: &str, key_bytes: &[u8]) -> PyResult<Self>{
+    fn wallet_from_bytes(_cls: &Bound<'_, PyType>, network: &str, key_bytes: &[u8]) -> PyResult<Self>{
         if let Some(netwrk) = str_to_network(network){
             // Ensure the length of key_bytes is 32 bytes
             if key_bytes.len() != 32 {
