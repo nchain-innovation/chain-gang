@@ -6,7 +6,7 @@ import sys
 sys.path.append("..")
 
 
-from tx_engine import Wallet, hash160, Tx, TxIn, TxOut, Script, create_wallet_from_pem_bytes, wallet_from_int
+from tx_engine import Wallet, hash160, Tx, TxIn, TxOut, Script, create_wallet_from_pem_bytes
 
 
 class WalletTest(unittest.TestCase):
@@ -118,19 +118,19 @@ class WalletTest(unittest.TestCase):
         self.assertEqual(wmain.get_network(), "BSV_Mainnet")
 
     def test_create_wallet_from_int(self):
-        w = wallet_from_int(110943977574299588079135027069764758606913326570652510108968462252246438125737, "BSV_Testnet")
+        w = Wallet.from_int("BSV_Testnet", 110943977574299588079135027069764758606913326570652510108968462252246438125737)
         self.assertEqual(w.get_address(), "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s")
 
     def test_create_wallet_from_int_mainnet(self):
-        w = wallet_from_int(110943977574299588079135027069764758606913326570652510108968462252246438125737, "BSV_Mainnet")
+        w = Wallet.from_int("BSV_Mainnet", 110943977574299588079135027069764758606913326570652510108968462252246438125737)
         self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
 
     def test_create_wallet_from_hex(self):
-        w = Wallet.wallet_from_hexstr("BSV_Testnet", "f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")
+        w = Wallet.from_hexstr("BSV_Testnet", "f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")
         self.assertEqual(w.get_address(), "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s")
 
     def test_create_wallet_from_hex_mainnet(self):
-        w = Wallet.wallet_from_hexstr("BSV_Mainnet","f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")
+        w = Wallet.from_hexstr("BSV_Mainnet","f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")
         self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
 
     def test_wallet_to_int(self):

@@ -1,7 +1,5 @@
-use pyo3::{prelude::*, types::PyBytes};
-use pyo3::types::PyLong;
 use pyo3::Bound;
-use num_bigint::BigInt;
+use pyo3::{prelude::*, types::PyBytes};
 
 mod base58_checksum;
 mod hashes;
@@ -17,7 +15,10 @@ use crate::{
         hashes::{hash160, sha256d},
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
-        py_wallet::{address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, wif_to_bytes, bytes_to_wif, generate_wif, PyWallet, wallet_from_int, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
+        py_wallet::{
+            address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript,
+            public_key_to_address, wif_to_bytes, PyWallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
+        },
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     transaction::sighash::{sig_hash_preimage, sighash, SigHashCache},
@@ -168,39 +169,22 @@ pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
 }
 
 #[pyfunction(name = "wif_from_pw_nonce")]
-pub fn py_generate_wif_from_pw_nonce(_py: Python, password: &str, nonce: &str, network: Option<&str>) -> String {
+pub fn py_generate_wif_from_pw_nonce(
+    _py: Python,
+    password: &str,
+    nonce: &str,
+    network: Option<&str>,
+) -> String {
     // Provide default value if `network` is None
-    let network = network.unwrap_or("testnet");
+    let network = network.unwrap_or("BSV_Testnet");
 
     // Example logic: derive WIF based on password, nonce, and network
     let wif = match network {
-        "mainnet" => generate_wif(password, nonce, "mainnet"),
-        _ => generate_wif(password, nonce, "testnet"), // Default to "testnet"
+        "BSV_Mainnet" => generate_wif(password, nonce, "BSV_Mainnet"),
+        _ => generate_wif(password, nonce, "BSV_Testnet"), // Default to "testnet"
     };
 
     wif
-}
-
-
-#[pyfunction(name = "wallet_from_int")]
-fn py_wallet_from_int(int_rep: &Bound<'_, PyAny>, network: &str) -> PyResult<PyWallet> {
-    // Use with_gil to get a reference to the Python interpreter
-    Python::with_gil(|_py| {
-        // Use the bound reference to access the PyAny
-        let py_any = int_rep.as_ref();
-        // Downcast the PyAny reference to PyLong
-        let py_long = py_any.downcast::<PyLong>().map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?.as_ref();
-
-        // Convert the PyLong into a BigInt using to_string
-        let big_int_str = py_long.str()?.to_str()?.to_owned();
-        
-        // Convert the string to a Rust BigInt (assumption is base-10)
-        let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
-            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Failed to parse BigInt"))?;
-
-        let test_wallet = wallet_from_int(network, big_int)?;
-        Ok(test_wallet)
-   })
 }
 
 /// A Python module for interacting with the Rust chain-gang BSV script interpreter
@@ -218,7 +202,6 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(py_bytes_to_wif, m)?)?;
     m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;
-    m.add_function(wrap_pyfunction!(py_wallet_from_int, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 

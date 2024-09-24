@@ -203,14 +203,15 @@ Wallet class has the following methods:
 * `to_hex(self) -> String` - Returns the scaler value of the private key as a string in hex format
 
 * `Wallet.generate_keypair(network) -> Wallet` - Given network (BSV_Testnet) return a keypair in Wallet format
-* `Wallet.wallet_from_hexstr(network, hexstr) -> Wallet` - Given a network identifier and scalar value as a hex string, return a keypair in Wallet format
-* `Wallet.wallet_from_bytes(network, bytes) -> Wallet` - Given a network identifier and a scalar value as a byte array, return a keypair in Wallet format
+* `Wallet.from_hexstr(network, hexstr) -> Wallet` - Given a network identifier and scalar value as a hex string, return a keypair in Wallet format
+* `Wallet.from_bytes(network, bytes) -> Wallet` - Given a network identifier and a scalar value as a byte array, return a keypair in Wallet format
+* `Wallet.from_int(network, integer) -> Wallet` - Given a network identifier and a scaler value as an integer, return a keypair in Wallet format
 
 The library provides some additional helper functions to handle keys in different formats. 
 * `wif_to_bytes(wif: string) -> bytes` - Given a key in WIF format, it returns a byte array of the scalar value of the private key
 * `bytes_to_wif(key_bytes, network) -> String` - Given a byte array and a network identifier, returns the WIF format for the private key
 * `wif_from_pw_nonce(password, nonce, optional<network>) -> WIF` - Given a password, nonce (strings) return a WIF format for the private key. The default for the network is BSV_Mainnet. For a testnet format, please use BSv_Testnet
-* `wallet_from_int(integer, network) -> Wallet` - Given a python integer and network identifier, return a keypair in Wallet format
+
 
 ![Bitcoin Keys](docs/diagrams/keys.png)
 
