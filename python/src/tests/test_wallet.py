@@ -90,32 +90,13 @@ class WalletTest(unittest.TestCase):
         w2 = Wallet.generate_keypair("BSV_Testnet")
         self.assertNotEqual(w1.get_address(), w2.get_address())
 
-    def test_get_network(self):
-        wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3"
-        wallet = Wallet(wif)
-        self.assertEqual(wallet.get_network(), "BSV_Testnet")
-
     def test_create_testnet_key_from_pem(self):
-        pem ='-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
+        pem = '-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
         pem_as_bytes = pem.encode()
 
         w = create_wallet_from_pem_bytes(pem_as_bytes, network="BSV_Testnet")
         expected_output = "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s"
         self.assertEqual(w.get_address(), expected_output)
-
-    def test_create_mainnet_key_from_pem(self):
-        pem ='-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
-        pem_bytes = pem.encode()
-        w = create_wallet_from_pem_bytes(pem_bytes, network="BSV_Mainnet")
-        expected_output = "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3"
-        self.assertEqual(w.get_address(), expected_output)
-
-    def test_get_network(self):
-        wtest = Wallet("cVoVmd5zY69LEevwGa5iq1Ba3oBc6J8xxUqdKuJCtuFWUJJngPPP")
-        wmain = Wallet("L5SWJi6972T55DTftAGbTggWRZtCRr3GtShADUqhPnbWDZAciATX")
-    
-        self.assertEqual(wtest.get_network(), "BSV_Testnet")
-        self.assertEqual(wmain.get_network(), "BSV_Mainnet")
 
     def test_create_wallet_from_int(self):
         w = Wallet.from_int("BSV_Testnet", 110943977574299588079135027069764758606913326570652510108968462252246438125737)
@@ -130,7 +111,7 @@ class WalletTest(unittest.TestCase):
         self.assertEqual(w.get_address(), "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s")
 
     def test_create_wallet_from_hex_mainnet(self):
-        w = Wallet.from_hexstr("BSV_Mainnet","f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")
+        w = Wallet.from_hexstr("BSV_Mainnet", "f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")
         self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
 
     def test_wallet_to_int(self):
@@ -145,22 +126,8 @@ class WalletTest(unittest.TestCase):
         w = Wallet("L5SWJi6972T55DTftAGbTggWRZtCRr3GtShADUqhPnbWDZAciATX")
         self.assertEqual(w.get_address(), "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3")
 
-    def test_get_network(self):
-        wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3"
-        wallet = Wallet(wif)
-        self.assertEqual(wallet.get_network(), "BSV_Testnet")
-
-    def test_create_testnet_key_from_pem(self):
-        pem ='-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
-        pem_as_bytes = pem.encode()
-
-        w = create_wallet_from_pem_bytes(pem_as_bytes, network="BSV_Testnet")
-        expected_output = "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s"
-        self.assertEqual(w.get_address(), expected_output)
-
     def test_create_mainnet_key_from_pem(self):
-        pem ='-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
- 
+        pem = '-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
         w = create_wallet_from_pem_bytes(pem.encode(), network="BSV_Mainnet")
         expected_output = "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3"
         self.assertEqual(w.get_address(), expected_output)
@@ -168,9 +135,9 @@ class WalletTest(unittest.TestCase):
     def test_get_network(self):
         wtest = Wallet("cVvay9F4wkxrC6cLwThUnRHEajQ8FNoDEg1pbsgYjh7xYtkQ9LVZ")
         wmain = Wallet("L5ZbWEFDWhGb2f95Z3tMR6nAxW6iavhXAdsMVTE3EaTxJ9deQtub")
-    
         self.assertEqual(wtest.get_network(), "BSV_Testnet")
         self.assertEqual(wmain.get_network(), "BSV_Mainnet")
+
 
 if __name__ == "__main__":
     unittest.main()
