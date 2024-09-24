@@ -1,5 +1,5 @@
+use pyo3::Bound;
 use pyo3::{prelude::*, types::PyBytes};
-//use std::io::Cursor;
 
 mod base58_checksum;
 mod hashes;
@@ -16,8 +16,8 @@ use crate::{
         py_script::PyScript,
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{
-            address_to_public_key_hash, p2pkh_pyscript, public_key_to_address, wif_to_bytes,
-            PyWallet,
+            address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript,
+            public_key_to_address, wif_to_bytes, PyWallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
         },
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
@@ -154,6 +154,39 @@ pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<PyObject> {
     Ok(bytes.into())
 }
 
+#[pyfunction(name = "bytes_to_wif")]
+pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
+    // network conversion
+    let network_prefix = match network {
+        "BSV_Mainnet" => MAIN_PRIVATE_KEY,
+        "BSV_Testnet" => TEST_PRIVATE_KEY,
+        _ => {
+            let msg = format!("Unknown network: {}", network);
+            return Err(Error::BadData(msg).into());
+        }
+    };
+    Ok(bytes_to_wif(key_bytes, network_prefix))
+}
+
+#[pyfunction(name = "wif_from_pw_nonce")]
+pub fn py_generate_wif_from_pw_nonce(
+    _py: Python,
+    password: &str,
+    nonce: &str,
+    network: Option<&str>,
+) -> String {
+    // Provide default value if `network` is None
+    let network = network.unwrap_or("BSV_Testnet");
+
+    // Example logic: derive WIF based on password, nonce, and network
+    let wif = match network {
+        "BSV_Mainnet" => generate_wif(password, nonce, "BSV_Mainnet"),
+        _ => generate_wif(password, nonce, "BSV_Testnet"), // Default to "testnet"
+    };
+
+    wif
+}
+
 /// A Python module for interacting with the Rust chain-gang BSV script interpreter
 #[pymodule]
 #[pyo3(name = "tx_engine")]
@@ -167,6 +200,8 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_sig_hash_preimage, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash, m)?)?;
     m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(py_bytes_to_wif, m)?)?;
+    m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 

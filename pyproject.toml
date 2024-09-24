@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
-dependencies = ["requests==2.32.3", "python-bitcoinrpc==1.0"]
+dependencies = ["requests==2.32.3", "python-bitcoinrpc==1.0", "cryptography==43.0.1"]
 
 [tool.maturin]
 features = ["pyo3/extension-module", "python"]

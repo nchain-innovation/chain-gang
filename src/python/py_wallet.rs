@@ -19,11 +19,22 @@ use crate::{
     util::{Error, Result},
 };
 use k256::ecdsa::{SigningKey, VerifyingKey};
-use pyo3::{prelude::*, types::PyType};
-use rand_core::OsRng;
+use k256::elliptic_curve::generic_array::GenericArray;
+use num_bigint::{BigInt, Sign};
+use pyo3::prelude::*;
+use typenum::U32;
 
-const MAIN_PRIVATE_KEY: u8 = 0x80;
-const TEST_PRIVATE_KEY: u8 = 0xef;
+use pyo3::types::PyType;
+use pyo3::types::{PyDict, PyLong};
+
+use hmac::Hmac;
+use pbkdf2::pbkdf2;
+use rand_core::OsRng;
+use sha2::Sha256;
+use std::num::NonZeroU32;
+
+pub const MAIN_PRIVATE_KEY: u8 = 0x80;
+pub const TEST_PRIVATE_KEY: u8 = 0xef;
 
 const MAIN_PUBKEY_HASH: u8 = 0x00;
 const TEST_PUBKEY_HASH: u8 = 0x6f;
@@ -34,6 +45,40 @@ pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>> {
     let (_, private_key) = wif_to_network_and_private_key(wif)?;
     let private_key_as_bytes = private_key.to_bytes();
     Ok(private_key_as_bytes.to_vec())
+}
+
+// Given bytes generate a WIF (for a private key)
+pub fn bytes_to_wif(key_as_bytes: &[u8], prefix_as_bytes: u8) -> String {
+    let mut wif_bytes = Vec::new();
+    wif_bytes.push(prefix_as_bytes);
+    wif_bytes.extend_from_slice(&key_as_bytes);
+    wif_bytes.push(0x01);
+
+    // Encode in Base58 with checksum
+    encode_base58_checksum(&wif_bytes)
+}
+
+pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
+    let pw_bytes = password.as_bytes();
+    let salt_bytes = nonce.as_bytes();
+    let iterations = NonZeroU32::new(100_000).unwrap();
+    let mut dk = [0u8; 32]; // 256-bit key
+    pbkdf2::<Hmac<Sha256>>(pw_bytes, salt_bytes, iterations.into(), &mut dk)
+        .expect("HMAC can be initialized with any key length");
+
+    // Choose prefix bytes based on network (mainnet or testnet)
+    let prefix_as_bytes = match network {
+        "BSV_Testnet" => TEST_PRIVATE_KEY,
+        _ => MAIN_PRIVATE_KEY,
+    };
+
+    let mut wif_bytes = Vec::new();
+    wif_bytes.push(prefix_as_bytes);
+    wif_bytes.extend_from_slice(&dk);
+    wif_bytes.push(0x01);
+
+    // Encode in Base58 with checksum
+    encode_base58_checksum(&wif_bytes)
 }
 
 fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)> {
@@ -132,6 +177,33 @@ pub fn str_to_network(network: &str) -> Option<Network> {
     }
 }
 
+pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet> {
+    if let Some(netwrk) = str_to_network(network) {
+        let mut big_int_bytes = int_rep.to_bytes_be().1;
+        if big_int_bytes.len() > 32 {
+            let msg = "Private key must be 32 bytes long".to_string();
+            return Err(Error::BadData(msg).into());
+        }
+
+        while big_int_bytes.len() < 32 {
+            big_int_bytes.insert(0, 0);
+        }
+        // Convert the 32-byte array to a slice
+        let key_bytes: &[u8; 32] = &big_int_bytes.try_into().expect("Expected 32-byte array");
+        let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(key_bytes);
+        let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
+
+        let public_key = *private_key.verifying_key();
+        Ok(PyWallet {
+            private_key,
+            public_key,
+            network: netwrk,
+        })
+    } else {
+        let msg = format!("Unknown network {}", network);
+        Err(Error::BadData(msg).into())
+    }
+}
 /// This class represents the Wallet functionality,
 /// including handling of Private and Public keys
 /// and signing transactions
@@ -269,6 +341,42 @@ impl PyWallet {
         format!("{}", self.network)
     }
 
+    fn to_int(&self, py: Python<'_>) -> PyResult<Py<PyLong>> {
+        // Convert the private key into bytes
+        let private_key_bytes = self.private_key.to_bytes();
+        // Convert GenericArray<u8, _> to [u8; 32]
+        let private_key_array: [u8; 32] = private_key_bytes
+            .as_slice()
+            .try_into()
+            .expect("Private key size mismatch");
+
+        // convert to a BitInt (signed for now)
+        let big_int_signed_rep = BigInt::from_bytes_be(Sign::Plus, &private_key_array);
+
+        // Convert the large integer to a string (Python handles large integers from strings well)
+        let result_str = big_int_signed_rep.to_string();
+
+        // Create a new PyDict for globals
+        let globals = PyDict::new_bound(py);
+        // Use Python's built-in int() constructor to convert the string to a Python integer
+        let py_int = py.eval_bound(&format!("int('{}')", result_str), Some(&globals), None)?;
+
+        // Cast to PyLong and return
+        Ok((*py_int.downcast::<PyLong>()?).clone().into())
+    }
+
+    fn to_hex(&self) -> String {
+        // Convert the private key into bytes
+        let private_key_bytes = self.private_key.to_bytes();
+        // Convert GenericArray<u8, _> to [u8; 32]
+        let private_key_array: [u8; 32] = private_key_bytes
+            .as_slice()
+            .try_into()
+            .expect("Private key size mismatch");
+        let scalar_hex = hex::encode(private_key_array);
+        scalar_hex
+    }
+
     #[classmethod]
     fn generate_keypair(_cls: &Bound<'_, PyType>, network: &str) -> PyResult<Self> {
         if let Some(netwrk) = str_to_network(network) {
@@ -284,6 +392,87 @@ impl PyWallet {
             let msg = format!("Unknown network {}", network);
             Err(Error::BadData(msg).into())
         }
+    }
+
+    #[classmethod]
+    fn from_bytes(_cls: &Bound<'_, PyType>, network: &str, key_bytes: &[u8]) -> PyResult<Self> {
+        if let Some(netwrk) = str_to_network(network) {
+            // Ensure the length of key_bytes is 32 bytes
+            if key_bytes.len() != 32 {
+                let msg = "Private key must be 32 bytes long".to_string();
+                return Err(Error::BadData(msg).into());
+            }
+            // Convert &[u8] to a GenericArray<u8, 32>
+            let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(&key_bytes);
+            let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
+            let public_key = *private_key.verifying_key();
+            Ok(PyWallet {
+                private_key,
+                public_key,
+                network: netwrk,
+            })
+        } else {
+            let msg = format!("Unknown network {}", network);
+            Err(Error::BadData(msg).into())
+        }
+    }
+
+    #[classmethod]
+    fn from_hexstr(_cls: &Bound<'_, PyType>, network: &str, hexstr: &str) -> PyResult<Self> {
+        if let Some(netwrk) = str_to_network(network) {
+            // Attempt to decode the hex string
+            let key_bytes = match hex::decode(hexstr) {
+                Ok(bytes) => bytes,
+                Err(e) => return Err(Error::BadData(e.to_string()).into()),
+            };
+
+            // Ensure the length of the bytes is exactly 32
+            if key_bytes.len() != 32 {
+                let msg = "Private key must be 32 bytes long".to_string();
+                return Err(Error::BadData(msg).into());
+            }
+
+            // Convert &[u8] to a GenericArray<u8, 32>
+            let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(&key_bytes);
+            let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
+            let public_key = *private_key.verifying_key();
+            Ok(PyWallet {
+                private_key,
+                public_key,
+                network: netwrk,
+            })
+        } else {
+            let msg = format!("Unknown network {}", network);
+            Err(Error::BadData(msg).into())
+        }
+    }
+
+    #[classmethod]
+    fn from_int(
+        _cls: &Bound<'_, PyType>,
+        network: &str,
+        int_rep: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
+        // Use with_gil to get a reference to the Python interpreter
+        Python::with_gil(|_cls| {
+            // Use the bound reference to access the PyAny
+            let py_any = int_rep.as_ref();
+            // Downcast the PyAny reference to PyLong
+            let py_long = py_any
+                .downcast::<PyLong>()
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
+                .as_ref();
+
+            // Convert the PyLong into a BigInt using to_string
+            let big_int_str = py_long.str()?.to_str()?.to_owned();
+
+            // Convert the string to a Rust BigInt (assumption is base-10)
+            let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
+                .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Failed to parse BigInt"))?;
+
+            let test_wallet = wallet_from_int(network, big_int)?;
+            Ok(test_wallet)
+        })
     }
 }
 
