@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
-    messages::Tx,
+    messages::{Tx, BlockHeader},
     network::Network,
 };
 
@@ -127,6 +127,11 @@ impl BlockchainInterface for TestInterface {
 
     async fn get_tx(&self, _txid: &str) -> Result<Tx> {
         debug!("get_tx");
+        std::unimplemented!();
+    }
+
+    async fn get_latest_block_header(&self) -> Result<BlockHeader> {
+        debug!("get_latest_block_header");
         std::unimplemented!();
     }
 }

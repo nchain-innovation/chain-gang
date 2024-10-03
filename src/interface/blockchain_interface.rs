@@ -1,6 +1,9 @@
 use async_trait::async_trait;
 
-use crate::{messages::Tx, network::Network};
+use crate::{
+    messages::{BlockHeader, Tx},
+    network::Network,
+};
 use anyhow::Result;
 use serde::Deserialize;
 
@@ -44,4 +47,6 @@ pub trait BlockchainInterface: Send + Sync {
     async fn broadcast_tx(&self, tx: &Tx) -> Result<String>;
 
     async fn get_tx(&self, txid: &str) -> Result<Tx>;
+
+    async fn get_latest_block_header(&self) -> Result<BlockHeader>;
 }
