@@ -49,4 +49,6 @@ pub trait BlockchainInterface: Send + Sync {
     async fn get_tx(&self, txid: &str) -> Result<Tx>;
 
     async fn get_latest_block_header(&self) -> Result<BlockHeader>;
+
+    async fn get_block_headers(&self) -> Result<String>;
 }

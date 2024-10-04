@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
-    messages::{Tx, BlockHeader},
+    messages::{BlockHeader, Tx},
     network::Network,
 };
 
@@ -195,6 +195,21 @@ impl BlockchainInterface for WocInterface {
                 let blockheader: BlockHeader = BlockHeader::read(&mut byte_slice)?;
                 Ok(blockheader)
             }
+            Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
+        }
+    }
+
+    async fn get_block_headers(&self) -> Result<String> {
+        log::debug!("get_block_headers");
+        let network = self.get_network_str();
+        let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers");
+        let response = reqwest::get(&url).await?;
+        if response.status() != 200 {
+            log::warn!("url = {}", &url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
+        match response.text().await {
+            Ok(headers) => Ok(headers),
             Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
         }
     }
