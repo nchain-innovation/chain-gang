@@ -186,7 +186,7 @@ impl BlockchainInterface for UaaSInterface {
     }
 
     /// Get balance associated with address
-    async fn get_balance(&self, address: &str) -> Result<Balance> {
+    async fn get_balance(&self, _address: &str) -> Result<Balance> {
         log::debug!("get_balance");
         std::unimplemented!();
         /*
@@ -228,7 +228,7 @@ impl BlockchainInterface for UaaSInterface {
     }
 
     /// Get UXTO associated with address
-    async fn get_utxo(&self, address: &str) -> Result<Utxo> {
+    async fn get_utxo(&self, _address: &str) -> Result<Utxo> {
         log::debug!("get_utxo");
         std::unimplemented!();
         /*
@@ -260,7 +260,7 @@ impl BlockchainInterface for UaaSInterface {
 
     /// Broadcast Tx
     ///
-    async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
+    async fn broadcast_tx(&self, _tx: &Tx) -> Result<String> {
         log::debug!("broadcast_tx");
         std::unimplemented!();
         /*
@@ -290,7 +290,7 @@ impl BlockchainInterface for UaaSInterface {
         */
     }
 
-    async fn get_tx(&self, txid: &str) -> Result<Tx> {
+    async fn get_tx(&self, _txid: &str) -> Result<Tx> {
         log::debug!("get_tx");
         std::unimplemented!();
         /*
