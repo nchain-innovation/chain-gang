@@ -1,16 +1,20 @@
 use pyo3::{
     prelude::*,
-    types::{PyBytes, PyType},
+    types::{PyBytes, PyLong, PyType},
 };
+
 use regex::Regex;
 use std::{
     fmt,
     io::{Cursor, Read, Write},
 };
 
+use num_bigint::BigInt;
+use num_traits::ToPrimitive;
+
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
-    script::{op_codes, stack::encode_num, Script},
+    script::{op_codes, stack::encode_bigint, stack::encode_num, Script},
     util::{var_int, Error, Result},
 };
 
@@ -264,6 +268,27 @@ impl PyScript {
         self.cmds.extend_from_slice(data);
     }
 
+    /// append integers
+
+    fn append_integer(&mut self, int_val: i64) {
+        match int_val {
+            -1 => self.cmds.push(op_codes::OP_1NEGATE), //-1 => return Command::Int(op_codes::OP_1NEGATE),
+            0 => self.cmds.push(op_codes::OP_0),        //return Command::Int(op_codes::OP_0),
+            1..=16 => self.cmds.push((int_val + 0x50).try_into().unwrap()), //return Command::Int((val + 0x50).try_into().unwrap()), // 1 => OP_1, => 0x81
+            17..=75 => {
+                let retval: Vec<u8> = vec![1, int_val.try_into().unwrap()];
+                self.cmds.extend(&retval);
+            }
+            _ => {
+                let mut retval = encode_num(int_val).unwrap();
+                let len: u8 = retval.len().try_into().unwrap();
+                retval.insert(0, len);
+                //self.cmds.extend_from_slice(&retval[..]);
+                self.cmds.extend(&retval);
+            }
+        }
+    }
+
     /// Appends the opcodes and provided data that push it onto the stack
     fn append_pushdata(&mut self, data: &[u8]) {
         let len = data.len();
@@ -303,6 +328,51 @@ impl PyScript {
             && self.cmds[1] == op_codes::OP_HASH160
             && self.cmds[len - 2] == op_codes::OP_EQUALVERIFY
             && self.cmds[len - 1] == op_codes::OP_CHECKSIG
+    }
+
+    // Add an integer to a string (but handle big ints)
+
+    //fn add_big_integer(&mut self, _cls: &Bound<'_, PyType>, int_rep: &Bound<'_, PyAny>) -> PyResult<bool>{
+    fn add_big_integer(&mut self, int_rep: &Bound<'_, PyAny>) -> PyResult<bool> {
+        // Use with_gil to get a reference to the Python interpreter
+        //Python::with_gil(|_cls| {
+        // Use the bound reference to access the PyAny
+        let py_any = int_rep.as_ref();
+        // Downcast the PyAny reference to PyLong
+        let py_long = py_any
+            .downcast::<PyLong>()
+            .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
+            .as_ref();
+
+        // Convert the PyLong into a BigInt using to_string
+        let big_int_str = py_long.str()?.to_str()?.to_owned();
+
+        // Convert the string to a Rust BigInt (assumption is base-10)
+        let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Failed to parse BigInt"))?;
+
+        match big_int {
+            ref n if *n == BigInt::from(-1) => self.cmds.push(op_codes::OP_1NEGATE),
+            ref n if *n == BigInt::from(0) => self.cmds.push(op_codes::OP_0),
+            ref n if *n >= BigInt::from(1) && *n <= BigInt::from(16) => {
+                // Convert `big_int` to an integer and add 0x50, then convert to u8
+                //let opcode: u8 = (n + BigInt::from(0x50)).to_u8().unwrap();
+                let opcode: u8 = (n + BigInt::from(0x50)).to_u64().unwrap() as u8;
+                self.cmds.push(opcode);
+            }
+            ref n if *n >= BigInt::from(17) && *n <= BigInt::from(75) => {
+                let retval: Vec<u8> = vec![1, n.to_u8().unwrap()];
+                self.cmds.extend(&retval);
+            }
+            _ => {
+                let mut retval = encode_bigint(big_int.clone());
+                let len: u8 = retval.len().try_into().unwrap();
+                retval.insert(0, len);
+                self.cmds.extend(&retval);
+            }
+        }
+        Ok(true)
+        //})
     }
 
     /// Converts a String to a Script

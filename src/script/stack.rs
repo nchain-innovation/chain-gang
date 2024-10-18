@@ -213,4 +213,28 @@ mod tests {
         assert!(pop_num(&mut vec![vec![0, 0, 0, 0]]).unwrap() == 0);
         assert!(pop_num(&mut vec![vec![0, 0, 0, 0, 0]]).is_err());
     }
+
+    #[test]
+    fn test_encode_bigint() {
+        // Small numbers
+        assert_eq!(encode_bigint(BigInt::from(0)), vec![]);
+        assert_eq!(encode_bigint(BigInt::from(1)), vec![1]);
+        assert_eq!(encode_bigint(BigInt::from(-1)), vec![129]);
+
+        // Powers of two
+        assert_eq!(encode_bigint(BigInt::from(256)), vec![0, 1]);
+        assert_eq!(encode_bigint(BigInt::from(65536)), vec![0, 0, 1]);
+        assert_eq!(
+            encode_bigint(BigInt::from(2147483648u64)),
+            vec![0, 0, 0, 128, 0]
+        );
+
+        // Negative numbers
+        assert_eq!(encode_bigint(BigInt::from(-256)), vec![0, 129]);
+        assert_eq!(encode_bigint(BigInt::from(-65536)), vec![0, 0, 129]);
+        assert_eq!(
+            encode_bigint(BigInt::from(-2147483648i64)),
+            vec![0, 0, 0, 128, 128]
+        );
+    }
 }
