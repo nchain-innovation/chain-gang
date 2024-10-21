@@ -13,7 +13,7 @@ use crate::{
 
 /// Structure for json serialisation for broadcast_tx
 #[derive(Debug, Serialize)]
-pub struct BroadcastTxType {
+struct BroadcastTxType {
     pub txhex: String,
 }
 

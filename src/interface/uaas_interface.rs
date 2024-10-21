@@ -1,10 +1,11 @@
 use async_trait::async_trait;
-//use reqwest::StatusCode;
+
+use reqwest::StatusCode;
 use reqwest::Url;
 
 //use crate::util::Serializable;
 use anyhow::{anyhow, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
@@ -16,6 +17,7 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct UaaSStatus {
+    pub version: Option<String>,
     pub network: String,
     #[serde(alias = "last block time")]
     pub last_block_time: String,
@@ -32,18 +34,8 @@ pub struct UaaSStatus {
 #[derive(Debug, Deserialize)]
 pub struct UaaSStatusResponse {
     pub status: UaaSStatus,
-    /*
-    {"status":{
-        "network":"testnet",
-        "last block time":"2024-10-10 16:13:13",
-        "block height":1640237,
-        "number of txs":8177580,
-        "number of utxo entries":1189879,
-        "number of mempool entries":0
-        }
-    }
-    */
 }
+
 
 #[allow(non_snake_case, dead_code)]
 #[derive(Debug, Deserialize)]
@@ -71,27 +63,22 @@ pub struct BlockHeadersResponse {
     pub blocks: Vec<HeaderFormat>,
 }
 
-/*
-"{\"blocks\":[{
-    \"height\":1640394,
-    \"header\":{
-        \"hash\":\"000000000eb567ec9809b6077c756b48f104bcf5a41869c5dee3bacc7d01649e\",
-        \"version\":\"20000000\",
-        \"hashPrevBlock\":\"000000001b3e950480e2ccbee2dc6c308ec9f849a4f240c30d824acca10369c7\",
-        \"hashMerkleRoot\":\"bfb49336bef37952551b1d17c779cad64fd668a9cad790281aa68d2ae77340c7\",
-        \"nTime\":\"Fri Oct 11 14:53:17 2024\",
-        \"nBits\":\"1c26e425\",
-        \"nNonce\":\"821c6ffd\"
-    },
-    \"blocksize\":273,
-    \"number of tx\":1
-    }
- */
-
 #[derive(Debug, Deserialize)]
 pub struct BlockHeaderHexResponse {
     pub block: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct TxResponse {
+    pub result: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UaaSBroadcastTxType {
+    pub tx: String,
+}
+
+
 
 #[derive(Debug, Clone)]
 pub struct UaaSInterface {
@@ -260,20 +247,19 @@ impl BlockchainInterface for UaaSInterface {
 
     /// Broadcast Tx
     ///
-    async fn broadcast_tx(&self, _tx: &Tx) -> Result<String> {
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
         log::debug!("broadcast_tx");
-        std::unimplemented!();
-        /*
-        let network = self.get_network_str();
-        let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
-        log::debug!("url = {}", &url);
-        let data_for_broadcast = BroadcastTxType {
-            txhex: tx.as_hexstr(),
+
+        let url = self.url.join(&"/tx/hex").unwrap();
+
+        let data_for_broadcast = UaaSBroadcastTxType {
+            tx: tx.as_hexstr(),
         };
-        //let data = serde_json::to_string(&data_for_broadcast).unwrap();
+
         let client = reqwest::Client::new();
-        let response = client.post(&url).json(&data_for_broadcast).send().await?;
+        let response = client.post(url.clone()).json(&data_for_broadcast).send().await?;
         let status = response.status();
+        
         // Assume a response of 200 means broadcast tx success
         match status {
             StatusCode::OK => {
@@ -287,30 +273,38 @@ impl BlockchainInterface for UaaSInterface {
                 std::result::Result::Err(anyhow!("response.status() = {}", status))
             }
         }
-        */
     }
 
-    async fn get_tx(&self, _txid: &str) -> Result<Tx> {
+    async fn get_tx(&self, txid: &str) -> Result<Tx> {
         log::debug!("get_tx");
-        std::unimplemented!();
-        /*
-        let network = self.get_network_str();
-        let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/{txid}/hex");
-        let response = reqwest::get(&url).await?;
+
+        let get_tx_url = format!("/collection/tx/hex?hash={}", txid);
+        let url = self.url.join(&get_tx_url).unwrap();
+
+        let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
             return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
         };
-        match response.text().await {
-            Ok(txt) => {
-                let bytes = hex::decode(txt)?;
-                let mut byte_slice = &bytes[..];
-                let tx: Tx = Tx::read(&mut byte_slice)?;
-                Ok(tx)
+        let txt = match response.text().await {
+            Ok(txt) => txt,
+            Err(x) => {
+                return std::result::Result::Err(anyhow!("response.text() = {}", x));
             }
-            Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
-        }
-        */
+        };
+
+        let data: TxResponse = match serde_json::from_str(&txt) {
+            Ok(data) => data,
+            Err(x) => {
+                log::warn!("txt = {}", &txt);
+                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+            }
+        };
+
+        let bytes = hex::decode(data.result)?;
+        let mut byte_slice = &bytes[..];
+        let tx: Tx = Tx::read(&mut byte_slice)?;
+        Ok(tx)
     }
 
     async fn get_latest_block_header(&self) -> Result<BlockHeader> {
