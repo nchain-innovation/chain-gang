@@ -1,16 +1,15 @@
 """ This is the execution context for the script
 """
 
-from typing import Optional
+from typing import Optional, List
 
-from tx_engine.tx_engine import py_script_eval, Script
-from tx_engine.engine.util import decode_num
+from tx_engine.tx_engine import py_script_eval, py_script_eval_pystack, Script, Stack, decode_num_stack
+#from tx_engine.engine.util import decode_num
 
 
-from .engine_types import Commands, Stack, StackElement
+#from .engine_types import Commands, Stack, StackElement
 from .op_codes import OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
-
-
+'''
 def decode_element(elem: StackElement) -> int:
     """ Attempt to map a stack element to an int
     """
@@ -21,7 +20,6 @@ def decode_element(elem: StackElement) -> int:
         retval = elem  # type: ignore[assignment]
         print(f"elem={elem}, retval={retval}, type={type(retval)}")  # type: ignore[str-bytes-safe]
     return retval
-
 
 def cmds_as_bytes(cmds: Commands) -> bytes:
     """ Given commands return bytes - prior to passing to Rust
@@ -42,57 +40,57 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
                     retval += len(c).to_bytes(1, byteorder='big')
             retval += c
     return bytes(retval)
+'''
 
-
+# why does the contect name script & Commands? 
 class Context:
     """ This class captures an execution context for the script
     """
-    def __init__(self, script: None | Script = None, cmds: None | Commands = None, ip_limit: None | int = None, z: None | bytes = None):
+    def __init__(self, script: None | Script = None, ip_limit: None |int = None, z: None | bytes = None):
         """ Intial setup
         """
-        self.cmds: Commands
+        #self.cmds: Commands
         self.ip_limit: Optional[int]
         self.z: Optional[bytes]
-        self.stack: Stack = []
-        self.alt_stack: Stack = []
-        self.raw_stack: Stack = []
-        self.raw_alt_stack: Stack = []
+        self.stack: Stack = Stack()
+        self.alt_stack: Stack = Stack()
+        #self.raw_stack: Stack = []
+        #self.raw_alt_stack: Stack = []
 
+        # script.get_commamds() returns bytes I believe.
         if script:
             self.cmds = script.get_commands()
-        elif cmds:
-            self.cmds = cmds[:]
+        #elif cmds:
+        #    self.cmds = cmds[:]
         else:
             self.cmds = []
 
         self.ip_limit = ip_limit if ip_limit else None
         self.z = z if z else None
 
-    def set_commands(self, cmds: Commands) -> None:
+    #def set_commands(self, cmds: Commands) -> None:
         """ Set the commands
         """
-        self.cmds = cmds[:]
+    #    self.cmds = cmds[:]
 
-    def reset_stacks(self) -> None:
+    #def reset_stacks(self) -> None:
         """ Reset the stacks
         """
-        self.stack = []
-        self.alt_stack = []
-        self.raw_stack = []
-        self.raw_alt_stack = []
+    #    self.stack = []
+    #    self.alt_stack = []
+    #   self.raw_stack = []
+    #    self.raw_alt_stack = []
 
     def evaluate_core(self, quiet: bool = False) -> bool:
         """ evaluate_core calls the interpreter and returns the stacks
             if quiet is true, dont print exceptions
         """
+
+        print(f'context -> evaluate_core -> ip {self.ip_limit}')
+        print()
         try:
-            cmds = cmds_as_bytes(self.cmds)
-        except Exception as e:
-            if not quiet:
-                print(f"cmds_as_bytes exception '{e}'")
-            return False
-        try:
-            (self.raw_stack, self.raw_alt_stack) = py_script_eval(cmds, self.ip_limit, self.z)
+            #(self.stack, self.alt_stack) = py_script_eval(self.cmds, self.ip_limit, self.z)
+            (self.stack, self.alt_stack) = py_script_eval_pystack(self.cmds, self.ip_limit, self.z)
         except Exception as e:
             if not quiet:
                 print(f"script_eval exception '{e}'")
@@ -105,22 +103,28 @@ class Context:
         """
         if not self.evaluate_core(quiet):
             return False
-        self.stack = [decode_element(s) for s in self.raw_stack]
-        self.alt_stack = [decode_element(s) for s in self.raw_alt_stack]
-        if len(self.stack) == 0:
+        
+        if self.stack.size() == 0:
             return False
-        if self.stack[-1] == 0:  # was b""
+        
+        # if the size is 1, then check the top element for either empty or zero
+        if self.stack.size() == 1:
+            # no entry or 0 => false.
+            if self.get_stack() == Stack([[]]) or self.get_stack() == Stack([[0]]):
+                return False
+        # if the top element is 0, OP_0 or empty it's a fail
+        if self.get_stack()[0] == [0] or  self.get_stack()[0] == []:
             return False
         return True
 
-    def get_stack(self) -> Stack:
+    def get_stack(self) -> List:
         """ Return the data stack as human readable
         """
-        self.stack = [decode_element(s) for s in self.raw_stack]
+        #self.stack = [decode_element(s) for s in self.raw_stack]
         return self.stack
-
+    
     def get_altstack(self):
         """ Return the get_altstack as human readable
         """
-        self.alt_stack = [decode_element(s) for s in self.raw_alt_stack]
+        #self.alt_stack = [decode_element(s) for s in self.raw_alt_stack]
         return self.alt_stack

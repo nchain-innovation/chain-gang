@@ -3,7 +3,6 @@
 
 import unittest
 import sys
-sys.path.append("..")
 
 from tx_engine import Script, Context, p2pkh_script, hash160
 from tx_engine.engine.op_codes import OP_PUSHDATA4, OP_DUP, OP_HASH160
@@ -21,12 +20,12 @@ class ScriptTest(unittest.TestCase):
         combined_sig = s1 + s2
         context = Context(script=combined_sig)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(len(context.raw_stack), 2)
+        self.assertEqual(context.stack.size(), 2)
 
-        assert isinstance(context.raw_stack[0], list)
-        self.assertEqual(len(context.raw_stack[0]), 0x47)
-        assert isinstance(context.raw_stack[1], list)
-        self.assertEqual(len(context.raw_stack[1]), 0x41)
+        assert isinstance(context.stack[0], list)
+        self.assertEqual(len(context.stack[0]), 0x47)
+        assert isinstance(context.stack[1], list)
+        self.assertEqual(len(context.stack[1]), 0x41)
 
         serial = combined_sig.serialize()
         # Parse the serialised data
@@ -34,11 +33,12 @@ class ScriptTest(unittest.TestCase):
 
         context = Context(script=s3)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(len(context.raw_stack), 2)
-        assert isinstance(context.raw_stack[0], list)
-        self.assertEqual(len(context.raw_stack[0]), 0x47)
-        assert isinstance(context.raw_stack[1], list)
-        self.assertEqual(len(context.raw_stack[1]), 0x41)
+
+        self.assertEqual(context.stack.size(), 2)
+        assert isinstance(context.stack[0], list)
+        self.assertEqual(len(context.stack[0]), 0x47)
+        assert isinstance(context.stack[1], list)
+        self.assertEqual(len(context.stack[1]), 0x41)
 
     def test_new_script(self):
         s1 = Script([])
@@ -122,6 +122,8 @@ class ScriptTest(unittest.TestCase):
         script_exe = script_exe + Script.parse_string(' OP_CHECKSIG')
         context = Context(script=script_exe)
         context.z = bytes.fromhex(message_new)
+        ret: bool = context.evaluate()
+        script_bytes = context.cmds
         self.assertFalse(context.evaluate())
 
     def test_checksig_z(self):

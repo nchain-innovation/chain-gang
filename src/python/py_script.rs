@@ -393,7 +393,6 @@ impl PyScript {
             decoded.push(op);
         }
         let script = commands_as_vec(decoded);
-
         Ok(PyScript { cmds: script })
     }
 

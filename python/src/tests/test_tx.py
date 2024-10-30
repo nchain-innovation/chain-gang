@@ -3,7 +3,6 @@
 import unittest
 import sys
 
-sys.path.append("..")
 
 from tx_engine import Tx, p2pkh_script, address_to_public_key_hash, TxOut, TxIn
 
