@@ -249,6 +249,15 @@ impl PyTx {
         Ok(bytes.into())
     }
 
+    /// Return tx as hexstr
+    fn as_hexstr(&self) -> PyResult<String> {
+        let mut v = Vec::new();
+        let tx = self.as_tx();
+        tx.write(&mut v)?;
+        let hexstr = hex::encode(v);
+        Ok(hexstr)
+    }
+
     /// Add a TxIn to a transaction
     fn add_tx_in(&mut self, txin: PyTxIn) {
         self.tx_ins.push(txin);
