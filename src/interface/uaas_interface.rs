@@ -78,13 +78,28 @@ pub struct UaaSBroadcastTxType {
     pub tx: String,
 }
 
-
-
 #[derive(Debug, Clone)]
 pub struct UaaSInterface {
     url: Url,
     network_type: Network,
 }
+
+
+// This represents an address or locking script monitor
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct Monitor {
+    pub name: String,
+    pub track_descendants: bool,
+    pub address: Option<String>,
+    pub locking_script_pattern: Option<String>,
+}
+
+
+#[derive(Debug, Deserialize)]
+struct GetMonitorResponse {
+    pub collections: Vec<String>,
+}
+
 
 /// UaaS specific funtionality
 impl UaaSInterface {
@@ -145,8 +160,58 @@ impl UaaSInterface {
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
             }
         };
-
         Ok(blockheaders)
+    }
+
+    pub async fn get_monitors(&self) -> Result<Vec<String>> {
+        log::debug!("get_monitors");
+
+        let collection_url = self.url.join("/collection").unwrap();
+        let response = reqwest::get(collection_url.clone()).await?;
+        if response.status() != 200 {
+            log::warn!("url = {}", &collection_url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
+
+        let txt = match response.text().await {
+            Ok(txt) => txt,
+            Err(x) => return std::result::Result::Err(anyhow!("response.text() = {}", x)),
+        };
+
+        let monitors: GetMonitorResponse = match serde_json::from_str(&txt) {
+            Ok(data) => data,
+            Err(x) => {
+                log::warn!("txt = {}", &txt);
+                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+            }
+        };
+        Ok(monitors.collections)
+    }
+
+    pub async fn add_monitor(&self, monitor: &Monitor) -> Result<()>{
+        log::debug!("add_monitor");
+        // check the input is valid
+        if monitor.address.is_none() && monitor.locking_script_pattern.is_none() {
+            return std::result::Result::Err(anyhow!("monitor requires address or locking_script pattern"));
+        }
+
+        let add_monitor_url = self.url.join("/collection/monitor").unwrap();
+        let client = reqwest::Client::new();
+        let response = client.post(add_monitor_url.clone()).json(&monitor).send().await?;
+
+        if response.status() != 200 {
+            log::warn!("url = {}", &add_monitor_url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
+        Ok(())
+    }
+
+    pub async fn delete_monitor(&self, monitor_name: &str) -> Result<()>{
+        log::debug!("delete_monitor");
+        let url = format!("/collection/monitor/{}", monitor_name);
+        let delete_monitor_url = self.url.join("/collection/monitor").unwrap();
+
+        Ok(())
     }
 }
 

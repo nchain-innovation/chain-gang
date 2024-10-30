@@ -8,7 +8,7 @@ pub mod woc_interface;
 pub mod test_interface;
 
 pub use blockchain_interface::{Balance, BlockchainInterface, Utxo, UtxoEntry};
-pub use uaas_interface::UaaSInterface;
+pub use uaas_interface::{UaaSInterface, Monitor};
 pub use woc_interface::WocInterface;
 
 //#[cfg(test)]
