@@ -124,6 +124,7 @@ Tx has the following methods:
 * `hash(self) -> bytes` - Return transaction hash as bytes
 * `is_coinbase(self) -> bool` - Returns true if it is a coinbase transaction
 * `serialize(self) -> bytes` - Returns Tx as bytes
+* `to_hexstr(self) -> str` - Returns Tx as hex string
 * `copy(self) -> Tx` - Returns a copy of the Tx
 * `to_string(self) -> String` - return the Tx as a string. Note also that you can just print the tx (`print(tx)`).
 * `validate(self, [Tx]) -> Result` - provide the input txs, returns None on success and throws a RuntimeError exception on failure. Note can not validate coinbase or pre-genesis transactions.
