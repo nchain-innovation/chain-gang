@@ -70,6 +70,7 @@ pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<St
 ///  * break_at - the instruction to stop at, or None
 ///  * z - the sig_hash of the transaction as bytes, or None
 #[pyfunction]
+#[pyo3(signature = (py_script, break_at=None, z=None))]
 fn py_script_eval(
     py_script: &[u8],
     break_at: Option<usize>,
@@ -99,6 +100,17 @@ fn py_script_eval(
     }
 }
 
+/// Return the transaction data prior to the hash function
+///
+/// # Arguments
+///
+/// * `tx` - Spending transaction
+/// * `index` - Spending input index
+/// * `script_pubkey` - The lock_script of the output being spent. This may be a subset of the
+///   lock_script if OP_CODESEPARATOR is used.
+/// * `satoshis` - The satoshi amount in the output being spent
+/// * `sighash_flags` - Sighash flags
+
 #[pyfunction(name = "sig_hash_preimage")]
 pub fn py_sig_hash_preimage(
     _py: Python,
@@ -106,7 +118,7 @@ pub fn py_sig_hash_preimage(
     index: usize,
     script_pubkey: PyScript,
     prev_amount: i64,
-    sighash_value: Option<u8>,
+    sighash_value: u8,
 ) -> PyResult<PyObject> {
     let input_tx: Tx = tx.as_tx();
     let prev_lock_script: Script = script_pubkey.as_script();
@@ -116,13 +128,23 @@ pub fn py_sig_hash_preimage(
         index,
         &prev_lock_script.0,
         prev_amount,
-        sighash_value.unwrap(),
+        sighash_value,
         &mut cache,
     );
     let bytes = PyBytes::new_bound(_py, &sigh_hash.unwrap());
     Ok(bytes.into())
 }
 
+/// Generates a transaction digest
+///
+/// # Arguments
+///
+/// * `tx` - Spending transaction
+/// * `index` - Spending input index
+/// * `script_pubkey` - The lock_script of the output being spent. This may be a subset of the
+///   lock_script if OP_CODESEPARATOR is used.
+/// * `satoshis` - The satoshi amount in the output being spent
+/// * `sighash_flags` - Sighash flags
 #[pyfunction(name = "sig_hash")]
 pub fn py_sig_hash(
     _py: Python,
@@ -130,7 +152,7 @@ pub fn py_sig_hash(
     index: usize,
     script_pubkey: PyScript,
     prev_amount: i64,
-    sighash_value: Option<u8>,
+    sighash_flags: u8,
 ) -> PyResult<PyObject> {
     let input_tx = tx.as_tx();
     let prev_lock_script = script_pubkey.as_script();
@@ -140,7 +162,7 @@ pub fn py_sig_hash(
         index,
         &prev_lock_script.0,
         prev_amount,
-        sighash_value.unwrap(),
+        sighash_flags,
         &mut cache,
     );
     let bytes = PyBytes::new_bound(_py, &full_sig_hash.unwrap().0);
@@ -169,6 +191,7 @@ pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
 }
 
 #[pyfunction(name = "wif_from_pw_nonce")]
+#[pyo3(signature = (password, nonce, network=None))]
 pub fn py_generate_wif_from_pw_nonce(
     _py: Python,
     password: &str,
