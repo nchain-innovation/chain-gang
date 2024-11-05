@@ -80,7 +80,7 @@ The `context` is the environment in which bitcoin scripts are executed.
 Context has the following properties:
 * `cmds` - the commands to execute
 * `ip_limit` - the number of commands to execute before stopping (optional)
-* z - 
+* `z` - the hash of the transaction 
 * `stack` - main data stack
 * `alt_stack` - seconary stack
 * `raw_stack` - which contains the `stack` prior to converting to numbers
@@ -256,6 +256,40 @@ The `Mock Interface` is a `BlockchainInterface` that is used for unit testing.
 The `RPC Interface` is a `BlockchainInterface` that is used for connecting to the RPC interface of mining nodes.
 
 
+### SIGHASH Functions
+
+* `sig_hash(tx: Tx, index: int, script_pubkey: Script, satoshi: int, sighash_flags: int)` - Return the transaction digest/hash
+* `sig_hash_preimage(tx: Tx, index: int, script_pubkey: Script, satoshi: int, sighash_flags: int)` - Return the transaction data prior to the hash function
+
+Given:
+  * `tx` - Spending transaction
+  * `index` - Spending input index
+  * `script_pubkey` - The lock_script of the output being spent
+  * `satoshis` - The satoshi amount in the output being spent
+  * `sighash_flags` - Sighash flags
+
+Note the sighash flags can be obtained from the `SIGHASH` class which supports the following flags:
+``` 
+    ALL
+    NONE
+    SINGLE
+    ANYONECANPAY
+    FORKID
+    ALL_FORKID = ALL | FORKID
+    NONE_FORKID = NONE | FORKID
+    SINGLE_FORKID = SINGLE | FORKID
+    ALL_ANYONECANPAY_FORKID = ALL_FORKID | ANYONECANPAY
+    NONE_ANYONECANPAY_FORKID = NONE_FORKID | ANYONECANPAY
+    SINGLE_ANYONECANPAY_FORKID = SINGLE_FORKID | ANYONECANPAY
+```
+For further details see https://wiki.bitcoinsv.io/index.php/SIGHASH_flags
+
+Example usage:
+```Python
+sig_hash_value = sig_hash(own_tx, 0, script_pubkey, 99904, SIGHASH.ALL_FORKID)
+```
+
+
 # Other Functions
 These are public key and address functions that are likely to be used if you don't have the private key and 
 are not using the Wallet class.
@@ -264,5 +298,4 @@ are not using the Wallet class.
 * `hash160(data: bytes) -> bytes` - Returns the hash160 of the provided data (usually the public key)
 * `p2pkh_script(h160: bytes) -> Script` - Takes the hash160 of the public key and returns the locking script
 * `public_key_to_address(public_key: bytes, network: str) -> String` - Given the public key and the network (either `BSV_Mainnet` or `BSV_Testnet`) return the address
-
 
