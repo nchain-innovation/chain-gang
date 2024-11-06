@@ -46,16 +46,16 @@ def cmds_as_bytes(cmds: Commands) -> bytes:
 class Context:
     """ This class captures an execution context for the script
     """
-    def __init__(self, script: None | Script = None, ip_limit: None |int = None, z: None | bytes = None):
+    def __init__(self, script: None | Script = None, ip_start: None | int = None, ip_limit: None |int = None, z: None | bytes = None):
         """ Intial setup
         """
-        #self.cmds: Commands
+        # ip_limit -> this now means where to stop execution.
+        # it'll have to change from line number to byte count into the script.
+        self.ip_start: Optional[int]
         self.ip_limit: Optional[int]
         self.z: Optional[bytes]
         self.stack: Stack = Stack()
         self.alt_stack: Stack = Stack()
-        #self.raw_stack: Stack = []
-        #self.raw_alt_stack: Stack = []
 
         # script.get_commamds() returns bytes I believe.
         if script:
@@ -65,21 +65,21 @@ class Context:
         else:
             self.cmds = []
 
+        self.ip_start = ip_start if ip_start else None
         self.ip_limit = ip_limit if ip_limit else None
         self.z = z if z else None
 
-    #def set_commands(self, cmds: Commands) -> None:
+    def set_commands(self, script: Script) -> None:
         """ Set the commands
         """
-    #    self.cmds = cmds[:]
+        #self.cmds = cmds[:]
+        self.cmds = script.get_commands()
 
-    #def reset_stacks(self) -> None:
+    def reset_stacks(self) -> None:
         """ Reset the stacks
         """
-    #    self.stack = []
-    #    self.alt_stack = []
-    #   self.raw_stack = []
-    #    self.raw_alt_stack = []
+        self.stack = Stack()
+        self.alt_stack = Stack()
 
     def evaluate_core(self, quiet: bool = False) -> bool:
         """ evaluate_core calls the interpreter and returns the stacks
@@ -87,15 +87,18 @@ class Context:
         """
 
         print(f'context -> evaluate_core -> ip {self.ip_limit}')
-        print()
         try:
             #(self.stack, self.alt_stack) = py_script_eval(self.cmds, self.ip_limit, self.z)
-            (self.stack, self.alt_stack) = py_script_eval_pystack(self.cmds, self.ip_limit, self.z)
+            #LEFT MYSELF A JIRA LOG - RPT-170 on the Monday
+            print(f'Values going into py_script_eval_pystack -> {self.ip_start} : {self.ip_limit}')
+            (self.stack, self.alt_stack, finish_loc) = py_script_eval_pystack(self.cmds, self.ip_start, self.ip_limit, self.z,  self.stack, self.alt_stack)
+            print(f'value of self.ip_limit coming back out {finish_loc}')
         except Exception as e:
             if not quiet:
                 print(f"script_eval exception '{e}'")
             return False
         return True
+    
 
     def evaluate(self, quiet: bool = False) -> bool:
         """ evaluate calls Evaluate_core and checks the stack has the correct value on return
@@ -128,3 +131,9 @@ class Context:
         """
         #self.alt_stack = [decode_element(s) for s in self.raw_alt_stack]
         return self.alt_stack
+    
+    def set_ip_start(self, start: int) -> None:
+        self.ip_start = start
+
+    def set_ip_limit(self, limit: int) -> None:
+        self.ip_limit = limit

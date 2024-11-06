@@ -16,9 +16,6 @@ impl PyStack {
     fn new(items: Vec<Vec<u8>>) -> Self {
         PyStack { inner: items }
     }
-    //fn new() -> Self {
-    //    PyStack { inner: Vec::new()}
-    //}
 
     // push a list of bytes (Vec<u8>)
     fn push(&mut self, item: Vec<u8>) {
@@ -95,6 +92,10 @@ impl PyStack {
         self.inner.len()
     }
 
+    pub fn to_stack(&self) -> Stack {
+        self.inner.clone()
+    }
+
     #[staticmethod] // Secondary constructor to create PyStack from an existing Stack
     pub fn from_stack(stack: Stack) -> Self {
         PyStack { inner: stack }
@@ -168,7 +169,7 @@ impl PyStack {
             let py_long = item
                 .downcast::<PyLong>()
                 .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
-                .as_ref(); 
+                .as_ref();
             let val: u8 = py_long.extract()?;
             inner_stack.push(val);
         }

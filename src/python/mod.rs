@@ -22,7 +22,7 @@ use crate::{
             public_key_to_address, wif_to_bytes, PyWallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
         },
     },
-    script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
+    script::{find_op_locations, stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     transaction::sighash::{sig_hash_preimage, sighash, SigHashCache},
     util::{Error, Hash256},
 };
@@ -74,11 +74,25 @@ pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<St
 #[pyfunction]
 fn py_script_eval(
     py_script: &[u8],
+    start_at: Option<usize>,
     break_at: Option<usize>,
     z: Option<&[u8]>,
-) -> PyResult<(Stack, Stack)> {
+    stack_param: Option<PyStack>,
+    alt_stack_param: Option<PyStack>,
+) -> PyResult<(Stack, Stack, Option<usize>)> {
     let mut script = Script::new();
     script.append_slice(py_script);
+
+    // Handle stack and alt_stack parameters with match
+    let main_stack = match stack_param {
+        Some(py_stack_main) => Some(py_stack_main.to_stack()), // Use the provided PyStack if available
+        None => None, // Otherwise, initialize an empty stack
+    };
+
+    let alternative_stack = match alt_stack_param {
+        Some(alt_stack_param) => Some(alt_stack_param.to_stack()), // Use provided alt stack if available
+        None => None, // Otherwise, initialize an empty alt stack
+    };
     // Pick the appropriate transaction checker
     match z {
         Some(sig_hash) => {
@@ -95,22 +109,50 @@ fn py_script_eval(
             };
 
             let z = Hash256(z_array);
-            Ok(script.eval_with_stack(&mut ZChecker { z }, NO_FLAGS, break_at)?)
+            Ok(script.eval_with_stack(
+                &mut ZChecker { z },
+                NO_FLAGS,
+                start_at,
+                break_at,
+                main_stack,
+                alternative_stack,
+            )?)
         }
-        None => Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, break_at)?),
+        None => Ok(script.eval_with_stack(
+            &mut TransactionlessChecker {},
+            NO_FLAGS,
+            start_at,
+            break_at,
+            main_stack,
+            alternative_stack,
+        )?),
     }
 }
 
 #[pyfunction]
 fn py_script_eval_pystack(
     py_script: &[u8],
+    start_at: Option<usize>,
     break_at: Option<usize>,
     z: Option<&[u8]>,
-) -> PyResult<(PyStack, PyStack)> {
+    stack_param: Option<PyStack>,
+    alt_stack_param: Option<PyStack>,
+) -> PyResult<(PyStack, PyStack, Option<usize>)> {
     let mut script = Script::new();
     script.append_slice(py_script);
+    // Handle stack and alt_stack parameters with match
+    let main_stack = match stack_param {
+        Some(py_stack_main) => Some(py_stack_main.to_stack()), // Use the provided PyStack if available
+        None => None, // Otherwise, initialize an empty stack
+    };
+
+    let alternative_stack = match alt_stack_param {
+        Some(alt_stack_param) => Some(alt_stack_param.to_stack()), // Use provided alt stack if available
+        None => None, // Otherwise, initialize an empty alt stack
+    };
+
     // Pick the appropriate transaction checker
-    let (main_stack, alt_stack) = match z {
+    let (main_stack, alt_stack, prog_counter) = match z {
         Some(sig_hash) => {
             // Ensure the slice is exactly 32 bytes long
             let z_bytes = sig_hash;
@@ -124,14 +166,40 @@ fn py_script_eval_pystack(
                 }
             };
             let z = Hash256(z_array);
-            script.eval_with_stack(&mut ZChecker { z }, NO_FLAGS, break_at)?
+            script.eval_with_stack(
+                &mut ZChecker { z },
+                NO_FLAGS,
+                break_at,
+                start_at,
+                main_stack,
+                alternative_stack,
+            )?
         }
-        None => script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, break_at)?,
+        None => script.eval_with_stack(
+            &mut TransactionlessChecker {},
+            NO_FLAGS,
+            start_at,
+            break_at,
+            main_stack,
+            alternative_stack,
+        )?,
     };
+
+    let optional_i = match break_at {
+        Some(_) => prog_counter,
+        None => None,
+    };
+
     Ok((
         PyStack::from_stack(main_stack),
         PyStack::from_stack(alt_stack),
+        optional_i,
     ))
+}
+
+#[pyfunction(name = "opcode_index")]
+pub fn py_opcode_index(py_script: PyScript) -> PyResult<Vec<usize>> {
+    Ok(find_op_locations(&py_script.as_script().0))
 }
 
 #[pyfunction(name = "sig_hash_preimage")]
@@ -239,6 +307,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval_pystack, m)?)?;
     m.add_function(wrap_pyfunction!(decode_num_stack, m)?)?;
+    m.add_function(wrap_pyfunction!(py_opcode_index, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 

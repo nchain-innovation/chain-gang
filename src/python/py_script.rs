@@ -77,17 +77,22 @@ fn decode_op(op: &str, is_pushdata: usize) -> Command {
             1..=16 => return Command::Int((val + 0x50).try_into().unwrap()), // 1 => OP_1, => 0x81
             17..=75 => {
                 if is_pushdata > 0 {
+                    println!("py_script.decode_op -> 17 .. 75 -> is_pushdata"); 
                     return Command::Int(val.try_into().unwrap());
                 } else {
+                    println!("py_script.decode_op -> 17 .. 75 -> vec of bytes"); 
                     let retval: Vec<u8> = vec![1, val.try_into().unwrap()];
                     return Command::Bytes(retval);
                 }
             }
             _ => {
+                println!("py_scrypt.decode_op .. i64");
                 if is_pushdata > 0 {
+                    println!("pushdata > 0 arm");
                     let retval = encode_num(val).unwrap();
                     return Command::Bytes(retval);
                 } else {
+                    println!("encoded number arm");
                     let mut retval = encode_num(val).unwrap();
                     let len: u8 = retval.len().try_into().unwrap();
                     retval.insert(0, len);
@@ -373,6 +378,23 @@ impl PyScript {
         }
         Ok(true)
         //})
+    }
+
+    /// These functions were added for the debugger
+    /// Shortens the script by removing amount number of bytes from the vec.
+    pub fn shorten(&mut self, amount: usize) {
+        if amount >= self.cmds.len() {
+            self.cmds.clear();
+        } else {
+            self.cmds.drain(0..amount);
+        }
+    }
+
+    /// sets the script to a shorter script between start & end
+    pub fn sub_script(&mut self, start: usize, end: usize) {
+        if start < end && end <= self.cmds.len() {
+            self.cmds = self.cmds[start..end].to_vec();
+        }
     }
 
     /// Converts a String to a Script

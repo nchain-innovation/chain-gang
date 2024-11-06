@@ -10,8 +10,8 @@ use num_traits::{One, ToPrimitive, Zero};
 use ripemd::{Digest, Ripemd160};
 
 // Stack capacity defaults, which may exceeded
-const STACK_CAPACITY: usize = 100;
-const ALT_STACK_CAPACITY: usize = 10;
+pub const STACK_CAPACITY: usize = 100;
+//const ALT_STACK_CAPACITY: usize = 10;
 
 /// Execute the script with genesis rules
 pub const NO_FLAGS: u32 = 0x00;
@@ -24,15 +24,18 @@ pub fn core_eval<T: Checker>(
     script: &[u8],
     checker: &mut T,
     flags: u32,
+    start_at: Option<usize>,
     break_at: Option<usize>,
-) -> Result<(Stack, Stack)> {
-    let mut stack: Stack = Vec::with_capacity(STACK_CAPACITY);
-    let mut alt_stack: Stack = Vec::with_capacity(ALT_STACK_CAPACITY);
-
+    stack_param: Option<Stack>,
+    alt_stack_param: Option<Stack>,
+) -> Result<(Stack, Stack, Option<usize>)> {
+    let mut stack: Stack = stack_param.unwrap_or_else(|| Vec::with_capacity(STACK_CAPACITY));
+    let mut alt_stack: Stack =
+        alt_stack_param.unwrap_or_else(|| Vec::with_capacity(STACK_CAPACITY));
     // True if executing current if/else branch, false if next else
     let mut branch_exec: Vec<bool> = Vec::new();
     let mut check_index = 0;
-    let mut i = 0;
+    let mut i = start_at.unwrap_or(0);
 
     'outer: while i < script.len() {
         if !branch_exec.is_empty() && !branch_exec[branch_exec.len() - 1] {
@@ -41,10 +44,10 @@ pub fn core_eval<T: Checker>(
                 break;
             }
         }
+    
         if let Some(val) = break_at {
-            // hit our breakpoint
-            if i >= val {
-                break;
+            if i >= val{
+                break; 
             }
         }
         match script[i] {
@@ -72,7 +75,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_PUSHDATA1 => {
                 remains(i + 1, 1, script)?;
-                let len = script[i + 1] as usize;
+                let len: usize = script[i + 1] as usize;
                 remains(i + 2, len, script)?;
                 stack.push(script[i + 2..i + 2 + len].to_vec());
             }
@@ -702,13 +705,18 @@ pub fn core_eval<T: Checker>(
     if !branch_exec.is_empty() {
         return Err(Error::ScriptError("ENDIF missing".to_string()));
     }
-    Ok((stack, alt_stack))
+
+    let optional_i = match break_at {
+        Some(_) => Some(i),
+        None => None,
+    };
+    Ok((stack, alt_stack, optional_i))
 }
 
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()> {
-    match core_eval(script, checker, flags, None) {
-        Ok((stack, _alt_stack)) => {
+    match core_eval(script, checker, flags, None, None, None, None) {
+        Ok((stack, _alt_stack, _script_counter)) => {
             // We don't call pop_bool here because the final stack element can be longer than 4 bytes
             check_stack_size(1, &stack)?;
             if !decode_bool(&stack[stack.len() - 1]) {
@@ -875,6 +883,32 @@ fn skip_branch(script: &[u8], mut i: usize) -> usize {
         i = next_op(i, script);
     }
     script.len()
+}
+
+/// will return the location in bytes for the OP_CODES, data is ignored. 
+/// OP_0 -> OP_16 are included.
+pub fn find_op_locations(script: &[u8]) -> Vec<usize> {
+    let mut locations = Vec::new();
+    let mut i = 0;
+    while i < script.len() {
+        match script[i] {
+            OP_PUSHDATA1 | OP_PUSHDATA2 | OP_PUSHDATA4 => { //| 1..=75 => {
+                println!("OP_PUSH");
+                locations.push(i); // record the current location
+                i = next_op(i, script); // move to the start of the next operation
+            }
+            //len @ 1..=75 => {
+            //    println!("DATA .. dont record i = {}", i);
+            //    i += 1 + len as usize; // Skip length byte and data
+            //}
+            _ => {
+                println!("EvErytHING ELSE");
+                locations.push(i); // record the current location
+                i += 1; // move on by 1 byte
+            }
+        }
+    }
+    locations
 }
 
 #[cfg(test)]
@@ -1527,7 +1561,160 @@ mod tests {
         let v = [OP_0, OP_1, OP_2, OP_3, OP_4, OP_0, OP_1, OP_2, OP_3, OP_4];
         assert!(remove_sig(&[OP_2, OP_3], &v) == vec![OP_0, OP_1, OP_4, OP_0, OP_1, OP_4]);
     }
+/*
+    #[test]
+    fn test_single_data_script_no_op() {
+        let script = vec![0x00];
+        assert_eq!(find_op_locations(&script), vec![]);
+    }
 
+    #[test]
+    fn test_empty_script() {
+        let script = vec![];
+        assert_eq!(find_op_locations(&script), vec![]);
+    }
+
+    #[test]
+    fn test_single_pushdata1() {
+        let script = vec![OP_PUSHDATA1, 0x01, 0xaa];
+        assert_eq!(find_op_locations(&script), vec![0]);
+    }
+
+    #[test]
+    fn test_single_pushdata2() {
+        let script = vec![OP_PUSHDATA2, 0x02, 0x00, 0xbb, 0xcc];
+        assert_eq!(find_op_locations(&script), vec![0]);
+    }
+
+    #[test]
+    fn test_single_pushdata4() {
+        let script = vec![OP_PUSHDATA4, 0x04, 0x00, 0x00, 0x00, 0xbb, 0xcc];
+        assert_eq!(find_op_locations(&script), vec![0]);
+    }
+
+    #[test]
+    fn test_incomplete_pushdata1() {
+        let script = vec![OP_PUSHDATA1];
+        assert_eq!(find_op_locations(&script), vec![0]);
+    }
+
+    #[test]
+    fn test_incomplete_pushdata2() {
+        let script = vec![OP_PUSHDATA2, 0x01];
+        assert_eq!(find_op_locations(&script), vec![0]);
+    }
+*/
+    #[test]
+    fn test_interesting_scripts_a() {
+        let mut script = encode_num(0x01).unwrap();
+        script.extend(vec![OP_PUSHDATA1, 0x02, 0xaa, 0xbb]);
+        script.extend(encode_num(0x02).unwrap()); 
+        //let script: Vec<Vec<u8>> = vec![encode_num(0x01).unwrap(), OP_PUSHDATA1, 0x02, 0xaa, 0xbb,encode_num(0x02)];
+        assert_eq!(find_op_locations(&script), vec![1]);
+    }
+/*
+    #[test]
+    fn test_interesting_scripts_b() {
+        let script = vec![
+            OP_PUSHDATA1,
+            0x02,
+            0xaa,
+            0xbb,
+            OP_ADD,
+            OP_PUSHDATA1,
+            0x02,
+            0x01,
+            0x65,
+            OP_DUP,
+            OP_EQUALVERIFY,
+        ];
+        assert_eq!(find_op_locations(&script), vec![0, 4, 5, 9, 10]);
+    }
+
+    #[test]
+    fn test_interesting_scripts_c() {
+        let script = vec![
+            OP_PUSHDATA4,
+            0x04,
+            0x00,
+            0x00,
+            0x00,
+            0xaa,
+            0xbb,
+            0xcc,
+            0xdd,
+            OP_ADD,
+            OP_PUSHDATA2,
+            0x02,
+            0x00,
+            0xee,
+            0xff,
+            OP_ADD,
+            OP_ADD,
+            OP_PUSHDATA2,
+            0x02,
+            0x00,
+            0x04,
+            0xfb,
+            OP_DUP,
+            OP_EQUALVERIFY,
+        ];
+        assert_eq!(
+            find_op_locations(&script),
+            vec![0, 9, 10, 15, 16, 17, 22, 23]
+        );
+    }
+
+    #[test]
+    fn test_interesting_scripts_d() {
+        let script = vec![
+            OP_PUSHDATA4,
+            0x04,
+            0x00,
+            0x00,
+            0x00,
+            0xaa,
+            0xbb,
+            0xcc,
+            0xdd,
+            OP_PUSHDATA4,
+            0x04,
+            0x00,
+            0x00,
+            0x00,
+            0xaa,
+            0xbb,
+            0xcc,
+            0xdd,
+            OP_ADD,
+            OP_PUSHDATA4,
+            0x05,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x55,
+            0x77,
+            0x99,
+            0xba,
+            OP_EQUALVERIFY,
+        ];
+        assert_eq!(find_op_locations(&script), vec![0, 9, 18, 19, 29]);
+    }
+
+    #[test]
+    fn test_pushdata_length_between_1_and_75() {
+        for length in 1..=75 {
+            let mut script = vec![length as u8]; // Create a script with a single push length byte
+            script.extend(vec![0xaa; length]); // Add dummy data of the specified length
+
+            let final_index = find_op_locations(&script);
+
+            // Final index should be 1 (for the push length byte) + `length`
+            assert_eq!(final_index, vec![0]);
+        }
+    }
+*/
     /// A test run that doesn't do signature checks and expects failure
     fn pass(script: &[u8]) {
         let mut c = MockChecker {
