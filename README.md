@@ -66,6 +66,8 @@ Script has the following methods:
 * `__add__(self, other: Script) -> Script` - Enable script addition e.g. `c_script = a_script + b_script`
 * `to_string(self) -> String` - return the script as a string, that can be parsed by `parse_string()`. Note also that you can just print the script (`print(script)`)
 * `is_p2pkh(self) -> bool` - returns True if script is a Pay to Public Key Hash script
+* `append_integer(self, i64)` - adds an integer to the stack (assumes base 10)
+* `append_big_integer(self, arbitrary_sized_integer)` - adds an arbitrary sized integer to the stack (assumes base 10)
 
 
 Script has the following class methods:

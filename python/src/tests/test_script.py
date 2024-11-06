@@ -3,7 +3,6 @@
 
 import unittest
 import sys
-sys.path.append("..")
 
 from tx_engine import Script, Context, p2pkh_script, hash160
 from tx_engine.engine.op_codes import OP_PUSHDATA4, OP_DUP, OP_HASH160
@@ -141,6 +140,28 @@ class ScriptTest(unittest.TestCase):
 
         context.z = bytes.fromhex(message_new)
         self.assertTrue(context.evaluate())
+
+    def test_big_integer_success(self):
+        large_num: int = 10000000000000
+        large_num_res: int = 20000000000000
+        script_test: Script = Script()
+        script_test.append_big_integer(large_num)
+        script_test +=  Script.parse_string("OP_DUP OP_ADD")
+        script_test.append_big_integer(large_num_res)
+        script_test += Script.parse_string("OP_EQUAL")
+        con = Context(script=script_test)
+        self.assertTrue(con.evaluate())
+
+    def test_big_integer_fail(self):
+        large_num: int = 10000000000000
+        large_num_res: int = 30000000000000
+        script_test: Script = Script()
+        script_test.append_big_integer(large_num)
+        script_test +=  Script.parse_string("OP_DUP OP_ADD")
+        script_test.append_big_integer(large_num_res)
+        script_test += Script.parse_string("OP_EQUAL")
+        con = Context(script=script_test)
+        self.assertFalse(con.evaluate())
 
 
 if __name__ == "__main__":
