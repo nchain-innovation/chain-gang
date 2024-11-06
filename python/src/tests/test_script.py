@@ -2,7 +2,6 @@
 """
 
 import unittest
-import sys
 
 from tx_engine import Script, Context, p2pkh_script, hash160
 from tx_engine.engine.op_codes import OP_PUSHDATA4, OP_DUP, OP_HASH160
@@ -146,7 +145,7 @@ class ScriptTest(unittest.TestCase):
         large_num_res: int = 20000000000000
         script_test: Script = Script()
         script_test.append_big_integer(large_num)
-        script_test +=  Script.parse_string("OP_DUP OP_ADD")
+        script_test += Script.parse_string("OP_DUP OP_ADD")
         script_test.append_big_integer(large_num_res)
         script_test += Script.parse_string("OP_EQUAL")
         con = Context(script=script_test)
@@ -157,7 +156,7 @@ class ScriptTest(unittest.TestCase):
         large_num_res: int = 30000000000000
         script_test: Script = Script()
         script_test.append_big_integer(large_num)
-        script_test +=  Script.parse_string("OP_DUP OP_ADD")
+        script_test += Script.parse_string("OP_DUP OP_ADD")
         script_test.append_big_integer(large_num_res)
         script_test += Script.parse_string("OP_EQUAL")
         con = Context(script=script_test)
