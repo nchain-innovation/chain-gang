@@ -92,7 +92,7 @@ class Context:
                 print(f"cmds_as_bytes exception '{e}'")
             return False
         try:
-            (self.raw_stack, self.raw_alt_stack) = py_script_eval(cmds, self.ip_limit, self.z)
+            (self.raw_stack, self.raw_alt_stack, _) = py_script_eval(cmds, self.ip_limit, self.z)
         except Exception as e:
             if not quiet:
                 print(f"script_eval exception '{e}'")

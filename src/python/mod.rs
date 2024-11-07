@@ -5,6 +5,7 @@ mod base58_checksum;
 mod hashes;
 mod op_code_names;
 mod py_script;
+mod py_stack;
 mod py_tx;
 mod py_wallet;
 
@@ -14,6 +15,7 @@ use crate::{
     python::{
         hashes::{hash160, sha256d},
         py_script::PyScript,
+        py_stack::{decode_num_stack, PyStack},
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{
             address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript,
@@ -75,7 +77,7 @@ fn py_script_eval(
     py_script: &[u8],
     break_at: Option<usize>,
     z: Option<&[u8]>,
-) -> PyResult<(Stack, Stack)> {
+) -> PyResult<(Stack, Stack, Option<usize>)> {
     let mut script = Script::new();
     script.append_slice(py_script);
     // Pick the appropriate transaction checker
@@ -94,11 +96,81 @@ fn py_script_eval(
             };
 
             let z = Hash256(z_array);
-            Ok(script.eval_with_stack(&mut ZChecker { z }, NO_FLAGS, break_at)?)
+            Ok(script.eval_with_stack(&mut ZChecker { z }, NO_FLAGS, None, break_at, None, None)?)
         }
-        None => Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, break_at)?),
+        None => Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, None, break_at, None, None)?),
     }
 }
+
+#[pyfunction]
+#[pyo3(signature = (py_script, start_at=None, break_at=None, z=None, stack_param=None, alt_stack_param=None))]
+fn py_script_eval_pystack(
+    py_script: &[u8],
+    start_at: Option<usize>,
+    break_at: Option<usize>,
+    z: Option<&[u8]>,
+    stack_param: Option<PyStack>,
+    alt_stack_param: Option<PyStack>,
+) -> PyResult<(PyStack, PyStack, Option<usize>)> {
+    let mut script = Script::new();
+    script.append_slice(py_script);
+    // Handle stack and alt_stack parameters with match
+    let main_stack = match stack_param {
+        Some(py_stack_main) => Some(py_stack_main.to_stack()), // Use the provided PyStack if available
+        None => None, // Otherwise, initialize an empty stack
+    };
+
+    let alternative_stack = match alt_stack_param {
+        Some(alt_stack_param) => Some(alt_stack_param.to_stack()), // Use provided alt stack if available
+        None => None, // Otherwise, initialize an empty alt stack
+    };
+
+    // Pick the appropriate transaction checker
+    let (main_stack, alt_stack, prog_counter) = match z {
+        Some(sig_hash) => {
+            // Ensure the slice is exactly 32 bytes long
+            let z_bytes = sig_hash;
+            let z_array: [u8; 32] = match z_bytes.try_into() {
+                Ok(array) => array,
+                Err(_) => {
+                    // Handle the error if `z_bytes` is not 32 bytes long
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        "z_bytes must be exactly 32 bytes long",
+                    ));
+                }
+            };
+            let z = Hash256(z_array);
+            script.eval_with_stack(
+                &mut ZChecker { z },
+                NO_FLAGS,
+                break_at,
+                start_at,
+                main_stack,
+                alternative_stack,
+            )?
+        }
+        None => script.eval_with_stack(
+            &mut TransactionlessChecker {},
+            NO_FLAGS,
+            start_at,
+            break_at,
+            main_stack,
+            alternative_stack,
+        )?,
+    };
+
+    let optional_i = match break_at {
+        Some(_) => prog_counter,
+        None => None,
+    };
+
+    Ok((
+        PyStack::from_stack(main_stack),
+        PyStack::from_stack(alt_stack),
+        optional_i,
+    ))
+}
+
 
 /// Return the transaction data prior to the hash function
 ///
@@ -225,6 +297,8 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(py_bytes_to_wif, m)?)?;
     m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;
+    m.add_function(wrap_pyfunction!(decode_num_stack, m)?)?;
+    m.add_function(wrap_pyfunction!(py_script_eval_pystack, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 
@@ -234,5 +308,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTx>()?;
     // Wallet class
     m.add_class::<PyWallet>()?;
+    // stack class
+    m.add_class::<PyStack>()?;
     Ok(())
 }
