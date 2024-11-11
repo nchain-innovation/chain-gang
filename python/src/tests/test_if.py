@@ -52,7 +52,7 @@ class IfTest(unittest.TestCase):
         # should evaluate to False (OP_0)
         self.assertFalse(context.evaluate())
 
-        context_py_stack = Context(script=script)
+        context_py_stack = Context_PyStack(script=script)
         self.assertFalse(context_py_stack.evaluate())
 
         script = Script([OP_0, OP_IF, OP_0, OP_ELSE, OP_1, OP_ENDIF])
@@ -61,7 +61,7 @@ class IfTest(unittest.TestCase):
         self.assertTrue(context.evaluate())
 
         context_py_stack = Context_PyStack(script=script)
-        self.assertTrue(context.evaluate())
+        self.assertTrue(context_py_stack.evaluate())
 
     def test_nested_if_else_endif(self):
         """ Simple nested OP_IF..ELSE..OP_ENDIF
