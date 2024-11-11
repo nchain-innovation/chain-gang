@@ -2,7 +2,7 @@
 import unittest
 from typing import Optional
 
-from tx_engine import Script, Context, encode_num, Context_PyStack
+from tx_engine import Script, Context, encode_num
 
 
 def pick(position: int, nElements: int) -> Script:
@@ -188,13 +188,8 @@ class FedTest(unittest.TestCase):
 
         context = Context(script=unlock + lock)
         self.assertTrue(context.evaluate())
-        self.assertEqual(len(context.get_stack()), 1)
-        self.assertEqual(len(context.get_altstack()), 0)
-
-        context_py_stack = Context_PyStack(script=unlock + lock)
-        self.assertTrue(context_py_stack.evaluate())
-        self.assertEqual(context_py_stack.get_stack().size(), 1)
-        self.assertEqual(context_py_stack.get_altstack().size(), 0)
+        self.assertEqual(context.get_stack().size(), 1)
+        self.assertEqual(context.get_altstack().size(), 0)
 
 
 if __name__ == '__main__':

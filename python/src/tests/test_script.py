@@ -3,7 +3,7 @@
 
 import unittest
 
-from tx_engine import Script, Context, p2pkh_script, hash160, Context_PyStack
+from tx_engine import Script, Context, p2pkh_script, hash160
 from tx_engine.engine.op_codes import OP_PUSHDATA4, OP_DUP, OP_HASH160
 
 
@@ -19,33 +19,6 @@ class ScriptTest(unittest.TestCase):
         combined_sig = s1 + s2
         context = Context(script=combined_sig)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(len(context.raw_stack), 2)
-
-        assert isinstance(context.raw_stack[0], list)
-        self.assertEqual(len(context.raw_stack[0]), 0x47)
-        assert isinstance(context.raw_stack[1], list)
-        self.assertEqual(len(context.raw_stack[1]), 0x41)
-
-        serial = combined_sig.serialize()
-        # Parse the serialised data
-        s3 = Script.parse(serial)
-
-        context = Context(script=s3)
-        self.assertTrue(context.evaluate_core())
-        self.assertEqual(len(context.raw_stack), 2)
-        assert isinstance(context.raw_stack[0], list)
-        self.assertEqual(len(context.raw_stack[0]), 0x47)
-        assert isinstance(context.raw_stack[1], list)
-        self.assertEqual(len(context.raw_stack[1]), 0x41)
-
-    def test_joined_scripts_pystack(self):
-        s_sig = "0x3044022018f6d074f8179c49de073709c598c579a917d99b5ca9e1cff0a8655f8a815557022036a758595c64b90c1c8042739b1980b44325c3fbba8510d63a3141f11b3cee3301 0x040b4c866585dd868a9d62348a9cd008d6a312937048fff31670e7e920cfc7a7447b5f0bba9e01e6fe4735c8383e6e7a3347a0fd72381b8f797a19f694054e5a69"
-        s_pk = "OP_DUP OP_HASH160 0xff197b14e502ab41f3bc8ccb48c4abac9eab35bc OP_EQUALVERIFY"
-        s1 = Script.parse_string(s_sig)
-        s2 = Script.parse_string(s_pk)
-        combined_sig = s1 + s2
-        context = Context_PyStack(script=combined_sig)
-        self.assertTrue(context.evaluate_core())
         self.assertEqual(context.stack.size(), 2)
 
         assert isinstance(context.stack[0], list)
@@ -57,7 +30,7 @@ class ScriptTest(unittest.TestCase):
         # Parse the serialised data
         s3 = Script.parse(serial)
 
-        context = Context_PyStack(script=s3)
+        context = Context(script=s3)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.stack.size(), 2)
         assert isinstance(context.stack[0], list)
@@ -167,44 +140,6 @@ class ScriptTest(unittest.TestCase):
         context.z = bytes.fromhex(message_new)
         self.assertTrue(context.evaluate())
 
-        context_py_stack = Context_PyStack(script=script_exe)
-        context_py_stack.z = bytes.fromhex(message_new)
-        self.assertTrue(context_py_stack.evaluate())
-
-    def test_checksig_fail_py_stack(self):
-        sig_string_new = "3046022100f90d26a7e1fe457a8dc24bd6ae37caa0cb9af497ce693008a6f98a67cc803915022100e7f2ed97653413ad67a67ab09f695acd06d72b589dffbd33e8c7c5bea5714eb6"
-        pub_key_new = "0427cbe3affbd481f66639afbbfcc1c540c4f2db2e04b436f44b04116261a3eadca57def58934127878178d25207651d04f585cdaa938c534db8290d19ccacc3d2"
-        message_new = "ab530a13e45914982b79f9b7e3fba994cfd1f3fb22f71cea1afbf02b460c6d1d"
-
-        # create a script
-        script_exe: Script = Script()
-        sig_for_script: bytes = bytes.fromhex(sig_string_new) + bytes.fromhex("41")
-
-        script_exe.append_pushdata(sig_for_script)
-        script_exe.append_pushdata(bytes.fromhex(pub_key_new))
-        script_exe = script_exe + Script.parse_string(' OP_CHECKSIG')
-        context = Context_PyStack(script=script_exe)
-        context.z = bytes.fromhex(message_new)
-        self.assertFalse(context.evaluate())
-
-    def test_checksig_z_py_stack(self):
-        public_key = '0442a644acdbd9a27a0fd86539b178e38cd233bdd180263501835ad6133c604b5a446f742c86caa1c27634216191078026a5526b502f98a7e036f27d09fca3fe3e'
-        sig = '304402203818a789eb79da3a82ffd9443f057578d9c298758760db3f983ac2eab25ae79b02202a6692cb0028750b0a88d75108a7635866fe52b2a23402581fe0b1c3d916ce15'
-        message_new = "ab530a13e45914982b79f9b7e3fba994cfd1f3fb22f71cea1afbf02b460c6d1d"
-
-        # create a script
-        script_exe: Script = Script()
-        sig_for_script: bytes = bytes.fromhex(sig) + bytes.fromhex("41")
-
-        script_exe.append_pushdata(sig_for_script)
-        script_exe.append_pushdata(bytes.fromhex(public_key))
-
-        script_exe = script_exe + Script.parse_string(' OP_CHECKSIG')
-        context = Context_PyStack(script=script_exe)
-
-        context.z = bytes.fromhex(message_new)
-        self.assertTrue(context.evaluate())
-
     def test_big_integer_success(self):
         large_num: int = 10000000000000
         large_num_res: int = 20000000000000
@@ -225,28 +160,6 @@ class ScriptTest(unittest.TestCase):
         script_test.append_big_integer(large_num_res)
         script_test += Script.parse_string("OP_EQUAL")
         con = Context(script=script_test)
-        self.assertFalse(con.evaluate())
-
-    def test_big_integer_success_py_stack(self):
-        large_num: int = 10000000000000
-        large_num_res: int = 20000000000000
-        script_test: Script = Script()
-        script_test.append_big_integer(large_num)
-        script_test += Script.parse_string("OP_DUP OP_ADD")
-        script_test.append_big_integer(large_num_res)
-        script_test += Script.parse_string("OP_EQUAL")
-        con = Context_PyStack(script=script_test)
-        self.assertTrue(con.evaluate())
-
-    def test_big_integer_fail_py_stack(self):
-        large_num: int = 10000000000000
-        large_num_res: int = 30000000000000
-        script_test: Script = Script()
-        script_test.append_big_integer(large_num)
-        script_test += Script.parse_string("OP_DUP OP_ADD")
-        script_test.append_big_integer(large_num_res)
-        script_test += Script.parse_string("OP_EQUAL")
-        con = Context_PyStack(script=script_test)
         self.assertFalse(con.evaluate())
 
 
