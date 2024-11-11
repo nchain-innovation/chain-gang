@@ -1,6 +1,6 @@
 use pyo3::{
     prelude::*,
-    types::{PyBytes, PyType, PyLong},
+    types::{PyBytes, PyLong, PyType},
 };
 use regex::Regex;
 use std::{
@@ -10,12 +10,12 @@ use std::{
 
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
-    script::{op_codes, stack::encode_num, stack::encode_bigint, Script},
+    script::{op_codes, stack::encode_bigint, stack::encode_num, Script},
     util::{var_int, Error, Result},
 };
 
 use num_bigint::BigInt;
-use num_traits::ToPrimitive; 
+use num_traits::ToPrimitive;
 
 #[derive(FromPyObject, Debug)]
 pub enum Command {
@@ -242,9 +242,9 @@ impl PyScript {
     /// append integers
     fn append_integer(&mut self, int_val: i64) {
         match int_val {
-            -1 => self.cmds.push(op_codes::OP_1NEGATE), 
-            0 => self.cmds.push(op_codes::OP_0), 
-            1..=16 => self.cmds.push((int_val + 0x50).try_into().unwrap()), 
+            -1 => self.cmds.push(op_codes::OP_1NEGATE),
+            0 => self.cmds.push(op_codes::OP_0),
+            1..=16 => self.cmds.push((int_val + 0x50).try_into().unwrap()),
             17..=75 => {
                 let retval: Vec<u8> = vec![1, int_val.try_into().unwrap()];
                 self.cmds.extend(&retval);

@@ -2,10 +2,6 @@
 """
 
 import unittest
-import sys
-sys.path.append("..")
-
-
 from tx_engine import Wallet, hash160, Tx, TxIn, TxOut, Script, create_wallet_from_pem_bytes
 
 

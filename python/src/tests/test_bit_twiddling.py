@@ -1,10 +1,8 @@
 """ Tests of bit operations
 """
 import unittest
-import sys
-sys.path.append("..")
 
-from tx_engine import Context, Script
+from tx_engine import Context, Script, Context_PyStack, Stack
 from tx_engine.engine.op_codes import (
     OP_1,
     OP_2,
@@ -34,6 +32,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1]])
 
+        context_stack_py = Context_PyStack(script=script)
+        self.assertTrue(context_stack_py.evaluate())
+        self.assertEqual(context_stack_py.get_stack()[0], [1])
+
     def test_and_part2(self):
         """ Check of bitwise AND
         """
@@ -41,6 +43,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 1]])
+
+        context_stack_py = Context_PyStack(script=script)
+        self.assertTrue(context_stack_py.evaluate_core())
+        self.assertEqual(context_stack_py.get_stack(), Stack([[0, 1]]))
 
     def test_and_part3(self):
         """ Check of bitwise AND
@@ -50,6 +56,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 0x10]])
 
+        context_stack_py = Context_PyStack(script=script)
+        self.assertTrue(context_stack_py.evaluate_core())
+        self.assertEqual(context_stack_py.get_stack(), Stack([[0, 0x10]]))
+
     def test_and_part4(self):
         """ Check of bitwise AND
         """
@@ -57,6 +67,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1, 0, 0, 0x10]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1, 0, 0, 0x10]]))
 
     def test_or_part1(self):
         """ Check of bitwise OR
@@ -66,6 +80,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 3]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 3]]))
+
     def test_or_part2(self):
         """ Check of bitwise OR
         """
@@ -73,6 +91,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1, 0xF0]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1, 0xF0]]))
 
     def test_or_part3(self):
         """ Check of bitwise OR
@@ -82,6 +104,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1, 0, 1, 0xFF]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1, 0, 1, 0xFF]]))
+
     def test_xor_part1(self):
         """ Check of bitwise XOR
         """
@@ -90,6 +116,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate())
         self.assertEqual(context.stack, [2])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[2]]))
+
     def test_xor_part2(self):
         """ Check of bitwise XOR
         """
@@ -97,6 +127,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 2]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 2]]))
 
     def test_xor_part3(self):
         """ Check of bitwise XOR
@@ -107,6 +141,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1, 0]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1, 0]]))
+
     def test_xor_part4(self):
         """ Check of bitwise XOR
         """
@@ -114,6 +152,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1, 0, 0]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1, 0, 0]]))
 
     def test_xor_part5(self):
         """ Check of bitwise XOR
@@ -123,6 +165,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0]]))
+
     def test_rshift_part1(self):
         """ Check of right shift
         """
@@ -130,6 +176,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 0x08]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 0x08]]))
 
     def test_rshift_part2(self):
         """ Check of right shift
@@ -139,6 +189,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x08, 0x08, 0x80, 0x08]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x08, 0x08, 0x80, 0x08]]))
+
     def test_lshift_part1(self):
         """ Check of left shift
         """
@@ -147,6 +201,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 0x02]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 0x02]]))
+
     def test_lshift_part2(self):
         """ Check of left shift
         """
@@ -154,6 +212,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 0x08]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 0x08]]))
 
     def test_lshift_part3(self):
         """ Check of left shift
@@ -164,6 +226,11 @@ class BitTwiddlingTests(unittest.TestCase):
         # I left this in to show the change from the old behaviour to the new.
         self.assertNotEqual(context.raw_stack, [[1, 0, 0]])
         self.assertEqual(context.raw_stack, [[0, 0]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertNotEqual(context_py_stack.get_stack(), Stack([[1, 0, 0]]))
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 0]]))
 
     def test_cat(self):
         """ Check of OP_CAT
@@ -184,6 +251,10 @@ class BitTwiddlingTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x81, 0x02], [0x83, 0x04]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x81, 0x02], [0x83, 0x04]]))
+
     def test_split_part2(self):
         """ Check of OP_SPLIT
         """
@@ -193,6 +264,10 @@ class BitTwiddlingTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x81], [0x02, 0x83, 0x04]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x81], [0x02, 0x83, 0x04]]))
 
 
 if __name__ == "__main__":

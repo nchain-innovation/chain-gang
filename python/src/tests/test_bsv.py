@@ -1,12 +1,8 @@
 """ Tests for BSV specific OPs
 """
-import sys
-
-sys.path.append("..")
-
 import unittest
 
-from tx_engine import Script, Context
+from tx_engine import Script, Context, Context_PyStack, Stack
 
 from tx_engine.engine.op_codes import (
     OP_0,
@@ -48,6 +44,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[]]))
+
     def test_and_part2(self):
         """ Simple check of bitwise AND
         """
@@ -55,6 +55,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0]]))
 
     def test_and_part3(self):
         """ Simple check of bitwise AND
@@ -66,6 +70,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0]]))
+
     def test_and_part4(self):
         """ Simple check of bitwise AND
         """
@@ -75,6 +83,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x01]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x01]]))
+
     def test_or_part1(self):
         """ Simple check of bitwise OR
         """
@@ -82,6 +94,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0]]))
 
     def test_or_part2(self):
         """ Simple check of bitwise OR
@@ -91,6 +107,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x01]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x01]]))
+
     def test_or_part3(self):
         """ Simple check of bitwise OR
         """
@@ -98,6 +118,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x01]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x01]]))
 
     def test_or_part4(self):
         """ Simple check of bitwise OR
@@ -107,6 +131,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x01]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x01]]))
+
     def test_xor_part1(self):
         """ Simple check of bitwise XOR
         """
@@ -114,6 +142,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x00]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x00]]))
 
     def test_xor_part2(self):
         """ Simple check of bitwise XOR
@@ -123,6 +155,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x01]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x01]]))
+
     def test_xor_part3(self):
         """ Simple check of bitwise XOR
         """
@@ -130,6 +166,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x01]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x01]]))
 
     def test_xor_part4(self):
         """ Simple check of bitwise XOR
@@ -139,6 +179,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x00]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x00]]))
+
     def test_2mul(self):
         """ Simple check of 2MUL
         """
@@ -146,6 +190,9 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         # False as disabled in intepreter
         self.assertFalse(context.evaluate_core(quiet=True))
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertFalse(context_py_stack.evaluate_core(quiet=True))
 
     def test_2div(self):
         """ Simple check of 2DIV
@@ -155,6 +202,9 @@ class BSVTests(unittest.TestCase):
         # False as disabled in intepreter
         self.assertFalse(context.evaluate_core(quiet=True))
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertFalse(context_py_stack.evaluate_core(quiet=True))
+
     def test_mod(self):
         """ Simple check of MOD
         """
@@ -162,6 +212,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate())
         self.assertEqual(context.get_stack(), [1])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1]]))
 
     def test_div(self):
         """ Simple check of DIV
@@ -171,6 +225,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate())
         self.assertEqual(context.get_stack(), [2])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[2]]))
+
     def test_mul(self):
         """ Simple check of MUL
         """
@@ -178,6 +236,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate())
         self.assertEqual(context.get_stack(), [8])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[8]]))
 
     def test_rshift(self):
         """ Simple check of right shift
@@ -187,6 +249,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 0x40]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 0x40]]))
+
     def test_lshift(self):
         """ Simple check of left shift
         """
@@ -194,6 +260,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0, 0x80]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0, 0x80]]))
 
     def test_cat(self):
         """ Simple check of cat
@@ -207,6 +277,9 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate())
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+
     def test_bin2num_example1(self):
         """ Simple check of bin2num
             Definition found in https://github.com/shadders/uahf-spec/blob/reenable-op-codes/reenable-op-codes.md
@@ -218,6 +291,12 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate())
         self.assertEqual(context.stack, [0x200000000])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        test_stack: Stack = Stack()
+        test_stack.push_bytes_integer([0x200000000])
+        self.assertEqual(context_py_stack.get_stack(), test_stack)
+
     def test_bin2num_example2(self):
         """ example 2
                 0x800005 OP_BIN2NUM -> 0x85
@@ -227,6 +306,12 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate())
         self.assertEqual(context.stack, [0x50080])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        test_stack: Stack = Stack()
+        test_stack.push_bytes_integer([0x50080])
+        self.assertEqual(context_py_stack.get_stack(), test_stack)
 
     def test_bin2num_part2(self):
         script = Script([OP_PUSHDATA1, b'\x05', b"\x02\x00\x00\x00\x00", OP_BIN2NUM])
@@ -247,6 +332,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[2, 0, 0, 0, 0, 0, 0, 0, 0, 2]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[2, 0, 0, 0, 0, 0, 0, 0, 0, 2]]))
+
     def test_bin2num_unittest_2_part1(self):
         """ unit test 2 from
                 https://github.com/shadders/uahf-spec/blob/reenable-op-codes/reenable-op-codes.md
@@ -257,6 +346,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[]]))
 
     def test_bin2num_unittest_1_part2(self):
         """ unit test 2 from
@@ -269,17 +362,28 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[]]))
+
     def test_bin2num_part5(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x80", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x81]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x81]]))
+
     def test_bin2num_part6(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x00", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1]])
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1]]))
 
     def test_bin2num_part8(self):
         script = Script([OP_PUSHDATA1, 0x03, b"\x05\x00\x80", OP_BIN2NUM])
@@ -287,11 +391,21 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x85]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x85]]))
+
     def test_bin2num_part9(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x80\x00\x00\x00\x00\x00\x01", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
         self.assertEqual(context.stack, [0x1000000000080])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        test_stack: Stack = Stack()
+        test_stack.push_bytes_integer([0x1000000000080])
+        self.assertEqual(context_py_stack.get_stack(), test_stack)
 
     def test_bin2num_part10(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x01\x81", OP_BIN2NUM])
@@ -299,11 +413,21 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate())
         self.assertEqual(context.stack, [-0x1010000000001])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        test_stack: Stack = Stack()
+        test_stack.push_bytes_integer([-0x1010000000001])
+        self.assertEqual(context_py_stack.get_stack(), test_stack)
+
     def test_bin2num_part11(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x80", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[129]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[129]]))
 
     def test_bin2num_part12(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x01\x80", OP_BIN2NUM])
@@ -311,12 +435,20 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1, 0x00, 0x00, 0x00, 0x00, 0x81]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1, 0x00, 0x00, 0x00, 0x00, 0x81]]))
+
     def test_bin2num_part13(self):
         # a OP_BIN2NUM -> failure, pre genesis as limited to 4 bytes
         script = Script([OP_PUSHDATA1, 0x0A, b"\x01\x00\x00\x01\x00\x00\x00\x00\x01\x01", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01]]))
 
     def test_num2bin_1(self):
         """ Check of num2bin - https://github.com/dashpay/dips/blob/master/dip-0020.md
@@ -333,6 +465,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x02, 0x00, 0x00, 0x00]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x02, 0x00, 0x00, 0x00]]))
+
     def test_num2bin_2(self):
         """ Check of num2bin
         """
@@ -340,6 +476,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x85, 0x00, 0x00, 0x00]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x85, 0x00, 0x00, 0x00]]))
 
     def test_num2bin_3(self):
         """ Check of num2bin
@@ -350,6 +490,10 @@ class BSVTests(unittest.TestCase):
         # Causes a script execution failure as n longer than m
         self.assertFalse(context.evaluate_core(quiet=True))
 
+        context_py_stack = Context_PyStack(script=script)
+        # Causes a script execution failure as n longer than m
+        self.assertFalse(context_py_stack.evaluate_core(quiet=True))
+
     def test_bin2num_round_trip_1(self):
         """ Convert a byte array to number and back to byte array to see if it removes the leading 0s
         """
@@ -358,6 +502,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1, 0]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1, 0]]))
 
     def test_bin2num_round_trip_2(self):
         """ Convert a byte array to number and back to byte array to see if it removes the leading 0s
@@ -368,6 +516,10 @@ class BSVTests(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[1]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[1]]))
+
     def test_bitwise_invert_part1(self):
         """ Test bitwise invert on a byte
         """
@@ -377,12 +529,20 @@ class BSVTests(unittest.TestCase):
         # stack = [x.hex() for x in context.stack]
         self.assertEqual(context.raw_stack, [[0xff]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0xff]]))
+
     def test_bitwise_invert_part2(self):
         script = Script([OP_PUSHDATA1, 0x01, b"\xFF", OP_INVERT])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         # stack = [x.hex() for x in context.stack]
         self.assertEqual(context.raw_stack, [[0x00]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x00]]))
 
     def test_bitwise_invert2(self):
         """ Test bitwise invert on a bytearray
@@ -395,6 +555,10 @@ class BSVTests(unittest.TestCase):
         # stack = [x.hex() for x in context.stack]
         self.assertEqual(context.raw_stack, [[0x22, 0x00, 0x5f, 0x31, 0x5f, 0x69, 0xed]])
 
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x22, 0x00, 0x5f, 0x31, 0x5f, 0x69, 0xed]]))
+
     def test_1negate(self):
         """ Test OP_1NEGATE
         """
@@ -402,6 +566,10 @@ class BSVTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.raw_stack, [[0x81]])
+
+        context_py_stack = Context_PyStack(script=script)
+        self.assertTrue(context_py_stack.evaluate_core())
+        self.assertEqual(context_py_stack.get_stack(), Stack([[0x81]]))
 
 
 if __name__ == "__main__":

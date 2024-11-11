@@ -167,6 +167,10 @@ class ScriptTest(unittest.TestCase):
         context.z = bytes.fromhex(message_new)
         self.assertTrue(context.evaluate())
 
+        context_py_stack = Context_PyStack(script=script_exe)
+        context_py_stack.z = bytes.fromhex(message_new)
+        self.assertTrue(context_py_stack.evaluate())
+
     def test_checksig_fail_py_stack(self):
         sig_string_new = "3046022100f90d26a7e1fe457a8dc24bd6ae37caa0cb9af497ce693008a6f98a67cc803915022100e7f2ed97653413ad67a67ab09f695acd06d72b589dffbd33e8c7c5bea5714eb6"
         pub_key_new = "0427cbe3affbd481f66639afbbfcc1c540c4f2db2e04b436f44b04116261a3eadca57def58934127878178d25207651d04f585cdaa938c534db8290d19ccacc3d2"
@@ -181,8 +185,6 @@ class ScriptTest(unittest.TestCase):
         script_exe = script_exe + Script.parse_string(' OP_CHECKSIG')
         context = Context_PyStack(script=script_exe)
         context.z = bytes.fromhex(message_new)
-        ret: bool = context.evaluate()
-        script_bytes = context.cmds
         self.assertFalse(context.evaluate())
 
     def test_checksig_z_py_stack(self):
@@ -225,7 +227,7 @@ class ScriptTest(unittest.TestCase):
         con = Context(script=script_test)
         self.assertFalse(con.evaluate())
 
-    def test_big_integer_success(self):
+    def test_big_integer_success_py_stack(self):
         large_num: int = 10000000000000
         large_num_res: int = 20000000000000
         script_test: Script = Script()
@@ -236,7 +238,7 @@ class ScriptTest(unittest.TestCase):
         con = Context_PyStack(script=script_test)
         self.assertTrue(con.evaluate())
 
-    def test_big_integer_fail(self):
+    def test_big_integer_fail_py_stack(self):
         large_num: int = 10000000000000
         large_num_res: int = 30000000000000
         script_test: Script = Script()
@@ -247,7 +249,6 @@ class ScriptTest(unittest.TestCase):
         con = Context_PyStack(script=script_test)
         self.assertFalse(con.evaluate())
 
-    
 
 if __name__ == "__main__":
     unittest.main()

@@ -106,7 +106,15 @@ impl Script {
         stack_val: Option<Stack>,
         alt_stack_val: Option<Stack>,
     ) -> Result<(Stack, Stack, Option<usize>)> {
-        self::interpreter::core_eval(&self.0, checker, flags, start_at, break_at, stack_val, alt_stack_val)
+        self::interpreter::core_eval(
+            &self.0,
+            checker,
+            flags,
+            start_at,
+            break_at,
+            stack_val,
+            alt_stack_val,
+        )
     }
 
     // Used by PyScript
@@ -513,7 +521,14 @@ mod tests {
     fn test_debug() {
         let mut script = Script::new();
         script.append_slice(&[OP_10, OP_5, OP_DIV]);
-        let result = script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, None, None, None, None);
+        let result = script.eval_with_stack(
+            &mut TransactionlessChecker {},
+            NO_FLAGS,
+            None,
+            None,
+            None,
+            None,
+        );
         assert!(result.is_ok());
 
         if let Ok((stack, _alt_stack, _script_counter)) = result {

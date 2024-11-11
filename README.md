@@ -37,7 +37,9 @@ This provides an overview of the Python Classes their properties and methods,
 including:
 
 * [Script](#script)
+* [Stack](#stack)
 * [Context](#context)
+* [Context_PyStack](#Context_PyStack)
 * [Tx](#tx)
 * [TxIn](#txin)
 * [TxOut](#txout)
@@ -74,6 +76,19 @@ Script has the following class methods:
 * `Script.parse_string(in_string: str) -> Script` - Converts a string of OP_CODES into a Script
 * `Script.parse(in_bytes: bytes) -> Script` - Converts an array of bytes into a Script
 
+## Stack
+
+The 'Stack' python class provides the python user direct access to the Stack structures used by the intepreter
+
+Stack has the following methods:
+
+* `__init__(self, items: List[List[bytes]]) -> Stack` - Constructor that takes a List of List of bytes
+* `push_bytes_integer(self, List[bytes])` - push a arbitrary number in bytes onto the stack
+* `decode_element(self, index: option<Int>)` - returns the number at stack location index. Assumption is its an arbitrary sized number
+* `size(self)` - returns the size of the stack
+* `__getitem__(self, index: int)` - allows array subscript syntax e.g. stack[i] 
+* `__eq__(&self, other: Stack)` - allows an equality test on Stack objects
+
 
 ## Context
 
@@ -107,6 +122,48 @@ self.assertEqual(context.raw_stack, [[1, 2]])
 ### Quiet Evalutation
  Both `evaluate` and `evaluate_core` have a parameter `quiet`.
  If the `quiet` parameter is set to `True` the `evaluate` function does not print out exceptions when executing code.  This `quiet` parameter is currently only used in unit tests.
+
+
+## Context_PyStack
+The `Context_PyStack` is the environment in which bitcoin scripts are executed. This provides everything Context above provides except the internal representation of the bitcoin stack & altstack have been replaced with the python interface to the stack defined in the rust code. It is functionally equivalent providing the same calls. However the way the stacks are accessed is different. This interface also provides a way to start and stop execution at certain points as well as allowing the user to pass a stack/altstack into the intepreter. The locations of where the start and stop are based on byte-offsets and must be carefully calculated.  
+
+Context has the following properties:
+* `cmds` - the commands to execute
+* `ip_start` - the byte offset of where to start executing the script from (optional)
+* `ip_limit` - the byte offset of where to execute before stopping (optional)
+* `z` - the hash of the transaction 
+* `stack` - main data stack of type Stack
+* `alt_stack` - seconary stack of type Stack
+
+Context has the following methods:
+
+* `__init__(self, script: None | Script = None, ip_start: None | int = None, ip_limit: None | int = None, z: None | bytes = None)` - constructor
+* `evaluate_core(self, quiet: bool = False) -> bool` - evaluates the script/cmds using the the interpreter and returns the stacks (`stack`, `alt_stack`). if quiet is true, dont print exceptions
+* `evaluate(self, quiet: bool = False) -> bool` - executes the script and returns the stacks (`stack`, `alt_stack`). Checks `stack` is true on return. if quiet is true, dont print exceptions.
+* `get_stack(self) -> Stack` - Return the `stack` as type Stack
+* `get_altstack(self) -> Stack`-  Return the `alt_stack` as type Stack
+* `set_ip_start(self, start: int)` - sets the start location for the intepreter. 
+* `set_ip_limit(self, limit: int)` - sets the end location for the intepreter
+
+
+Examples are unit tests using `evaluate_core` and `get_stack`:
+
+```python
+script = Script([OP_PUSHDATA1, 0x01, b"\x85", OP_4, OP_NUM2BIN])
+context_py_stack = Context_PyStack(script=script)
+self.assertTrue(context_py_stack.evaluate_core())
+self.assertEqual(context_py_stack.get_stack(), Stack([[0x85, 0x00, 0x00, 0x00]]))
+
+script1 = Script.parse_string('19 1 0 0 1 OP_DEPTH OP_1SUB OP_PICK 0x13 OP_EQUALVERIFY OP_ROT OP_ADD OP_TOALTSTACK OP_ADD OP_DEPTH OP_1SUB OP_ROLL OP_TUCK OP_MOD OP_OVER OP_ADD OP_OVER OP_MOD OP_FROMALTSTACK OP_ROT OP_TUCK OP_MOD OP_OVER OP_ADD OP_SWAP OP_MOD 1 OP_EQUALVERIFY 1 OP_EQUAL')
+context_py_stack = Context_PyStack(script=script1)
+self.assertTrue(context_py_stack.evaluate_core())
+self.assertEqual(context_py_stack.get_stack(), Stack([[1]])
+
+script = Script([OP_1, OP_2, OP_3, OP_4, OP_5, OP_6, OP_2ROT])
+context_py_stack = Context_PyStack(script=script)
+self.assertTrue(context_py_stack.evaluate())
+self.assertEqual(context_py_stack.get_stack(), Stack([[3], [4], [5], [6], [1], [2]]))
+```
 
 
 ## Tx

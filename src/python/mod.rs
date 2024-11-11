@@ -96,9 +96,25 @@ fn py_script_eval(
             };
 
             let z = Hash256(z_array);
-            Ok(script.eval_with_stack(&mut ZChecker { z }, NO_FLAGS, None, break_at, None, None)?)
+            Ok(
+                script.eval_with_stack(
+                    &mut ZChecker { z },
+                    NO_FLAGS,
+                    None,
+                    break_at,
+                    None,
+                    None,
+                )?,
+            )
         }
-        None => Ok(script.eval_with_stack(&mut TransactionlessChecker {}, NO_FLAGS, None, break_at, None, None)?),
+        None => Ok(script.eval_with_stack(
+            &mut TransactionlessChecker {},
+            NO_FLAGS,
+            None,
+            break_at,
+            None,
+            None,
+        )?),
     }
 }
 
@@ -170,7 +186,6 @@ fn py_script_eval_pystack(
         optional_i,
     ))
 }
-
 
 /// Return the transaction data prior to the hash function
 ///

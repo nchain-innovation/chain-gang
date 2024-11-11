@@ -1,11 +1,7 @@
 """ Transaction tests
 """
 import unittest
-import sys
-
-sys.path.append("..")
-
-from tx_engine import Tx, Script, Context, sig_hash, sig_hash_preimage, SIGHASH, hash256d
+from tx_engine import Tx, Script, Context, sig_hash, sig_hash_preimage, SIGHASH, hash256d, Context_PyStack
 
 
 class SigHashTest(unittest.TestCase):
@@ -23,6 +19,9 @@ class SigHashTest(unittest.TestCase):
 
         x = Context(script=combined_script, z=z)
         self.assertTrue(x.evaluate())
+
+        x_py_context = Context_PyStack(script=combined_script, z=z)
+        self.assertTrue(x_py_context.evaluate())
 
     def test_sig_hash_preimage(self):
         own_tx_as_hex_str = "010000000117cbf49978ccc843405f8956007563b30e61d341fb6e6d9b11775a8e38d161d2000000006b483045022100aacb290ed3aeb43fc91a179d6a3ffef4c5efcca612c901c719e198c2ee685e2702200505bd74db673c6d723a141bd8ac469327ea4bb7987110042f23f8c3d7f91e3d412103dcf21dbdbaa744333af236c3382c85d6308e6d05599df5d3cb19e0f19a205d43ffffffff02e8030000000000001976a9144d7eb7ce5ce099dd218383f3f81d3c2f1e48113f88acf0810100000000001976a914d86625de492d8bd8bbc4930f2bef4328e37f1f5388ac00000000"
