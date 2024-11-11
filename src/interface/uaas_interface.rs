@@ -101,6 +101,13 @@ struct GetMonitorResponse {
 }
 
 
+#[derive(Debug, Deserialize)]
+struct GetUtxoResponse {
+    pub utxo: Utxo,
+}
+
+
+
 /// UaaS specific funtionality
 impl UaaSInterface {
     pub fn new(input_url: &str) -> Result<Self> {
@@ -238,28 +245,18 @@ impl BlockchainInterface for UaaSInterface {
     }
 
     /// Get balance associated with address
-    async fn get_balance(&self, _address: &str) -> Result<Balance> {
+    async fn get_balance(&self, address: &str) -> Result<Balance> {
         log::debug!("get_balance");
-        std::unimplemented!();
-        /*
-        let status_url = self.url.join("/status").unwrap();
+        let get_utxo_balance_url = format!("/utxo/balance?address={}", address);
+        
+        let url = self.url.join(&get_utxo_balance_url).unwrap();
 
-        let response = reqwest::get(status_url.clone()).await?;
+        let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
-            log::warn!("url = {}", &status_url);
+            log::warn!("url = {}", &url);
             return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
         };
-        */
 
-        /*
-        let network = self.get_network_str();
-        let url =
-            format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/balance");
-        let response = reqwest::get(&url).await?;
-        if response.status() != 200 {
-            warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
-        };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
@@ -276,38 +273,36 @@ impl BlockchainInterface for UaaSInterface {
             }
         };
         Ok(data)
-         */
     }
 
     /// Get UXTO associated with address
-    async fn get_utxo(&self, _address: &str) -> Result<Utxo> {
+    async fn get_utxo(&self, address: &str) -> Result<Utxo> {
         log::debug!("get_utxo");
-        std::unimplemented!();
-        /*
-        let network = self.get_network_str();
 
-        let url =
-            format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/unspent");
-        let response = reqwest::get(&url).await?;
+        let get_utxo_url = format!("/utxo/get?address={}", address);
+        
+        let url = self.url.join(&get_utxo_url).unwrap();
+
+        let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
             return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
         };
+
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
                 return std::result::Result::Err(anyhow!("response.text() = {}", x));
             }
         };
-        let data: Utxo = match serde_json::from_str(&txt) {
+        let data: GetUtxoResponse = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
                 return std::result::Result::Err(anyhow!("json parse error = {}", x));
             }
         };
-        Ok(data)
-        */
+        Ok(data.utxo)
     }
 
     /// Broadcast Tx
