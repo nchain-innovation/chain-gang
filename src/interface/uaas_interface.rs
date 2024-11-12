@@ -349,7 +349,7 @@ impl BlockchainInterface for UaaSInterface {
     async fn get_tx(&self, txid: &str) -> Result<Tx> {
         log::debug!("get_tx");
 
-        let get_tx_url = format!("/collection/tx/hex?hash={}", txid);
+        let get_tx_url = format!("/tx/hex?hash={}", txid);
         let url = self.url.join(&get_tx_url).unwrap();
 
         let response = reqwest::get(url.clone()).await?;
