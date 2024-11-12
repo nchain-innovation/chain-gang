@@ -36,7 +36,6 @@ pub struct UaaSStatusResponse {
     pub status: UaaSStatus,
 }
 
-
 #[allow(non_snake_case, dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct HeaderFields {
@@ -84,7 +83,6 @@ pub struct UaaSInterface {
     network_type: Network,
 }
 
-
 // This represents an address or locking script monitor
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Monitor {
@@ -94,19 +92,15 @@ pub struct Monitor {
     pub locking_script_pattern: Option<String>,
 }
 
-
 #[derive(Debug, Deserialize)]
 struct GetMonitorResponse {
     pub collections: Vec<String>,
 }
 
-
 #[derive(Debug, Deserialize)]
 struct GetUtxoResponse {
     pub utxo: Utxo,
 }
-
-
 
 /// UaaS specific funtionality
 impl UaaSInterface {
@@ -195,16 +189,22 @@ impl UaaSInterface {
         Ok(monitors.collections)
     }
 
-    pub async fn add_monitor(&self, monitor: &Monitor) -> Result<()>{
+    pub async fn add_monitor(&self, monitor: &Monitor) -> Result<()> {
         log::debug!("add_monitor");
         // check the input is valid
         if monitor.address.is_none() && monitor.locking_script_pattern.is_none() {
-            return std::result::Result::Err(anyhow!("monitor requires address or locking_script pattern"));
+            return std::result::Result::Err(anyhow!(
+                "monitor requires address or locking_script pattern"
+            ));
         }
 
         let add_monitor_url = self.url.join("/collection/monitor").unwrap();
         let client = reqwest::Client::new();
-        let response = client.post(add_monitor_url.clone()).json(&monitor).send().await?;
+        let response = client
+            .post(add_monitor_url.clone())
+            .json(&monitor)
+            .send()
+            .await?;
 
         if response.status() != 200 {
             log::warn!("url = {}", &add_monitor_url);
@@ -213,10 +213,19 @@ impl UaaSInterface {
         Ok(())
     }
 
-    pub async fn delete_monitor(&self, monitor_name: &str) -> Result<()>{
+    pub async fn delete_monitor(&self, monitor_name: &str) -> Result<()> {
         log::debug!("delete_monitor");
-        let url = format!("/collection/monitor/{}", monitor_name);
-        let delete_monitor_url = self.url.join("/collection/monitor").unwrap();
+
+        let delete_url = format!("/collection/monitor?monitor_name={}", monitor_name);
+        let delete_monitor_url = self.url.join(&delete_url).unwrap();
+        let client = reqwest::Client::new();
+
+        let response = client.delete(delete_monitor_url.clone()).send().await?;
+
+        if response.status() != 200 {
+            log::warn!("url = {}", &delete_monitor_url);
+            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+        };
 
         Ok(())
     }
@@ -248,7 +257,7 @@ impl BlockchainInterface for UaaSInterface {
     async fn get_balance(&self, address: &str) -> Result<Balance> {
         log::debug!("get_balance");
         let get_utxo_balance_url = format!("/utxo/balance?address={}", address);
-        
+
         let url = self.url.join(&get_utxo_balance_url).unwrap();
 
         let response = reqwest::get(url.clone()).await?;
@@ -280,7 +289,7 @@ impl BlockchainInterface for UaaSInterface {
         log::debug!("get_utxo");
 
         let get_utxo_url = format!("/utxo/get?address={}", address);
-        
+
         let url = self.url.join(&get_utxo_url).unwrap();
 
         let response = reqwest::get(url.clone()).await?;
@@ -312,14 +321,16 @@ impl BlockchainInterface for UaaSInterface {
 
         let url = self.url.join(&"/tx/hex").unwrap();
 
-        let data_for_broadcast = UaaSBroadcastTxType {
-            tx: tx.as_hexstr(),
-        };
+        let data_for_broadcast = UaaSBroadcastTxType { tx: tx.as_hexstr() };
 
         let client = reqwest::Client::new();
-        let response = client.post(url.clone()).json(&data_for_broadcast).send().await?;
+        let response = client
+            .post(url.clone())
+            .json(&data_for_broadcast)
+            .send()
+            .await?;
         let status = response.status();
-        
+
         // Assume a response of 200 means broadcast tx success
         match status {
             StatusCode::OK => {

@@ -261,7 +261,6 @@ impl PyWallet {
         // Sign sighash
         let signature = generate_signature(&private_key_as_bytes, &sighash, sighash_type)?;
         // Create unlocking script for input
-        //let public_key = self.public_key.serialize();
         let public_key = self.public_key_serialize();
 
         tx.inputs[index].unlock_script = create_unlock_script(&signature, &public_key);
