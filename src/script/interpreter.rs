@@ -707,10 +707,7 @@ pub fn core_eval<T: Checker>(
         return Err(Error::ScriptError("ENDIF missing".to_string()));
     }
 
-    let optional_i = match break_at {
-        Some(_) => Some(i),
-        None => None,
-    };
+    let optional_i = break_at.map(|_| i);
     Ok((stack, alt_stack, optional_i))
 }
 
