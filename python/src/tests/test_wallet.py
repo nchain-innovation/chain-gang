@@ -2,7 +2,7 @@
 """
 
 import unittest
-from tx_engine import Wallet, hash160, Tx, TxIn, TxOut, Script, create_wallet_from_pem_bytes
+from tx_engine import Wallet, hash160, Tx, TxIn, TxOut, Script, create_wallet_from_pem_bytes, create_pem_from_wallet
 
 
 class WalletTest(unittest.TestCase):
@@ -94,6 +94,14 @@ class WalletTest(unittest.TestCase):
         expected_output = "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s"
         self.assertEqual(w.get_address(), expected_output)
 
+    def test_testnet_key_from_to_pem(self):
+        pem = '-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
+        pem_as_bytes = pem.encode()
+
+        w = create_wallet_from_pem_bytes(pem_as_bytes, network="BSV_Testnet")
+        test_pem = create_pem_from_wallet(w)
+        self.assertEqual(pem, test_pem)
+
     def test_create_wallet_from_int(self):
         w = Wallet.from_int("BSV_Testnet", 110943977574299588079135027069764758606913326570652510108968462252246438125737)
         self.assertEqual(w.get_address(), "mg7k4cWKZAH6dHFAk4GPjuWFvmFZBHKf7s")
@@ -127,6 +135,12 @@ class WalletTest(unittest.TestCase):
         w = create_wallet_from_pem_bytes(pem.encode(), network="BSV_Mainnet")
         expected_output = "1bnmZRLk8qqrAmZ2VJ1uzHw4merFyKSP3"
         self.assertEqual(w.get_address(), expected_output)
+
+    def test_mainnet_key_from_to_pem(self):
+        pem = '-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg9UgQ6ADRTosvl43bg5zp\nWU3cFFnuMA0MO5mQpw0yIKmhRANCAAS0+wZKso7C2qmxYsbEvK88us9aop4JTDb9\nnjAqlYPw6ik7Iybiu1aYtVggdWSDfJrEVQcuNdcWGuKohHfU/F6X\n-----END PRIVATE KEY-----\n'
+        w = create_wallet_from_pem_bytes(pem.encode(), network="BSV_Mainnet")
+        test_pem = create_pem_from_wallet(w)
+        self.assertEqual(pem, test_pem)
 
     def test_get_network(self):
         wtest = Wallet("cVvay9F4wkxrC6cLwThUnRHEajQ8FNoDEg1pbsgYjh7xYtkQ9LVZ")
