@@ -1,10 +1,7 @@
 """ Tests of parsing scripts
 """
 import unittest
-import sys
-sys.path.append("..")
-
-from tx_engine import Script, Context
+from tx_engine import Script, Context, Stack
 from tx_engine.engine.op_codes import (
     OP_1, OP_16, OP_1NEGATE,
 )
@@ -28,7 +25,7 @@ class ParseTest(unittest.TestCase):
         combined_sig = s1 + s2
         context = Context(script=combined_sig)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [1])
+        self.assertEqual(context.get_stack(), Stack([[1]]))
 
     def test_space_separated_2(self):
         s_sig = "0x040b4c866585dd868a9d62348a9cd008d6a312937048fff31670e7e920cfc7a7447b5f0bba9e01e6fe4735c8383e6e7a3347a0fd72381b8f797a19f694054e5a69"
@@ -38,7 +35,7 @@ class ParseTest(unittest.TestCase):
         combined_sig = s1 + s2
         context = Context(script=combined_sig)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [1])
+        self.assertEqual(context.get_stack(), Stack([[1]]))
 
     def test_simple(self):
         s = "1 0x025624,OP_MUL,0x025624,OP_EQUAL"
@@ -54,7 +51,7 @@ class ParseTest(unittest.TestCase):
         script3 = script1 + script2
         context = Context(script=script3)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[1], [2]])
+        self.assertEqual(context.get_stack(), Stack([[1], [2]]))
 
     def test_numbers(self):
         script1 = Script.parse_string("1")

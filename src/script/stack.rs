@@ -158,6 +158,48 @@ pub fn encode_bigint(val: BigInt) -> Vec<u8> {
     result.1
 }
 
+#[inline]
+pub fn decode_number_combined(s: &[u8]) -> Result<BigInt> {
+    let len = s.len();
+
+    if len == 0 {
+        println!("Zero lenght number");
+        return Ok(BigInt::zero());
+    }
+
+    // Handle small integers (up to 4 bytes)
+    if len <= 4 {
+        let mut val = match len {
+            1 => (s[0] & 127) as i64,
+            2 => (((s[1] & 127) as i64) << 8) + (s[0] as i64),
+            3 => (((s[2] & 127) as i64) << 16) + ((s[1] as i64) << 8) + (s[0] as i64),
+            4 => {
+                (((s[3] & 127) as i64) << 24)
+                    + ((s[2] as i64) << 16)
+                    + ((s[1] as i64) << 8)
+                    + (s[0] as i64)
+            }
+            _ => unreachable!(), // We already checked len
+        };
+
+        if s[len - 1] & 128 != 0 {
+            val = -val;
+        }
+        println!("Returing this way");
+        return Ok(BigInt::from(val));
+    }
+
+    // Handle big integers (more than 4 bytes)
+    let mut sign = Sign::Plus;
+    if s[len - 1] & 0x80 == 0x80 {
+        sign = Sign::Minus;
+    }
+    let mut big_int_bytes = s.to_vec();
+    big_int_bytes[len - 1] &= !0x80; // Clear the sign bit
+    println!("Returned this big num way");
+    Ok(BigInt::from_bytes_le(sign, &big_int_bytes))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,5 +254,43 @@ mod tests {
         assert!(pop_num(&mut vec![vec![129]]).unwrap() == -1);
         assert!(pop_num(&mut vec![vec![0, 0, 0, 0]]).unwrap() == 0);
         assert!(pop_num(&mut vec![vec![0, 0, 0, 0, 0]]).is_err());
+    }
+
+    #[test]
+    fn encode_decode_num_bigint_tests() {
+        // Range checks
+        assert!(encode_num(2147483647).is_ok());
+        assert!(encode_num(-2147483647).is_ok());
+        assert!(encode_num(2147483648).is_err());
+        assert!(encode_num(-2147483648).is_err());
+        // Encode decode
+        assert!(decode_number_combined(&encode_num(0).unwrap()).unwrap() == BigInt::from(0));
+
+        assert!(decode_number_combined(&encode_num(1).unwrap()).unwrap() == BigInt::from(1));
+
+        assert!(decode_number_combined(&encode_num(-1).unwrap()).unwrap() == BigInt::from(-1));
+
+        assert!(decode_number_combined(&encode_num(1111).unwrap()).unwrap() == BigInt::from(1111));
+        assert!(
+            decode_number_combined(&encode_num(-1111).unwrap()).unwrap() == BigInt::from(-1111)
+        );
+        assert!(
+            decode_number_combined(&encode_num(111111).unwrap()).unwrap() == BigInt::from(111111)
+        );
+        assert!(
+            decode_number_combined(&encode_num(-111111).unwrap()).unwrap() == BigInt::from(-111111)
+        );
+        assert!(
+            decode_number_combined(&encode_num(2147483647).unwrap()).unwrap()
+                == BigInt::from(2147483647)
+        );
+        assert!(
+            decode_number_combined(&encode_num(-2147483647).unwrap()).unwrap()
+                == BigInt::from(-2147483647)
+        );
+
+        assert!(
+            decode_number_combined(&encode_bigint(BigInt::from(0))).unwrap() == BigInt::from(0)
+        );
     }
 }

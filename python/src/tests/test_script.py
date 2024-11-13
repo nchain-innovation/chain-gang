@@ -19,12 +19,12 @@ class ScriptTest(unittest.TestCase):
         combined_sig = s1 + s2
         context = Context(script=combined_sig)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(len(context.raw_stack), 2)
+        self.assertEqual(context.stack.size(), 2)
 
-        assert isinstance(context.raw_stack[0], list)
-        self.assertEqual(len(context.raw_stack[0]), 0x47)
-        assert isinstance(context.raw_stack[1], list)
-        self.assertEqual(len(context.raw_stack[1]), 0x41)
+        assert isinstance(context.stack[0], list)
+        self.assertEqual(len(context.stack[0]), 0x47)
+        assert isinstance(context.stack[1], list)
+        self.assertEqual(len(context.stack[1]), 0x41)
 
         serial = combined_sig.serialize()
         # Parse the serialised data
@@ -32,11 +32,11 @@ class ScriptTest(unittest.TestCase):
 
         context = Context(script=s3)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(len(context.raw_stack), 2)
-        assert isinstance(context.raw_stack[0], list)
-        self.assertEqual(len(context.raw_stack[0]), 0x47)
-        assert isinstance(context.raw_stack[1], list)
-        self.assertEqual(len(context.raw_stack[1]), 0x41)
+        self.assertEqual(context.stack.size(), 2)
+        assert isinstance(context.stack[0], list)
+        self.assertEqual(len(context.stack[0]), 0x47)
+        assert isinstance(context.stack[1], list)
+        self.assertEqual(len(context.stack[1]), 0x41)
 
     def test_new_script(self):
         s1 = Script([])

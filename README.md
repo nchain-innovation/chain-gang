@@ -37,6 +37,7 @@ This provides an overview of the Python Classes their properties and methods,
 including:
 
 * [Script](#script)
+* [Stack](#stack)
 * [Context](#context)
 * [Tx](#tx)
 * [TxIn](#txin)
@@ -74,6 +75,18 @@ Script has the following class methods:
 * `Script.parse_string(in_string: str) -> Script` - Converts a string of OP_CODES into a Script
 * `Script.parse(in_bytes: bytes) -> Script` - Converts an array of bytes into a Script
 
+## Stack
+
+The 'Stack' python class provides the python user direct access to the Stack structures used by the intepreter
+
+Stack has the following methods:
+
+* `__init__(self, items: List[List[bytes]]) -> Stack` - Constructor that takes a List of List of bytes
+* `push_bytes_integer(self, List[bytes])` - push a arbitrary number in bytes onto the stack
+* `decode_element(self, index: option<Int>)` - returns the item at stack location index. Assumption is its an arbitrary sized number
+* `size(self)` - returns the size of the stack
+* `__getitem__(self, index: int)` - allows array subscript syntax e.g. stack[i] 
+* `__eq__(&self, other: Stack)` - allows an equality test on Stack objects
 
 ## Context
 
@@ -81,27 +94,38 @@ The `context` is the environment in which bitcoin scripts are executed.
 
 Context has the following properties:
 * `cmds` - the commands to execute
+* `ip_start` - the byte offset of where to start executing the script from (optional)
 * `ip_limit` - the number of commands to execute before stopping (optional)
 * `z` - the hash of the transaction 
 * `stack` - main data stack
 * `alt_stack` - seconary stack
-* `raw_stack` - which contains the `stack` prior to converting to numbers
-* `raw_alt_stack` - as above for the `alt_stack`
 
 Context has the following methods:
 
 * `__init__(self, script: Script, cmds: Commands = None, ip_limit: int , z: bytes)` - constructor
-* `evaluate_core(self, quiet: bool = False) -> bool` - evaluates the script/cmds using the the interpreter and returns the stacks (`raw_stack`, `raw_alt_stack`). if quiet is true, dont print exceptions
+* `evaluate_core(self, quiet: bool = False) -> bool` - evaluates the script/cmds using the the interpreter and returns the stacks (`tack`, `alt_stack`). if quiet is true, dont print exceptions
 * `evaluate(self, quiet: bool = False) -> bool` - executes the script and decode stack elements to numbers (`stack`, `alt_stack`). Checks `stack` is true on return. if quiet is true, dont print exceptions.
 * `get_stack(self) -> Stack` - Return the `stack` as human readable
 * `get_altstack(self) -> Stack`-  Return the `alt_stack` as human readable
+* `set_ip_start(self, start: int)` - sets the start location for the intepreter. 
+* `set_ip_limit(self, limit: int)` - sets the end location for the intepreter
 
 Example from unit tests of using `evaluate_core` and `raw_stack`:
 ```python
-script = Script([OP_PUSHDATA1, 0x02, b"\x01\x02"])
-context = Context(script=script)
-self.assertTrue(context.evaluate_core())
-self.assertEqual(context.raw_stack, [[1, 2]])
+script = Script([OP_PUSHDATA1, 0x01, b"\x85", OP_4, OP_NUM2BIN])
+context_py_stack = Context_PyStack(script=script)
+self.assertTrue(context_py_stack.evaluate_core())
+self.assertEqual(context_py_stack.get_stack(), Stack([[0x85, 0x00, 0x00, 0x00]]))
+
+script1 = Script.parse_string('19 1 0 0 1 OP_DEPTH OP_1SUB OP_PICK 0x13 OP_EQUALVERIFY OP_ROT OP_ADD OP_TOALTSTACK OP_ADD OP_DEPTH OP_1SUB OP_ROLL OP_TUCK OP_MOD OP_OVER OP_ADD OP_OVER OP_MOD OP_FROMALTSTACK OP_ROT OP_TUCK OP_MOD OP_OVER OP_ADD OP_SWAP OP_MOD 1 OP_EQUALVERIFY 1 OP_EQUAL')
+context_py_stack = Context_PyStack(script=script1)
+self.assertTrue(context_py_stack.evaluate_core())
+self.assertEqual(context_py_stack.get_stack(), Stack([[1]])
+
+script = Script([OP_1, OP_2, OP_3, OP_4, OP_5, OP_6, OP_2ROT])
+context_py_stack = Context_PyStack(script=script)
+self.assertTrue(context_py_stack.evaluate())
+self.assertEqual(context_py_stack.get_stack(), Stack([[3], [4], [5], [6], [1], [2]]))
 ```
 
 ### Quiet Evalutation

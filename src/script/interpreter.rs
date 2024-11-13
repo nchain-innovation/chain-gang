@@ -24,15 +24,19 @@ pub fn core_eval<T: Checker>(
     script: &[u8],
     checker: &mut T,
     flags: u32,
+    start_at: Option<usize>,
     break_at: Option<usize>,
-) -> Result<(Stack, Stack)> {
-    let mut stack: Stack = Vec::with_capacity(STACK_CAPACITY);
-    let mut alt_stack: Stack = Vec::with_capacity(ALT_STACK_CAPACITY);
+    stack_param: Option<Stack>,
+    alt_stack_param: Option<Stack>,
+) -> Result<(Stack, Stack, Option<usize>)> {
+    let mut stack: Stack = stack_param.unwrap_or_else(|| Vec::with_capacity(STACK_CAPACITY));
+    let mut alt_stack: Stack =
+        alt_stack_param.unwrap_or_else(|| Vec::with_capacity(ALT_STACK_CAPACITY));
 
     // True if executing current if/else branch, false if next else
     let mut branch_exec: Vec<bool> = Vec::new();
     let mut check_index = 0;
-    let mut i = 0;
+    let mut i = start_at.unwrap_or(0);
 
     'outer: while i < script.len() {
         if !branch_exec.is_empty() && !branch_exec[branch_exec.len() - 1] {
@@ -702,13 +706,18 @@ pub fn core_eval<T: Checker>(
     if !branch_exec.is_empty() {
         return Err(Error::ScriptError("ENDIF missing".to_string()));
     }
-    Ok((stack, alt_stack))
+
+    let optional_i = match break_at {
+        Some(_) => Some(i),
+        None => None,
+    };
+    Ok((stack, alt_stack, optional_i))
 }
 
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()> {
-    match core_eval(script, checker, flags, None) {
-        Ok((stack, _alt_stack)) => {
+    match core_eval(script, checker, flags, None, None, None, None) {
+        Ok((stack, _alt_stack, _script_counter)) => {
             // We don't call pop_bool here because the final stack element can be longer than 4 bytes
             check_stack_size(1, &stack)?;
             if !decode_bool(&stack[stack.len() - 1]) {

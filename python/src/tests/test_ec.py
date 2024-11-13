@@ -2,9 +2,6 @@
 import unittest
 from typing import Optional
 
-import sys
-sys.path.append("..")
-
 from tx_engine import Script, Context, encode_num
 
 
@@ -191,8 +188,8 @@ class FedTest(unittest.TestCase):
 
         context = Context(script=unlock + lock)
         self.assertTrue(context.evaluate())
-        self.assertEqual(len(context.get_stack()), 1)
-        self.assertEqual(len(context.get_altstack()), 0)
+        self.assertEqual(context.get_stack().size(), 1)
+        self.assertEqual(context.get_altstack().size(), 0)
 
 
 if __name__ == '__main__':

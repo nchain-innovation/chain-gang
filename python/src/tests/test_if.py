@@ -1,12 +1,7 @@
 """ Test if bools and OP_IF
 """
 import unittest
-import sys
-sys.path.append("..")
-
 from tx_engine import Script, Context
-
-
 from tx_engine.engine.op_codes import OP_0, OP_1, OP_DUP, OP_IF, OP_ELSE, OP_ENDIF
 
 

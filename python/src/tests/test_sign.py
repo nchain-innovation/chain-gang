@@ -6,7 +6,6 @@
 
 import unittest
 import sys
-sys.path.append("..")
 import logging
 
 from tx_engine import p2pkh_script, hash160, address_to_public_key_hash, public_key_to_address

@@ -1,9 +1,6 @@
 """ Test of Interfaces
 """
 import unittest
-import sys
-sys.path.append("..")
-
 from tx_engine import interface_factory, WoCInterface, MockInterface
 
 

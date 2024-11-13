@@ -1,10 +1,6 @@
 """ Transaction tests
 """
 import unittest
-import sys
-
-sys.path.append("..")
-
 from tx_engine import Tx, Script, Context, sig_hash, sig_hash_preimage, SIGHASH, hash256d
 
 

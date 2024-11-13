@@ -4,7 +4,7 @@ import sys
 sys.path.append("..")
 
 import unittest
-from tx_engine import Script, Context
+from tx_engine import Script, Context, Stack
 
 from tx_engine.engine.op_codes import (
     OP_0,
@@ -46,7 +46,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_1, OP_2, OP_NOP, OP_3, OP_4])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [1, 2, 3, 4])
+        self.assertEqual(context.get_stack(), Stack([[1], [2], [3], [4]]))
 
     def test_return(self):
         """ Check of return
@@ -54,7 +54,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_1, OP_2, OP_RETURN, OP_3, OP_4])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [1, 2])
+        self.assertEqual(context.get_stack(), Stack([[1], [2]]))
 
     def test_swap(self):
         """ Check of swap
@@ -62,12 +62,12 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_2, OP_1, OP_SWAP])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [1, 2])
+        self.assertEqual(context.get_stack(), Stack([[1], [2]]))
 
         script = Script([OP_1, OP_2, OP_3, OP_SWAP])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [1, 3, 2])
+        self.assertEqual(context.get_stack(), Stack([[1], [3], [2]]))
 
     def test_swap_bignum(self):
         """ Check of swap with a big number
@@ -76,7 +76,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script(insert_num(64) + [OP_1, OP_SWAP])  # type: ignore[arg-type]
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [1, 64])
+        self.assertEqual(context.get_stack(), Stack(([[1], [64]])))
 
     def test_2swap(self):
         """ Check of 2swap
@@ -84,7 +84,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_1, OP_2, OP_3, OP_4, OP_2SWAP])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [3, 4, 1, 2])
+        self.assertEqual(context.get_stack(), Stack([[3], [4], [1], [2]]))
 
     def test_rot(self):
         """ Check of rot
@@ -92,7 +92,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_1, OP_2, OP_3, OP_ROT])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [2, 3, 1])
+        self.assertEqual(context.get_stack(), Stack([[2], [3], [1]]))
 
     def test_2rot(self):
         """ Check of 2rot
@@ -100,7 +100,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_1, OP_2, OP_3, OP_4, OP_5, OP_6, OP_2ROT])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [3, 4, 5, 6, 1, 2])
+        self.assertEqual(context.get_stack(), Stack([[3], [4], [5], [6], [1], [2]]))
 
     def test_reserved(self):
         """ Check of reserved words
@@ -141,13 +141,15 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_1NEGATE])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [-1])
+        test_stack: Stack = Stack()
+        test_stack.push_bytes_integer([-1])
+        self.assertEqual(context.get_stack(), test_stack)
 
         # Test as text
         script = Script.parse_string("OP_1NEGATE")
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.stack, [-1])
+        self.assertEqual(context.stack, test_stack)
 
     def test_1negate_large_numbers_part1(self):
         """  Check of 1negate with large numbers
@@ -173,7 +175,7 @@ class ScriptOPTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
         # self.assertEqual(context.stack, [b"\x01\x02"])
-        self.assertEqual(context.raw_stack, [[1, 2]])
+        self.assertEqual(context.get_stack(), Stack([[1, 2]]))
 
     def test_pushdata1_3(self):
         """ Check of pushdata1
@@ -182,7 +184,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script.parse_string("OP_PUSHDATA1, 0x02, b'\x02\x01'")
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[2, 1]])
+        self.assertEqual(context.get_stack(), Stack([[2, 1]]))
 
     def test_pushdata1_4(self):
         """ Check of pushdata1
@@ -190,7 +192,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script.parse_string("OP_PUSHDATA1, 0x04, b'\x01\x02\x03\x04'")
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[1, 2, 3, 4]])
+        self.assertEqual(context.get_stack(), Stack([[1, 2, 3, 4]]))
 
     def test_pushdata2(self):
         """ Check of pushdata2
@@ -198,7 +200,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_PUSHDATA2, 0x00, 0x01, b"\x01" * 256])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[1] * 256])
+        self.assertEqual(context.get_stack(), Stack([[1] * 256]))
 
     def test_pushdata4(self):
         """ Check of pushdata4
@@ -206,7 +208,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_PUSHDATA4, 0x00, 0x00, 0x00, 0x01, b"\x01" * 0x01000000])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.raw_stack, [[1] * 0x01000000])
+        self.assertEqual(context.get_stack(), Stack([[1] * 0x01000000]))
 
     def test_codeseparator(self):
         """ Simple check of codeseparator
@@ -214,7 +216,7 @@ class ScriptOPTests(unittest.TestCase):
         script = Script([OP_1, OP_2, OP_CODESEPARATOR, OP_3, OP_4])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
-        self.assertEqual(context.get_stack(), [1, 2, 3, 4])
+        self.assertEqual(context.get_stack(), Stack([[1], [2], [3], [4]]))
 
 
 if __name__ == "__main__":
