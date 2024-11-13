@@ -12,8 +12,6 @@ class Context:
     def __init__(self, script: None | Script = None, ip_start: None | int = None, ip_limit: None | int = None, z: None | bytes = None):
         """ Intial setup
         """
-        # ip_limit -> this now means where to stop execution.
-        # it'll have to change from line number to byte count into the script.
         self.ip_start: Optional[int]
         self.ip_limit: Optional[int]
         self.z: Optional[bytes]
