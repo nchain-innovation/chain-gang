@@ -11,4 +11,4 @@ from tx_engine.tx.sighash import SIGHASH  # noqa: F401
 from tx_engine.interface.interface_factory import interface_factory   # noqa: F401
 from tx_engine.interface.woc_interface import WoCInterface   # noqa: F401
 from tx_engine.interface.mock_interface import MockInterface   # noqa: F401
-from tx_engine.engine.cryptography_utils import create_wallet_from_pem_bytes  # noqa: F401
+from tx_engine.engine.cryptography_utils import create_wallet_from_pem_bytes, create_pem_from_wallet  # noqa: F401

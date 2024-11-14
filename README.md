@@ -238,6 +238,8 @@ The library provides some additional helper functions to handle keys in differen
 * `wif_to_bytes(wif: string) -> bytes` - Given a key in WIF format, it returns a byte array of the scalar value of the private key
 * `bytes_to_wif(key_bytes, network) -> String` - Given a byte array and a network identifier, returns the WIF format for the private key
 * `wif_from_pw_nonce(password, nonce, optional<network>) -> WIF` - Given a password, nonce (strings) return a WIF format for the private key. The default for the network is BSV_Mainnet. For a testnet format, please use BSv_Testnet
+* `create_wallet_from_pem_file -> Wallet` - Given a path to PEM format file, return a keypair in Wallet format
+* `create_pem_from_wallet -> String` - Given a Wallet, returns a PEM (pkcs8) formatted string of the private key
 
 
 ![Bitcoin Keys](docs/diagrams/keys.png)
