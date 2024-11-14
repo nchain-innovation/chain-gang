@@ -319,7 +319,7 @@ impl BlockchainInterface for UaaSInterface {
     async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
         log::debug!("broadcast_tx");
 
-        let url = self.url.join(&"/tx/hex").unwrap();
+        let url = self.url.join("/tx/hex").unwrap();
 
         let data_for_broadcast = UaaSBroadcastTxType { tx: tx.as_hexstr() };
 

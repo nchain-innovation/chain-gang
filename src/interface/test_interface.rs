@@ -79,17 +79,17 @@ impl BlockchainInterface for TestInterface {
         let utxo: Utxo = self.get_utxo(address).await?;
         let test_data = self.test_data.lock().await;
 
-        let confirmation_height = test_data.height - 6;
+        let confirmation_height: i32 = (test_data.height - 6).try_into().unwrap();
 
         let confirmed: i64 = utxo
             .iter()
-            .filter(|x| x.height <= confirmation_height)
+            .filter(|x| x.height >= 0 && x.height <= confirmation_height)
             .map(|x| x.value)
             .sum();
 
         let unconfirmed: i64 = utxo
             .iter()
-            .filter(|x| x.height > confirmation_height)
+            .filter(|x| x.height < 0 || x.height > confirmation_height)
             .map(|x| x.value)
             .sum();
 

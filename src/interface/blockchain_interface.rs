@@ -20,7 +20,7 @@ pub struct Balance {
 #[allow(dead_code)]
 #[derive(Debug, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct UtxoEntry {
-    pub height: u32,
+    pub height: i32,
     pub tx_pos: u32,
     pub tx_hash: String,
     pub value: i64,
