@@ -118,10 +118,12 @@ impl Script {
     }
 
     // Used by PyScript
-    pub fn string_representation(&self) -> String {
+    // could I add an option flag here to include the length of a number (to be called from debugger to simpilfy the parsimg logic?)
+    pub fn string_representation(&self, include_byte_offsets: Option<bool>) -> String {
         let script = &self.0;
         let mut ret = String::new();
         let mut i = 0;
+    
         while i < script.len() {
             if i != 0 {
                 ret.push(' ')
@@ -148,7 +150,16 @@ impl Script {
                 len @ 1..=75 => {
                     if i + 1 + len as usize <= script.len() {
                         ret.push_str("0x");
-                        ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));
+
+                        if let Some(true) = include_byte_offsets{
+                            // include the byte length of the data
+                            ret.push_str(&hex::encode(&script[i..i + 1 + len as usize]));
+                        }
+                        else{
+                            // exclude the byte length of the data
+                            ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));
+                        }
+                        
                     } else {
                         break;
                     }
