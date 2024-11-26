@@ -5,9 +5,7 @@ use crate::{
 
 use base58::{FromBase58, ToBase58};
 
-
 // use sha2::{Digest, Sha256};
-
 
 /// Given the string return the checked base58 value
 pub fn decode_base58_checksum(input: &str) -> Result<Vec<u8>> {

@@ -1,42 +1,31 @@
 use crate::{
-    messages::Tx, // TxIn, TxOut},
     network::Network,
-    wallet::{
-        hashes::hash160,
-        base58_checksum::{decode_base58_checksum, encode_base58_checksum},
-        wallet::{public_key_to_address, wif_to_network_and_private_key, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
-    },
-    python::{
-        py_tx::tx_as_pytx,
-        PyScript, PyTx,
-    },
+    python::{py_tx::tx_as_pytx, PyScript, PyTx},
     script::{
         op_codes::{OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160},
         Script,
     },
-    transaction::{
-        generate_signature,
-        p2pkh::create_unlock_script,
-        sighash::{sighash, SigHashCache, SIGHASH_ALL, SIGHASH_FORKID},
-    },
+    transaction::sighash::{SIGHASH_ALL, SIGHASH_FORKID},
     util::{Error, Result},
+    wallet::{
+        base58_checksum::{decode_base58_checksum, encode_base58_checksum},
+        wallet::{wif_to_network_and_private_key, Wallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
+    },
 };
-use k256::ecdsa::{SigningKey, VerifyingKey};
-use k256::elliptic_curve::generic_array::GenericArray;
+use k256::{ecdsa::SigningKey, elliptic_curve::generic_array::GenericArray};
 use num_bigint::{BigInt, Sign};
-use pyo3::prelude::*;
-use typenum::U32;
+use pyo3::{
+    prelude::*,
+    types::{PyDict, PyLong, PyType},
+};
 
-use pyo3::types::PyType;
-use pyo3::types::{PyDict, PyLong};
+use typenum::U32;
 
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
 use rand_core::OsRng;
 use sha2::Sha256;
 use std::num::NonZeroU32;
-
-
 
 // TODO: note only tested for compressed key
 // Given a WIF, return bytes rather than SigningKey
@@ -79,7 +68,6 @@ pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
     // Encode in Base58 with checksum
     encode_base58_checksum(&wif_bytes)
 }
-
 
 pub fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> Result<String> {
     let prefix: u8 = match network {
@@ -144,11 +132,8 @@ pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet> {
         let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
 
         let public_key = *private_key.verifying_key();
-        Ok(PyWallet {
-            private_key,
-            public_key,
-            network: netwrk,
-        })
+        let wallet = Wallet::new(private_key, public_key, netwrk);
+        Ok(PyWallet { wallet })
     } else {
         let msg = format!("Unknown network {}", network);
         Err(Error::BadData(msg).into())
@@ -160,62 +145,7 @@ pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet> {
 
 #[pyclass(name = "Wallet")]
 pub struct PyWallet {
-    private_key: SigningKey,
-    public_key: VerifyingKey,
-    network: Network,
-}
-
-impl PyWallet {
-    fn public_key_serialize(&self) -> [u8; 33] {
-        let vk_bytes = self.public_key.to_sec1_bytes();
-        let vk_vec = vk_bytes.to_vec();
-        vk_vec.try_into().unwrap()
-    }
-
-    // sign_transaction_with_inputs(input_txs, tx, self.private_key)
-    fn sign_tx_input(
-        &mut self,
-        tx_in: &Tx,
-        tx: &mut Tx,
-        index: usize,
-        sighash_type: u8,
-    ) -> Result<()> {
-        // Check correct input tx provided
-        let prev_hash = tx.inputs[index].prev_output.hash;
-        if prev_hash != tx_in.hash() {
-            let err_msg = format!("Unable to find input tx {:?}", &prev_hash);
-            return Err(Error::BadData(err_msg));
-        }
-        // Gather data for sighash
-        let prev_index: usize = tx.inputs[index]
-            .prev_output
-            .index
-            .try_into()
-            .expect("Unable to convert prev_index into usize");
-        let prev_amount = tx_in.outputs[prev_index].satoshis;
-        let prev_lock_script = &tx_in.outputs[prev_index].lock_script;
-
-        let mut cache = SigHashCache::new();
-
-        let sighash = sighash(
-            tx,
-            index,
-            &prev_lock_script.0,
-            prev_amount,
-            sighash_type,
-            &mut cache,
-        )?;
-        // Get private key
-        let private_key_as_bytes: [u8; 32] = self.private_key.to_bytes().into();
-
-        // Sign sighash
-        let signature = generate_signature(&private_key_as_bytes, &sighash, sighash_type)?;
-        // Create unlocking script for input
-        let public_key = self.public_key_serialize();
-
-        tx.inputs[index].unlock_script = create_unlock_script(&signature, &public_key);
-        Ok(())
-    }
+    wallet: Wallet,
 }
 
 #[pymethods]
@@ -224,14 +154,8 @@ impl PyWallet {
 
     #[new]
     fn new(wif_key: &str) -> PyResult<Self> {
-        let (network, private_key) = wif_to_network_and_private_key(wif_key)?;
-        let public_key = *private_key.verifying_key();
-
-        Ok(PyWallet {
-            private_key,
-            public_key,
-            network,
-        })
+        let wallet = Wallet::from_wif(wif_key)?;
+        Ok(PyWallet { wallet })
     }
 
     /// Sign a transaction with the provided previous tx, Returns new signed tx
@@ -240,7 +164,8 @@ impl PyWallet {
         let input_tx = input_pytx.as_tx();
         let mut tx = pytx.as_tx();
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
-        self.sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
+        self.wallet
+            .sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
         let updated_txpy = tx_as_pytx(&tx);
         Ok(updated_txpy)
     }
@@ -256,18 +181,20 @@ impl PyWallet {
         // Convert PyTx -> Tx
         let input_tx = input_pytx.as_tx();
         let mut tx = pytx.as_tx();
-        self.sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
+        self.wallet
+            .sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
         let updated_txpy = tx_as_pytx(&tx);
         Ok(updated_txpy)
     }
 
     fn get_locking_script(&self) -> PyResult<PyScript> {
-        let serial = self.public_key_serialize();
-        Ok(p2pkh_pyscript(&hash160(&serial)))
+        let script = self.wallet.get_locking_script();
+        let pyscript = PyScript::new(&script.0);
+        Ok(pyscript)
     }
 
     fn get_public_key_as_hexstr(&self) -> String {
-        let serial = self.public_key_serialize();
+        let serial = self.wallet.public_key_serialize();
         serial
             .into_iter()
             .map(|x| format!("{:02x}", x))
@@ -276,23 +203,23 @@ impl PyWallet {
     }
 
     fn get_address(&self) -> Result<String> {
-        public_key_to_address(&self.public_key_serialize(), self.network)
+        self.wallet.get_address()
     }
 
     fn to_wif(&self) -> PyResult<String> {
         Ok(network_and_private_key_to_wif(
-            self.network,
-            self.private_key.clone(),
+            self.wallet.network,
+            self.wallet.private_key.clone(),
         )?)
     }
 
     fn get_network(&self) -> String {
-        format!("{}", self.network)
+        format!("{}", self.wallet.network)
     }
 
     fn to_int(&self, py: Python<'_>) -> PyResult<Py<PyLong>> {
         // Convert the private key into bytes
-        let private_key_bytes = self.private_key.to_bytes();
+        let private_key_bytes = self.wallet.private_key.to_bytes();
         // Convert GenericArray<u8, _> to [u8; 32]
         let private_key_array: [u8; 32] = private_key_bytes
             .as_slice()
@@ -316,7 +243,7 @@ impl PyWallet {
 
     fn to_hex(&self) -> String {
         // Convert the private key into bytes
-        let private_key_bytes = self.private_key.to_bytes();
+        let private_key_bytes = self.wallet.private_key.to_bytes();
         // Convert GenericArray<u8, _> to [u8; 32]
         let private_key_array: [u8; 32] = private_key_bytes
             .as_slice()
@@ -331,12 +258,8 @@ impl PyWallet {
         if let Some(netwrk) = str_to_network(network) {
             let private_key = SigningKey::random(&mut OsRng);
             let public_key = *private_key.verifying_key();
-
-            Ok(PyWallet {
-                private_key,
-                public_key,
-                network: netwrk,
-            })
+            let wallet = Wallet::new(private_key, public_key, netwrk);
+            Ok(PyWallet { wallet })
         } else {
             let msg = format!("Unknown network {}", network);
             Err(Error::BadData(msg).into())
@@ -355,11 +278,8 @@ impl PyWallet {
             let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(&key_bytes);
             let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
             let public_key = *private_key.verifying_key();
-            Ok(PyWallet {
-                private_key,
-                public_key,
-                network: netwrk,
-            })
+            let wallet = Wallet::new(private_key, public_key, netwrk);
+            Ok(PyWallet { wallet })
         } else {
             let msg = format!("Unknown network {}", network);
             Err(Error::BadData(msg).into())
@@ -385,11 +305,8 @@ impl PyWallet {
             let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(&key_bytes);
             let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
             let public_key = *private_key.verifying_key();
-            Ok(PyWallet {
-                private_key,
-                public_key,
-                network: netwrk,
-            })
+            let wallet = Wallet::new(private_key, public_key, netwrk);
+            Ok(PyWallet { wallet })
         } else {
             let msg = format!("Unknown network {}", network);
             Err(Error::BadData(msg).into())
@@ -428,6 +345,7 @@ impl PyWallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::wallet::hashes::hash160;
 
     fn bytes_to_hexstr(bytes: &[u8]) -> String {
         bytes
@@ -469,12 +387,12 @@ mod tests {
         let wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3";
         let w = PyWallet::new(wif);
 
-        let wallet = w.unwrap();
+        let wallet1 = w.unwrap();
         assert_eq!(
-            wallet.get_address().unwrap(),
+            wallet1.get_address().unwrap(),
             "mgzhRq55hEYFgyCrtNxEsP1MdusZZ31hH5"
         );
-        assert_eq!(wallet.network, Network::BSV_Testnet);
+        assert_eq!(wallet1.wallet.network, Network::BSV_Testnet);
     }
 
     #[test]
@@ -524,24 +442,4 @@ mod tests {
         let hash_pk = bytes_to_hexstr(&hash_public_key);
         assert_eq!(pk_hexstr, hash_pk);
     }
-    /*
-    #[test]
-    fn generate_key() {
-        let w = PyWallet::generate_key(Network::BSV_Testnet).unwrap();
-        dbg!(&w);
-    }
-    */
-
-    // TODO: Wallet signing test
-    /*
-    #[test]
-    fn sign_tx() {
-        let wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3";
-        let w = PyWallet::new(wif);
-        let wallet = w.unwrap();
-
-        // tx =
-        //
-    }
-    */
 }

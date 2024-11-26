@@ -10,23 +10,23 @@ mod py_wallet;
 use crate::{
     messages::Tx,
     network::Network,
-    wallet::{
-        TEST_PRIVATE_KEY, MAIN_PRIVATE_KEY,
-        public_key_to_address,
-        hashes::{hash160, sha256d},
-    },
     python::{
         py_script::PyScript,
         py_stack::{decode_num_stack, PyStack},
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{
-            address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript,
-            wif_to_bytes, PyWallet,
+            address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript, wif_to_bytes,
+            PyWallet,
         },
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
-    transaction::sighash::{sig_hash_preimage, sighash, SigHashCache},
+    transaction::sighash::{sig_hash_preimage, SigHashCache},
     util::{Error, Hash256},
+    wallet::{
+        hashes::{hash160, sha256d},
+        public_key_to_address, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
+        create_sighash,
+    },
 };
 
 pub type Bytes = Vec<u8>;
@@ -207,17 +207,18 @@ pub fn py_sig_hash_preimage(
     index: usize,
     script_pubkey: PyScript,
     prev_amount: i64,
-    sighash_value: u8,
+    sighash_flags: u8,
 ) -> PyResult<PyObject> {
     let input_tx: Tx = tx.as_tx();
     let prev_lock_script: Script = script_pubkey.as_script();
+
     let mut cache = SigHashCache::new();
     let sigh_hash = sig_hash_preimage(
         &input_tx,
         index,
         &prev_lock_script.0,
         prev_amount,
-        sighash_value,
+        sighash_flags,
         &mut cache,
     );
     let bytes = PyBytes::new_bound(_py, &sigh_hash.unwrap());
@@ -245,15 +246,15 @@ pub fn py_sig_hash(
 ) -> PyResult<PyObject> {
     let input_tx = tx.as_tx();
     let prev_lock_script = script_pubkey.as_script();
-    let mut cache = SigHashCache::new();
-    let full_sig_hash = sighash(
+
+    let full_sig_hash = create_sighash(
         &input_tx,
         index,
-        &prev_lock_script.0,
+        &prev_lock_script,
         prev_amount,
         sighash_flags,
-        &mut cache,
     );
+
     let bytes = PyBytes::new_bound(_py, &full_sig_hash.unwrap().0);
     Ok(bytes.into())
 }

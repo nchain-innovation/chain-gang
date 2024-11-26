@@ -1,7 +1,6 @@
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
 
-
 pub fn hash160(data: &[u8]) -> Vec<u8> {
     let sha256 = Sha256::digest(data);
     Ripemd160::digest(sha256).to_vec()

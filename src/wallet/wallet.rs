@@ -7,17 +7,16 @@ use crate::{
         op_codes::{OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160},
         Script,
     },
-    util::{Error, Result, Hash256},
-    wallet::{
-        base58_checksum::{decode_base58_checksum,encode_base58_checksum},
-        hashes::hash160,
-    },
     transaction::{
         generate_signature,
         p2pkh::create_unlock_script,
         sighash::{sighash, SigHashCache},
     },
-
+    util::{Error, Hash256, Result},
+    wallet::{
+        base58_checksum::{decode_base58_checksum, encode_base58_checksum},
+        hashes::hash160,
+    },
 };
 
 pub const MAIN_PRIVATE_KEY: u8 = 0x80;
@@ -25,7 +24,6 @@ pub const TEST_PRIVATE_KEY: u8 = 0xef;
 
 const MAIN_PUBKEY_HASH: u8 = 0x00;
 const TEST_PUBKEY_HASH: u8 = 0x6f;
-
 
 pub fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)> {
     let decode = decode_base58_checksum(wif)?;
@@ -54,8 +52,6 @@ pub fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)
     Ok((network, private_key))
 }
 
-
-
 // Given public_key and network return address as a string
 pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> {
     let prefix_as_bytes: u8 = match network {
@@ -79,7 +75,6 @@ pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<Stri
     Ok(encode_base58_checksum(&data))
 }
 
-
 pub fn p2pkh_script(h160: &[u8]) -> Script {
     let mut script = Script::new();
     script.append_slice(&[OP_DUP, OP_HASH160]);
@@ -88,8 +83,13 @@ pub fn p2pkh_script(h160: &[u8]) -> Script {
     script
 }
 
-
-pub fn create_sighash(tx: &Tx, n_input: usize, prev_lock_script: &Script, prev_amount: i64, sighash_flags: u8) -> Result<Hash256> {
+pub fn create_sighash(
+    tx: &Tx,
+    n_input: usize,
+    prev_lock_script: &Script,
+    prev_amount: i64,
+    sighash_flags: u8,
+) -> Result<Hash256> {
     let mut cache = SigHashCache::new();
 
     let sighash = sighash(
@@ -103,14 +103,12 @@ pub fn create_sighash(tx: &Tx, n_input: usize, prev_lock_script: &Script, prev_a
     Ok(sighash)
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Wallet {
     pub private_key: SigningKey,
     pub public_key: VerifyingKey,
     pub network: Network,
 }
-
 
 impl Wallet {
     pub fn from_wif(wif_key: &str) -> Result<Self> {
@@ -124,11 +122,18 @@ impl Wallet {
         })
     }
 
+    pub fn new(private_key: SigningKey, public_key: VerifyingKey, network: Network) -> Self {
+        Wallet {
+            private_key,
+            public_key,
+            network,
+        }
+    }
     pub fn get_address(&self) -> Result<String> {
         public_key_to_address(&self.public_key_serialize(), self.network)
     }
 
-    fn public_key_serialize(&self) -> [u8; 33] {
+    pub fn public_key_serialize(&self) -> [u8; 33] {
         let vk_bytes = self.public_key.to_sec1_bytes();
         let vk_vec = vk_bytes.to_vec();
         vk_vec.try_into().unwrap()
@@ -141,7 +146,7 @@ impl Wallet {
 
     pub fn create_unlock_script(&self, signature: &[u8]) -> Script {
         let public_key = self.public_key_serialize();
-        create_unlock_script(&signature, &public_key)
+        create_unlock_script(signature, &public_key)
     }
 
     pub fn sign_sighash(&self, sighash: Hash256, sighash_flags: u8) -> Result<Vec<u8>> {
@@ -194,6 +199,4 @@ impl Wallet {
         self.sign_tx_input(&input_tx, &mut new_tx, index, sighash_flags)?;
         Ok(new_tx)
     }
-
-
 }

@@ -3,10 +3,10 @@
 mod extended_key;
 mod mnemonic;
 
-pub mod hashes;
 pub mod base58_checksum;
+pub mod hashes;
+#[allow(clippy::module_inception)]
 pub mod wallet;
-
 
 pub use self::extended_key::{
     derive_extended_key, ExtendedKey, ExtendedKeyType, HARDENED_KEY, MAINNET_PRIVATE_EXTENDED_KEY,
@@ -14,4 +14,6 @@ pub use self::extended_key::{
 };
 pub use self::mnemonic::{load_wordlist, mnemonic_decode, mnemonic_encode, Wordlist};
 
-pub use self::wallet::{Wallet, public_key_to_address, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY, create_sighash};
+pub use self::wallet::{
+    create_sighash, public_key_to_address, Wallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
+};
