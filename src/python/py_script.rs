@@ -174,7 +174,7 @@ impl PyScript {
 impl fmt::Debug for PyScript {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let script = self.as_script();
-        let ret = script.string_representation();
+        let ret = script.string_representation(None);
         f.write_str(&ret)
     }
 }
@@ -182,7 +182,7 @@ impl fmt::Debug for PyScript {
 impl fmt::Display for PyScript {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let script = self.as_script();
-        let ret = script.string_representation();
+        let ret = script.string_representation(None);
         f.write_str(&ret)
     }
 }
@@ -261,6 +261,11 @@ impl PyScript {
     #[allow(clippy::inherent_to_string_shadow_display)]
     fn to_string(&self) -> String {
         self.__repr__()
+    }
+
+    fn to_debug_parser_string(&self) -> String {
+        let script = self.as_script();
+        script.string_representation(Some(true))
     }
 
     /// Add two scripts together to produce a new script
