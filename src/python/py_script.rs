@@ -332,9 +332,8 @@ impl PyScript {
         // Use with_gil to get a reference to the Python interpreter
         //Python::with_gil(|_cls| {
         // Use the bound reference to access the PyAny
-        let py_any = int_rep.as_ref();
         // Downcast the PyAny reference to PyLong
-        let py_long = py_any
+        let py_long = int_rep
             .downcast::<PyLong>()
             .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
             .as_ref();

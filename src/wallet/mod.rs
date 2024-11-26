@@ -4,7 +4,6 @@ mod extended_key;
 mod mnemonic;
 
 pub mod base58_checksum;
-pub mod hashes;
 #[allow(clippy::module_inception)]
 pub mod wallet;
 

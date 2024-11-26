@@ -21,12 +21,8 @@ use crate::{
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     transaction::sighash::{sig_hash_preimage, SigHashCache},
-    util::{Error, Hash256},
-    wallet::{
-        hashes::{hash160, sha256d},
-        public_key_to_address, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
-        create_sighash,
-    },
+    util::{hash160, sha256d, Error, Hash256},
+    wallet::{create_sighash, public_key_to_address, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
 };
 
 pub type Bytes = Vec<u8>;
@@ -38,13 +34,13 @@ fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
 
 #[pyfunction(name = "hash160")]
 pub fn py_hash160(py: Python, data: &[u8]) -> PyObject {
-    let result = hash160(data);
+    let result = hash160(data).0;
     PyBytes::new_bound(py, &result).into()
 }
 
 #[pyfunction(name = "hash256d")]
 pub fn py_hash256d(py: Python, data: &[u8]) -> PyObject {
-    let result = sha256d(data);
+    let result = sha256d(data).0;
     PyBytes::new_bound(py, &result).into()
 }
 
@@ -133,15 +129,9 @@ fn py_script_eval_pystack(
     let mut script = Script::new();
     script.append_slice(py_script);
     // Handle stack and alt_stack parameters with match
-    let main_stack = match stack_param {
-        Some(py_stack_main) => Some(py_stack_main.to_stack()), // Use the provided PyStack if available
-        None => None, // Otherwise, initialize an empty stack
-    };
+    let main_stack = stack_param.map(|py_stack_main| py_stack_main.to_stack());
 
-    let alternative_stack = match alt_stack_param {
-        Some(alt_stack_param) => Some(alt_stack_param.to_stack()), // Use provided alt stack if available
-        None => None, // Otherwise, initialize an empty alt stack
-    };
+    let alternative_stack = alt_stack_param.map(|alt_stack_param| alt_stack_param.to_stack());
 
     // Pick the appropriate transaction checker
     let (main_stack, alt_stack, prog_counter) = match z {
@@ -292,12 +282,10 @@ pub fn py_generate_wif_from_pw_nonce(
     let network = network.unwrap_or("BSV_Testnet");
 
     // Example logic: derive WIF based on password, nonce, and network
-    let wif = match network {
+    match network {
         "BSV_Mainnet" => generate_wif(password, nonce, "BSV_Mainnet"),
         _ => generate_wif(password, nonce, "BSV_Testnet"), // Default to "testnet"
-    };
-
-    wif
+    }
 }
 
 /// A Python module for interacting with the Rust chain-gang BSV script interpreter

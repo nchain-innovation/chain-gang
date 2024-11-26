@@ -1,11 +1,5 @@
-use hex;
-// use digest::{FixedOutput, Input};
-// use crate::digest::{Digest, Input};
-// use ring::digest::{digest, SHA256};
-//use sha2::Sha256;
-
-//use ripemd160::{Digest, Ripemd160};
 use crate::util::sha256::sha256;
+use hex;
 use ripemd::{Digest, Ripemd160};
 
 use std::fmt;

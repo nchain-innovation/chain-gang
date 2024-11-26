@@ -12,11 +12,8 @@ use crate::{
         p2pkh::create_unlock_script,
         sighash::{sighash, SigHashCache},
     },
-    util::{Error, Hash256, Result},
-    wallet::{
-        base58_checksum::{decode_base58_checksum, encode_base58_checksum},
-        hashes::hash160,
-    },
+    util::{hash160, Error, Hash256, Result},
+    wallet::base58_checksum::{decode_base58_checksum, encode_base58_checksum},
 };
 
 pub const MAIN_PRIVATE_KEY: u8 = 0x80;
@@ -71,7 +68,7 @@ pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<Stri
         return Err(Error::BadData(err_msg));
     }
     let mut data: Vec<u8> = vec![prefix_as_bytes];
-    data.extend(hash160(public_key));
+    data.extend(hash160(public_key).0);
     Ok(encode_base58_checksum(&data))
 }
 
@@ -141,7 +138,7 @@ impl Wallet {
 
     pub fn get_locking_script(&self) -> Script {
         let serial = self.public_key_serialize();
-        p2pkh_script(&hash160(&serial))
+        p2pkh_script(&hash160(&serial).0)
     }
 
     pub fn create_unlock_script(&self, signature: &[u8]) -> Script {
