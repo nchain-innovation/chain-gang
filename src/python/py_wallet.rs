@@ -39,7 +39,7 @@ pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>> {
 pub fn bytes_to_wif(key_as_bytes: &[u8], prefix_as_bytes: u8) -> String {
     let mut wif_bytes = Vec::new();
     wif_bytes.push(prefix_as_bytes);
-    wif_bytes.extend_from_slice(&key_as_bytes);
+    wif_bytes.extend_from_slice(key_as_bytes);
     wif_bytes.push(0x01);
 
     // Encode in Base58 with checksum
@@ -120,7 +120,7 @@ pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet> {
         let mut big_int_bytes = int_rep.to_bytes_be().1;
         if big_int_bytes.len() > 32 {
             let msg = "Private key must be 32 bytes long".to_string();
-            return Err(Error::BadData(msg).into());
+            return Err(Error::BadData(msg));
         }
 
         while big_int_bytes.len() < 32 {
@@ -136,7 +136,7 @@ pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet> {
         Ok(PyWallet { wallet })
     } else {
         let msg = format!("Unknown network {}", network);
-        Err(Error::BadData(msg).into())
+        Err(Error::BadData(msg))
     }
 }
 /// This class represents the Wallet functionality,
@@ -249,8 +249,7 @@ impl PyWallet {
             .as_slice()
             .try_into()
             .expect("Private key size mismatch");
-        let scalar_hex = hex::encode(private_key_array);
-        scalar_hex
+        hex::encode(private_key_array)
     }
 
     #[classmethod]
@@ -275,7 +274,7 @@ impl PyWallet {
                 return Err(Error::BadData(msg).into());
             }
             // Convert &[u8] to a GenericArray<u8, 32>
-            let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(&key_bytes);
+            let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(key_bytes);
             let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
             let public_key = *private_key.verifying_key();
             let wallet = Wallet::new(private_key, public_key, netwrk);
@@ -322,9 +321,8 @@ impl PyWallet {
         // Use with_gil to get a reference to the Python interpreter
         Python::with_gil(|_cls| {
             // Use the bound reference to access the PyAny
-            let py_any = int_rep.as_ref();
             // Downcast the PyAny reference to PyLong
-            let py_long = py_any
+            let py_long = int_rep
                 .downcast::<PyLong>()
                 .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
                 .as_ref();
@@ -345,7 +343,7 @@ impl PyWallet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::wallet::hashes::hash160;
+    use crate::util::hash160;
 
     fn bytes_to_hexstr(bytes: &[u8]) -> String {
         bytes
@@ -435,7 +433,7 @@ mod tests {
         let public_key =
             hex::decode("036a1a87d876e0fab2f7dc19116e5d0e967d7eab71950a7de9f2afd44f77a0f7a2")
                 .unwrap();
-        let hash_public_key = hash160(&public_key);
+        let hash_public_key = hash160(&public_key).0;
 
         let pk = address_to_public_key_hash(address).unwrap();
         let pk_hexstr = bytes_to_hexstr(&pk);
