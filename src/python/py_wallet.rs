@@ -1,9 +1,12 @@
 use crate::{
     messages::Tx, // TxIn, TxOut},
     network::Network,
-    python::{
-        base58_checksum::{decode_base58_checksum, encode_base58_checksum},
+    wallet::{
         hashes::hash160,
+        base58_checksum::{decode_base58_checksum, encode_base58_checksum},
+        wallet::{public_key_to_address, wif_to_network_and_private_key, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
+    },
+    python::{
         py_tx::tx_as_pytx,
         PyScript, PyTx,
     },
@@ -33,11 +36,7 @@ use rand_core::OsRng;
 use sha2::Sha256;
 use std::num::NonZeroU32;
 
-pub const MAIN_PRIVATE_KEY: u8 = 0x80;
-pub const TEST_PRIVATE_KEY: u8 = 0xef;
 
-const MAIN_PUBKEY_HASH: u8 = 0x00;
-const TEST_PUBKEY_HASH: u8 = 0x6f;
 
 // TODO: note only tested for compressed key
 // Given a WIF, return bytes rather than SigningKey
@@ -81,34 +80,8 @@ pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
     encode_base58_checksum(&wif_bytes)
 }
 
-fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)> {
-    let decode = decode_base58_checksum(wif)?;
-    // Get first byte
-    let prefix: u8 = *decode.first().ok_or("Invalid wif length")?;
-    let network: Network = match prefix {
-        MAIN_PRIVATE_KEY => Network::BSV_Mainnet,
-        TEST_PRIVATE_KEY => Network::BSV_Testnet,
-        _ => {
-            let err_msg = format!(
-                "{:02x?} does not correspond to a mainnet nor testnet address.",
-                prefix
-            );
-            return Err(Error::BadData(err_msg));
-        }
-    };
-    // Remove prefix byte and, if present, compression flag.
-    let last_byte: u8 = *decode.last().ok_or("Invalid wif length")?;
-    let compressed: bool = wif.len() == 52 && last_byte == 1u8;
-    let private_key_as_bytes: Vec<u8> = if compressed {
-        decode[1..decode.len() - 1].to_vec()
-    } else {
-        decode[1..].to_vec()
-    };
-    let private_key = SigningKey::from_slice(&private_key_as_bytes)?;
-    Ok((network, private_key))
-}
 
-fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> Result<String> {
+pub fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> Result<String> {
     let prefix: u8 = match network {
         Network::BSV_Mainnet => MAIN_PRIVATE_KEY,
         Network::BSV_Testnet => TEST_PRIVATE_KEY,
@@ -124,29 +97,6 @@ fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> 
     data.extend_from_slice(&pk_data);
     data.push(0x01);
     Ok(encode_base58_checksum(data.as_slice()))
-}
-
-// Given public_key and network return address as a string
-pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String> {
-    let prefix_as_bytes: u8 = match network {
-        Network::BSV_Mainnet => MAIN_PUBKEY_HASH,
-        Network::BSV_Testnet => TEST_PUBKEY_HASH,
-        _ => {
-            let err_msg = format!("{} unknnown network.", &network);
-            return Err(Error::BadData(err_msg));
-        }
-    };
-    // # 33 bytes compressed, 65 uncompressed.
-    if public_key.len() != 33 && public_key.len() != 65 {
-        let err_msg = format!(
-            "{} is an invalid length for a public key.",
-            public_key.len()
-        );
-        return Err(Error::BadData(err_msg));
-    }
-    let mut data: Vec<u8> = vec![prefix_as_bytes];
-    data.extend(hash160(public_key));
-    Ok(encode_base58_checksum(&data))
 }
 
 pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>> {

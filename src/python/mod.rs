@@ -1,8 +1,6 @@
 use pyo3::Bound;
 use pyo3::{prelude::*, types::PyBytes};
 
-mod base58_checksum;
-mod hashes;
 mod op_code_names;
 mod py_script;
 mod py_stack;
@@ -12,14 +10,18 @@ mod py_wallet;
 use crate::{
     messages::Tx,
     network::Network,
-    python::{
+    wallet::{
+        TEST_PRIVATE_KEY, MAIN_PRIVATE_KEY,
+        public_key_to_address,
         hashes::{hash160, sha256d},
+    },
+    python::{
         py_script::PyScript,
         py_stack::{decode_num_stack, PyStack},
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{
             address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript,
-            public_key_to_address, wif_to_bytes, PyWallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
+            wif_to_bytes, PyWallet,
         },
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
