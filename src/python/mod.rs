@@ -1,8 +1,6 @@
 use pyo3::Bound;
 use pyo3::{prelude::*, types::PyBytes};
 
-mod base58_checksum;
-mod hashes;
 mod op_code_names;
 mod py_script;
 mod py_stack;
@@ -13,18 +11,18 @@ use crate::{
     messages::Tx,
     network::Network,
     python::{
-        hashes::{hash160, sha256d},
         py_script::PyScript,
         py_stack::{decode_num_stack, PyStack},
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{
-            address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript,
-            public_key_to_address, wif_to_bytes, PyWallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
+            address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript, wif_to_bytes,
+            PyWallet,
         },
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
-    transaction::sighash::{sig_hash_preimage, sighash, SigHashCache},
-    util::{Error, Hash256},
+    transaction::sighash::{sig_hash_preimage, SigHashCache},
+    util::{hash160, sha256d, Error, Hash256},
+    wallet::{create_sighash, public_key_to_address, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
 };
 
 pub type Bytes = Vec<u8>;
@@ -36,13 +34,13 @@ fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
 
 #[pyfunction(name = "hash160")]
 pub fn py_hash160(py: Python, data: &[u8]) -> PyObject {
-    let result = hash160(data);
+    let result = hash160(data).0;
     PyBytes::new_bound(py, &result).into()
 }
 
 #[pyfunction(name = "hash256d")]
 pub fn py_hash256d(py: Python, data: &[u8]) -> PyObject {
-    let result = sha256d(data);
+    let result = sha256d(data).0;
     PyBytes::new_bound(py, &result).into()
 }
 
@@ -131,15 +129,9 @@ fn py_script_eval_pystack(
     let mut script = Script::new();
     script.append_slice(py_script);
     // Handle stack and alt_stack parameters with match
-    let main_stack = match stack_param {
-        Some(py_stack_main) => Some(py_stack_main.to_stack()), // Use the provided PyStack if available
-        None => None, // Otherwise, initialize an empty stack
-    };
+    let main_stack = stack_param.map(|py_stack_main| py_stack_main.to_stack());
 
-    let alternative_stack = match alt_stack_param {
-        Some(alt_stack_param) => Some(alt_stack_param.to_stack()), // Use provided alt stack if available
-        None => None, // Otherwise, initialize an empty alt stack
-    };
+    let alternative_stack = alt_stack_param.map(|alt_stack_param| alt_stack_param.to_stack());
 
     // Pick the appropriate transaction checker
     let (main_stack, alt_stack, prog_counter) = match z {
@@ -205,17 +197,18 @@ pub fn py_sig_hash_preimage(
     index: usize,
     script_pubkey: PyScript,
     prev_amount: i64,
-    sighash_value: u8,
+    sighash_flags: u8,
 ) -> PyResult<PyObject> {
     let input_tx: Tx = tx.as_tx();
     let prev_lock_script: Script = script_pubkey.as_script();
+
     let mut cache = SigHashCache::new();
     let sigh_hash = sig_hash_preimage(
         &input_tx,
         index,
         &prev_lock_script.0,
         prev_amount,
-        sighash_value,
+        sighash_flags,
         &mut cache,
     );
     let bytes = PyBytes::new_bound(_py, &sigh_hash.unwrap());
@@ -243,15 +236,15 @@ pub fn py_sig_hash(
 ) -> PyResult<PyObject> {
     let input_tx = tx.as_tx();
     let prev_lock_script = script_pubkey.as_script();
-    let mut cache = SigHashCache::new();
-    let full_sig_hash = sighash(
+
+    let full_sig_hash = create_sighash(
         &input_tx,
         index,
-        &prev_lock_script.0,
+        &prev_lock_script,
         prev_amount,
         sighash_flags,
-        &mut cache,
     );
+
     let bytes = PyBytes::new_bound(_py, &full_sig_hash.unwrap().0);
     Ok(bytes.into())
 }
@@ -289,12 +282,10 @@ pub fn py_generate_wif_from_pw_nonce(
     let network = network.unwrap_or("BSV_Testnet");
 
     // Example logic: derive WIF based on password, nonce, and network
-    let wif = match network {
+    match network {
         "BSV_Mainnet" => generate_wif(password, nonce, "BSV_Mainnet"),
         _ => generate_wif(password, nonce, "BSV_Testnet"), // Default to "testnet"
-    };
-
-    wif
+    }
 }
 
 /// A Python module for interacting with the Rust chain-gang BSV script interpreter

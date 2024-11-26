@@ -1,6 +1,5 @@
 use crate::util::{Error, Result, Serializable};
 use hex;
-// use ring::digest::{digest, SHA256};
 use sha2::{Digest, Sha256};
 use std::{
     cmp::Ordering,
