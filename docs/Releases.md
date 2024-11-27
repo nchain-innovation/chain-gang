@@ -39,3 +39,4 @@
 * v0.6.8 - Updates to the script interpreter to support a debugger, python interface to the rust stack implementation, Context updates to support a debugger
 * v0.6.9 - Rust Wallet functionality - CI build failure
 * v0.6.10 - Try again
+* v0.6.11 - Try again
