@@ -37,4 +37,5 @@
 * v0.6.6 - wif_to_bytes wallet function added TxIn to Output function added, minor version bump (forgot to bump the version in cargo.toml)
 * v0.6.7 - additional wallet functions added to support WildBits
 * v0.6.8 - Updates to the script interpreter to support a debugger, python interface to the rust stack implementation, Context updates to support a debugger
-* v0.6.9 - Rust Wallet functionality
+* v0.6.9 - Rust Wallet functionality - CI build failure
+* v0.6.10 - Try again
