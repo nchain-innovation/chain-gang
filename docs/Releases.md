@@ -41,3 +41,4 @@
 * v0.6.10 - Try again
 * v0.6.11 - Try again
 * v0.6.12 - Try again - now with CI changes
+* v0.6.13 - Try again - now min Python version 3.11
