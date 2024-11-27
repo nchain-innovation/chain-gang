@@ -40,3 +40,4 @@
 * v0.6.9 - Rust Wallet functionality - CI build failure
 * v0.6.10 - Try again
 * v0.6.11 - Try again
+* v0.6.12 - Try again - now with CI changes
