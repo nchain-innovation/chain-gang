@@ -19,6 +19,10 @@ env:
   PYO3_USE_ABI3_FORWARD_COMPATIBILITY: 1
   UNSAFE_PYO3_BUILD_FREE_THREADED: 1
 
+# When these env vars are removed some of the platforms can be enabled
+# below. 
+# They have had to be disabled as they didn't read these env vars.
+
 permissions:
   contents: read
 
@@ -33,14 +37,14 @@ jobs:
             target: x86_64
           - runner: ubuntu-latest
             target: x86
-          - runner: ubuntu-latest
-            target: aarch64
+          #- runner: ubuntu-latest
+          #  target: aarch64
           - runner: ubuntu-latest
             target: armv7
-          - runner: ubuntu-latest
-            target: s390x
-          - runner: ubuntu-latest
-            target: ppc64le
+          #- runner: ubuntu-latest
+          #  target: s390x
+          #- runner: ubuntu-latest
+          #  target: ppc64le
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
