@@ -42,3 +42,4 @@
 * v0.6.11 - Try again
 * v0.6.12 - Try again - now with CI changes
 * v0.6.13 - Try again - now min Python version 3.11
+* v0.6.14 - Try again - remove platforms that did not read env vars
