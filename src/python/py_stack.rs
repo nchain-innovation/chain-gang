@@ -1,8 +1,14 @@
 use crate::script::stack::{decode_num, decode_number_combined, encode_bigint, Stack};
 use num_bigint::BigInt;
-use pyo3::exceptions::{PyIndexError, PyValueError};
-use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyLong};
+use pyo3::{
+    exceptions::{PyIndexError, PyValueError},
+    prelude::*,
+    types::{PyDict, PyList, PyInt},
+};
+
+//use std::ffi::CStr;
+use std::ffi::CString;
+
 #[pyclass(name = "Stack", get_all, set_all, dict)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyStack {
@@ -26,8 +32,8 @@ impl PyStack {
     fn push_bytes_integer(&mut self, _py: Python, item: &Bound<'_, PyList>) -> PyResult<()> {
         for val in item.iter() {
             let py_long = val
-                .downcast::<PyLong>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
+                .downcast::<PyInt>()
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
                 .as_ref();
 
             let big_int_str = py_long.str()?.to_str()?.to_owned();
@@ -57,7 +63,7 @@ impl PyStack {
     }
 
     #[pyo3(signature = (index=None))]
-    fn decode_element(&mut self, py: Python<'_>, index: Option<usize>) -> PyResult<Py<PyLong>> {
+    fn decode_element(&mut self, py: Python<'_>, index: Option<usize>) -> PyResult<Py<PyInt>> {
         // Set default index to 0 if not provided (i.e., the top element)
         let idx = index.unwrap_or(0);
         // Check if the index is within bounds
@@ -74,11 +80,14 @@ impl PyStack {
         // Convert the large integer to a string (Python handles large integers from strings well)
         let result_str = elem_num.to_string();
         // Create a new PyDict for globals
-        let globals = PyDict::new_bound(py);
+        let globals = PyDict::new(py);
+
         // Use Python's built-in int() constructor to convert the string to a Python integer
-        let py_int = py.eval_bound(&format!("int('{}')", result_str), Some(&globals), None)?;
-        // Cast to PyLong and return
-        Ok((*py_int.downcast::<PyLong>()?).clone().into())
+        let input  = CString::new(format!("int('{}')", result_str))?;
+        let py_int = py.eval(&input, Some(&globals), None)?;
+        
+        // Cast to PyInt and return
+        Ok((*py_int.downcast::<PyInt>()?).clone().into())
     }
 
     // Display the Stack contents as a string
@@ -108,13 +117,13 @@ impl PyStack {
         //if let Ok(item) = array.iter() {
         for item in array.iter() {
             let py_long = item
-                .downcast::<PyLong>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
+                .downcast::<PyInt>()
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
                 .as_ref();
 
-            // Convert PyLong to BigInt
+            // Convert PyInt to BigInt
             //let big_int = BigInt::from_py(py_long);
-            // Convert the PyLong into a BigInt using to_string
+            // Convert the PyInt into a BigInt using to_string
             let big_int_str = py_long.str()?.to_str()?.to_owned();
             // Convert the string to a Rust BigInt (assumption is base-10)
             let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
@@ -134,8 +143,8 @@ impl PyStack {
 
         for item in array.iter() {
             let py_long = item
-                .downcast::<PyLong>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
+                .downcast::<PyInt>()
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
                 .as_ref();
             let val: u8 = py_long.extract()?;
             inner_stack.push(val);

@@ -230,7 +230,7 @@ impl PyTx {
     fn hash(&self, py: Python<'_>) -> PyResult<PyObject> {
         let tx = self.as_tx();
         let hash = tx.hash();
-        let bytes = PyBytes::new_bound(py, &hash.0);
+        let bytes = PyBytes::new(py, &hash.0);
         Ok(bytes.into())
     }
 
@@ -245,7 +245,7 @@ impl PyTx {
         let mut v = Vec::new();
         let tx = self.as_tx();
         tx.write(&mut v)?;
-        let bytes = PyBytes::new_bound(py, &v);
+        let bytes = PyBytes::new(py, &v);
         Ok(bytes.into())
     }
 

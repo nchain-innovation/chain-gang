@@ -3,7 +3,7 @@
 
 import unittest
 
-from tx_engine import Script, Context, p2pkh_script, hash160
+from tx_engine import Script, Context, p2pkh_script, hash160, Stack
 from tx_engine.engine.op_codes import OP_PUSHDATA4, OP_DUP, OP_HASH160
 
 
@@ -20,8 +20,12 @@ class ScriptTest(unittest.TestCase):
         context = Context(script=combined_sig)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.stack.size(), 2)
+        print("-----")
+        print(type(context.stack))
 
-        assert isinstance(context.stack[0], list)
+        print("-----")
+
+        assert isinstance(context.stack[0], Stack)
         self.assertEqual(len(context.stack[0]), 0x47)
         assert isinstance(context.stack[1], list)
         self.assertEqual(len(context.stack[1]), 0x41)

@@ -28,9 +28,10 @@ class IfTest(unittest.TestCase):
         # should evaluate to True
         self.assertTrue(context.evaluate())
 
-        script = Script([OP_0, OP_1, OP_IF, OP_0, OP_ENDIF])
+        script = Script([OP_1, OP_IF, OP_0, OP_ENDIF])
         context = Context(script=script)
         # should evaluate to False (OP_0)
+
         self.assertFalse(context.evaluate())
 
     def test_if_else_endif(self):
