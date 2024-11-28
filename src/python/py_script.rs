@@ -174,7 +174,7 @@ impl PyScript {
 impl fmt::Debug for PyScript {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let script = self.as_script();
-        let ret = script.string_representation(None);
+        let ret = script.string_representation(false);
         f.write_str(&ret)
     }
 }
@@ -182,7 +182,7 @@ impl fmt::Debug for PyScript {
 impl fmt::Display for PyScript {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let script = self.as_script();
-        let ret = script.string_representation(None);
+        let ret = script.string_representation(false);
         f.write_str(&ret)
     }
 }
@@ -265,7 +265,7 @@ impl PyScript {
 
     fn to_debug_parser_string(&self) -> String {
         let script = self.as_script();
-        script.string_representation(Some(true))
+        script.string_representation(true)
     }
 
     /// Add two scripts together to produce a new script
