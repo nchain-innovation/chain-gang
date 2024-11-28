@@ -80,7 +80,7 @@ class Context:
         """ Return the get_altstack as human readable
         """
         return self.alt_stack
-    
+
     def get_stack_hex(self) -> List[str]:
         return self.stack.get_stack_hex()
 
