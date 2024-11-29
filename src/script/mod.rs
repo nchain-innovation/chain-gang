@@ -118,10 +118,11 @@ impl Script {
     }
 
     // Used by PyScript
-    pub fn string_representation(&self) -> String {
+    pub fn string_representation(&self, include_byte_offsets: bool) -> String {
         let script = &self.0;
         let mut ret = String::new();
         let mut i = 0;
+    
         while i < script.len() {
             if i != 0 {
                 ret.push(' ')
@@ -148,7 +149,16 @@ impl Script {
                 len @ 1..=75 => {
                     if i + 1 + len as usize <= script.len() {
                         ret.push_str("0x");
-                        ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));
+
+                        if include_byte_offsets {
+                            // include the byte length of the data
+                            ret.push_str(&hex::encode(&script[i..i + 1 + len as usize]));
+                        }
+                        else{
+                            // exclude the byte length of the data
+                            ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));
+                        }
+                        
                     } else {
                         break;
                     }
