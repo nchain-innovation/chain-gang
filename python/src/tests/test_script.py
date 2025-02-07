@@ -3,7 +3,7 @@
 
 import unittest
 
-from tx_engine import Script, Context, p2pkh_script, hash160, Stack
+from tx_engine import Script, Context, p2pkh_script, hash160
 from tx_engine.engine.op_codes import OP_PUSHDATA4, OP_DUP, OP_HASH160
 
 
@@ -20,14 +20,10 @@ class ScriptTest(unittest.TestCase):
         context = Context(script=combined_sig)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.stack.size(), 2)
-        print("-----")
-        print(type(context.stack))
 
-        print("-----")
-
-        assert isinstance(context.stack[0], Stack)
+        assert isinstance(context.stack[0], bytes)
         self.assertEqual(len(context.stack[0]), 0x47)
-        assert isinstance(context.stack[1], list)
+        assert isinstance(context.stack[1], bytes)
         self.assertEqual(len(context.stack[1]), 0x41)
 
         serial = combined_sig.serialize()
@@ -37,9 +33,9 @@ class ScriptTest(unittest.TestCase):
         context = Context(script=s3)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.stack.size(), 2)
-        assert isinstance(context.stack[0], list)
+        assert isinstance(context.stack[0], bytes)
         self.assertEqual(len(context.stack[0]), 0x47)
-        assert isinstance(context.stack[1], list)
+        assert isinstance(context.stack[1], bytes)
         self.assertEqual(len(context.stack[1]), 0x41)
 
     def test_new_script(self):
