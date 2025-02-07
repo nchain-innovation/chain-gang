@@ -6,12 +6,12 @@ from enum import Enum
 class SIGHASH(int, Enum):
     """ SigHash flags for details see https://wiki.bitcoinsv.io/index.php/SIGHASH_flags
     """
-    ALL: int = 0x01
-    NONE: int = 0x02
-    SINGLE: int = 0x03
-    ANYONECANPAY: int = 0x80
+    ALL = 0x01
+    NONE = 0x02
+    SINGLE = 0x03
+    ANYONECANPAY = 0x80
 
-    FORKID: int = 0x40
+    FORKID = 0x40
 
     ALL_FORKID = ALL | FORKID
     NONE_FORKID = NONE | FORKID
