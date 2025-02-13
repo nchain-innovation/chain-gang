@@ -21,9 +21,9 @@ class ScriptTest(unittest.TestCase):
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.stack.size(), 2)
 
-        assert isinstance(context.stack[0], list)
+        assert isinstance(context.stack[0], bytes)
         self.assertEqual(len(context.stack[0]), 0x47)
-        assert isinstance(context.stack[1], list)
+        assert isinstance(context.stack[1], bytes)
         self.assertEqual(len(context.stack[1]), 0x41)
 
         serial = combined_sig.serialize()
@@ -33,9 +33,9 @@ class ScriptTest(unittest.TestCase):
         context = Context(script=s3)
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.stack.size(), 2)
-        assert isinstance(context.stack[0], list)
+        assert isinstance(context.stack[0], bytes)
         self.assertEqual(len(context.stack[0]), 0x47)
-        assert isinstance(context.stack[1], list)
+        assert isinstance(context.stack[1], bytes)
         self.assertEqual(len(context.stack[1]), 0x41)
 
     def test_new_script(self):

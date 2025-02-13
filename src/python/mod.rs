@@ -35,19 +35,19 @@ fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
 #[pyfunction(name = "hash160")]
 pub fn py_hash160(py: Python, data: &[u8]) -> PyObject {
     let result = hash160(data).0;
-    PyBytes::new_bound(py, &result).into()
+    PyBytes::new(py, &result).into()
 }
 
 #[pyfunction(name = "hash256d")]
 pub fn py_hash256d(py: Python, data: &[u8]) -> PyObject {
     let result = sha256d(data).0;
-    PyBytes::new_bound(py, &result).into()
+    PyBytes::new(py, &result).into()
 }
 
 #[pyfunction(name = "address_to_public_key_hash")]
 pub fn py_address_to_public_key_hash(py: Python, address: &str) -> PyResult<PyObject> {
     let result = address_to_public_key_hash(address)?;
-    Ok(PyBytes::new_bound(py, &result).into())
+    Ok(PyBytes::new(py, &result).into())
 }
 
 #[pyfunction(name = "public_key_to_address")]
@@ -211,7 +211,7 @@ pub fn py_sig_hash_preimage(
         sighash_flags,
         &mut cache,
     );
-    let bytes = PyBytes::new_bound(_py, &sigh_hash.unwrap());
+    let bytes = PyBytes::new(_py, &sigh_hash.unwrap());
     Ok(bytes.into())
 }
 
@@ -245,14 +245,14 @@ pub fn py_sig_hash(
         sighash_flags,
     );
 
-    let bytes = PyBytes::new_bound(_py, &full_sig_hash.unwrap().0);
+    let bytes = PyBytes::new(_py, &full_sig_hash.unwrap().0);
     Ok(bytes.into())
 }
 
 #[pyfunction(name = "wif_to_bytes")]
 pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<PyObject> {
     let key_bytes = wif_to_bytes(wif)?;
-    let bytes = PyBytes::new_bound(py, &key_bytes);
+    let bytes = PyBytes::new(py, &key_bytes);
     Ok(bytes.into())
 }
 

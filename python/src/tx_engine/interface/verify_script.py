@@ -7,7 +7,7 @@ from typing import Dict, Any
 class ScriptFlags(int, Enum):
     """ Script Verification flags, for details see bitcoin source code src/script/script_flags.h
     """
-    SCRIPT_VERIFY_NONE: int = 0
+    SCRIPT_VERIFY_NONE = 0
 
     ''' Evaluate P2SH subscripts (softfork safe, BIP16).
     '''

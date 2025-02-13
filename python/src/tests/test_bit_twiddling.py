@@ -30,7 +30,7 @@ class BitTwiddlingTests(unittest.TestCase):
         script = Script([OP_1, OP_3, OP_AND])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.get_stack()[0], [1])
+        self.assertEqual(context.get_stack(), Stack([[1]]))
 
     def test_and_part2(self):
         """ Check of bitwise AND

@@ -16,10 +16,12 @@ use k256::{ecdsa::SigningKey, elliptic_curve::generic_array::GenericArray};
 use num_bigint::{BigInt, Sign};
 use pyo3::{
     prelude::*,
-    types::{PyDict, PyLong, PyType},
+    types::{PyDict, PyInt, PyType},
 };
 
 use typenum::U32;
+//use std::ffi::CStr;
+use std::ffi::CString;
 
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
@@ -217,7 +219,7 @@ impl PyWallet {
         format!("{}", self.wallet.network)
     }
 
-    fn to_int(&self, py: Python<'_>) -> PyResult<Py<PyLong>> {
+    fn to_int(&self, py: Python<'_>) -> PyResult<Py<PyInt>> {
         // Convert the private key into bytes
         let private_key_bytes = self.wallet.private_key.to_bytes();
         // Convert GenericArray<u8, _> to [u8; 32]
@@ -233,12 +235,14 @@ impl PyWallet {
         let result_str = big_int_signed_rep.to_string();
 
         // Create a new PyDict for globals
-        let globals = PyDict::new_bound(py);
-        // Use Python's built-in int() constructor to convert the string to a Python integer
-        let py_int = py.eval_bound(&format!("int('{}')", result_str), Some(&globals), None)?;
+        let globals = PyDict::new(py);
 
-        // Cast to PyLong and return
-        Ok((*py_int.downcast::<PyLong>()?).clone().into())
+        // Use Python's built-in int() constructor to convert the string to a Python integer
+        let input  = CString::new(format!("int('{}')", result_str))?;
+        let py_int = py.eval(&input, Some(&globals), None)?;
+
+        // Cast to PyInt and return
+        Ok((*py_int.downcast::<PyInt>()?).clone().into())
     }
 
     fn to_hex(&self) -> String {
@@ -321,13 +325,13 @@ impl PyWallet {
         // Use with_gil to get a reference to the Python interpreter
         Python::with_gil(|_cls| {
             // Use the bound reference to access the PyAny
-            // Downcast the PyAny reference to PyLong
+            // Downcast the PyAny reference to PyInt
             let py_long = int_rep
-                .downcast::<PyLong>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
+                .downcast::<PyInt>()
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
                 .as_ref();
 
-            // Convert the PyLong into a BigInt using to_string
+            // Convert the PyInt into a BigInt using to_string
             let big_int_str = py_long.str()?.to_str()?.to_owned();
 
             // Convert the string to a Rust BigInt (assumption is base-10)

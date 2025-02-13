@@ -1,6 +1,6 @@
 use pyo3::{
     prelude::*,
-    types::{PyBytes, PyLong, PyType},
+    types::{PyBytes, PyInt, PyType},
 };
 use regex::Regex;
 use std::{
@@ -202,7 +202,7 @@ impl PyScript {
         let mut v: Vec<u8> = Vec::new();
         v.write_all(&self.cmds)?;
 
-        let bytes = PyBytes::new_bound(py, &v);
+        let bytes = PyBytes::new(py, &v);
         Ok(bytes.into())
     }
 
@@ -215,13 +215,13 @@ impl PyScript {
         var_int::write(length.try_into()?, &mut a)?;
         a.append(&mut script);
 
-        let bytes = PyBytes::new_bound(py, &a);
+        let bytes = PyBytes::new(py, &a);
         Ok(bytes.into())
     }
 
     /// Return a copy of the commands in this script
     fn get_commands(&self, py: Python<'_>) -> PyObject {
-        PyBytes::new_bound(py, &self.cmds).into()
+        PyBytes::new(py, &self.cmds).into()
     }
 
     /// Return a string presentation of the script
@@ -337,13 +337,13 @@ impl PyScript {
         // Use with_gil to get a reference to the Python interpreter
         //Python::with_gil(|_cls| {
         // Use the bound reference to access the PyAny
-        // Downcast the PyAny reference to PyLong
+        // Downcast the PyAny reference to PyInt
         let py_long = int_rep
-            .downcast::<PyLong>()
-            .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyLong"))?
+            .downcast::<PyInt>()
+            .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
             .as_ref();
 
-        // Convert the PyLong into a BigInt using to_string
+        // Convert the PyInt into a BigInt using to_string
         let big_int_str = py_long.str()?.to_str()?.to_owned();
 
         // Convert the string to a Rust BigInt (assumption is base-10)

@@ -7,6 +7,12 @@ from tx_engine.engine.op_codes import (
 )
 
 
+def values_to_bytes(values: list[int]) -> bytes:
+    """ Converts a list of ints to bytes
+    """
+    return b''.join(map(lambda x: x.to_bytes(1), values))
+
+
 class ParseTest(unittest.TestCase):
     """ Tests of parsing scripts
     """
@@ -54,20 +60,21 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(context.get_stack(), Stack([[1], [2]]))
 
     def test_numbers(self):
+
         script1 = Script.parse_string("1")
-        self.assertEqual(script1.cmds, [OP_1])
+        self.assertEqual(script1.cmds, values_to_bytes([OP_1]))
 
         script1 = Script.parse_string("16")
-        self.assertEqual(script1.cmds, [OP_16])
+        self.assertEqual(script1.cmds, values_to_bytes([OP_16]))
 
         script1 = Script.parse_string("-1")
-        self.assertEqual(script1.cmds, [OP_1NEGATE])
+        self.assertEqual(script1.cmds, values_to_bytes([OP_1NEGATE]))
 
         script1 = Script.parse_string("17")
-        self.assertEqual(script1.cmds, [1, 17])
+        self.assertEqual(script1.cmds, values_to_bytes([1, 17]))
 
         script1 = Script.parse_string("1000")
-        self.assertEqual(script1.cmds, [2, 232, 3])
+        self.assertEqual(script1.cmds, values_to_bytes([2, 232, 3]))
 
 
 if __name__ == '__main__':
