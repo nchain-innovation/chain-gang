@@ -107,7 +107,7 @@ pub struct TransactionChecker<'a> {
     pub require_sighash_forkid: bool,
 }
 
-impl<'a> Checker for TransactionChecker<'a> {
+impl Checker for TransactionChecker<'_> {
     // Given a signature and public key, check signature matches signed script hash
     fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], script: &[u8]) -> Result<bool> {
         if sig.is_empty() {

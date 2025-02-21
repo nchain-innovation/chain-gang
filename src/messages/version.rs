@@ -98,7 +98,7 @@ impl Serializable<Version> for Version {
         self.recv_addr.write(writer)?;
         self.tx_addr.write(writer)?;
         writer.write_u64::<LittleEndian>(self.nonce)?;
-        var_int::write(self.user_agent.as_bytes().len() as u64, writer)?;
+        var_int::write(self.user_agent.len() as u64, writer)?;
         writer.write_all(self.user_agent.as_bytes())?;
         writer.write_i32::<LittleEndian>(self.start_height)?;
         writer.write_u8(u8::from(self.relay))?;
@@ -115,8 +115,8 @@ impl Payload<Version> for Version {
     fn size(&self) -> usize {
         33 + self.recv_addr.size()
             + self.tx_addr.size()
-            + var_int::size(self.user_agent.as_bytes().len() as u64)
-            + self.user_agent.as_bytes().len()
+            + var_int::size(self.user_agent.len() as u64)
+            + self.user_agent.len()
             // Check to see if there is an association_id to write
             + if !self.association_id.is_empty() {
                 self.association_id.len() + 1

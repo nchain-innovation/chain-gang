@@ -9,14 +9,14 @@ pub struct AtomicReader<'a> {
     reader: &'a mut dyn Read,
 }
 
-impl<'a> AtomicReader<'a> {
+impl AtomicReader<'_> {
     pub fn new(reader: &mut dyn Read) -> AtomicReader {
         let buf = Vec::new();
         AtomicReader { buf, reader }
     }
 }
 
-impl<'a> Read for AtomicReader<'a> {
+impl Read for AtomicReader<'_> {
     fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
         let buf_len = self.buf.len();
         let out_len = out.len();

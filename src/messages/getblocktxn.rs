@@ -6,7 +6,7 @@ use crate::util::{var_int, Hash256, Result, Serializable};
 
 /// getblocktxn defined in <https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki>
 /// The getblocktxn message is defined as a message containing a serialized BlockTransactionsRequest message and pchCommand == "getblocktxn".
-
+///
 /// getblocktxn payload - BlockTransactionsRequest
 #[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]
 pub struct Getblocktxn {
