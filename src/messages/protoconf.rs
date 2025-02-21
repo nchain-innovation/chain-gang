@@ -82,8 +82,7 @@ impl Payload<Protoconf> for Protoconf {
         if self.version > VERSION_1 {
             let stream_policies = self.stream_policies.as_ref().unwrap();
 
-            base_size += var_int::size(stream_policies.len() as u64)
-                + stream_policies.len();
+            base_size += var_int::size(stream_policies.len() as u64) + stream_policies.len();
         }
         base_size
     }
