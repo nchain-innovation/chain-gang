@@ -68,7 +68,7 @@ impl Serializable<Protoconf> for Protoconf {
         writer.write_u32::<LittleEndian>(self.max_recv_payload_length)?;
         if self.version > VERSION_1 {
             let stream_policies = self.stream_policies.as_ref().unwrap();
-            var_int::write(stream_policies.as_bytes().len() as u64, writer)?;
+            var_int::write(stream_policies.len() as u64, writer)?;
             writer.write_all(stream_policies.as_bytes())?;
         }
         Ok(())
@@ -82,8 +82,7 @@ impl Payload<Protoconf> for Protoconf {
         if self.version > VERSION_1 {
             let stream_policies = self.stream_policies.as_ref().unwrap();
 
-            base_size += var_int::size(stream_policies.as_bytes().len() as u64)
-                + stream_policies.as_bytes().len();
+            base_size += var_int::size(stream_policies.len() as u64) + stream_policies.len();
         }
         base_size
     }

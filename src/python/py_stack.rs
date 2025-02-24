@@ -3,7 +3,7 @@ use num_bigint::BigInt;
 use pyo3::{
     exceptions::{PyIndexError, PyValueError},
     prelude::*,
-    types::{PyDict, PyList, PyInt},
+    types::{PyDict, PyInt, PyList},
 };
 
 //use std::ffi::CStr;
@@ -83,9 +83,9 @@ impl PyStack {
         let globals = PyDict::new(py);
 
         // Use Python's built-in int() constructor to convert the string to a Python integer
-        let input  = CString::new(format!("int('{}')", result_str))?;
+        let input = CString::new(format!("int('{}')", result_str))?;
         let py_int = py.eval(&input, Some(&globals), None)?;
-        
+
         // Cast to PyInt and return
         Ok((*py_int.downcast::<PyInt>()?).clone().into())
     }

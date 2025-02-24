@@ -25,7 +25,9 @@ use std::ffi::CString;
 
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
-use rand_core::OsRng;
+
+use rand::rngs::OsRng;
+
 use sha2::Sha256;
 use std::num::NonZeroU32;
 
@@ -238,7 +240,7 @@ impl PyWallet {
         let globals = PyDict::new(py);
 
         // Use Python's built-in int() constructor to convert the string to a Python integer
-        let input  = CString::new(format!("int('{}')", result_str))?;
+        let input = CString::new(format!("int('{}')", result_str))?;
         let py_int = py.eval(&input, Some(&globals), None)?;
 
         // Cast to PyInt and return

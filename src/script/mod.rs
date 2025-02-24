@@ -122,7 +122,7 @@ impl Script {
         let script = &self.0;
         let mut ret = String::new();
         let mut i = 0;
-    
+
         while i < script.len() {
             if i != 0 {
                 ret.push(' ')
@@ -153,12 +153,10 @@ impl Script {
                         if include_byte_offsets {
                             // include the byte length of the data
                             ret.push_str(&hex::encode(&script[i..i + 1 + len as usize]));
-                        }
-                        else{
+                        } else {
                             // exclude the byte length of the data
                             ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));
                         }
-                        
                     } else {
                         break;
                     }

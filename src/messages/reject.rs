@@ -72,10 +72,10 @@ impl Serializable<Reject> for Reject {
     }
 
     fn write(&self, writer: &mut dyn Write) -> io::Result<()> {
-        var_int::write(self.message.as_bytes().len() as u64, writer)?;
+        var_int::write(self.message.len() as u64, writer)?;
         writer.write_all(self.message.as_bytes())?;
         writer.write_u8(self.code)?;
-        var_int::write(self.reason.as_bytes().len() as u64, writer)?;
+        var_int::write(self.reason.len() as u64, writer)?;
         writer.write_all(self.reason.as_bytes())?;
         writer.write_all(&self.data)?;
         Ok(())
@@ -84,11 +84,11 @@ impl Serializable<Reject> for Reject {
 
 impl Payload<Reject> for Reject {
     fn size(&self) -> usize {
-        var_int::size(self.message.as_bytes().len() as u64)
-            + self.message.as_bytes().len()
+        var_int::size(self.message.len() as u64)
+            + self.message.len()
             + 1
-            + var_int::size(self.reason.as_bytes().len() as u64)
-            + self.reason.as_bytes().len()
+            + var_int::size(self.reason.len() as u64)
+            + self.reason.len()
             + self.data.len()
     }
 }
