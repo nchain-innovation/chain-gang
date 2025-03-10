@@ -23,6 +23,7 @@ def create_wallet_from_pem_file(pem_file_path: str, network: str) -> Wallet:
 def create_wallet_from_pem_bytes(pem_data: bytes, network: str) -> Wallet:
     # Load the private key from the PEM data
     private_key = load_pem_private_key(pem_data, password=None, backend=default_backend())
+    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
 
     # Extract the private numbers (this includes the scalar/private key value)
     private_numbers = private_key.private_numbers()
