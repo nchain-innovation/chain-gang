@@ -10,7 +10,7 @@ use crate::{
     transaction::{
         generate_signature,
         p2pkh::create_unlock_script,
-        sighash::{sighash, SigHashCache},
+        sighash::{sighash, sighash_checksig_index, SigHashCache},
     },
     util::{hash160, Error, Hash256, Result},
     wallet::base58_checksum::{decode_base58_checksum, encode_base58_checksum},
@@ -93,6 +93,28 @@ pub fn create_sighash(
         tx,
         n_input,
         &prev_lock_script.0,
+        prev_amount,
+        sighash_flags,
+        &mut cache,
+    )?;
+    Ok(sighash)
+}
+
+pub fn create_sighash_checksig_index(
+    tx: &Tx,
+    n_input: usize,
+    prev_lock_script: &Script,
+    checksig_index: usize,
+    prev_amount: i64,
+    sighash_flags: u8,
+) -> Result<Hash256> {
+    let mut cache = SigHashCache::new();
+
+    let sighash = sighash_checksig_index(
+        tx,
+        n_input,
+        &prev_lock_script.0,
+        checksig_index,
         prev_amount,
         sighash_flags,
         &mut cache,
@@ -185,6 +207,47 @@ impl Wallet {
         Ok(())
     }
 
+    // As above sign_tx_input
+    pub fn sign_tx_input_checksig_index(
+        &self,
+        tx_in: &Tx,
+        tx: &mut Tx,
+        index: usize,
+        sighash_flags: u8,
+        checksig_index: usize,
+    ) -> Result<()> {
+        // Check correct input tx provided
+        let prev_hash = tx.inputs[index].prev_output.hash;
+        if prev_hash != tx_in.hash() {
+            let err_msg = format!("Unable to find input tx {:?}", &prev_hash);
+            return Err(Error::BadData(err_msg));
+        }
+        // Gather data for sighash
+        let prev_index: usize = tx.inputs[index]
+            .prev_output
+            .index
+            .try_into()
+            .expect("Unable to convert prev_index into usize");
+        let prev_amount = tx_in.outputs[prev_index].satoshis;
+        let prev_lock_script = &tx_in.outputs[prev_index].lock_script;
+
+        let sighash = create_sighash_checksig_index(
+            tx,
+            index,
+            prev_lock_script,
+            checksig_index,
+            prev_amount,
+            sighash_flags,
+        )?;
+        // Sign sighash
+        let signature = self.sign_sighash(sighash, sighash_flags)?;
+
+        // Create unlocking script for input
+        tx.inputs[index].unlock_script = self.create_unlock_script(&signature);
+        Ok(())
+    }
+
+
     pub fn sign_tx_sighash_flags(
         &mut self,
         index: usize,
@@ -196,4 +259,19 @@ impl Wallet {
         self.sign_tx_input(&input_tx, &mut new_tx, index, sighash_flags)?;
         Ok(new_tx)
     }
+
+
+    pub fn sign_tx_sighash_flags_checksig_index(
+        &mut self,
+        index: usize,
+        input_tx: Tx,
+        tx: Tx,
+        sighash_flags: u8,
+        checksig_index: usize,
+    ) -> Result<Tx> {
+        let mut new_tx = tx.clone();
+        self.sign_tx_input_checksig_index(&input_tx, &mut new_tx, index, sighash_flags, checksig_index)?;
+        Ok(new_tx)
+    }
+
 }

@@ -63,8 +63,7 @@ pub fn sighash(
     )
 }
 
-
-// Same as above but with a checksig_index parameter
+// Same as above `sighash` function with an additional `checksig_index` parameter
 pub fn sighash_checksig_index(
     tx: &Tx,
     n_input: usize,
@@ -195,7 +194,7 @@ fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
     positions
 }
 
-// Remove all instances of OP_CODESEPARATOR from the script_code
+// Remove instances of OP_CODESEPARATOR from the script_code
 // extract_subscript is the function that takes the script and the index of OP_CHECKSIG, and extracts the subscript)
 fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>> {
     if !script_code.contains(&OP_CODESEPARATOR) {
@@ -217,7 +216,7 @@ fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8
         let codeseparator_positions: Vec<usize> =
             find_all_occurances_of(script_code, OP_CODESEPARATOR);
 
-        // We need to find the first codeseparator before the checksig pos
+        // We need to find the first OP_CODESEPARATOR before the OP_CHECKSIG pos
         let start_subscript: usize = if codeseparator_positions.len() < 2 {
             0
         } else {
@@ -230,18 +229,15 @@ fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8
         };
 
         let mut sub_script = Vec::with_capacity(script_code.len() - start_subscript);
-
         let mut i = start_subscript;
 
         while i < script_code.len() {
             let next = next_op(i, script_code);
-            dbg!(i, next);
             if script_code[i] != op_codes::OP_CODESEPARATOR {
                 sub_script.extend_from_slice(&script_code[i..next]);
             }
             i = next;
         }
-
         Ok(sub_script)
     }
 }
@@ -335,7 +331,6 @@ pub fn sig_hash_preimage(
 ) -> Result<Vec<u8>> {
     // use default value of 0
     let checksig_index: usize = 0;
-
     sig_hash_preimage_checksig_index(
         tx,
         n_input,
@@ -625,7 +620,6 @@ mod tests {
             OP_CHECKSIG,
             OP_VERIFY,
             OP_CODESEPARATOR, // Should be Kept as per note 2 below
-
             OP_DUP,
             OP_HASH160,
         ]);
@@ -633,7 +627,7 @@ mod tests {
         expected_subscript_one.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
         /*
-        1) Deleting its calling OP_CODESEPARATOR and any preceding parts of the script from the script 
+        1) Deleting its calling OP_CODESEPARATOR and any preceding parts of the script from the script
         2) Any OP_CODESEPARATOR opcodes that appear later in script, than the most recently executed code separator, will be included in the script
         https://bitcoinops.org/en/topics/op_codeseparator/
         */

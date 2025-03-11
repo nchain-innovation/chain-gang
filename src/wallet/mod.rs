@@ -14,5 +14,6 @@ pub use self::extended_key::{
 pub use self::mnemonic::{load_wordlist, mnemonic_decode, mnemonic_encode, Wordlist};
 
 pub use self::wallet::{
-    create_sighash, public_key_to_address, Wallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY,
+    create_sighash, create_sighash_checksig_index, public_key_to_address, Wallet, MAIN_PRIVATE_KEY,
+    TEST_PRIVATE_KEY,
 };
