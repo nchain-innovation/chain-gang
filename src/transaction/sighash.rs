@@ -3,7 +3,7 @@
 use crate::messages::{OutPoint, Payload, Tx, TxOut};
 use crate::script::op_codes::{OP_CHECKSIG, OP_CODESEPARATOR};
 use crate::script::{next_op, op_codes, Script};
-use crate::util::{sha256d, var_int, Error, Hash256, Result, Serializable};
+use crate::util::{sha256d, var_int, Hash256, Serializable, ChainGangError};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::Write;
 
@@ -49,7 +49,7 @@ pub fn sighash(
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Hash256> {
+) -> Result<Hash256, ChainGangError> {
     // use default value of 0
     let checksig_index: usize = 0;
     sighash_checksig_index(
@@ -72,7 +72,7 @@ pub fn sighash_checksig_index(
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Hash256> {
+) -> Result<Hash256, ChainGangError> {
     if sighash_type & SIGHASH_FORKID != 0 {
         bip143_sighash(
             tx,
@@ -163,7 +163,7 @@ fn bip143_sighash(
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Hash256> {
+) -> Result<Hash256, ChainGangError> {
     // The intention is to return any error(s) without any extra processing & according to the
     // docs the '?' operator is the most idiomatic & concise.
     let s = sig_hash_preimage_checksig_index(
@@ -196,7 +196,7 @@ fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
 
 // Remove instances of OP_CODESEPARATOR from the script_code
 // extract_subscript is the function that takes the script and the index of OP_CHECKSIG, and extracts the subscript)
-fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>> {
+fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
     if !script_code.contains(&OP_CODESEPARATOR) {
         // if there is no OP_CODESEPARATOR there is nothing to do
         Ok(script_code.to_vec())
@@ -205,9 +205,8 @@ fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8
         let checksig_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CHECKSIG);
 
         if checksig_index > checksig_positions.len() {
-            //return Error("checksig_index exceeds the number of OP_CHECKSIG found in code");
-            // TODO replace with error later..
-            panic!("checksig_index exceeds the number of OP_CHECKSIG found in code");
+            let err_msg = format!("checksig_index {} exceeds the number of OP_CHECKSIGs ({}) found in code", checksig_index, checksig_positions.len());
+            return Err(ChainGangError::BadArgument(err_msg));
         };
 
         let checksig_pos = checksig_positions.get(checksig_index).unwrap_or(&0);
@@ -251,9 +250,9 @@ fn legacy_sighash(
     script_code: &[u8],
     checksig_index: usize,
     sighash_type: u8,
-) -> Result<Hash256> {
+) -> Result<Hash256, ChainGangError> {
     if n_input >= tx.inputs.len() {
-        return Err(Error::BadArgument("input out of tx_in range".to_string()));
+        return Err(ChainGangError::BadArgument("input out of tx_in range".to_string()));
     }
 
     let mut s = Vec::with_capacity(tx.size());
@@ -292,7 +291,7 @@ fn legacy_sighash(
         vec![]
     } else if base_type == SIGHASH_SINGLE {
         if n_input >= tx.outputs.len() {
-            return Err(Error::BadArgument("input out of tx_out range".to_string()));
+            return Err(ChainGangError::BadArgument("input out of tx_out range".to_string()));
         }
         let mut truncated_out = tx.outputs.clone();
         truncated_out.truncate(n_input + 1);
@@ -328,7 +327,7 @@ pub fn sig_hash_preimage(
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>, ChainGangError> {
     // use default value of 0
     let checksig_index: usize = 0;
     sig_hash_preimage_checksig_index(
@@ -352,9 +351,9 @@ pub fn sig_hash_preimage_checksig_index(
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
-        return Err(Error::BadArgument("input out of tx_in range".to_string()));
+        return Err(ChainGangError::BadArgument("input out of tx_in range".to_string()));
     }
 
     let mut s = Vec::with_capacity(tx.size());

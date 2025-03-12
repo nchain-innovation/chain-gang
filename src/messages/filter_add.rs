@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use hex;
 use std::fmt;
 use std::io;
@@ -17,16 +17,16 @@ pub struct FilterAdd {
 
 impl FilterAdd {
     /// Returns whether the FilterAdd message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         if self.data.len() > MAX_FILTER_ADD_DATA_SIZE {
-            return Err(Error::BadData("Data too long".to_string()));
+            return Err(ChainGangError::BadData("Data too long".to_string()));
         }
         Ok(())
     }
 }
 
 impl Serializable<FilterAdd> for FilterAdd {
-    fn read(reader: &mut dyn Read) -> Result<FilterAdd> {
+    fn read(reader: &mut dyn Read) -> Result<FilterAdd, ChainGangError> {
         let data_len = var_int::read(reader)?;
         let mut data = vec![0; data_len as usize];
         reader.read_exact(&mut data)?;

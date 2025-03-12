@@ -1,6 +1,6 @@
 use crate::messages::message::Payload;
 
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -23,25 +23,25 @@ pub struct Createstrm {
 
 impl Createstrm {
     /// Checks if the message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         // check stream_type is in range
         if self.stream_type < MIN_SUPPORTED_STREAM_TYPE
             || self.stream_type > MAX_SUPPORTED_STREAM_TYPE
         {
             let msg = format!("Unsupported stream type: {}", self.stream_type);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         // check there is an association_id
         if self.association_id.is_empty() {
             let msg = "Association ID is empty".to_string();
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         Ok(())
     }
 }
 
 impl Serializable<Createstrm> for Createstrm {
-    fn read(reader: &mut dyn Read) -> Result<Createstrm> {
+    fn read(reader: &mut dyn Read) -> Result<Createstrm, ChainGangError> {
         let mut ret = Createstrm {
             ..Default::default()
         };

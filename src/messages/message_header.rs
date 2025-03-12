@@ -4,7 +4,7 @@ use std::io::{Cursor, Read, Write};
 use std::str;
 
 use crate::messages;
-use crate::util::{Error, Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use sha2::{Digest, Sha256};
 
@@ -40,20 +40,20 @@ impl MessageHeader {
     ///
     /// `magic` - Expected magic bytes for the network
     /// `max_size` - Max size in bytes for the payload
-    pub fn validate(&self, magic: [u8; 4], max_size: u32) -> Result<()> {
+    pub fn validate(&self, magic: [u8; 4], max_size: u32) -> Result<(), ChainGangError> {
         if self.magic != magic {
             let msg = format!("Bad magic: {:?}", self.magic);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         if self.command != messages::commands::BLOCK && self.payload_size > max_size {
             let msg = format!("Bad size: {:?}", self.payload_size);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         Ok(())
     }
 
     /// Reads the payload and verifies its checksum
-    pub fn payload(&self, reader: &mut dyn Read) -> Result<Vec<u8>> {
+    pub fn payload(&self, reader: &mut dyn Read) -> Result<Vec<u8>, ChainGangError> {
         let mut p: Vec<u8> = vec![0; self.payload_size as usize];
         reader.read_exact(p.as_mut())?;
 
@@ -65,14 +65,14 @@ impl MessageHeader {
         let j = &self.checksum;
         if h[0] != j[0] || h[1] != j[1] || h[2] != j[2] || h[3] != j[3] {
             let msg = format!("Bad checksum: {:?} != {:?}", &h[..4], j);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         Ok(p)
     }
 }
 
 impl Serializable<MessageHeader> for MessageHeader {
-    fn read(reader: &mut dyn Read) -> Result<MessageHeader> {
+    fn read(reader: &mut dyn Read) -> Result<MessageHeader, ChainGangError> {
         // Read all the bytes at once so that the stream doesn't get in a partially-read state
         let mut p = vec![0; MessageHeader::SIZE];
         reader.read_exact(p.as_mut())?;

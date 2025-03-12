@@ -1,4 +1,4 @@
-use crate::util::{Hash256, Result, Serializable};
+use crate::util::{Hash256, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -36,7 +36,7 @@ impl InvVect {
 }
 
 impl Serializable<InvVect> for InvVect {
-    fn read(reader: &mut dyn Read) -> Result<InvVect> {
+    fn read(reader: &mut dyn Read) -> Result<InvVect, ChainGangError> {
         let inv_vect = InvVect {
             obj_type: reader.read_u32::<LittleEndian>()?,
             hash: Hash256::read(reader)?,

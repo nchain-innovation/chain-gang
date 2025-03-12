@@ -24,7 +24,7 @@
 //! ```
 //!
 use crate::network::Network;
-use crate::util::{sha256d, Error, Hash160, Result};
+use crate::util::{sha256d, ChainGangError, Hash160};
 use base58::{FromBase58, ToBase58};
 
 /// Address type which is either P2PKH or P2SH
@@ -54,13 +54,13 @@ pub fn addr_encode(hash160: &Hash160, addr_type: AddressType, network: Network) 
 }
 
 /// Decodes a base-58 address to a public key hash
-pub fn addr_decode(input: &str, network: Network) -> Result<(Hash160, AddressType)> {
+pub fn addr_decode(input: &str, network: Network) -> Result<(Hash160, AddressType), ChainGangError> {
     // Make sure addr is at least some minimum to verify checksum and addr type
     // We will check the private key size later.
-    let v = input.from_base58()?;
+    let v = input.from_base58().map_err(|e| ChainGangError::Base58Error(format!("{:?}",e)))?;
     if v.len() < 6 {
         let msg = format!("Base58 address not long enough: {}", v.len());
-        return Err(Error::BadData(msg));
+        return Err(ChainGangError::BadData(msg));
     }
 
     // Verify checksum
@@ -69,7 +69,7 @@ pub fn addr_decode(input: &str, network: Network) -> Result<(Hash160, AddressTyp
     let cs = sha256d(v0).0;
     if v1[0] != cs[0] || v1[1] != cs[1] || v1[2] != cs[2] || v1[3] != cs[3] {
         let msg = format!("Bad checksum: {:?} != {:?}", &cs[..4], v1);
-        return Err(Error::BadData(msg));
+        return Err(ChainGangError::BadData(msg));
     }
 
     // Extract address type
@@ -80,13 +80,13 @@ pub fn addr_decode(input: &str, network: Network) -> Result<(Hash160, AddressTyp
         AddressType::P2SH
     } else {
         let msg = format!("Unknown address type {}", addr_type_byte);
-        return Err(Error::BadData(msg));
+        return Err(ChainGangError::BadData(msg));
     };
 
     // Extract hash160 address and return
     if v0.len() != 21 {
         let msg = format!("Hash160 address not long enough: {}", v0.len() - 1);
-        return Err(Error::BadData(msg));
+        return Err(ChainGangError::BadData(msg));
     }
     let mut hash160addr = [0; 20];
     hash160addr.clone_from_slice(&v0[1..]);

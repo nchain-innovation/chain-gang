@@ -2,7 +2,7 @@
 
 use crate::script::op_codes::{OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160, OP_PUSH};
 use crate::script::{next_op, Script};
-use crate::util::{Error, Hash160, Result};
+use crate::util::{ChainGangError, Hash160};
 
 /// Creates the pubkey script to send to an address
 pub fn create_lock_script(address: &Hash160) -> Script {
@@ -65,23 +65,23 @@ pub fn check_unlock_script_addr(pubkey: &[u8], unlock_script: &[u8]) -> bool {
 }
 
 /// Returns the public key this unlock_script was sent from
-pub fn extract_pubkey(unlock_script: &[u8]) -> Result<Vec<u8>> {
+pub fn extract_pubkey(unlock_script: &[u8]) -> Result<Vec<u8>, ChainGangError> {
     if !check_unlock_script(unlock_script) {
         let msg = "Script is not a sigscript for P2PKH".to_string();
-        return Err(Error::BadData(msg));
+        return Err(ChainGangError::BadData(msg));
     }
     let i = next_op(0, unlock_script);
     Ok(unlock_script[i + 1..].to_vec())
 }
 
 /// Returns the address this lock_script sends to
-pub fn extract_pubkeyhash(lock_script: &[u8]) -> Result<Hash160> {
+pub fn extract_pubkeyhash(lock_script: &[u8]) -> Result<Hash160, ChainGangError> {
     if check_lock_script(lock_script) {
         let mut hash160 = Hash160([0; 20]);
         hash160.0.clone_from_slice(&lock_script[3..23]);
         Ok(hash160)
     } else {
-        Err(Error::BadData("Script is not a standard P2PKH".to_string()))
+        Err(ChainGangError::BadData("Script is not a standard P2PKH".to_string()))
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::messages::{BlockHeader, OutPoint, Payload, Tx, TxOut};
 use crate::network::Network;
 use crate::util::{
-    sha256d, var_int, Error, Hash256, Result, Serializable, BITCOIN_CASH_FORK_HEIGHT_MAINNET,
+    sha256d, var_int, ChainGangError, Hash256, Serializable, BITCOIN_CASH_FORK_HEIGHT_MAINNET,
     BITCOIN_CASH_FORK_HEIGHT_TESTNET, GENESIS_UPGRADE_HEIGHT_MAINNET,
     GENESIS_UPGRADE_HEIGHT_TESTNET,
 };
@@ -22,14 +22,14 @@ pub struct Block {
 
 impl Block {
     /// Returns a set of the inputs spent in this block
-    pub fn inputs(&self) -> Result<HashSet<OutPoint>> {
+    pub fn inputs(&self) -> Result<HashSet<OutPoint>, ChainGangError> {
         let mut inputs = HashSet::new();
         for txn in self.txns.iter() {
             if !txn.coinbase() {
                 for input in txn.inputs.iter() {
                     if inputs.contains(&input.prev_output) {
                         let msg = "Input double spent".to_string();
-                        return Err(Error::BadData(msg));
+                        return Err(ChainGangError::BadData(msg));
                     }
                     inputs.insert(input.prev_output.clone());
                 }
@@ -39,7 +39,7 @@ impl Block {
     }
 
     /// Returns a map of the new outputs generated from this block including those spent within the block
-    pub fn outputs(&self) -> Result<LinkedHashMap<OutPoint, TxOut>> {
+    pub fn outputs(&self) -> Result<LinkedHashMap<OutPoint, TxOut>, ChainGangError> {
         let mut outputs = LinkedHashMap::new();
         for txn in self.txns.iter() {
             let hash = txn.hash();
@@ -60,13 +60,13 @@ impl Block {
         network: Network,
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
-    ) -> Result<()> {
+    ) -> Result<(), ChainGangError> {
         if self.txns.is_empty() {
-            return Err(Error::BadData("Txn count is zero".to_string()));
+            return Err(ChainGangError::BadData("Txn count is zero".to_string()));
         }
 
         if self.merkle_root() != self.header.merkle_root {
-            return Err(Error::BadData("Bad merkle root".to_string()));
+            return Err(ChainGangError::BadData("Bad merkle root".to_string()));
         }
 
         let mut has_coinbase = false;
@@ -98,13 +98,13 @@ impl Block {
                     pregenesis_outputs,
                 )?;
             } else if has_coinbase {
-                return Err(Error::BadData("Multiple coinbases".to_string()));
+                return Err(ChainGangError::BadData("Multiple coinbases".to_string()));
             } else {
                 has_coinbase = true;
             }
         }
         if !has_coinbase {
-            return Err(Error::BadData("No coinbase".to_string()));
+            return Err(ChainGangError::BadData("No coinbase".to_string()));
         }
 
         Ok(())
@@ -138,7 +138,7 @@ impl Block {
 }
 
 impl Serializable<Block> for Block {
-    fn read(reader: &mut dyn Read) -> Result<Block> {
+    fn read(reader: &mut dyn Read) -> Result<Block, ChainGangError> {
         let header = BlockHeader::read(reader)?;
         let txn_count = var_int::read(reader)?;
         let mut txns = Vec::with_capacity(txn_count as usize);

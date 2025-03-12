@@ -2,7 +2,7 @@ use crate::messages::Payload;
 use std::io;
 use std::io::{Read, Write};
 
-use crate::util::{var_int, Hash256, Result, Serializable};
+use crate::util::{var_int, Hash256, ChainGangError, Serializable};
 
 /// getblocktxn defined in <https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki>
 /// The getblocktxn message is defined as a message containing a serialized BlockTransactionsRequest message and pchCommand == "getblocktxn".
@@ -17,7 +17,7 @@ pub struct Getblocktxn {
 }
 
 impl Serializable<Getblocktxn> for Getblocktxn {
-    fn read(reader: &mut dyn Read) -> Result<Getblocktxn> {
+    fn read(reader: &mut dyn Read) -> Result<Getblocktxn, ChainGangError> {
         let mut ret = Getblocktxn {
             ..Default::default()
         };

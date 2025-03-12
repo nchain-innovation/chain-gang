@@ -1,4 +1,4 @@
-use crate::util::{sha256d, Error, Hash256, Result, Serializable};
+use crate::util::{sha256d, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::cmp::min;
 use std::io;
@@ -43,7 +43,7 @@ impl BlockHeader {
     }
 
     /// Checks that the block header is valid
-    pub fn validate(&self, hash: &Hash256, prev_headers: &[BlockHeader]) -> Result<()> {
+    pub fn validate(&self, hash: &Hash256, prev_headers: &[BlockHeader]) -> Result<(), ChainGangError> {
         // Timestamp > median timestamp of last 11 blocks
         if !prev_headers.is_empty() {
             let h = &prev_headers[prev_headers.len() - min(prev_headers.len(), 11)..];
@@ -51,25 +51,25 @@ impl BlockHeader {
             timestamps.sort();
             if self.timestamp < timestamps[timestamps.len() / 2] {
                 let msg = format!("Timestamp is too old: {}", self.timestamp);
-                return Err(Error::BadData(msg));
+                return Err(ChainGangError::BadData(msg));
             }
         }
 
         // POW
         let target = self.difficulty_target()?;
         if hash > &target {
-            return Err(Error::BadData("Invalid POW".to_string()));
+            return Err(ChainGangError::BadData("Invalid POW".to_string()));
         }
 
         Ok(())
     }
 
     /// Calculates the target difficulty hash
-    fn difficulty_target(&self) -> Result<Hash256> {
+    fn difficulty_target(&self) -> Result<Hash256, ChainGangError> {
         let exp = (self.bits >> 24) as usize;
         if !(3..=32).contains(&exp) {
             let msg = format!("Difficulty exponent out of range: {:?}", self.bits);
-            return Err(Error::BadArgument(msg));
+            return Err(ChainGangError::BadArgument(msg));
         }
         let mut difficulty = [0_u8; 32];
         difficulty[exp - 1] = ((self.bits >> 16) & 0xff) as u8;
@@ -80,7 +80,7 @@ impl BlockHeader {
 }
 
 impl Serializable<BlockHeader> for BlockHeader {
-    fn read(reader: &mut dyn Read) -> Result<BlockHeader> {
+    fn read(reader: &mut dyn Read) -> Result<BlockHeader, ChainGangError> {
         let version = reader.read_u32::<LittleEndian>()?;
         let prev_hash = Hash256::read(reader)?;
         let merkle_root = Hash256::read(reader)?;

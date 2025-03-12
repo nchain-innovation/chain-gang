@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::messages::message::Payload;
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 
 /// Supported version numbers (2).
 pub const VERSION_1: u64 = 1;
@@ -29,24 +29,24 @@ pub struct Protoconf {
 
 impl Protoconf {
     // Checks the protoconf message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         if !SUPPORTED_VERSIONS.contains(&self.version) {
             let msg = format!("Unsupported version: {}", self.version);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         if self.max_recv_payload_length < MIN_MAX_RECV_PAYLOAD_LENGTH {
             let msg = format!(
                 "Unsupported max_recv_payload_length: {}",
                 self.max_recv_payload_length
             );
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         Ok(())
     }
 }
 
 impl Serializable<Protoconf> for Protoconf {
-    fn read(reader: &mut dyn Read) -> Result<Protoconf> {
+    fn read(reader: &mut dyn Read) -> Result<Protoconf, ChainGangError> {
         let mut ret = Protoconf {
             ..Default::default()
         };

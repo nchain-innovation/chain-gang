@@ -1,4 +1,4 @@
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use hex;
 use murmur3::murmur3_32;
@@ -30,12 +30,12 @@ impl BloomFilter {
     ///
     /// * `insert` - Number of items expected to be inserted into the bloom filter
     /// * `pr_false_pos` - Desired probability of a false positive
-    pub fn new(insert: f64, pr_false_pos: f64) -> Result<BloomFilter> {
+    pub fn new(insert: f64, pr_false_pos: f64) -> Result<BloomFilter, ChainGangError> {
         if !insert.is_normal() || insert < 0. {
-            return Err(Error::BadArgument("insert not valid".to_string()));
+            return Err(ChainGangError::BadArgument("insert not valid".to_string()));
         }
         if !pr_false_pos.is_normal() || pr_false_pos < 0. {
-            return Err(Error::BadArgument("pr_false_po not valid".to_string()));
+            return Err(ChainGangError::BadArgument("pr_false_po not valid".to_string()));
         }
         let ln2 = 2_f64.ln();
         let size = (-1_f64 / ln2.powf(2_f64) * insert * pr_false_pos.ln()) / 8_f64;
@@ -85,19 +85,19 @@ impl BloomFilter {
     }
 
     /// Returns whether the BloomFilter is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         if self.filter.len() > BLOOM_FILTER_MAX_FILTER_SIZE {
-            return Err(Error::BadData("Filter too long".to_string()));
+            return Err(ChainGangError::BadData("Filter too long".to_string()));
         }
         if self.num_hash_funcs > BLOOM_FILTER_MAX_HASH_FUNCS {
-            return Err(Error::BadData("Too many hash funcs".to_string()));
+            return Err(ChainGangError::BadData("Too many hash funcs".to_string()));
         }
         Ok(())
     }
 }
 
 impl Serializable<BloomFilter> for BloomFilter {
-    fn read(reader: &mut dyn Read) -> Result<BloomFilter> {
+    fn read(reader: &mut dyn Read) -> Result<BloomFilter, ChainGangError> {
         let filter_len = var_int::read(reader)? as usize;
         let mut bloom_filter = BloomFilter {
             filter: vec![0; filter_len],

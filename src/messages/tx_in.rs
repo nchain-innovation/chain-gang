@@ -1,6 +1,6 @@
 use crate::messages::OutPoint;
 use crate::script::Script;
-use crate::util::{var_int, Result, Serializable};
+use crate::util::{var_int,  ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -27,7 +27,7 @@ impl TxIn {
 }
 
 impl Serializable<TxIn> for TxIn {
-    fn read(reader: &mut dyn Read) -> Result<TxIn> {
+    fn read(reader: &mut dyn Read) -> Result<TxIn, ChainGangError> {
         let prev_output = OutPoint::read(reader)?;
         let script_len = var_int::read(reader)?;
         let mut unlock_script = Script(vec![0; script_len as usize]);

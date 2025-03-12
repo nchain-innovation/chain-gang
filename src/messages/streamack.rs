@@ -1,7 +1,7 @@
 use crate::messages::message::Payload;
 
 use crate::messages::{MAX_SUPPORTED_STREAM_TYPE, MIN_SUPPORTED_STREAM_TYPE};
-use crate::util::{Error, Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -18,25 +18,25 @@ pub struct Streamack {
 
 impl Streamack {
     /// Checks if the message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         // check stream_type is in range
         if self.stream_type < MIN_SUPPORTED_STREAM_TYPE
             || self.stream_type > MAX_SUPPORTED_STREAM_TYPE
         {
             let msg = format!("Unsupported stream type: {}", self.stream_type);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         // check there is an association_id
         if self.association_id.is_empty() {
             let msg = "Association ID is empty".to_string();
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         Ok(())
     }
 }
 
 impl Serializable<Streamack> for Streamack {
-    fn read(reader: &mut dyn Read) -> Result<Streamack> {
+    fn read(reader: &mut dyn Read) -> Result<Streamack, ChainGangError> {
         let mut ret = Streamack {
             ..Default::default()
         };

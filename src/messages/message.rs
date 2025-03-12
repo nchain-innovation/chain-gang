@@ -21,7 +21,7 @@ use crate::messages::Createstrm;
 use crate::messages::Getblocktxn;
 use crate::messages::Streamack;
 
-use crate::util::{Error, Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use sha2::{Digest, Sha256};
 
 use std::fmt;
@@ -181,13 +181,13 @@ impl Message {
     /// It's possible for a message's header to be read but not its payload. In this case, the
     /// return value is not an Error but a Partial message, and the complete message may be read
     /// later using read_partial.
-    pub fn read(reader: &mut dyn Read, magic: [u8; 4]) -> Result<Self> {
+    pub fn read(reader: &mut dyn Read, magic: [u8; 4]) -> Result<Self, ChainGangError> {
         let header = MessageHeader::read(reader)?;
         header.validate(magic, MAX_PAYLOAD_SIZE)?;
         match Message::read_partial(reader, &header) {
             Ok(msg) => Ok(msg),
             Err(e) => {
-                if let Error::IOError(ref e) = e {
+                if let ChainGangError::IoError(ref e) = e {
                     // Depending on platform, either TimedOut or WouldBlock may be returned to indicate a non-error timeout
                     if e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::WouldBlock
                     {
@@ -202,7 +202,7 @@ impl Message {
     /// Reads the complete message given a message header
     ///
     /// It may be used after read() returns Message::Partial.
-    pub fn read_partial(reader: &mut dyn Read, header: &MessageHeader) -> Result<Self> {
+    pub fn read_partial(reader: &mut dyn Read, header: &MessageHeader) -> Result<Self, ChainGangError> {
         // Addr
         if header.command == commands::ADDR {
             let payload = header.payload(reader)?;
@@ -242,7 +242,7 @@ impl Message {
         // FilterClear
         if header.command == commands::FILTERCLEAR {
             if header.payload_size != 0 {
-                return Err(Error::BadData("Bad payload".to_string()));
+                return Err(ChainGangError::BadData("Bad payload".to_string()));
             }
             return Ok(Message::FilterClear);
         }
@@ -258,7 +258,7 @@ impl Message {
         // Getaddr
         if header.command == commands::GETADDR {
             if header.payload_size != 0 {
-                return Err(Error::BadData("Bad payload".to_string()));
+                return Err(ChainGangError::BadData("Bad payload".to_string()));
             }
             return Ok(Message::GetAddr);
         }
@@ -301,7 +301,7 @@ impl Message {
         // Mempool
         if header.command == commands::MEMPOOL {
             if header.payload_size != 0 {
-                return Err(Error::BadData("Bad payload".to_string()));
+                return Err(ChainGangError::BadData("Bad payload".to_string()));
             }
             return Ok(Message::Mempool);
         }
@@ -351,7 +351,7 @@ impl Message {
         // Sendheaders
         if header.command == commands::SENDHEADERS {
             if header.payload_size != 0 {
-                return Err(Error::BadData("Bad payload".to_string()));
+                return Err(ChainGangError::BadData("Bad payload".to_string()));
             }
             return Ok(Message::SendHeaders);
         }
@@ -374,7 +374,7 @@ impl Message {
         // Verack
         if header.command == commands::VERACK {
             if header.payload_size != 0 {
-                return Err(Error::BadData("Bad payload".to_string()));
+                return Err(ChainGangError::BadData("Bad payload".to_string()));
             }
             return Ok(Message::Verack);
         }
@@ -429,7 +429,7 @@ impl Message {
         //SendAddrV2(SendAddrV2),
         if header.command == commands::SENDADDRV2 {
             if header.payload_size != 0 {
-                return Err(Error::BadData("Bad payload".to_string()));
+                return Err(ChainGangError::BadData("Bad payload".to_string()));
             }
             return Ok(Message::SendAddrV2);
         }

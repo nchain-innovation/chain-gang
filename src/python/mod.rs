@@ -21,7 +21,7 @@ use crate::{
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     transaction::sighash::{sig_hash_preimage, sig_hash_preimage_checksig_index, SigHashCache},
-    util::{hash160, sha256d, Error, Hash256},
+    util::{hash160, sha256d, Hash256, ChainGangError},
     wallet::{
         create_sighash, create_sighash_checksig_index, public_key_to_address, MAIN_PRIVATE_KEY,
         TEST_PRIVATE_KEY,
@@ -61,7 +61,7 @@ pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<St
         "BSV_Testnet" => Network::BSV_Testnet,
         _ => {
             let msg = format!("Unknown network: {}", network);
-            return Err(Error::BadData(msg).into());
+            return Err(ChainGangError::BadData(msg).into());
         }
     };
     Ok(public_key_to_address(public_key, network_type)?)
@@ -340,7 +340,7 @@ pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
         "BSV_Testnet" => TEST_PRIVATE_KEY,
         _ => {
             let msg = format!("Unknown network: {}", network);
-            return Err(Error::BadData(msg).into());
+            return Err(ChainGangError::BadData(msg).into());
         }
     };
     Ok(bytes_to_wif(key_bytes, network_prefix))

@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -17,7 +17,7 @@ impl FeeFilter {
 }
 
 impl Serializable<FeeFilter> for FeeFilter {
-    fn read(reader: &mut dyn Read) -> Result<FeeFilter> {
+    fn read(reader: &mut dyn Read) -> Result<FeeFilter, ChainGangError> {
         let minfee = reader.read_u64::<LittleEndian>()?;
         Ok(FeeFilter { minfee })
     }

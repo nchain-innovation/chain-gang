@@ -1,6 +1,6 @@
 use crate::messages::block_header::BlockHeader;
 use crate::messages::message::Payload;
-use crate::util::{sha256d, var_int, Error, Hash256, Result, Serializable};
+use crate::util::{sha256d, var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use hex;
 use std::fmt;
@@ -22,9 +22,9 @@ pub struct MerkleBlock {
 
 impl MerkleBlock {
     /// Validates the merkle block and partial merkle tree and returns the set of matched transactions
-    pub fn validate(&self) -> Result<Vec<Hash256>> {
+    pub fn validate(&self) -> Result<Vec<Hash256>, ChainGangError> {
         if self.total_transactions == 0 {
-            return Err(Error::BadData("No transactions".to_string()));
+            return Err(ChainGangError::BadData("No transactions".to_string()));
         }
 
         let mut preorder_node = 0;
@@ -50,19 +50,19 @@ impl MerkleBlock {
         )?;
 
         if merkle_root != self.header.merkle_root {
-            return Err(Error::BadData("Merkle root doesn't match".to_string()));
+            return Err(ChainGangError::BadData("Merkle root doesn't match".to_string()));
         }
 
         if hashes_used < self.hashes.len() {
-            return Err(Error::BadData("Not all hashes consumed".to_string()));
+            return Err(ChainGangError::BadData("Not all hashes consumed".to_string()));
         }
 
         if preorder_node < total_nodes {
-            return Err(Error::BadData("Not all nodes consumed".to_string()));
+            return Err(ChainGangError::BadData("Not all nodes consumed".to_string()));
         }
 
         if (flag_bits_used + 7) / 8 < self.flags.len() {
-            return Err(Error::BadData("Not all flag bits consumed".to_string()));
+            return Err(ChainGangError::BadData("Not all flag bits consumed".to_string()));
         }
 
         Ok(matches)
@@ -79,7 +79,7 @@ impl MerkleBlock {
         tree_depth: usize,
         total_nodes: usize,
         matches: &mut Vec<Hash256>,
-    ) -> Result<Hash256> {
+    ) -> Result<Hash256, ChainGangError> {
         let flag = self.consume_flag(flag_bits_used)?;
         if flag == 0 {
             *preorder_node += (1 << (tree_depth - depth + 1)) - 1;
@@ -117,7 +117,7 @@ impl MerkleBlock {
                     matches,
                 )?;
                 if left == right {
-                    Err(Error::BadData("Duplicate transactions".to_string()))
+                    Err(ChainGangError::BadData("Duplicate transactions".to_string()))
                 } else {
                     let mut concat = Vec::with_capacity(64);
                     concat.extend_from_slice(&left.0);
@@ -128,18 +128,18 @@ impl MerkleBlock {
         }
     }
 
-    fn consume_flag(&self, flag_bits_used: &mut usize) -> Result<u8> {
+    fn consume_flag(&self, flag_bits_used: &mut usize) -> Result<u8, ChainGangError> {
         if *flag_bits_used / 8 >= self.flags.len() {
-            return Err(Error::BadData("Not enough flag bits".to_string()));
+            return Err(ChainGangError::BadData("Not enough flag bits".to_string()));
         }
         let flag = (self.flags[*flag_bits_used / 8] >> (*flag_bits_used % 8)) & 1;
         *flag_bits_used += 1;
         Ok(flag)
     }
 
-    fn consume_hash(&self, hashes_used: &mut usize) -> Result<Hash256> {
+    fn consume_hash(&self, hashes_used: &mut usize) -> Result<Hash256, ChainGangError> {
         if *hashes_used >= self.hashes.len() {
-            return Err(Error::BadData("Not enough hashes".to_string()));
+            return Err(ChainGangError::BadData("Not enough hashes".to_string()));
         }
         let hash = self.hashes[*hashes_used];
         *hashes_used += 1;
@@ -148,7 +148,7 @@ impl MerkleBlock {
 }
 
 impl Serializable<MerkleBlock> for MerkleBlock {
-    fn read(reader: &mut dyn Read) -> Result<MerkleBlock> {
+    fn read(reader: &mut dyn Read) -> Result<MerkleBlock, ChainGangError> {
         let header = BlockHeader::read(reader)?;
         let total_transactions = reader.read_u32::<LittleEndian>()?;
         let num_hashes = var_int::read(reader)?;

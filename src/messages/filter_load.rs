@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{var_int, BloomFilter, Result, Serializable};
+use crate::util::{var_int, BloomFilter, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -22,13 +22,13 @@ pub struct FilterLoad {
 
 impl FilterLoad {
     /// Returns whether the FilterLoad message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         self.bloom_filter.validate()
     }
 }
 
 impl Serializable<FilterLoad> for FilterLoad {
-    fn read(reader: &mut dyn Read) -> Result<FilterLoad> {
+    fn read(reader: &mut dyn Read) -> Result<FilterLoad, ChainGangError> {
         let num_filters = var_int::read(reader)?;
         let mut filter = vec![0; num_filters as usize];
         reader.read_exact(&mut filter)?;

@@ -1,6 +1,6 @@
 use crate::messages::inv_vect::InvVect;
 use crate::messages::message::Payload;
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
@@ -16,11 +16,11 @@ pub struct Inv {
 }
 
 impl Serializable<Inv> for Inv {
-    fn read(reader: &mut dyn Read) -> Result<Inv> {
+    fn read(reader: &mut dyn Read) -> Result<Inv, ChainGangError> {
         let num_objects = var_int::read(reader)? as usize;
         if num_objects > MAX_INV_ENTRIES {
             let msg = format!("Num objects exceeded maximum: {}", num_objects);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         let mut objects = Vec::with_capacity(num_objects);
         for _ in 0..num_objects {

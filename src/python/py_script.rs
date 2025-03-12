@@ -11,7 +11,7 @@ use std::{
 use crate::{
     python::op_code_names::OP_CODE_NAMES,
     script::{op_codes, stack::encode_bigint, stack::encode_num, Script},
-    util::{var_int, Error, Result},
+    util::{var_int, ChainGangError},
 };
 
 use num_bigint::BigInt;
@@ -163,7 +163,7 @@ impl PyScript {
         Script(self.cmds.clone())
     }
 
-    fn read(reader: &mut dyn Read) -> Result<Self> {
+    fn read(reader: &mut dyn Read) -> Result<Self, ChainGangError> {
         let script_len = var_int::read(reader)?;
         let mut script: Vec<u8> = vec![0; script_len as usize];
         reader.read_exact(&mut script)?;
@@ -234,7 +234,7 @@ impl PyScript {
             Some(value) => Ok(*value),
             None => {
                 let msg = format!("Index '{}' out of range", index);
-                Err(Error::BadData(msg).into())
+                Err(ChainGangError::BadData(msg).into())
             }
         }
     }

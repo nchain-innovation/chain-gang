@@ -17,7 +17,7 @@
 //! ```
 
 use crate::script::op_codes::*;
-use crate::util::Result;
+use crate::util::ChainGangError;
 use hex;
 use std::fmt;
 
@@ -86,13 +86,13 @@ impl Script {
     /// Appends the opcodes to push a number to the stack
     ///
     /// The number must be in the range [2^-31+1,2^31-1].
-    pub fn append_num(&mut self, n: i32) -> Result<()> {
+    pub fn append_num(&mut self, n: i32) -> Result<(), ChainGangError> {
         self.append_data(&stack::encode_num(n as i64)?);
         Ok(())
     }
 
     /// Evaluates a script using the provided checker
-    pub fn eval<T: Checker>(&self, checker: &mut T, flags: u32) -> Result<()> {
+    pub fn eval<T: Checker>(&self, checker: &mut T, flags: u32) -> Result<(), ChainGangError> {
         self::interpreter::eval(&self.0, checker, flags)
     }
 
@@ -105,7 +105,7 @@ impl Script {
         break_at: Option<usize>,
         stack_val: Option<Stack>,
         alt_stack_val: Option<Stack>,
-    ) -> Result<(Stack, Stack, Option<usize>)> {
+    ) -> Result<(Stack, Stack, Option<usize>), ChainGangError> {
         self::interpreter::core_eval(
             &self.0,
             checker,

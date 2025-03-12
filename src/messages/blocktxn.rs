@@ -1,5 +1,5 @@
 use crate::messages::{Payload, Tx, MAX_SATOSHIS};
-use crate::util::{var_int, Error, Hash256, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Hash256, Serializable};
 use std::io;
 use std::io::{Read, Write};
 
@@ -17,26 +17,26 @@ pub struct Blocktxn {
 
 impl Blocktxn {
     /// Checks if the tx is valid - without recourse to UTXO etc.
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         for tx in &self.transactions {
             // Make sure neither in or out lists are empty
             if tx.inputs.is_empty() {
-                return Err(Error::BadData("inputs empty".to_string()));
+                return Err(ChainGangError::BadData("inputs empty".to_string()));
             }
             if tx.outputs.is_empty() {
-                return Err(Error::BadData("outputs empty".to_string()));
+                return Err(ChainGangError::BadData("outputs empty".to_string()));
             }
 
             // Each output value, as well as the total, must be in legal money range
             let mut total_out = 0;
             for tx_out in tx.outputs.iter() {
                 if tx_out.satoshis < 0 {
-                    return Err(Error::BadData("tx_out satoshis negative".to_string()));
+                    return Err(ChainGangError::BadData("tx_out satoshis negative".to_string()));
                 }
                 total_out += tx_out.satoshis;
             }
             if total_out > MAX_SATOSHIS {
-                return Err(Error::BadData("Total out exceeds max satoshis".to_string()));
+                return Err(ChainGangError::BadData("Total out exceeds max satoshis".to_string()));
             }
         }
         Ok(())
@@ -44,7 +44,7 @@ impl Blocktxn {
 }
 
 impl Serializable<Blocktxn> for Blocktxn {
-    fn read(reader: &mut dyn Read) -> Result<Blocktxn> {
+    fn read(reader: &mut dyn Read) -> Result<Blocktxn, ChainGangError> {
         let mut ret = Blocktxn {
             ..Default::default()
         };

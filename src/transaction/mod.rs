@@ -29,7 +29,7 @@
 //! tx.inputs[0].unlock_script = create_unlock_script(&signature, &public_key);
 //! ```
 
-use crate::util::{Hash256, Result};
+use crate::util::{Hash256, ChainGangError};
 use k256::ecdsa::{
     signature::{hazmat::PrehashSigner, SignatureEncoding},
     Signature, SigningKey,
@@ -43,7 +43,7 @@ pub fn generate_signature(
     private_key: &[u8; 32],
     sighash: &Hash256,
     sighash_type: u8,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>, ChainGangError> {
     let message = sighash.0;
 
     let signing_key = SigningKey::from_slice(private_key)?;

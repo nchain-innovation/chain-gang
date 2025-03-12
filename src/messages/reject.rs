@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{var_int, Error, Hash256, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::fmt;
 use std::io;
@@ -32,9 +32,9 @@ pub struct Reject {
 
 impl Reject {
     /// Returns the transaction ID for this message
-    pub fn txid(&self) -> Result<Hash256> {
+    pub fn txid(&self) -> Result<Hash256, ChainGangError> {
         if self.data.len() != 32 {
-            return Err(Error::InvalidOperation("No transaction hash".to_string()));
+            return Err(ChainGangError::InvalidOperation("No transaction hash".to_string()));
         }
         let mut txid = Hash256([0; 32]);
         txid.0.clone_from_slice(&self.data);
@@ -48,7 +48,7 @@ impl Serializable<Reject> for Reject {
     // because the previous line sets data to zero bytes in length
     // so clippy thinks that we are reading into a zero byte buffer.
     #[allow(clippy::read_zero_byte_vec)]
-    fn read(reader: &mut dyn Read) -> Result<Reject> {
+    fn read(reader: &mut dyn Read) -> Result<Reject, ChainGangError> {
         let message_size = var_int::read(reader)? as usize;
         let mut message_bytes = vec![0; message_size];
         reader.read_exact(&mut message_bytes)?;

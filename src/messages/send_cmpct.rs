@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -24,7 +24,7 @@ impl SendCmpct {
 }
 
 impl Serializable<SendCmpct> for SendCmpct {
-    fn read(reader: &mut dyn Read) -> Result<SendCmpct> {
+    fn read(reader: &mut dyn Read) -> Result<SendCmpct, ChainGangError> {
         let enable = reader.read_u8()?;
         let version = reader.read_u64::<LittleEndian>()?;
         Ok(SendCmpct { enable, version })

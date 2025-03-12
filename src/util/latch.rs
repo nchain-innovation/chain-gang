@@ -1,4 +1,4 @@
-use crate::util::{Error, Result};
+use crate::util::ChainGangError;
 use std::fmt;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
@@ -36,12 +36,12 @@ impl Latch {
     }
 
     /// Waits until open is called, with a timeout. The result will return Error::Timeout if a timeout occurred.
-    pub fn wait_timeout(&self, duration: Duration) -> Result<()> {
+    pub fn wait_timeout(&self, duration: Duration) -> Result<(), ChainGangError> {
         let mut open = self.open.lock().unwrap();
         while !*open {
             let result = self.condvar.wait_timeout(open, duration).unwrap();
             if result.1.timed_out() {
-                return Err(Error::Timeout);
+                return Err(ChainGangError::Timeout);
             }
             open = result.0;
         }

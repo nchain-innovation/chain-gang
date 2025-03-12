@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -17,7 +17,7 @@ impl Ping {
 }
 
 impl Serializable<Ping> for Ping {
-    fn read(reader: &mut dyn Read) -> Result<Ping> {
+    fn read(reader: &mut dyn Read) -> Result<Ping, ChainGangError> {
         let nonce = reader.read_u64::<LittleEndian>()?;
         Ok(Ping { nonce })
     }

@@ -1,6 +1,6 @@
 use crate::messages::Tx;
 use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
-use crate::util::{Error, Hash256, Result};
+use crate::util::{ Hash256, ChainGangError} ;
 
 use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 
@@ -17,29 +17,29 @@ pub trait Checker {
     /// Checks that a signature and public key validate within a script
     ///
     /// Script should already have all signatures removed if they existed.
-    fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], script: &[u8]) -> Result<bool>;
+    fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], script: &[u8]) -> Result<bool, ChainGangError>;
 
     /// Checks that the lock time is valid according to BIP 65
-    fn check_locktime(&self, locktime: i32) -> Result<bool>;
+    fn check_locktime(&self, locktime: i32) -> Result<bool, ChainGangError>;
 
     /// Checks that the relative lock time enforced by the sequence is valid according to BIP 112
-    fn check_sequence(&self, sequence: i32) -> Result<bool>;
+    fn check_sequence(&self, sequence: i32) -> Result<bool, ChainGangError>;
 }
 
 /// Script checker that fails all transaction checks
 pub struct TransactionlessChecker {}
 
 impl Checker for TransactionlessChecker {
-    fn check_sig(&mut self, _sig: &[u8], _pubkey: &[u8], _script: &[u8]) -> Result<bool> {
-        Err(Error::IllegalState("Illegal transaction check".to_string()))
+    fn check_sig(&mut self, _sig: &[u8], _pubkey: &[u8], _script: &[u8]) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState("Illegal transaction check".to_string()))
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool> {
-        Err(Error::IllegalState("Illegal transaction check".to_string()))
+    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState("Illegal transaction check".to_string()))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool> {
-        Err(Error::IllegalState("Illegal transaction check".to_string()))
+    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState("Illegal transaction check".to_string()))
     }
 }
 
@@ -52,13 +52,13 @@ pub struct ZChecker {
 
 impl Checker for ZChecker {
     // Given a signature and public key, check signature matches signed script hash (z)
-    fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], _script: &[u8]) -> Result<bool> {
+    fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], _script: &[u8]) -> Result<bool, ChainGangError> {
         if sig.is_empty() {
-            return Err(Error::ScriptError("Signature too short".to_string()));
+            return Err(ChainGangError::ScriptError("Signature too short".to_string()));
         }
         let sighash_type = sig[sig.len() - 1];
         if sighash_type & SIGHASH_FORKID == 0 {
-            return Err(Error::ScriptError("SIGHASH_FORKID not present".to_string()));
+            return Err(ChainGangError::ScriptError("SIGHASH_FORKID not present".to_string()));
         }
 
         let sig_hash = self.z;
@@ -84,12 +84,12 @@ impl Checker for ZChecker {
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool> {
-        Err(Error::IllegalState("Illegal transaction check".to_string()))
+    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState("Illegal transaction check".to_string()))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool> {
-        Err(Error::IllegalState("Illegal transaction check".to_string()))
+    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState("Illegal transaction check".to_string()))
     }
 }
 
@@ -109,13 +109,13 @@ pub struct TransactionChecker<'a> {
 
 impl Checker for TransactionChecker<'_> {
     // Given a signature and public key, check signature matches signed script hash
-    fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], script: &[u8]) -> Result<bool> {
+    fn check_sig(&mut self, sig: &[u8], pubkey: &[u8], script: &[u8]) -> Result<bool, ChainGangError> {
         if sig.is_empty() {
-            return Err(Error::ScriptError("Signature too short".to_string()));
+            return Err(ChainGangError::ScriptError("Signature too short".to_string()));
         }
         let sighash_type = sig[sig.len() - 1];
         if self.require_sighash_forkid && sighash_type & SIGHASH_FORKID == 0 {
-            return Err(Error::ScriptError("SIGHASH_FORKID not present".to_string()));
+            return Err(ChainGangError::ScriptError("SIGHASH_FORKID not present".to_string()));
         }
         let sig_hash = sighash(
             self.tx,
@@ -133,38 +133,38 @@ impl Checker for TransactionChecker<'_> {
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
-    fn check_locktime(&self, locktime: i32) -> Result<bool> {
+    fn check_locktime(&self, locktime: i32) -> Result<bool, ChainGangError> {
         if locktime < 0 {
-            return Err(Error::ScriptError("locktime negative".to_string()));
+            return Err(ChainGangError::ScriptError("locktime negative".to_string()));
         }
         if (locktime >= LOCKTIME_THRESHOLD && (self.tx.lock_time as i32) < LOCKTIME_THRESHOLD)
             || (locktime < LOCKTIME_THRESHOLD && (self.tx.lock_time as i32) >= LOCKTIME_THRESHOLD)
         {
-            return Err(Error::ScriptError("locktime types different".to_string()));
+            return Err(ChainGangError::ScriptError("locktime types different".to_string()));
         }
         if locktime > self.tx.lock_time as i32 {
-            return Err(Error::ScriptError("locktime greater than tx".to_string()));
+            return Err(ChainGangError::ScriptError("locktime greater than tx".to_string()));
         }
         if self.tx.inputs[self.input].sequence == 0xffffffff {
-            return Err(Error::ScriptError("sequence is 0xffffffff".to_string()));
+            return Err(ChainGangError::ScriptError("sequence is 0xffffffff".to_string()));
         }
         Ok(true)
     }
 
-    fn check_sequence(&self, sequence: i32) -> Result<bool> {
+    fn check_sequence(&self, sequence: i32) -> Result<bool, ChainGangError> {
         if sequence < 0 {
-            return Err(Error::ScriptError("sequence negative".to_string()));
+            return Err(ChainGangError::ScriptError("sequence negative".to_string()));
         }
         let sequence = sequence as u32;
         if sequence & SEQUENCE_LOCKTIME_DISABLE_FLAG != 0 {
             return Ok(true);
         }
         if self.tx.version < 2 {
-            return Err(Error::ScriptError("tx version less than 2".to_string()));
+            return Err(ChainGangError::ScriptError("tx version less than 2".to_string()));
         }
         if self.tx.inputs[self.input].sequence & SEQUENCE_LOCKTIME_DISABLE_FLAG != 0 {
             let msg = "tx sequence disable flag set".to_string();
-            return Err(Error::ScriptError(msg));
+            return Err(ChainGangError::ScriptError(msg));
         }
         let sequence_masked = sequence & 0x0000ffff;
         let tx_sequence_masked = self.tx.inputs[self.input].sequence & 0x0000ffff;
@@ -174,11 +174,11 @@ impl Checker for TransactionChecker<'_> {
                 && tx_sequence_masked < SEQUENCE_LOCKTIME_TYPE_FLAG)
         {
             let msg = "sequence types different".to_string();
-            return Err(Error::ScriptError(msg));
+            return Err(ChainGangError::ScriptError(msg));
         }
         if sequence_masked > tx_sequence_masked {
             let msg = "sequence greater than tx".to_string();
-            return Err(Error::ScriptError(msg));
+            return Err(ChainGangError::ScriptError(msg));
         }
         Ok(true)
     }

@@ -1,6 +1,6 @@
 use crate::messages::message::Payload;
 use crate::messages::version::MIN_SUPPORTED_PROTOCOL_VERSION;
-use crate::util::{var_int, Error, Hash256, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -21,17 +21,17 @@ pub struct BlockLocator {
 
 impl BlockLocator {
     /// Checks if the message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         if self.version < MIN_SUPPORTED_PROTOCOL_VERSION {
             let msg = format!("Unsupported protocol version: {}", self.version);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         Ok(())
     }
 }
 
 impl Serializable<BlockLocator> for BlockLocator {
-    fn read(reader: &mut dyn Read) -> Result<BlockLocator> {
+    fn read(reader: &mut dyn Read) -> Result<BlockLocator, ChainGangError> {
         let version = reader.read_u32::<LittleEndian>()?;
         let num_hashes = var_int::read(reader)?;
         let mut block_locator_hashes = Vec::new();

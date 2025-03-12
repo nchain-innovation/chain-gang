@@ -1,7 +1,7 @@
 //! Lightweight reactive library
 
 use crate::util::future::{Future, FutureProvider};
-use crate::util::{Error, Result};
+use crate::util::ChainGangError;
 use std::sync::{Arc, RwLock, TryLockError, Weak};
 use std::time::Duration;
 
@@ -24,12 +24,12 @@ pub trait Observable<T: Send + Sync + Clone + 'static> {
     }
 
     /// Waits for an event to be emitted with a timeout
-    fn poll_timeout(&self, duration: Duration) -> Result<T> {
+    fn poll_timeout(&self, duration: Duration) -> Result<T, ChainGangError> {
         let (poller, future) = Poller::new();
         self.subscribe(&poller);
         match future.get_timeout(duration) {
             Ok(t) => Ok(t),
-            Err(_future) => Err(Error::Timeout),
+            Err(_future) => Err(ChainGangError::Timeout),
         }
     }
 }

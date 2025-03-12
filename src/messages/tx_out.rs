@@ -1,5 +1,5 @@
 use crate::script::Script;
-use crate::util::{var_int, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -21,7 +21,7 @@ impl TxOut {
 }
 
 impl Serializable<TxOut> for TxOut {
-    fn read(reader: &mut dyn Read) -> Result<TxOut> {
+    fn read(reader: &mut dyn Read) -> Result<TxOut, ChainGangError> {
         let satoshis = reader.read_i64::<LittleEndian>()?;
         let script_len = var_int::read(reader)?;
         let mut lock_script = Script(vec![0; script_len as usize]);
