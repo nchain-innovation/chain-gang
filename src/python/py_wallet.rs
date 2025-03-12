@@ -191,6 +191,24 @@ impl PyWallet {
         Ok(updated_txpy)
     }
 
+    fn sign_tx_sighash_checksig_index(
+        &mut self,
+        index: usize,
+        input_pytx: PyTx,
+        pytx: PyTx,
+        sighash_type: u8,
+        checksig_index: usize,
+    ) -> PyResult<PyTx> {
+        // Convert PyTx -> Tx
+        let input_tx = input_pytx.as_tx();
+        let mut tx = pytx.as_tx();
+        self.wallet
+            .sign_tx_input_checksig_index(&input_tx, &mut tx, index, sighash_type, checksig_index)?;
+        let updated_txpy = tx_as_pytx(&tx);
+        Ok(updated_txpy)
+    }
+
+
     fn get_locking_script(&self) -> PyResult<PyScript> {
         let script = self.wallet.get_locking_script();
         let pyscript = PyScript::new(&script.0);

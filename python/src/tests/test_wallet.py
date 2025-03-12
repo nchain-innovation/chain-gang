@@ -5,6 +5,10 @@ import unittest
 from tx_engine import Wallet, hash160, Tx, TxIn, TxOut, Script, create_wallet_from_pem_bytes, create_pem_from_wallet
 
 
+SIGHASH_ALL = 0x01
+SIGHASH_FORKID = 0x40
+
+
 class WalletTest(unittest.TestCase):
     def test_wallet_wif(self):
         wif = "cSW9fDMxxHXDgeMyhbbHDsL5NNJkovSa2LTqHQWAERPdTZaVCab3"
@@ -40,6 +44,56 @@ class WalletTest(unittest.TestCase):
 
         # fn sign_tx(&mut self, index: usize, input_pytx: PyTx, pytx: PyTx) -> PyResult<PyTx>
         new_tx = wallet.sign_tx(0, fund_tx, tx)
+        expected = "0100000001039c459f8538aa0f659a34aac529934c2448786d889c5b3fa49f22cad363d7b8010000006b483045022100a0334ea6f3a4fbb8e55ffe38763905a7fc69721a3fc888eaccd6b4379859f57302205baa86118837948582a4365ea67819f9df1c8218477dbd478d30895d65060121412102074255deb137868690e021edc515ab06f33513a287952ff44492390aaca8dae0ffffffff0132000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
+        self.assertEqual(new_tx.serialize().hex(), expected)
+        result = new_tx.validate([fund_tx])
+        self.assertIsNone(result)
+
+    def test_sign_tx_sighash(self):
+        funding_tx = "0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
+        fund_tx = Tx.parse(bytes.fromhex(funding_tx))
+
+        wif_key = "cVvay9F4wkxrC6cLwThUnRHEajQ8FNoDEg1pbsgYjh7xYtkQ9LVZ"
+        wallet = Wallet(wif_key)
+        self.assertEqual(wallet.get_address(), "mry2yrN53spb4qXC2WFnaNh2uSHk5XDdN6")
+        pk = bytes.fromhex(wallet.get_public_key_as_hexstr())
+        hash_pk = hash160(pk)
+        self.assertEqual(hash_pk.hex(), "7d981c463355c618e9666044315ef1ffc523e870")
+        vins = [TxIn(prev_tx=fund_tx.id(), prev_index=1, script=Script([]), sequence=0xFFFFFFFF)]
+        amt = 50
+
+        vouts = [TxOut(amount=amt, script_pubkey=wallet.get_locking_script())]
+
+        tx = Tx(version=1, tx_ins=vins, tx_outs=vouts, locktime=0)
+
+        sighash_type = SIGHASH_ALL | SIGHASH_FORKID
+        new_tx = wallet.sign_tx_sighash(0, fund_tx, tx, sighash_type)
+
+        expected = "0100000001039c459f8538aa0f659a34aac529934c2448786d889c5b3fa49f22cad363d7b8010000006b483045022100a0334ea6f3a4fbb8e55ffe38763905a7fc69721a3fc888eaccd6b4379859f57302205baa86118837948582a4365ea67819f9df1c8218477dbd478d30895d65060121412102074255deb137868690e021edc515ab06f33513a287952ff44492390aaca8dae0ffffffff0132000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
+        self.assertEqual(new_tx.serialize().hex(), expected)
+        result = new_tx.validate([fund_tx])
+        self.assertIsNone(result)
+
+    def test_sign_tx_sighash_checksig_index(self):
+        funding_tx = "0100000001baa9ec5094816f5686371e701b3a4dcadc93df44d151496a58089018706b865c000000006b483045022100b53c9ab501032a626050651fb785967e1bdf03bca0cb17cb4f2c75a45a56d17d0220292a27ce9001efb9c41ab9a06ecaaefad91138e94d4407ee14952456274357a24121024f8d67f0a5ec11e72cc0f2fa5c272b69fd448b933f92a912210f5a35a8eb2d6affffffff0276198900000000001976a914661657ba0a6b276bb5cb313257af5cc416450c0888ac64000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
+        fund_tx = Tx.parse(bytes.fromhex(funding_tx))
+
+        wif_key = "cVvay9F4wkxrC6cLwThUnRHEajQ8FNoDEg1pbsgYjh7xYtkQ9LVZ"
+        wallet = Wallet(wif_key)
+        self.assertEqual(wallet.get_address(), "mry2yrN53spb4qXC2WFnaNh2uSHk5XDdN6")
+        pk = bytes.fromhex(wallet.get_public_key_as_hexstr())
+        hash_pk = hash160(pk)
+        self.assertEqual(hash_pk.hex(), "7d981c463355c618e9666044315ef1ffc523e870")
+        vins = [TxIn(prev_tx=fund_tx.id(), prev_index=1, script=Script([]), sequence=0xFFFFFFFF)]
+        amt = 50
+
+        vouts = [TxOut(amount=amt, script_pubkey=wallet.get_locking_script())]
+
+        tx = Tx(version=1, tx_ins=vins, tx_outs=vouts, locktime=0)
+
+        sighash_type = SIGHASH_ALL | SIGHASH_FORKID
+        new_tx = wallet.sign_tx_sighash_checksig_index(0, fund_tx, tx, sighash_type, 0)
+
         expected = "0100000001039c459f8538aa0f659a34aac529934c2448786d889c5b3fa49f22cad363d7b8010000006b483045022100a0334ea6f3a4fbb8e55ffe38763905a7fc69721a3fc888eaccd6b4379859f57302205baa86118837948582a4365ea67819f9df1c8218477dbd478d30895d65060121412102074255deb137868690e021edc515ab06f33513a287952ff44492390aaca8dae0ffffffff0132000000000000001976a9147d981c463355c618e9666044315ef1ffc523e87088ac00000000"
         self.assertEqual(new_tx.serialize().hex(), expected)
         result = new_tx.validate([fund_tx])

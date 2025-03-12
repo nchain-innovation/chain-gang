@@ -197,21 +197,22 @@ fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
 // Remove instances of OP_CODESEPARATOR from the script_code
 // extract_subscript is the function that takes the script and the index of OP_CHECKSIG, and extracts the subscript)
 fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
+    
+    
     if !script_code.contains(&OP_CODESEPARATOR) {
         // if there is no OP_CODESEPARATOR there is nothing to do
         Ok(script_code.to_vec())
     } else {
-        // Look for OP_CHECKSIG
+        // Look for all OP_CHECKSIG
         let checksig_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CHECKSIG);
-
-        if checksig_index > checksig_positions.len() {
+        if checksig_index > (checksig_positions.len() -1) {
             let err_msg = format!("checksig_index {} exceeds the number of OP_CHECKSIGs ({}) found in code", checksig_index, checksig_positions.len());
             return Err(ChainGangError::BadArgument(err_msg));
         };
 
         let checksig_pos = checksig_positions.get(checksig_index).unwrap_or(&0);
 
-        // Look for OP_CODESEPARATOR
+        // Look for all OP_CODESEPARATOR
         let codeseparator_positions: Vec<usize> =
             find_all_occurances_of(script_code, OP_CODESEPARATOR);
 

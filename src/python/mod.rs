@@ -299,8 +299,8 @@ pub fn py_sig_hash(
 /// * `checksig_index` - index of the checksig to be used
 /// * `satoshis` - The satoshi amount in the output being spent
 /// * `sighash_flags` - Sighash flags
-#[pyfunction(name = "sighash_checksig_index")]
-pub fn py_sighash_checksig_index(
+#[pyfunction(name = "sig_hash_checksig_index")]
+pub fn py_sig_hash_checksig_index(
     _py: Python,
     tx: &PyTx,
     index: usize,
@@ -375,7 +375,9 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_address_to_public_key_hash, m)?)?;
     m.add_function(wrap_pyfunction!(py_public_key_to_address, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash_preimage, m)?)?;
+    m.add_function(wrap_pyfunction!(py_sig_hash_preimage_checksig_index, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(py_sig_hash_checksig_index, m)?)?;
     m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(py_bytes_to_wif, m)?)?;
     m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;
