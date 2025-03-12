@@ -1,6 +1,6 @@
 //! Functions to convert data to and from mnemonic words
 
-use crate::util::{Bits, Error, Result};
+use crate::util::{Bits, ChainGangError};
 use sha2::{Digest, Sha256};
 
 use std::str;
@@ -59,12 +59,12 @@ pub fn mnemonic_encode(data: &[u8], word_list: &[String]) -> Vec<String> {
 }
 
 /// Decodes a neumonic into data using BIP-39
-pub fn mnemonic_decode(mnemonic: &[String], word_list: &[String]) -> Result<Vec<u8>> {
+pub fn mnemonic_decode(mnemonic: &[String], word_list: &[String]) -> Result<Vec<u8>, ChainGangError> {
     let mut bits = Bits::with_capacity(mnemonic.len() * 11);
     for word in mnemonic {
         let value = match word_list.binary_search(word) {
             Ok(value) => value,
-            Err(_) => return Err(Error::BadArgument(format!("Bad word: {}", word))),
+            Err(_) => return Err(ChainGangError::BadArgument(format!("Bad word: {}", word))),
         };
         let word_bits = Bits::from_slice(&[(value >> 3) as u8, ((value & 7) as u8) << 5], 11);
         bits.append(&word_bits);
@@ -75,7 +75,7 @@ pub fn mnemonic_decode(mnemonic: &[String], word_list: &[String]) -> Result<Vec<
 
     let cs_bits = Bits::from_slice(cs.as_ref(), cs_len);
     if cs_bits.extract(0, cs_len) != bits.extract(data_len, cs_len) {
-        return Err(Error::BadArgument("Invalid checksum".to_string()));
+        return Err(ChainGangError::BadArgument("Invalid checksum".to_string()));
     }
     Ok(bits.data[0..data_len / 8].to_vec())
 }

@@ -2,7 +2,7 @@ use std::io;
 use std::io::{Read, Write};
 
 use crate::messages::{BlockHeader, Payload, Tx, MAX_SATOSHIS};
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 type ShortTXID = Vec<u8>;
@@ -19,32 +19,32 @@ pub struct PrefilledTransaction {
 
 impl PrefilledTransaction {
     /// Checks if the tx is valid - without recourse to UTXO etc.
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         // Make sure neither in or out lists are empty
         if self.tx.inputs.is_empty() {
-            return Err(Error::BadData("inputs empty".to_string()));
+            return Err(ChainGangError::BadData("inputs empty".to_string()));
         }
         if self.tx.outputs.is_empty() {
-            return Err(Error::BadData("outputs empty".to_string()));
+            return Err(ChainGangError::BadData("outputs empty".to_string()));
         }
 
         // Each output value, as well as the total, must be in legal money range
         let mut total_out = 0;
         for tx_out in self.tx.outputs.iter() {
             if tx_out.satoshis < 0 {
-                return Err(Error::BadData("tx_out satoshis negative".to_string()));
+                return Err(ChainGangError::BadData("tx_out satoshis negative".to_string()));
             }
             total_out += tx_out.satoshis;
         }
         if total_out > MAX_SATOSHIS {
-            return Err(Error::BadData("Total out exceeds max satoshis".to_string()));
+            return Err(ChainGangError::BadData("Total out exceeds max satoshis".to_string()));
         }
         Ok(())
     }
 }
 
 impl Serializable<PrefilledTransaction> for PrefilledTransaction {
-    fn read(reader: &mut dyn Read) -> Result<PrefilledTransaction> {
+    fn read(reader: &mut dyn Read) -> Result<PrefilledTransaction, ChainGangError> {
         let mut ret = PrefilledTransaction {
             ..Default::default()
         };
@@ -89,7 +89,7 @@ pub struct Cmpctblock {
 
 impl Cmpctblock {
     /// Checks if the message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         // Check header is valid - needs blockhash and previous headers
         // Check transactions are valid
         for pre_tx in &self.prefilledtxn {
@@ -100,7 +100,7 @@ impl Cmpctblock {
 }
 
 impl Serializable<Cmpctblock> for Cmpctblock {
-    fn read(reader: &mut dyn Read) -> Result<Cmpctblock> {
+    fn read(reader: &mut dyn Read) -> Result<Cmpctblock, ChainGangError> {
         let mut ret = Cmpctblock {
             ..Default::default()
         };

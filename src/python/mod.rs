@@ -20,9 +20,12 @@ use crate::{
         },
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
-    transaction::sighash::{sig_hash_preimage, SigHashCache},
-    util::{hash160, sha256d, Error, Hash256},
-    wallet::{create_sighash, public_key_to_address, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
+    transaction::sighash::{sig_hash_preimage, sig_hash_preimage_checksig_index, SigHashCache},
+    util::{hash160, sha256d, Hash256, ChainGangError},
+    wallet::{
+        create_sighash, create_sighash_checksig_index, public_key_to_address, MAIN_PRIVATE_KEY,
+        TEST_PRIVATE_KEY,
+    },
 };
 
 pub type Bytes = Vec<u8>;
@@ -58,7 +61,7 @@ pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<St
         "BSV_Testnet" => Network::BSV_Testnet,
         _ => {
             let msg = format!("Unknown network: {}", network);
-            return Err(Error::BadData(msg).into());
+            return Err(ChainGangError::BadData(msg).into());
         }
     };
     Ok(public_key_to_address(public_key, network_type)?)
@@ -215,6 +218,43 @@ pub fn py_sig_hash_preimage(
     Ok(bytes.into())
 }
 
+/// Return the transaction data prior to the hash function
+///
+/// # Arguments
+///
+/// * `tx` - Spending transaction
+/// * `index` - Spending input index
+/// * `script_pubkey` - The lock_script of the output being spent.
+/// * `checksig_index` - index of the checksig to be used
+/// * `satoshis` - The satoshi amount in the output being spent
+/// * `sighash_flags` - Sighash flags
+#[pyfunction(name = "sig_hash_preimage_checksig_index")]
+pub fn py_sig_hash_preimage_checksig_index(
+    _py: Python,
+    tx: &PyTx,
+    index: usize,
+    script_pubkey: PyScript,
+    checksig_index: usize,
+    prev_amount: i64,
+    sighash_flags: u8,
+) -> PyResult<PyObject> {
+    let input_tx: Tx = tx.as_tx();
+    let prev_lock_script: Script = script_pubkey.as_script();
+
+    let mut cache = SigHashCache::new();
+    let sigh_hash = sig_hash_preimage_checksig_index(
+        &input_tx,
+        index,
+        &prev_lock_script.0,
+        checksig_index,
+        prev_amount,
+        sighash_flags,
+        &mut cache,
+    );
+    let bytes = PyBytes::new(_py, &sigh_hash.unwrap());
+    Ok(bytes.into())
+}
+
 /// Generates a transaction digest
 ///
 /// # Arguments
@@ -249,6 +289,42 @@ pub fn py_sig_hash(
     Ok(bytes.into())
 }
 
+/// Generates a transaction digest
+///
+/// # Arguments
+///
+/// * `tx` - Spending transaction
+/// * `index` - Spending input index
+/// * `script_pubkey` - The lock_script of the output being spent.
+/// * `checksig_index` - index of the checksig to be used
+/// * `satoshis` - The satoshi amount in the output being spent
+/// * `sighash_flags` - Sighash flags
+#[pyfunction(name = "sig_hash_checksig_index")]
+pub fn py_sig_hash_checksig_index(
+    _py: Python,
+    tx: &PyTx,
+    index: usize,
+    script_pubkey: PyScript,
+    checksig_index: usize,
+    prev_amount: i64,
+    sighash_flags: u8,
+) -> PyResult<PyObject> {
+    let input_tx = tx.as_tx();
+    let prev_lock_script = script_pubkey.as_script();
+
+    let full_sig_hash = create_sighash_checksig_index(
+        &input_tx,
+        index,
+        &prev_lock_script,
+        checksig_index,
+        prev_amount,
+        sighash_flags,
+    );
+
+    let bytes = PyBytes::new(_py, &full_sig_hash.unwrap().0);
+    Ok(bytes.into())
+}
+
 #[pyfunction(name = "wif_to_bytes")]
 pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<PyObject> {
     let key_bytes = wif_to_bytes(wif)?;
@@ -264,7 +340,7 @@ pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
         "BSV_Testnet" => TEST_PRIVATE_KEY,
         _ => {
             let msg = format!("Unknown network: {}", network);
-            return Err(Error::BadData(msg).into());
+            return Err(ChainGangError::BadData(msg).into());
         }
     };
     Ok(bytes_to_wif(key_bytes, network_prefix))
@@ -299,7 +375,9 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_address_to_public_key_hash, m)?)?;
     m.add_function(wrap_pyfunction!(py_public_key_to_address, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash_preimage, m)?)?;
+    m.add_function(wrap_pyfunction!(py_sig_hash_preimage_checksig_index, m)?)?;
     m.add_function(wrap_pyfunction!(py_sig_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(py_sig_hash_checksig_index, m)?)?;
     m.add_function(wrap_pyfunction!(py_wif_to_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(py_bytes_to_wif, m)?)?;
     m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;

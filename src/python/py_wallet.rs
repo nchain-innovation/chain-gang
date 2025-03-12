@@ -6,7 +6,7 @@ use crate::{
         Script,
     },
     transaction::sighash::{SIGHASH_ALL, SIGHASH_FORKID},
-    util::{Error, Result},
+    util::ChainGangError,
     wallet::{
         base58_checksum::{decode_base58_checksum, encode_base58_checksum},
         wallet::{wif_to_network_and_private_key, Wallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
@@ -33,7 +33,7 @@ use std::num::NonZeroU32;
 
 // TODO: note only tested for compressed key
 // Given a WIF, return bytes rather than SigningKey
-pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>> {
+pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>, ChainGangError> {
     let (_, private_key) = wif_to_network_and_private_key(wif)?;
     let private_key_as_bytes = private_key.to_bytes();
     Ok(private_key_as_bytes.to_vec())
@@ -73,13 +73,13 @@ pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
     encode_base58_checksum(&wif_bytes)
 }
 
-pub fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> Result<String> {
+pub fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> Result<String, ChainGangError> {
     let prefix: u8 = match network {
         Network::BSV_Mainnet => MAIN_PRIVATE_KEY,
         Network::BSV_Testnet => TEST_PRIVATE_KEY,
         _ => {
             let err_msg = format!("{} does not correspond to a known network.", network);
-            return Err(Error::BadData(err_msg));
+            return Err(ChainGangError::BadData(err_msg));
         }
     };
 
@@ -91,7 +91,7 @@ pub fn network_and_private_key_to_wif(network: Network, private_key: SigningKey)
     Ok(encode_base58_checksum(data.as_slice()))
 }
 
-pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>> {
+pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>, ChainGangError> {
     let decoded = decode_base58_checksum(address)?;
     Ok(decoded[1..].to_vec())
 }
@@ -119,12 +119,12 @@ pub fn str_to_network(network: &str) -> Option<Network> {
     }
 }
 
-pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet> {
+pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet, ChainGangError> {
     if let Some(netwrk) = str_to_network(network) {
         let mut big_int_bytes = int_rep.to_bytes_be().1;
         if big_int_bytes.len() > 32 {
             let msg = "Private key must be 32 bytes long".to_string();
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
 
         while big_int_bytes.len() < 32 {
@@ -140,7 +140,7 @@ pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet> {
         Ok(PyWallet { wallet })
     } else {
         let msg = format!("Unknown network {}", network);
-        Err(Error::BadData(msg))
+        Err(ChainGangError::BadData(msg))
     }
 }
 /// This class represents the Wallet functionality,
@@ -191,6 +191,24 @@ impl PyWallet {
         Ok(updated_txpy)
     }
 
+    fn sign_tx_sighash_checksig_index(
+        &mut self,
+        index: usize,
+        input_pytx: PyTx,
+        pytx: PyTx,
+        sighash_type: u8,
+        checksig_index: usize,
+    ) -> PyResult<PyTx> {
+        // Convert PyTx -> Tx
+        let input_tx = input_pytx.as_tx();
+        let mut tx = pytx.as_tx();
+        self.wallet
+            .sign_tx_input_checksig_index(&input_tx, &mut tx, index, sighash_type, checksig_index)?;
+        let updated_txpy = tx_as_pytx(&tx);
+        Ok(updated_txpy)
+    }
+
+
     fn get_locking_script(&self) -> PyResult<PyScript> {
         let script = self.wallet.get_locking_script();
         let pyscript = PyScript::new(&script.0);
@@ -206,8 +224,8 @@ impl PyWallet {
             .join("")
     }
 
-    fn get_address(&self) -> Result<String> {
-        self.wallet.get_address()
+    fn get_address(&self) -> PyResult<String> {
+        Ok(self.wallet.get_address()?)
     }
 
     fn to_wif(&self) -> PyResult<String> {
@@ -267,7 +285,7 @@ impl PyWallet {
             Ok(PyWallet { wallet })
         } else {
             let msg = format!("Unknown network {}", network);
-            Err(Error::BadData(msg).into())
+            Err(ChainGangError::BadData(msg).into())
         }
     }
 
@@ -277,7 +295,7 @@ impl PyWallet {
             // Ensure the length of key_bytes is 32 bytes
             if key_bytes.len() != 32 {
                 let msg = "Private key must be 32 bytes long".to_string();
-                return Err(Error::BadData(msg).into());
+                return Err(ChainGangError::BadData(msg).into());
             }
             // Convert &[u8] to a GenericArray<u8, 32>
             let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(key_bytes);
@@ -287,7 +305,7 @@ impl PyWallet {
             Ok(PyWallet { wallet })
         } else {
             let msg = format!("Unknown network {}", network);
-            Err(Error::BadData(msg).into())
+            Err(ChainGangError::BadData(msg).into())
         }
     }
 
@@ -297,13 +315,13 @@ impl PyWallet {
             // Attempt to decode the hex string
             let key_bytes = match hex::decode(hexstr) {
                 Ok(bytes) => bytes,
-                Err(e) => return Err(Error::BadData(e.to_string()).into()),
+                Err(e) => return Err(ChainGangError::BadData(e.to_string()).into()),
             };
 
             // Ensure the length of the bytes is exactly 32
             if key_bytes.len() != 32 {
                 let msg = "Private key must be 32 bytes long".to_string();
-                return Err(Error::BadData(msg).into());
+                return Err(ChainGangError::BadData(msg).into());
             }
 
             // Convert &[u8] to a GenericArray<u8, 32>
@@ -314,7 +332,7 @@ impl PyWallet {
             Ok(PyWallet { wallet })
         } else {
             let msg = format!("Unknown network {}", network);
-            Err(Error::BadData(msg).into())
+            Err(ChainGangError::BadData(msg).into())
         }
     }
 

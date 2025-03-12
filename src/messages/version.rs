@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::messages::message::Payload;
 use crate::messages::node_addr::NodeAddr;
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -54,10 +54,10 @@ pub struct Version {
 
 impl Version {
     /// Checks if the version message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         if self.version < MIN_SUPPORTED_PROTOCOL_VERSION {
             let msg = format!("Unsupported protocol version: {}", self.version);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         // Remove timestamp validation
         Ok(())
@@ -65,7 +65,7 @@ impl Version {
 }
 
 impl Serializable<Version> for Version {
-    fn read(reader: &mut dyn Read) -> Result<Version> {
+    fn read(reader: &mut dyn Read) -> Result<Version, ChainGangError> {
         let mut ret = Version {
             ..Default::default()
         };

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::util::{Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -40,7 +40,7 @@ impl NodeAddr {
 }
 
 impl Serializable<NodeAddr> for NodeAddr {
-    fn read(reader: &mut dyn Read) -> Result<NodeAddr> {
+    fn read(reader: &mut dyn Read) -> Result<NodeAddr, ChainGangError> {
         let services = reader.read_u64::<LittleEndian>()?;
         let mut ip = [0; 16];
         reader.read_exact(&mut ip)?;

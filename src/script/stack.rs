@@ -1,4 +1,4 @@
-use crate::util::{Error, Result};
+use crate::util::ChainGangError;
 use num_bigint::{BigInt, Sign};
 use num_traits::Zero;
 
@@ -7,43 +7,43 @@ pub type Stack = Vec<Vec<u8>>;
 
 /// Pops a bool off the stack
 #[inline]
-pub fn pop_bool(stack: &mut Stack) -> Result<bool> {
+pub fn pop_bool(stack: &mut Stack) -> Result<bool, ChainGangError> {
     if stack.is_empty() {
         let msg = "Cannot pop bool, empty stack".to_string();
-        return Err(Error::ScriptError(msg));
+        return Err(ChainGangError::ScriptError(msg));
     }
     let top = stack.pop().unwrap();
     // Bools cannot be popped having more than 32-bits, but may be used in other ways
     if top.len() > 4 {
         let msg = format!("Cannot pop bool, len too long {}", top.len());
-        return Err(Error::ScriptError(msg));
+        return Err(ChainGangError::ScriptError(msg));
     }
     Ok(decode_bool(&top))
 }
 
 /// Pops a pre-genesis number off the stack
 #[inline]
-pub fn pop_num(stack: &mut Stack) -> Result<i32> {
+pub fn pop_num(stack: &mut Stack) -> Result<i32, ChainGangError> {
     if stack.is_empty() {
         let msg = "Cannot pop num, empty stack".to_string();
-        return Err(Error::ScriptError(msg));
+        return Err(ChainGangError::ScriptError(msg));
     }
     let top = stack.pop().unwrap();
     // Numbers cannot be popped having more than 4 bytes, but may overflow on the stack to 5 bytes
     // after certain operations and may be used as byte vectors.
     if top.len() > 4 {
         let msg = format!("Cannot pop num, len too long {}", top.len());
-        return Err(Error::ScriptError(msg));
+        return Err(ChainGangError::ScriptError(msg));
     }
     Ok(decode_num(&top)? as i32)
 }
 
 /// Pops a bigint number off the stack
 #[inline]
-pub fn pop_bigint(stack: &mut Stack) -> Result<BigInt> {
+pub fn pop_bigint(stack: &mut Stack) -> Result<BigInt, ChainGangError> {
     if stack.is_empty() {
         let msg = "Cannot pop bigint, empty stack".to_string();
-        return Err(Error::ScriptError(msg));
+        return Err(ChainGangError::ScriptError(msg));
     }
     let mut top = stack.pop().unwrap();
     Ok(decode_bigint(&mut top))
@@ -65,7 +65,7 @@ pub fn decode_bool(s: &[u8]) -> bool {
 
 /// Converts a stack item to a number
 #[inline]
-pub fn decode_num(s: &[u8]) -> Result<i64> {
+pub fn decode_num(s: &[u8]) -> Result<i64, ChainGangError> {
     let mut val = match s.len() {
         0 => return Ok(0),
         1 => (s[0] & 127) as i64,
@@ -80,11 +80,11 @@ pub fn decode_num(s: &[u8]) -> Result<i64> {
         _ => {
             for item in s.iter().take(s.len() - 1).skip(4) {
                 if *item != 0 {
-                    return Err(Error::ScriptError("Number too big".to_string()));
+                    return Err(ChainGangError::ScriptError("Number too big".to_string()));
                 }
             }
             if s[s.len() - 1] & 127 != 0 {
-                return Err(Error::ScriptError("Number too big".to_string()));
+                return Err(ChainGangError::ScriptError("Number too big".to_string()));
             }
             ((s[3] as i64) << 24) + ((s[2] as i64) << 16) + ((s[1] as i64) << 8) + (s[0] as i64)
         }
@@ -97,9 +97,9 @@ pub fn decode_num(s: &[u8]) -> Result<i64> {
 
 /// Converts a number to a 32-bit stack item
 #[inline]
-pub fn encode_num(val: i64) -> Result<Vec<u8>> {
+pub fn encode_num(val: i64) -> Result<Vec<u8>, ChainGangError> {
     if !(-2147483647..=2147483647).contains(&val) {
-        return Err(Error::ScriptError("Number out of range".to_string()));
+        return Err(ChainGangError::ScriptError("Number out of range".to_string()));
     }
     let (posval, negmask) = if val < 0 { (-val, 128) } else { (val, 0) };
     if posval == 0 {
@@ -159,11 +159,11 @@ pub fn encode_bigint(val: BigInt) -> Vec<u8> {
 }
 
 #[inline]
-pub fn decode_number_combined(s: &[u8]) -> Result<BigInt> {
+pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
     let len = s.len();
 
     if len == 0 {
-        println!("Zero lenght number");
+        println!("Zero length number");
         return Ok(BigInt::zero());
     }
 

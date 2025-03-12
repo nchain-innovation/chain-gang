@@ -4,7 +4,8 @@ use crate::script::stack::{
 };
 use crate::script::Checker;
 use crate::transaction::sighash::SIGHASH_FORKID;
-use crate::util::{hash160, lshift, rshift, sha1::sha1, sha256::sha256, sha256d, Error, Result};
+use crate::util::{hash160, lshift, rshift, sha1::sha1, sha256::sha256, sha256d, ChainGangError};
+
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
 use ripemd::{Digest, Ripemd160};
@@ -28,7 +29,7 @@ pub fn core_eval<T: Checker>(
     break_at: Option<usize>,
     stack_param: Option<Stack>,
     alt_stack_param: Option<Stack>,
-) -> Result<(Stack, Stack, Option<usize>)> {
+) -> Result<(Stack, Stack, Option<usize>), ChainGangError> {
     let mut stack: Stack = stack_param.unwrap_or_else(|| Vec::with_capacity(STACK_CAPACITY));
     let mut alt_stack: Stack =
         alt_stack_param.unwrap_or_else(|| Vec::with_capacity(ALT_STACK_CAPACITY));
@@ -102,25 +103,25 @@ pub fn core_eval<T: Checker>(
                 let len = branch_exec.len();
                 if len == 0 {
                     let msg = "ELSE found without matching IF".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 branch_exec[len - 1] = !branch_exec[len - 1];
             }
             OP_ENDIF => {
                 if branch_exec.is_empty() {
                     let msg = "ENDIF found without matching IF".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 branch_exec.pop().unwrap();
             }
             OP_VERIFY => {
                 if !pop_bool(&mut stack)? {
-                    return Err(Error::ScriptError("OP_VERIFY failed".to_string()));
+                    return Err(ChainGangError::ScriptError("OP_VERIFY failed".to_string()));
                 }
             }
             OP_RETURN => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    return Err(Error::ScriptError("Hit OP_RETURN".to_string()));
+                    return Err(ChainGangError::ScriptError("Hit OP_RETURN".to_string()));
                 } else {
                     break 'outer;
                 }
@@ -167,7 +168,7 @@ pub fn core_eval<T: Checker>(
                 let n = pop_num(&mut stack)?;
                 if n < 0 {
                     let msg = "OP_PICK failed, n negative".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 check_stack_size(n as usize + 1, &stack)?;
                 let copy = stack[stack.len() - n as usize - 1].clone();
@@ -177,7 +178,7 @@ pub fn core_eval<T: Checker>(
                 let n = pop_num(&mut stack)?;
                 if n < 0 {
                     let msg = "OP_ROLL failed, n negative".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 check_stack_size(n as usize + 1, &stack)?;
                 let index = stack.len() - n as usize - 1;
@@ -262,10 +263,10 @@ pub fn core_eval<T: Checker>(
                 let x = stack.pop().unwrap();
                 if n < 0 {
                     let msg = "OP_SPLIT failed, n negative".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 } else if n > x.len() as i32 {
                     let msg = "OP_SPLIT failed, n out of range".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 } else if n == 0 {
                     stack.push(encode_num(0)?);
                     stack.push(x);
@@ -288,7 +289,7 @@ pub fn core_eval<T: Checker>(
                 let b = stack.pop().unwrap();
                 if a.len() != b.len() {
                     let msg = "OP_AND failed, different sizes".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let mut result = Vec::with_capacity(a.len());
                 for i in 0..a.len() {
@@ -302,7 +303,7 @@ pub fn core_eval<T: Checker>(
                 let b = stack.pop().unwrap();
                 if a.len() != b.len() {
                     let msg = "OP_OR failed, different sizes".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let mut result = Vec::with_capacity(a.len());
                 for i in 0..a.len() {
@@ -316,7 +317,7 @@ pub fn core_eval<T: Checker>(
                 let b = stack.pop().unwrap();
                 if a.len() != b.len() {
                     let msg = "OP_XOR failed, different sizes".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let mut result = Vec::with_capacity(a.len());
                 for i in 0..a.len() {
@@ -336,7 +337,7 @@ pub fn core_eval<T: Checker>(
                 let n = pop_num(&mut stack)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let v = stack.pop().unwrap();
                 stack.push(lshift(&v, n as usize));
@@ -346,7 +347,7 @@ pub fn core_eval<T: Checker>(
                 let n = pop_num(&mut stack)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let v = stack.pop().unwrap();
                 stack.push(rshift(&v, n as usize));
@@ -367,7 +368,7 @@ pub fn core_eval<T: Checker>(
                 let b = stack.pop().unwrap();
                 if a != b || a.len() != b.len() {
                     let msg = "OP_EQUALVERIFY operands are not equal".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
             }
             OP_1ADD => {
@@ -433,7 +434,7 @@ pub fn core_eval<T: Checker>(
                 let a = pop_bigint(&mut stack)?;
                 if b == BigInt::zero() {
                     let msg = "OP_DIV failed, divide by 0".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let quotient = a / b;
                 stack.push(encode_bigint(quotient));
@@ -443,7 +444,7 @@ pub fn core_eval<T: Checker>(
                 let a = pop_bigint(&mut stack)?;
                 if b == BigInt::zero() {
                     let msg = "OP_MOD failed, divide by 0".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let remainder = a % b;
                 stack.push(encode_bigint(remainder));
@@ -480,7 +481,7 @@ pub fn core_eval<T: Checker>(
                 let a = pop_bigint(&mut stack)?;
                 if a != b {
                     let msg = "Numbers are not equal".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
             }
             OP_NUMNOTEQUAL => {
@@ -562,16 +563,16 @@ pub fn core_eval<T: Checker>(
                 let mut n = stack.pop().unwrap();
                 if m < BigInt::one() {
                     let msg = format!("OP_NUM2BIN failed. m too small: {}", m);
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let nlen = n.len();
                 if m < BigInt::from(nlen) {
                     let msg = "OP_NUM2BIN failed. n longer than m".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 if m > BigInt::from(2147483647) {
                     let msg = "OP_NUM2BIN failed. m too big".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
                 let mut v = Vec::with_capacity(m.to_usize().unwrap());
                 let mut neg = 0;
@@ -654,7 +655,7 @@ pub fn core_eval<T: Checker>(
                     cleaned_script = remove_sig(&sig, &cleaned_script);
                 }
                 if !checker.check_sig(&sig, &pubkey, &cleaned_script)? {
-                    return Err(Error::ScriptError("OP_CHECKSIGVERIFY failed".to_string()));
+                    return Err(ChainGangError::ScriptError("OP_CHECKSIGVERIFY failed".to_string()));
                 }
             }
             OP_CHECKMULTISIG => {
@@ -666,7 +667,7 @@ pub fn core_eval<T: Checker>(
             OP_CHECKMULTISIGVERIFY => {
                 if !check_multisig(&mut stack, checker, &script[check_index..])? {
                     let msg = "OP_CHECKMULTISIGVERIFY failed".to_string();
-                    return Err(Error::ScriptError(msg));
+                    return Err(ChainGangError::ScriptError(msg));
                 }
             }
             OP_CHECKLOCKTIMEVERIFY => {
@@ -674,7 +675,7 @@ pub fn core_eval<T: Checker>(
                     let locktime = pop_num(&mut stack)?;
                     if !checker.check_locktime(locktime)? {
                         let msg = "OP_CHECKLOCKTIMEVERIFY failed".to_string();
-                        return Err(Error::ScriptError(msg));
+                        return Err(ChainGangError::ScriptError(msg));
                     }
                 }
             }
@@ -683,7 +684,7 @@ pub fn core_eval<T: Checker>(
                     let sequence = pop_num(&mut stack)?;
                     if !checker.check_sequence(sequence)? {
                         let msg = "OP_CHECKSEQUENCEVERIFY failed".to_string();
-                        return Err(Error::ScriptError(msg));
+                        return Err(ChainGangError::ScriptError(msg));
                     }
                 }
             }
@@ -697,14 +698,14 @@ pub fn core_eval<T: Checker>(
             OP_NOP10 => {}
             _ => {
                 let msg = format!("Bad opcode: {}, index {}", script[i], i);
-                return Err(Error::ScriptError(msg));
+                return Err(ChainGangError::ScriptError(msg));
             }
         }
         i = next_op(i, script);
     }
 
     if !branch_exec.is_empty() {
-        return Err(Error::ScriptError("ENDIF missing".to_string()));
+        return Err(ChainGangError::ScriptError("ENDIF missing".to_string()));
     }
 
     let optional_i = break_at.map(|_| i);
@@ -712,13 +713,13 @@ pub fn core_eval<T: Checker>(
 }
 
 /// Executes a script
-pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()> {
+pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(), ChainGangError> {
     match core_eval(script, checker, flags, None, None, None, None) {
         Ok((stack, _alt_stack, _script_counter)) => {
             // We don't call pop_bool here because the final stack element can be longer than 4 bytes
             check_stack_size(1, &stack)?;
             if !decode_bool(&stack[stack.len() - 1]) {
-                return Err(Error::ScriptError("Top of stack is false".to_string()));
+                return Err(ChainGangError::ScriptError("Top of stack is false".to_string()));
             }
             Ok(())
         }
@@ -727,11 +728,11 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
 }
 
 #[inline]
-fn check_multisig<T: Checker>(stack: &mut Stack, checker: &mut T, script: &[u8]) -> Result<bool> {
+fn check_multisig<T: Checker>(stack: &mut Stack, checker: &mut T, script: &[u8]) -> Result<bool, ChainGangError> {
     // Pop the keys
     let total = pop_num(stack)?;
     if total < 0 {
-        return Err(Error::ScriptError("total out of range".to_string()));
+        return Err(ChainGangError::ScriptError("total out of range".to_string()));
     }
     check_stack_size(total as usize, stack)?;
     let mut keys = Vec::with_capacity(total as usize);
@@ -742,7 +743,7 @@ fn check_multisig<T: Checker>(stack: &mut Stack, checker: &mut T, script: &[u8])
     // Pop the sigs
     let required = pop_num(stack)?;
     if required < 0 || required > total {
-        return Err(Error::ScriptError("required out of range".to_string()));
+        return Err(ChainGangError::ScriptError("required out of range".to_string()));
     }
     check_stack_size(required as usize, stack)?;
     let mut sigs = Vec::with_capacity(required as usize);
@@ -802,18 +803,17 @@ fn remove_sig(sig: &[u8], script: &[u8]) -> Vec<u8> {
 }
 
 #[inline]
-fn check_stack_size(minsize: usize, stack: &Stack) -> Result<()> {
+fn check_stack_size(minsize: usize, stack: &Stack) -> Result<(), ChainGangError> {
     if stack.len() < minsize {
-        let msg = format!("Stack too small: {}", minsize);
-        return Err(Error::ScriptError(msg));
+        return Err(ChainGangError::ScriptError(format!("Stack too small: {}", minsize)));
     }
     Ok(())
 }
 
 #[inline]
-fn remains(i: usize, len: usize, script: &[u8]) -> Result<()> {
+fn remains(i: usize, len: usize, script: &[u8]) -> Result<(), ChainGangError> {
     if i + len > script.len() {
-        Err(Error::ScriptError("Not enough data remaining".to_string()))
+        Err(ChainGangError::ScriptError("Not enough data remaining".to_string()))
     } else {
         Ok(())
     }
@@ -1608,15 +1608,15 @@ mod tests {
     }
 
     impl Checker for MockChecker {
-        fn check_sig(&mut self, _sig: &[u8], _pubkey: &[u8], _script: &[u8]) -> Result<bool> {
+        fn check_sig(&mut self, _sig: &[u8], _pubkey: &[u8], _script: &[u8]) -> Result<bool, ChainGangError> {
             Ok(self.sig_checks.borrow_mut().pop().unwrap())
         }
 
-        fn check_locktime(&self, _locktime: i32) -> Result<bool> {
+        fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
             Ok(self.locktime_checks.borrow_mut().pop().unwrap())
         }
 
-        fn check_sequence(&self, _sequence: i32) -> Result<bool> {
+        fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
             Ok(self.sequence_checks.borrow_mut().pop().unwrap())
         }
     }

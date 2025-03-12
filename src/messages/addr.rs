@@ -1,6 +1,6 @@
 use crate::messages::message::Payload;
 use crate::messages::node_addr_ex::NodeAddrEx;
-use crate::util::{var_int, Error, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 use std::io;
@@ -18,12 +18,12 @@ pub struct Addr {
 }
 
 impl Serializable<Addr> for Addr {
-    fn read(reader: &mut dyn Read) -> Result<Addr> {
+    fn read(reader: &mut dyn Read) -> Result<Addr, ChainGangError> {
         let mut ret = Addr { addrs: Vec::new() };
         let count = var_int::read(reader)?;
         if count > MAX_ADDR_COUNT {
             let msg = format!("Too many addrs: {}", count);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         for _i in 0..count {
             ret.addrs.push(NodeAddrEx::read(reader)?);
@@ -123,27 +123,27 @@ impl Bip155 {
     }
 }
 
-fn check_network_and_length(bip155_network_id: u8, length: u64) -> Result<()> {
+fn check_network_and_length(bip155_network_id: u8, length: u64) -> Result<(), ChainGangError> {
     if bip155_network_id > CJDNS_NETWORK_ID {
-        return Err(Error::BadData("Unknown network id".to_string()));
+        return Err(ChainGangError::BadData("Unknown network id".to_string()));
     }
     match bip155_network_id {
-        IPV4_NETWORK_ID if length != IPV4_ADDRESS_LENGTH_BYTES as u64 => Err(Error::BadData(
+        IPV4_NETWORK_ID if length != IPV4_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
             "Length incorrect for IPv4 address".to_string(),
         )),
-        IPV6_NETWORK_ID if length != IPV6_ADDRESS_LENGTH_BYTES as u64 => Err(Error::BadData(
+        IPV6_NETWORK_ID if length != IPV6_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
             "Length incorrect for IPv6 address".to_string(),
         )),
-        TORV2_NETWORK_ID if length != TORV2_ADDRESS_LENGTH_BYTES as u64 => Err(Error::BadData(
+        TORV2_NETWORK_ID if length != TORV2_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
             "Length incorrect for TorV2 address".to_string(),
         )),
-        TORV3_NETWORK_ID if length != TORV3_ADDRESS_LENGTH_BYTES as u64 => Err(Error::BadData(
+        TORV3_NETWORK_ID if length != TORV3_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
             "Length incorrect for TorV3 address".to_string(),
         )),
-        I2P_NETWORK_ID if length != I2P_ADDRESS_LENGTH_BYTES as u64 => Err(Error::BadData(
+        I2P_NETWORK_ID if length != I2P_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
             "Length incorrect for I2P address".to_string(),
         )),
-        CJDNS_NETWORK_ID if length != CJDNS_ADDRESS_LENGTH_BYTES as u64 => Err(Error::BadData(
+        CJDNS_NETWORK_ID if length != CJDNS_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
             "Length incorrect for CJDNS address".to_string(),
         )),
         _ => Ok(()),
@@ -151,7 +151,7 @@ fn check_network_and_length(bip155_network_id: u8, length: u64) -> Result<()> {
 }
 
 impl Serializable<Bip155> for Bip155 {
-    fn read(reader: &mut dyn Read) -> Result<Bip155> {
+    fn read(reader: &mut dyn Read) -> Result<Bip155, ChainGangError> {
         let bip155_network_id = reader.read_u8()?;
         let length = var_int::read(reader)?;
         check_network_and_length(bip155_network_id, length)?;
@@ -193,7 +193,7 @@ impl Serializable<Bip155> for Bip155 {
                 let ip = CJDNSAddr(ip);
                 Ok(Bip155::CJDNS(ip))
             }
-            _ => Err(Error::BadData("Uknown network id".to_string())),
+            _ => Err(ChainGangError::BadData("Uknown network id".to_string())),
         }
     }
 
@@ -234,7 +234,7 @@ pub struct NodeAddrExV2 {
 }
 
 impl Serializable<NodeAddrExV2> for NodeAddrExV2 {
-    fn read(reader: &mut dyn Read) -> Result<NodeAddrExV2> {
+    fn read(reader: &mut dyn Read) -> Result<NodeAddrExV2, ChainGangError> {
         Ok(NodeAddrExV2 {
             last_connected_time: reader.read_u32::<LittleEndian>()?,
             services: var_int::read(reader)?,
@@ -279,12 +279,12 @@ pub struct AddrV2 {
 }
 
 impl Serializable<AddrV2> for AddrV2 {
-    fn read(reader: &mut dyn Read) -> Result<AddrV2> {
+    fn read(reader: &mut dyn Read) -> Result<AddrV2, ChainGangError> {
         let mut ret = AddrV2 { addrs: Vec::new() };
         let count = var_int::read(reader)?;
         if count > MAX_ADDR_COUNT {
             let msg = format!("Too many addrs: {}", count);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         for _i in 0..count {
             ret.addrs.push(NodeAddrExV2::read(reader)?);

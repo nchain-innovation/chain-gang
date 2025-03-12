@@ -221,6 +221,7 @@ Wallet class has the following methods:
 * `__init__(wif_key: str) -> Wallet` - Constructor that takes a private key in WIF format
 * `sign_tx(self, index: int, input_tx: Tx, tx: Tx) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
 * `sign_tx_sighash(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
+* `sign_tx_sighash_flags_checksig_index(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int, checksig_index: int) -> Tx` - as `sign_tx_sighash` with checksig_index
 * `get_locking_script(self) -> Script` - Returns a locking script based on the public key
 * `get_public_key_as_hexstr(self) -> String` - Return the public key as a hex string
 * `get_address(self) -> String` - Return the address based on the public key
@@ -289,10 +290,16 @@ The `RPC Interface` is a `BlockchainInterface` that is used for connecting to th
 * `sig_hash(tx: Tx, index: int, script_pubkey: Script, satoshi: int, sighash_flags: int)` - Return the transaction digest/hash
 * `sig_hash_preimage(tx: Tx, index: int, script_pubkey: Script, satoshi: int, sighash_flags: int)` - Return the transaction data prior to the hash function
 
+For multiple OP_CHECKSIG in script:
+* `sig_hash_checksig_index(tx: Tx, index: int, script_pubkey: Script, checksig_index:int, satoshi: int, sighash_flags: int)` - Return the transaction digest/hash
+* `sig_hash_preimage_checksig_index(tx: Tx, index: int, script_pubkey: Script, checksig_index: int, satoshi: int, sighash_flags: int)` - Return the transaction data prior to the hash function
+
+
 Given:
   * `tx` - Spending transaction
   * `index` - Spending input index
   * `script_pubkey` - The lock_script of the output being spent
+  * `checksig_index` - The index of the OP_CHECKSIG to be used for the hash (if more than one)
   * `satoshis` - The satoshi amount in the output being spent
   * `sighash_flags` - Sighash flags
 

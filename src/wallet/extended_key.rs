@@ -1,5 +1,5 @@
 use crate::network::Network;
-use crate::util::{hash160, sha256d, Error, Result, Serializable};
+use crate::util::{hash160, sha256d, ChainGangError, Serializable};
 use byteorder::{BigEndian, WriteBytesExt};
 use hmac::{Hmac, Mac};
 use sha2::Sha512;
@@ -50,15 +50,15 @@ impl ExtendedKey {
         index: u32,
         chain_code: &[u8],
         public_key: &[u8],
-    ) -> Result<ExtendedKey> {
+    ) -> Result<ExtendedKey, ChainGangError> {
         if parent_fingerprint.len() != 4 {
-            return Err(Error::BadArgument("Fingerprint must be len 4".to_string()));
+            return Err(ChainGangError::BadArgument("Fingerprint must be len 4".to_string()));
         }
         if chain_code.len() != 32 {
-            return Err(Error::BadArgument("Chain code must be len 32".to_string()));
+            return Err(ChainGangError::BadArgument("Chain code must be len 32".to_string()));
         }
         if public_key.len() != 33 {
-            return Err(Error::BadArgument("Public key must be len 33".to_string()));
+            return Err(ChainGangError::BadArgument("Public key must be len 33".to_string()));
         }
         let mut extended_key = ExtendedKey([0; 78]);
         {
@@ -91,15 +91,15 @@ impl ExtendedKey {
         index: u32,
         chain_code: &[u8],
         private_key: &[u8],
-    ) -> Result<ExtendedKey> {
+    ) -> Result<ExtendedKey, ChainGangError> {
         if parent_fingerprint.len() != 4 {
-            return Err(Error::BadArgument("Fingerprint must be len 4".to_string()));
+            return Err(ChainGangError::BadArgument("Fingerprint must be len 4".to_string()));
         }
         if chain_code.len() != 32 {
-            return Err(Error::BadArgument("Chain code must be len 32".to_string()));
+            return Err(ChainGangError::BadArgument("Chain code must be len 32".to_string()));
         }
         if private_key.len() != 32 {
-            return Err(Error::BadArgument("Private key must be len 32".to_string()));
+            return Err(ChainGangError::BadArgument("Private key must be len 32".to_string()));
         }
         let mut extended_key = ExtendedKey([0; 78]);
         {
@@ -134,7 +134,7 @@ impl ExtendedKey {
     }
 
     /// Gets the network
-    pub fn network(&self) -> Result<Network> {
+    pub fn network(&self) -> Result<Network, ChainGangError> {
         let ver = self.version();
         if ver == MAINNET_PUBLIC_EXTENDED_KEY || ver == MAINNET_PRIVATE_EXTENDED_KEY {
             Ok(Network::BSV_Mainnet)
@@ -142,12 +142,12 @@ impl ExtendedKey {
             Ok(Network::BSV_Testnet)
         } else {
             let msg = format!("Unknown extended key version {:?}", ver);
-            Err(Error::BadData(msg))
+            Err(ChainGangError::BadData(msg))
         }
     }
 
     /// Gets the key type
-    pub fn key_type(&self) -> Result<ExtendedKeyType> {
+    pub fn key_type(&self) -> Result<ExtendedKeyType, ChainGangError> {
         let ver = self.version();
         if ver == MAINNET_PUBLIC_EXTENDED_KEY || ver == TESTNET_PUBLIC_EXTENDED_KEY {
             Ok(ExtendedKeyType::Public)
@@ -155,7 +155,7 @@ impl ExtendedKey {
             Ok(ExtendedKeyType::Private)
         } else {
             let msg = format!("Unknown extended key version {:?}", ver);
-            Err(Error::BadData(msg))
+            Err(ChainGangError::BadData(msg))
         }
     }
 
@@ -185,7 +185,7 @@ impl ExtendedKey {
     }
 
     /// Gets the public key if this is an extended public key
-    pub fn public_key(&self) -> Result<[u8; 33]> {
+    pub fn public_key(&self) -> Result<[u8; 33], ChainGangError> {
         match self.key_type()? {
             ExtendedKeyType::Public => {
                 let mut public_key = [0; 33];
@@ -205,19 +205,19 @@ impl ExtendedKey {
     }
 
     /// Gets the private key if this is an extended private key
-    pub fn private_key(&self) -> Result<[u8; 32]> {
+    pub fn private_key(&self) -> Result<[u8; 32], ChainGangError> {
         if self.key_type()? == ExtendedKeyType::Private {
             let mut private_key = [0; 32];
             private_key.clone_from_slice(&self.0[46..]);
             Ok(private_key)
         } else {
             let msg = "Cannot get private key of public extended key";
-            Err(Error::BadData(msg.to_string()))
+            Err(ChainGangError::BadData(msg.to_string()))
         }
     }
 
     /// Gets the fingerprint of the public key hash
-    pub fn fingerprint(&self) -> Result<[u8; 4]> {
+    pub fn fingerprint(&self) -> Result<[u8; 4], ChainGangError> {
         let mut fingerprint = [0; 4];
         let public_key_hash = hash160(&self.public_key()?);
         fingerprint.clone_from_slice(&public_key_hash.0[..4]);
@@ -225,7 +225,7 @@ impl ExtendedKey {
     }
 
     /// Gets the extenced public key for this key
-    pub fn extended_public_key(&self) -> Result<ExtendedKey> {
+    pub fn extended_public_key(&self) -> Result<ExtendedKey, ChainGangError> {
         match self.key_type()? {
             ExtendedKeyType::Public => Ok(*self),
             ExtendedKeyType::Private => {
@@ -248,15 +248,15 @@ impl ExtendedKey {
     }
 
     /// Derives an extended child private key from an extended parent private key
-    pub fn derive_private_key(&self, index: u32) -> Result<ExtendedKey> {
+    pub fn derive_private_key(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
         if self.key_type()? == ExtendedKeyType::Public {
             let msg = "Cannot derive private key from public key";
-            return Err(Error::BadData(msg.to_string()));
+            return Err(ChainGangError::BadData(msg.to_string()));
         }
         let network = self.network()?;
         if self.depth() == 255 {
             let msg = "Cannot derive extended key. Depth already at max.";
-            return Err(Error::BadData(msg.to_string()));
+            return Err(ChainGangError::BadData(msg.to_string()));
         }
         let private_key = &self.0[46..];
         let secp_par_secret_key = SecretKey::from_slice(private_key)?;
@@ -285,12 +285,12 @@ impl ExtendedKey {
         };
 
         if hmac.len() != 64 {
-            return Err(Error::IllegalState("HMAC invalid length".to_string()));
+            return Err(ChainGangError::IllegalState("HMAC invalid length".to_string()));
         }
 
         if !is_private_key_valid(&hmac[..32]) {
             let msg = "Invalid key. Try next index.".to_string();
-            return Err(Error::IllegalState(msg));
+            return Err(ChainGangError::IllegalState(msg));
         }
 
         let secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
@@ -319,14 +319,14 @@ impl ExtendedKey {
     }
 
     /// Derives an extended child public key from an extended parent public key
-    pub fn derive_public_key(&self, index: u32) -> Result<ExtendedKey> {
+    pub fn derive_public_key(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
         if index >= HARDENED_KEY {
-            return Err(Error::BadArgument("i cannot be hardened".to_string()));
+            return Err(ChainGangError::BadArgument("i cannot be hardened".to_string()));
         }
         let network = self.network()?;
         if self.depth() == 255 {
             let msg = "Cannot derive extended key. Depth already at max.";
-            return Err(Error::BadData(msg.to_string()));
+            return Err(ChainGangError::BadData(msg.to_string()));
         }
 
         let chain_code = &self.0[13..45];
@@ -340,12 +340,12 @@ impl ExtendedKey {
         let hmac = key.finalize().into_bytes();
 
         if hmac.len() != 64 {
-            return Err(Error::IllegalState("HMAC invalid length".to_string()));
+            return Err(ChainGangError::IllegalState("HMAC invalid length".to_string()));
         }
 
         if !is_private_key_valid(&hmac[..32]) {
             let msg = "Invalid key. Try next index.".to_string();
-            return Err(Error::IllegalState(msg));
+            return Err(ChainGangError::IllegalState(msg));
         }
 
         let secret_key = SecretKey::from_slice(&hmac[..32])?;
@@ -381,11 +381,11 @@ impl ExtendedKey {
     }
 
     /// Decodes an extended key from a string
-    pub fn decode(s: &str) -> Result<ExtendedKey> {
-        let v = s.from_base58()?;
+    pub fn decode(s: &str) -> Result<ExtendedKey, ChainGangError> {
+        let v = s.from_base58().map_err(|e| ChainGangError::Base58Error(format!("{:?}",e)))?;
         let checksum = sha256d(&v[..78]);
         if checksum.0[..4] != v[78..] {
-            return Err(Error::BadArgument("Invalid checksum".to_string()));
+            return Err(ChainGangError::BadArgument("Invalid checksum".to_string()));
         }
         let mut extended_key = ExtendedKey([0; 78]);
         extended_key.0.clone_from_slice(&v[..78]);
@@ -394,7 +394,7 @@ impl ExtendedKey {
 }
 
 impl Serializable<ExtendedKey> for ExtendedKey {
-    fn read(reader: &mut dyn Read) -> Result<ExtendedKey> {
+    fn read(reader: &mut dyn Read) -> Result<ExtendedKey, ChainGangError> {
         let mut k = ExtendedKey([0; 78]);
         reader.read_exact(&mut k.0)?;
         Ok(k)
@@ -421,19 +421,19 @@ impl PartialEq for ExtendedKey {
 impl Eq for ExtendedKey {}
 
 /// Derives a key using the BIP-32 and BIP-44 shortened key notation
-pub fn derive_extended_key(master: &ExtendedKey, path: &str) -> Result<ExtendedKey> {
+pub fn derive_extended_key(master: &ExtendedKey, path: &str) -> Result<ExtendedKey, ChainGangError> {
     let parts: Vec<&str> = path.split('/').collect();
     let mut key_type = ExtendedKeyType::Public;
 
     if parts[0] == "m" {
         if master.key_type()? == ExtendedKeyType::Public {
             let msg = "Cannot derive private key from public master";
-            return Err(Error::BadArgument(msg.to_string()));
+            return Err(ChainGangError::BadArgument(msg.to_string()));
         }
         key_type = ExtendedKeyType::Private;
     } else if parts[0] != "M" {
         let msg = "Path must start with m or M";
-        return Err(Error::BadArgument(msg.to_string()));
+        return Err(ChainGangError::BadArgument(msg.to_string()));
     }
 
     let mut key = *master;
@@ -441,7 +441,7 @@ pub fn derive_extended_key(master: &ExtendedKey, path: &str) -> Result<ExtendedK
     for part in parts[1..].iter() {
         if part.is_empty() {
             let msg = "Empty part";
-            return Err(Error::BadArgument(msg.to_string()));
+            return Err(ChainGangError::BadArgument(msg.to_string()));
         }
 
         let index = if part.ends_with('\'') || part.ends_with('h') || part.ends_with('H') {
@@ -452,7 +452,7 @@ pub fn derive_extended_key(master: &ExtendedKey, path: &str) -> Result<ExtendedK
                 .parse()?;
             if index >= HARDENED_KEY {
                 let msg = "Key index is already hardened";
-                return Err(Error::BadArgument(msg.to_string()));
+                return Err(ChainGangError::BadArgument(msg.to_string()));
             }
             index + HARDENED_KEY
         } else {

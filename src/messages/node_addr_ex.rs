@@ -1,5 +1,5 @@
 use crate::messages::node_addr::NodeAddr;
-use crate::util::{Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -24,7 +24,7 @@ impl NodeAddrEx {
 }
 
 impl Serializable<NodeAddrEx> for NodeAddrEx {
-    fn read(reader: &mut dyn Read) -> Result<NodeAddrEx> {
+    fn read(reader: &mut dyn Read) -> Result<NodeAddrEx, ChainGangError> {
         Ok(NodeAddrEx {
             last_connected_time: reader.read_u32::<LittleEndian>()?,
             addr: NodeAddr::read(reader)?,

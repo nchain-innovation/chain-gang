@@ -1,4 +1,4 @@
-use crate::util::{Error, Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 use hex;
 use sha2::{Digest, Sha256};
 use std::{
@@ -24,12 +24,12 @@ impl Hash256 {
     }
 
     /// Converts a string of 64 hex characters into a hash
-    pub fn decode(s: &str) -> Result<Hash256> {
+    pub fn decode(s: &str) -> Result<Hash256, ChainGangError> {
         let decoded_bytes = hex::decode(s)?;
         let mut hash_bytes = [0; 32];
         if decoded_bytes.len() != 32 {
             let msg = format!("Length {} of {:?}", decoded_bytes.len(), decoded_bytes);
-            return Err(Error::BadArgument(msg));
+            return Err(ChainGangError::BadArgument(msg));
         }
         hash_bytes.clone_from_slice(&decoded_bytes);
         hash_bytes.reverse();
@@ -38,7 +38,7 @@ impl Hash256 {
 }
 
 impl Serializable<Hash256> for Hash256 {
-    fn read(reader: &mut dyn Read) -> Result<Hash256> {
+    fn read(reader: &mut dyn Read) -> Result<Hash256, ChainGangError> {
         let mut bytes = [0; 32];
         reader.read_exact(&mut bytes)?;
         Ok(Hash256(bytes))

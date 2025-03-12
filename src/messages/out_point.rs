@@ -1,4 +1,4 @@
-use crate::util::{Hash256, Result, Serializable};
+use crate::util::{Hash256, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -28,7 +28,7 @@ impl OutPoint {
 }
 
 impl Serializable<OutPoint> for OutPoint {
-    fn read(reader: &mut dyn Read) -> Result<OutPoint> {
+    fn read(reader: &mut dyn Read) -> Result<OutPoint, ChainGangError> {
         let hash = Hash256::read(reader)?;
         let index = reader.read_u32::<LittleEndian>()?;
         Ok(OutPoint { hash, index })

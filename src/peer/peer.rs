@@ -2,7 +2,7 @@ use crate::messages::{Message, MessageHeader, Ping, Version, NODE_BITCOIN_CASH, 
 use crate::network::Network;
 use crate::peer::atomic_reader::AtomicReader;
 use crate::util::rx::{Observable, Observer, Single, Subject};
-use crate::util::{secs_since, Error, Result};
+use crate::util::{secs_since, ChainGangError};
 use snowflake::ProcessUniqueId;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -159,9 +159,9 @@ impl Peer {
     }
 
     /// Sends a message to the peer
-    pub fn send(&self, message: &Message) -> Result<()> {
+    pub fn send(&self, message: &Message) -> Result<(), ChainGangError> {
         if !self.connected.load(Ordering::Relaxed) {
-            return Err(Error::IllegalState("Not connected".to_string()));
+            return Err(ChainGangError::IllegalState("Not connected".to_string()));
         }
 
         let mut io_error: Option<io::Error> = None;
@@ -169,7 +169,7 @@ impl Peer {
             let mut tcp_writer = self.tcp_writer.lock().unwrap();
             let mut tcp_writer = match tcp_writer.as_mut() {
                 Some(tcp_writer) => tcp_writer,
-                None => return Err(Error::IllegalState("No tcp stream".to_string())),
+                None => return Err(ChainGangError::IllegalState("No tcp stream".to_string())),
             };
 
             debug!("{:?} Write {:#?}", self, message);
@@ -184,7 +184,7 @@ impl Peer {
         match io_error {
             Some(e) => {
                 self.disconnect();
-                Err(Error::IOError(e))
+                Err(ChainGangError::IoError(e))
             }
             None => Ok(()),
         }
@@ -249,10 +249,10 @@ impl Peer {
     }
 
     /// Gets the version message received during the handshake
-    pub fn version(&self) -> Result<Version> {
+    pub fn version(&self) -> Result<Version, ChainGangError> {
         match &*self.version.lock().unwrap() {
             Some(ref version) => Ok(version.clone()),
-            None => Err(Error::IllegalState("Not connected".to_string())),
+            None => Err(ChainGangError::IllegalState("Not connected".to_string())),
         }
     }
 
@@ -318,7 +318,7 @@ impl Peer {
                     }
                     Err(e) => {
                         // If timeout, try again later. Otherwise, shutdown
-                        if let Error::IOError(ref e) = e {
+                        if let ChainGangError::IoError(ref e) = e {
                             // Depending on platform, either TimedOut or WouldBlock may be returned to indicate a non-error timeout
                             if e.kind() == io::ErrorKind::TimedOut
                                 || e.kind() == io::ErrorKind::WouldBlock
@@ -336,7 +336,7 @@ impl Peer {
         });
     }
 
-    fn handshake(self: &Peer, version: Version, filter: Arc<dyn PeerFilter>) -> Result<TcpStream> {
+    fn handshake(self: &Peer, version: Version, filter: Arc<dyn PeerFilter>) -> Result<TcpStream, ChainGangError> {
         // Connect over TCP
         let tcp_addr = SocketAddr::new(self.ip, self.port);
         let mut tcp_stream = TcpStream::connect_timeout(&tcp_addr, CONNECT_TIMEOUT)?;
@@ -355,11 +355,11 @@ impl Peer {
         debug!("{:?} Read {:#?}", self, msg);
         let their_version = match msg {
             Message::Version(version) => version,
-            _ => return Err(Error::BadData("Unexpected command".to_string())),
+            _ => return Err(ChainGangError::BadData("Unexpected command".to_string())),
         };
 
         if !filter.connectable(&their_version) {
-            return Err(Error::IllegalState("Peer filtered out".to_string()));
+            return Err(ChainGangError::IllegalState("Peer filtered out".to_string()));
         }
 
         let now = secs_since(UNIX_EPOCH) as i64;
@@ -371,7 +371,7 @@ impl Peer {
         debug!("{:?} Read {:#?}", self, their_verack);
         match their_verack {
             Message::Verack => {}
-            _ => return Err(Error::BadData("Unexpected command".to_string())),
+            _ => return Err(ChainGangError::BadData("Unexpected command".to_string())),
         };
 
         // Write our verack
@@ -396,7 +396,7 @@ impl Peer {
         Ok(tcp_stream)
     }
 
-    fn handle_message(&self, message: &Message) -> Result<()> {
+    fn handle_message(&self, message: &Message) -> Result<(), ChainGangError> {
         // A subset of messages are handled directly by the peer
         match message {
             Message::FeeFilter(feefilter) => {

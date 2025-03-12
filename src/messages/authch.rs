@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::messages::message::Payload;
-use crate::util::{Error, Result, Serializable};
+use crate::util::{ChainGangError, Serializable};
 
 /// The message version, should be 0x01
 pub const SUPPORTED_VERSION: i32 = 0x01;
@@ -22,17 +22,17 @@ pub struct Authch {
 
 impl Authch {
     // Checks the authch message is valid
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<(), ChainGangError> {
         if self.version != SUPPORTED_VERSION {
             let msg = format!("Unsupported version: {}", self.version);
-            return Err(Error::BadData(msg));
+            return Err(ChainGangError::BadData(msg));
         }
         Ok(())
     }
 }
 
 impl Serializable<Authch> for Authch {
-    fn read(reader: &mut dyn Read) -> Result<Authch> {
+    fn read(reader: &mut dyn Read) -> Result<Authch, ChainGangError> {
         let version = reader.read_i32::<LittleEndian>()?;
         let message_length = reader.read_u32::<LittleEndian>()?;
         let message_size: usize = message_length.try_into().unwrap();

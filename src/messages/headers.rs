@@ -1,6 +1,6 @@
 use crate::messages::block_header::BlockHeader;
 use crate::messages::message::Payload;
-use crate::util::{var_int, Error, Hash256, Result, Serializable};
+use crate::util::{var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::cmp::Ordering;
 use std::fmt;
@@ -15,7 +15,7 @@ pub struct Headers {
 }
 
 impl Serializable<Headers> for Headers {
-    fn read(reader: &mut dyn Read) -> Result<Headers> {
+    fn read(reader: &mut dyn Read) -> Result<Headers, ChainGangError> {
         let n = var_int::read(reader)?;
         let mut headers = Vec::new();
         for _i in 0..n {
@@ -49,11 +49,11 @@ impl fmt::Debug for Headers {
 }
 
 /// Returns the hash for a header at a particular index utilizing prev_hash if possible
-pub fn header_hash(i: usize, headers: &[BlockHeader]) -> Result<Hash256> {
+pub fn header_hash(i: usize, headers: &[BlockHeader]) -> Result<Hash256, ChainGangError> {
     match headers.len().cmp(&(i + 1)) {
         Ordering::Greater => Ok(headers[i + 1].prev_hash),
         Ordering::Equal => Ok(headers[i].hash()),
-        Ordering::Less => Err(Error::BadArgument("Index out of range".to_string())),
+        Ordering::Less => Err(ChainGangError::BadArgument("Index out of range".to_string())),
     }
 }
 

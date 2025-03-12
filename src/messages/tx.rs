@@ -2,7 +2,7 @@ use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
 use crate::script::{op_codes, Script, TransactionChecker, NO_FLAGS, PREGENESIS_RULES};
 use crate::transaction::sighash::SigHashCache;
-use crate::util::{sha256d, var_int, Error, Hash256, Result, Serializable};
+use crate::util::{sha256d, var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use linked_hash_map::LinkedHashMap;
 use op_codes::{OP_EQUAL, OP_HASH160};
@@ -42,25 +42,25 @@ impl Tx {
         use_genesis_rules: bool,
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
-    ) -> Result<()> {
+    ) -> Result<(), ChainGangError> {
         // Make sure neither in or out lists are empty
         if self.inputs.is_empty() {
-            return Err(Error::BadData("inputs empty".to_string()));
+            return Err(ChainGangError::BadData("inputs empty".to_string()));
         }
         if self.outputs.is_empty() {
-            return Err(Error::BadData("outputs empty".to_string()));
+            return Err(ChainGangError::BadData("outputs empty".to_string()));
         }
 
         // Each output value, as well as the total, must be in legal money range
         let mut total_out = 0;
         for tx_out in self.outputs.iter() {
             if tx_out.satoshis < 0 {
-                return Err(Error::BadData("tx_out satoshis negative".to_string()));
+                return Err(ChainGangError::BadData("tx_out satoshis negative".to_string()));
             }
             total_out += tx_out.satoshis;
         }
         if total_out > MAX_SATOSHIS {
-            return Err(Error::BadData("Total out exceeds max satoshis".to_string()));
+            return Err(ChainGangError::BadData("Total out exceeds max satoshis".to_string()));
         }
 
         // Make sure none of the inputs are coinbase transactions
@@ -68,13 +68,13 @@ impl Tx {
             if tx_in.prev_output.hash == COINBASE_OUTPOINT_HASH
                 && tx_in.prev_output.index == COINBASE_OUTPOINT_INDEX
             {
-                return Err(Error::BadData("Unexpected coinbase".to_string()));
+                return Err(ChainGangError::BadData("Unexpected coinbase".to_string()));
             }
         }
 
         // Check that lock_time <= INT_MAX because some clients interpret this differently
         if self.lock_time > 2_147_483_647 {
-            return Err(Error::BadData("Lock time too large".to_string()));
+            return Err(ChainGangError::BadData("Lock time too large".to_string()));
         }
 
         // Check that all inputs are in the utxo set and are in legal money range
@@ -83,20 +83,20 @@ impl Tx {
             let utxo = utxos.get(&tx_in.prev_output);
             if let Some(tx_out) = utxo {
                 if tx_out.satoshis < 0 {
-                    return Err(Error::BadData("tx_out satoshis negative".to_string()));
+                    return Err(ChainGangError::BadData("tx_out satoshis negative".to_string()));
                 }
                 total_in += tx_out.satoshis;
             } else {
-                return Err(Error::BadData("utxo not found".to_string()));
+                return Err(ChainGangError::BadData("utxo not found".to_string()));
             }
         }
         if total_in > MAX_SATOSHIS {
-            return Err(Error::BadData("Total in exceeds max satoshis".to_string()));
+            return Err(ChainGangError::BadData("Total in exceeds max satoshis".to_string()));
         }
 
         // Check inputs spent > outputs received
         if total_in < total_out {
-            return Err(Error::BadData("Output total exceeds input".to_string()));
+            return Err(ChainGangError::BadData("Output total exceeds input".to_string()));
         }
 
         // Verify each script
@@ -134,7 +134,7 @@ impl Tx {
                     && tx_out.lock_script.0[0] == OP_HASH160
                     && tx_out.lock_script.0[21] == OP_EQUAL
                 {
-                    return Err(Error::BadData("P2SH sunsetted".to_string()));
+                    return Err(ChainGangError::BadData("P2SH sunsetted".to_string()));
                 }
             }
         }
@@ -158,7 +158,7 @@ impl Tx {
 }
 
 impl Serializable<Tx> for Tx {
-    fn read(reader: &mut dyn Read) -> Result<Tx> {
+    fn read(reader: &mut dyn Read) -> Result<Tx, ChainGangError> {
         let version = reader.read_i32::<LittleEndian>()?;
         let version = version as u32;
         let n_inputs = var_int::read(reader)?;

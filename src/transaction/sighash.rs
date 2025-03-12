@@ -1,8 +1,9 @@
 //! Transaction sighash helpers
 
 use crate::messages::{OutPoint, Payload, Tx, TxOut};
+use crate::script::op_codes::{OP_CHECKSIG, OP_CODESEPARATOR};
 use crate::script::{next_op, op_codes, Script};
-use crate::util::{sha256d, var_int, Error, Hash256, Result, Serializable};
+use crate::util::{sha256d, var_int, Hash256, Serializable, ChainGangError};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::Write;
 
@@ -48,11 +49,42 @@ pub fn sighash(
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Hash256> {
+) -> Result<Hash256, ChainGangError> {
+    // use default value of 0
+    let checksig_index: usize = 0;
+    sighash_checksig_index(
+        tx,
+        n_input,
+        script_code,
+        checksig_index,
+        satoshis,
+        sighash_type,
+        cache,
+    )
+}
+
+// Same as above `sighash` function with an additional `checksig_index` parameter
+pub fn sighash_checksig_index(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    checksig_index: usize,
+    satoshis: i64,
+    sighash_type: u8,
+    cache: &mut SigHashCache,
+) -> Result<Hash256, ChainGangError> {
     if sighash_type & SIGHASH_FORKID != 0 {
-        bip143_sighash(tx, n_input, script_code, satoshis, sighash_type, cache)
+        bip143_sighash(
+            tx,
+            n_input,
+            script_code,
+            checksig_index,
+            satoshis,
+            sighash_type,
+            cache,
+        )
     } else {
-        legacy_sighash(tx, n_input, script_code, sighash_type)
+        legacy_sighash(tx, n_input, script_code, checksig_index, sighash_type)
     }
 }
 
@@ -127,14 +159,87 @@ fn bip143_sighash(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
+    checksig_index: usize,
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Hash256> {
+) -> Result<Hash256, ChainGangError> {
     // The intention is to return any error(s) without any extra processing & according to the
     // docs the '?' operator is the most idiomatic & concise.
-    let s = sig_hash_preimage(tx, n_input, script_code, satoshis, sighash_type, cache)?;
+    let s = sig_hash_preimage_checksig_index(
+        tx,
+        n_input,
+        script_code,
+        checksig_index,
+        satoshis,
+        sighash_type,
+        cache,
+    )?;
     Ok(sha256d(&s))
+}
+
+// Given a script and operator return a Vec of positions of the operator
+fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
+    let positions: Vec<usize> = script_code
+        .iter()
+        .enumerate()
+        .filter_map(|(index, &value)| {
+            if value == operation {
+                Some(index)
+            } else {
+                None
+            }
+        })
+        .collect();
+    positions
+}
+
+// Remove instances of OP_CODESEPARATOR from the script_code
+// extract_subscript is the function that takes the script and the index of OP_CHECKSIG, and extracts the subscript)
+fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
+    
+    
+    if !script_code.contains(&OP_CODESEPARATOR) {
+        // if there is no OP_CODESEPARATOR there is nothing to do
+        Ok(script_code.to_vec())
+    } else {
+        // Look for all OP_CHECKSIG
+        let checksig_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CHECKSIG);
+        if checksig_index > (checksig_positions.len() -1) {
+            let err_msg = format!("checksig_index {} exceeds the number of OP_CHECKSIGs ({}) found in code", checksig_index, checksig_positions.len());
+            return Err(ChainGangError::BadArgument(err_msg));
+        };
+
+        let checksig_pos = checksig_positions.get(checksig_index).unwrap_or(&0);
+
+        // Look for all OP_CODESEPARATOR
+        let codeseparator_positions: Vec<usize> =
+            find_all_occurances_of(script_code, OP_CODESEPARATOR);
+
+        // We need to find the first OP_CODESEPARATOR before the OP_CHECKSIG pos
+        let start_subscript: usize = if codeseparator_positions.len() < 2 {
+            0
+        } else {
+            let filtered_code_pos: Vec<usize> = codeseparator_positions
+                .iter()
+                .copied()
+                .filter(|pos| pos < checksig_pos)
+                .collect();
+            *filtered_code_pos.last().unwrap_or(&0)
+        };
+
+        let mut sub_script = Vec::with_capacity(script_code.len() - start_subscript);
+        let mut i = start_subscript;
+
+        while i < script_code.len() {
+            let next = next_op(i, script_code);
+            if script_code[i] != op_codes::OP_CODESEPARATOR {
+                sub_script.extend_from_slice(&script_code[i..next]);
+            }
+            i = next;
+        }
+        Ok(sub_script)
+    }
 }
 
 /// Generates the transaction digest for signing using the legacy algorithm
@@ -144,26 +249,19 @@ fn legacy_sighash(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
+    checksig_index: usize,
     sighash_type: u8,
-) -> Result<Hash256> {
+) -> Result<Hash256, ChainGangError> {
     if n_input >= tx.inputs.len() {
-        return Err(Error::BadArgument("input out of tx_in range".to_string()));
+        return Err(ChainGangError::BadArgument("input out of tx_in range".to_string()));
     }
 
     let mut s = Vec::with_capacity(tx.size());
     let base_type = sighash_type & 31;
     let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
 
-    // Remove all instances of OP_CODESEPARATOR from the script_code
-    let mut sub_script = Vec::with_capacity(script_code.len());
-    let mut i = 0;
-    while i < script_code.len() {
-        let next = next_op(i, script_code);
-        if script_code[i] != op_codes::OP_CODESEPARATOR {
-            sub_script.extend_from_slice(&script_code[i..next]);
-        }
-        i = next;
-    }
+    // Remove instances of OP_CODESEPARATOR from the script_code
+    let sub_script = extract_subscript(script_code, checksig_index)?;
 
     // Serialize the version
     s.write_u32::<LittleEndian>(tx.version)?;
@@ -194,7 +292,7 @@ fn legacy_sighash(
         vec![]
     } else if base_type == SIGHASH_SINGLE {
         if n_input >= tx.outputs.len() {
-            return Err(Error::BadArgument("input out of tx_out range".to_string()));
+            return Err(ChainGangError::BadArgument("input out of tx_out range".to_string()));
         }
         let mut truncated_out = tx.outputs.clone();
         truncated_out.truncate(n_input + 1);
@@ -223,7 +321,6 @@ fn legacy_sighash(
     Ok(sha256d(&s))
 }
 
-// this code was duplicated from bip143_sighash above (that function now calls this one)
 pub fn sig_hash_preimage(
     tx: &Tx,
     n_input: usize,
@@ -231,25 +328,41 @@ pub fn sig_hash_preimage(
     satoshis: i64,
     sighash_type: u8,
     cache: &mut SigHashCache,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>, ChainGangError> {
+    // use default value of 0
+    let checksig_index: usize = 0;
+    sig_hash_preimage_checksig_index(
+        tx,
+        n_input,
+        script_code,
+        checksig_index,
+        satoshis,
+        sighash_type,
+        cache,
+    )
+}
+
+// this code was duplicated from bip143_sighash above (that function now calls this one)
+// as above with checksig_index
+pub fn sig_hash_preimage_checksig_index(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    checksig_index: usize,
+    satoshis: i64,
+    sighash_type: u8,
+    cache: &mut SigHashCache,
+) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
-        return Err(Error::BadArgument("input out of tx_in range".to_string()));
+        return Err(ChainGangError::BadArgument("input out of tx_in range".to_string()));
     }
 
     let mut s = Vec::with_capacity(tx.size());
     let base_type = sighash_type & 31;
     let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
 
-    // Remove all instances of OP_CODESEPARATOR from the script_code
-    let mut sub_script = Vec::with_capacity(script_code.len());
-    let mut i = 0;
-    while i < script_code.len() {
-        let next = next_op(i, script_code);
-        if script_code[i] != op_codes::OP_CODESEPARATOR {
-            sub_script.extend_from_slice(&script_code[i..next]);
-        }
-        i = next;
-    }
+    // Remove instances of OP_CODESEPARATOR from the script_code
+    let sub_script = extract_subscript(script_code, checksig_index)?;
 
     // Serialize the version
     s.write_u32::<LittleEndian>(tx.version)?;
@@ -285,8 +398,8 @@ pub fn sig_hash_preimage(
     tx.inputs[n_input].prev_output.write(&mut s)?;
 
     // 5. Serialize input script
-    var_int::write(script_code.len() as u64, &mut s)?;
-    s.write_all(script_code)?;
+    var_int::write(sub_script.len() as u64, &mut s)?;
+    s.write_all(&sub_script)?;
 
     // 6. Serialize satoshis
     s.write_i64::<LittleEndian>(satoshis)?;
@@ -330,6 +443,7 @@ mod tests {
     use crate::address::addr_decode;
     use crate::messages::{OutPoint, TxIn};
     use crate::network::Network;
+    use crate::script::op_codes::*;
     use crate::transaction::p2pkh;
     use hex;
 
@@ -367,7 +481,7 @@ mod tests {
         let mut cache = SigHashCache::new();
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         let sighash =
-            bip143_sighash(&tx, 0, &lock_script, 260000000, sighash_type, &mut cache).unwrap();
+            bip143_sighash(&tx, 0, &lock_script, 0, 260000000, sighash_type, &mut cache).unwrap();
         let expected = "1e2121837829018daf3aeadab76f1a542c49a3600ded7bd74323ee74ce0d840c";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
         assert!(cache.hash_prevouts.is_some());
@@ -400,8 +514,159 @@ mod tests {
             }],
             lock_time: 0,
         };
-        let sighash = legacy_sighash(&tx, 0, &lock_script, SIGHASH_ALL).unwrap();
+        let sighash = legacy_sighash(&tx, 0, &lock_script, 0, SIGHASH_ALL).unwrap();
         let expected = "ad16084eccf26464a84c5ee2f8b96b4daff9a3154ac3c1b320346aed042abe57";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
+    }
+
+    #[test]
+    fn op_codeseparator_test1() {
+        let mut script_code: Vec<u8> = Vec::new();
+        script_code.extend_from_slice(&[OP_CODESEPARATOR, OP_DUP, OP_HASH160]);
+        let decoded = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        // Drop leading OP_CODESEPARATOR
+        let expected_subscript = script_code[1..].to_vec();
+
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        assert_eq!(actual_subscript, expected_subscript);
+    }
+
+    #[test]
+    fn op_codeseparator_test2() {
+        let mut script_code: Vec<u8> = Vec::new();
+        script_code.extend_from_slice(&[OP_DUP, OP_HASH160]);
+        let decoded = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        // No change
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        assert_eq!(actual_subscript, script_code);
+    }
+
+    #[test]
+    fn op_codeseparator_test3() {
+        let mut script_code: Vec<u8> = Vec::new();
+        script_code.extend_from_slice(&[
+            OP_CODESEPARATOR,
+            OP_1,
+            OP_DROP,
+            OP_CODESEPARATOR,
+            OP_DUP,
+            OP_HASH160,
+        ]);
+        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        // Latest OP_CODESEPARATOR is the one that matters
+        // Drop leading OP_CODESEPARATOR, OP_1, OP_DROP , OP_CODESEPARATOR
+        let expected_subscript = script_code[4..].to_vec();
+
+        // assert_eq!(extract_subscript(&script_code), expected_subscript);
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        assert_eq!(actual_subscript, expected_subscript);
+    }
+
+    #[test]
+    fn op_codeseparator_test4() {
+        let mut script_code: Vec<u8> = Vec::new();
+        script_code.extend_from_slice(&[OP_CODESEPARATOR, OP_1, OP_DROP, OP_DUP, OP_HASH160]);
+        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG, OP_VERIFY, OP_1]);
+
+        // Drop the OP_CODESEPARATOR
+        let expected_subscript = script_code[1..].to_vec();
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+
+        assert_eq!(actual_subscript, expected_subscript);
+    }
+
+    #[test]
+
+    fn op_codeseparator_test5_1() {
+        let mut script_code: Vec<u8> = Vec::new();
+        script_code.extend_from_slice(&[
+            OP_CODESEPARATOR, // deleted
+            OP_2DUP,
+            OP_1,
+            OP_DROP,
+            OP_CODESEPARATOR, // deleted
+            OP_DUP,
+            OP_HASH160,
+        ]);
+        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[
+            OP_EQUALVERIFY,
+            OP_CHECKSIG,
+            OP_VERIFY,
+            OP_CODESEPARATOR, //Extra
+            OP_DUP,
+            OP_HASH160,
+        ]);
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        let mut expected_subscript_one = Vec::new();
+        expected_subscript_one.extend_from_slice(&[OP_DUP, OP_HASH160]);
+        expected_subscript_one.extend_from_slice(&decoded);
+        expected_subscript_one.extend_from_slice(&[
+            OP_EQUALVERIFY,
+            OP_CHECKSIG,
+            OP_VERIFY,
+            OP_CODESEPARATOR, // Should be Kept as per note 2 below
+            OP_DUP,
+            OP_HASH160,
+        ]);
+        expected_subscript_one.extend_from_slice(&decoded);
+        expected_subscript_one.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        /*
+        1) Deleting its calling OP_CODESEPARATOR and any preceding parts of the script from the script
+        2) Any OP_CODESEPARATOR opcodes that appear later in script, than the most recently executed code separator, will be included in the script
+        https://bitcoinops.org/en/topics/op_codeseparator/
+        */
+
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        assert_eq!(actual_subscript, expected_subscript_one);
+    }
+
+    #[test]
+    fn op_codeseparator_test5_2() {
+        let mut script_code: Vec<u8> = Vec::new();
+        script_code.extend_from_slice(&[
+            OP_CODESEPARATOR,
+            OP_2DUP,
+            OP_1,
+            OP_DROP,
+            OP_CODESEPARATOR,
+            OP_DUP,
+            OP_HASH160,
+        ]);
+        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[
+            OP_EQUALVERIFY,
+            OP_CHECKSIG,
+            OP_VERIFY,
+            OP_CODESEPARATOR, //Extra
+            OP_DUP,
+            OP_HASH160,
+        ]);
+        script_code.extend_from_slice(&decoded);
+        script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        let mut expected_subscript_two = Vec::new();
+        expected_subscript_two.extend_from_slice(&[OP_DUP, OP_HASH160]);
+        expected_subscript_two.extend_from_slice(&decoded);
+        expected_subscript_two.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        let actual_subscript = extract_subscript(&script_code, 1).unwrap();
+        assert_eq!(actual_subscript, expected_subscript_two);
     }
 }

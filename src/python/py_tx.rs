@@ -1,12 +1,11 @@
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
     python::py_script::PyScript,
-    util::{Error, Hash256, Serializable},
+    util::{Hash256, Serializable, ChainGangError},
 };
 use core::hash::Hash;
 use linked_hash_map::LinkedHashMap;
 use pyo3::{
-    exceptions::PyRuntimeError,
     prelude::*,
     types::{PyBytes, PyType},
 };
@@ -16,12 +15,8 @@ use std::{
     io::Cursor,
 };
 
-// Convert errors to PyErr
-impl std::convert::From<crate::util::Error> for PyErr {
-    fn from(err: crate::util::Error) -> PyErr {
-        PyRuntimeError::new_err(err.to_string())
-    }
-}
+
+
 
 /// TxIn - This represents a bitcoin transaction input
 //
@@ -306,7 +301,7 @@ impl PyTx {
         let tx = self.as_tx();
         if tx.coinbase() {
             let msg = "Validate can not check coinbase transactions.".to_string();
-            return Err(Error::BadData(msg).into());
+            return Err(ChainGangError::BadData(msg).into());
         }
 
         // Get the tx input OutPoints
@@ -327,12 +322,12 @@ impl PyTx {
                     Some(txout) => processed_utxo.insert(op, txout.clone()),
                     None => {
                         let msg = format!("Invalid Outpoint index {}", op.index);
-                        return Err(Error::BadData(msg).into());
+                        return Err(ChainGangError::BadData(msg).into());
                     }
                 },
                 None => {
                     let msg = format!("Unable to find hash {:?}", op.hash);
-                    return Err(Error::BadData(msg).into());
+                    return Err(ChainGangError::BadData(msg).into());
                 }
             };
         }
@@ -365,7 +360,7 @@ impl PyTx {
             }
             Err(e) => {
                 let msg = format!("Error decoding hexstr {}", &e);
-                Err(Error::BadData(msg).into())
+                Err(ChainGangError::BadData(msg).into())
             }
         }
     }
