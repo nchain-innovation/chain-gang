@@ -2,11 +2,19 @@ use thiserror::Error;
 use k256;
 use hex;
 
+#[cfg(feature = "interface")]
+use reqwest;
+
+
+use url;
+
 
 // Errors used in the chain-gang library
 #[derive(Error, Debug)]
 pub enum ChainGangError {
-
+    // Conversion from other Errors
+    // --------------------------------------------
+    
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
 
@@ -28,7 +36,18 @@ pub enum ChainGangError {
     #[error("Utf8 Error: {0}")]
     Utf8Error(#[from] std::string::FromUtf8Error),
 
-// new errors
+    #[cfg(feature = "interface")]
+    #[error("Reqwest Error: {0}")]
+    ReqwestError(#[from] reqwest::Error),
+
+    #[error("Serde JSON Parse error")]
+    SerdeJSONParseError(#[from] serde_json::Error),
+
+    #[error("URL Parse error")]
+    URLParseError(#[from] url::ParseError),
+
+    // Chain Gang Errors
+    // --------------------------------------------
     #[error("Error evaluating the script `{0}`")]
     ScriptError(String),
 
@@ -46,6 +65,12 @@ pub enum ChainGangError {
 
     #[error("The operation is not valid on this object")]
     InvalidOperation(String),
+    
+    #[error("Invalid reponse")]
+    ResponseError(String),
+
+    #[error("JSON Parse error")]
+    JSONParseError(String),
 
 }
 

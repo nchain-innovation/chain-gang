@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use crate::{
     messages::{BlockHeader, Tx},
     network::Network,
+    util::ChainGangError,
 };
-use anyhow::Result;
 use serde::Deserialize;
 
 //#[allow(unused_must_use)]
@@ -35,20 +35,20 @@ pub trait BlockchainInterface: Send + Sync {
     fn set_network(&mut self, network: &Network);
 
     // Return Ok(()) if connection is good
-    async fn status(&self) -> Result<()>;
+    async fn status(&self) -> Result<(), ChainGangError>;
 
     /// Get balance associated with address
-    async fn get_balance(&self, address: &str) -> Result<Balance>;
+    async fn get_balance(&self, address: &str) -> Result<Balance, ChainGangError>;
 
     /// Get UXTO associated with address
-    async fn get_utxo(&self, address: &str) -> Result<Utxo>;
+    async fn get_utxo(&self, address: &str) -> Result<Utxo, ChainGangError>;
 
     /// Broadcast Tx, return the txid
-    async fn broadcast_tx(&self, tx: &Tx) -> Result<String>;
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String, ChainGangError>;
 
-    async fn get_tx(&self, txid: &str) -> Result<Tx>;
+    async fn get_tx(&self, txid: &str) -> Result<Tx, ChainGangError>;
 
-    async fn get_latest_block_header(&self) -> Result<BlockHeader>;
+    async fn get_latest_block_header(&self) -> Result<BlockHeader, ChainGangError>;
 
-    async fn get_block_headers(&self) -> Result<String>;
+    async fn get_block_headers(&self) -> Result<String, ChainGangError>;
 }

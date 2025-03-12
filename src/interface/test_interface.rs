@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 
-use anyhow::Result;
 use async_mutex::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -9,6 +8,7 @@ use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
     messages::{BlockHeader, Tx},
     network::Network,
+    util::ChainGangError,
 };
 
 /// TestData - is the data used to set up a a test fixture and can be used to capture broadcast transactions
@@ -68,12 +68,12 @@ impl BlockchainInterface for TestInterface {
     }
 
     // Return Ok(()) if connection is good
-    async fn status(&self) -> Result<()> {
+    async fn status(&self) -> Result<(), ChainGangError> {
         Ok(())
     }
 
     /// Get balance associated with address
-    async fn get_balance(&self, address: &str) -> Result<Balance> {
+    async fn get_balance(&self, address: &str) -> Result<Balance, ChainGangError> {
         debug!("get_balance");
 
         let utxo: Utxo = self.get_utxo(address).await?;
@@ -101,7 +101,7 @@ impl BlockchainInterface for TestInterface {
     }
 
     /// Get UXTO associated with address
-    async fn get_utxo(&self, address: &str) -> Result<Utxo> {
+    async fn get_utxo(&self, address: &str) -> Result<Utxo, ChainGangError> {
         debug!("broadcast_tx");
 
         let test_data = self.test_data.lock().await;
@@ -113,7 +113,7 @@ impl BlockchainInterface for TestInterface {
     }
 
     /// Broadcast Tx
-    async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String, ChainGangError> {
         debug!("broadcast_tx");
         let mut test_data = self.test_data.lock().await;
 
@@ -125,17 +125,17 @@ impl BlockchainInterface for TestInterface {
         Ok(txid)
     }
 
-    async fn get_tx(&self, _txid: &str) -> Result<Tx> {
+    async fn get_tx(&self, _txid: &str) -> Result<Tx, ChainGangError> {
         debug!("get_tx");
         std::unimplemented!();
     }
 
-    async fn get_latest_block_header(&self) -> Result<BlockHeader> {
+    async fn get_latest_block_header(&self) -> Result<BlockHeader, ChainGangError> {
         debug!("get_latest_block_header");
         std::unimplemented!();
     }
 
-    async fn get_block_headers(&self) -> Result<String> {
+    async fn get_block_headers(&self) -> Result<String, ChainGangError> {
         debug!("get_block_headers");
         std::unimplemented!();
     }

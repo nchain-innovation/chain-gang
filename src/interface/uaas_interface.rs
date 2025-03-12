@@ -3,16 +3,13 @@ use async_trait::async_trait;
 use reqwest::StatusCode;
 use reqwest::Url;
 
-//use crate::util::Serializable;
-use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
-    // interface::woc_interface::BroadcastTxType,
     messages::{BlockHeader, Tx},
     network::Network,
-    util::Serializable,
+    util::{Serializable, ChainGangError},
 };
 
 #[derive(Debug, Deserialize)]
@@ -104,7 +101,7 @@ struct GetUtxoResponse {
 
 /// UaaS specific funtionality
 impl UaaSInterface {
-    pub fn new(input_url: &str) -> Result<Self> {
+    pub fn new(input_url: &str) -> Result<Self, ChainGangError> {
         // Check this is a valid URL
         let url = Url::parse(input_url)?;
 
@@ -115,87 +112,70 @@ impl UaaSInterface {
     }
 
     // Return Ok(UaaSStatusResponse) if UaaS responds...
-    pub async fn get_uaas_status(&self) -> Result<UaaSStatusResponse> {
+    pub async fn get_uaas_status(&self) -> Result<UaaSStatusResponse, ChainGangError> {
         log::debug!("status");
 
         let status_url = self.url.join("/status").unwrap();
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
-            Err(err) => return std::result::Result::Err(anyhow!("response.text() = {}", err)),
+            Err(err) => return Err(ChainGangError::ResponseError(format!("response.text() = {}", err))),
         };
 
-        let status: UaaSStatusResponse = match serde_json::from_str(&txt) {
-            Ok(data) => data,
-            Err(x) => {
-                log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
-            }
-        };
+        let status: UaaSStatusResponse = serde_json::from_str(&txt)?;
         Ok(status)
     }
 
-    pub async fn get_uaas_block_headers(&self) -> Result<BlockHeadersResponse> {
+    pub async fn get_uaas_block_headers(&self) -> Result<BlockHeadersResponse, ChainGangError> {
         log::debug!("get_uaas_block_headers");
 
         let status_url = self.url.join("/block/latest").unwrap();
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
-            Err(x) => return std::result::Result::Err(anyhow!("response.text() = {}", x)),
+            Err(x) => return Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
         };
 
-        let blockheaders: BlockHeadersResponse = match serde_json::from_str(&txt) {
-            Ok(data) => data,
-            Err(x) => {
-                log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
-            }
-        };
+        let blockheaders: BlockHeadersResponse = serde_json::from_str(&txt)?;
+        
         Ok(blockheaders)
     }
 
-    pub async fn get_monitors(&self) -> Result<Vec<String>> {
+    pub async fn get_monitors(&self) -> Result<Vec<String>, ChainGangError> {
         log::debug!("get_monitors");
 
         let collection_url = self.url.join("/collection").unwrap();
         let response = reqwest::get(collection_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &collection_url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
-            Err(x) => return std::result::Result::Err(anyhow!("response.text() = {}", x)),
+            Err(x) => return Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
         };
 
-        let monitors: GetMonitorResponse = match serde_json::from_str(&txt) {
-            Ok(data) => data,
-            Err(x) => {
-                log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
-            }
-        };
+        let monitors: GetMonitorResponse = serde_json::from_str(&txt)?;
         Ok(monitors.collections)
     }
 
-    pub async fn add_monitor(&self, monitor: &Monitor) -> Result<()> {
+    pub async fn add_monitor(&self, monitor: &Monitor) -> Result<(), ChainGangError> {
         log::debug!("add_monitor");
         // check the input is valid
         if monitor.address.is_none() && monitor.locking_script_pattern.is_none() {
-            return std::result::Result::Err(anyhow!(
+            return Err(ChainGangError::BadArgument(format!(
                 "monitor requires address or locking_script pattern"
-            ));
+            )));
         }
 
         let add_monitor_url = self.url.join("/collection/monitor").unwrap();
@@ -208,12 +188,12 @@ impl UaaSInterface {
 
         if response.status() != 200 {
             log::warn!("url = {}", &add_monitor_url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         Ok(())
     }
 
-    pub async fn delete_monitor(&self, monitor_name: &str) -> Result<()> {
+    pub async fn delete_monitor(&self, monitor_name: &str) -> Result<(), ChainGangError> {
         log::debug!("delete_monitor");
 
         let delete_url = format!("/collection/monitor?monitor_name={}", monitor_name);
@@ -224,9 +204,8 @@ impl UaaSInterface {
 
         if response.status() != 200 {
             log::warn!("url = {}", &delete_monitor_url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
-
         Ok(())
     }
 }
@@ -238,23 +217,23 @@ impl BlockchainInterface for UaaSInterface {
     }
 
     // Return Ok(()) if UaaS responds...
-    async fn status(&self) -> Result<()> {
+    async fn status(&self) -> Result<(), ChainGangError> {
         log::debug!("status");
 
         let status_url = self.url.join("/status").unwrap();
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         match response.text().await {
             Ok(_txt) => Ok(()),
-            Err(err) => std::result::Result::Err(anyhow!("response.text() = {}", err)),
+            Err(err) => Err(ChainGangError::ResponseError(format!("response.text() = {}", err))),
         }
     }
 
     /// Get balance associated with address
-    async fn get_balance(&self, address: &str) -> Result<Balance> {
+    async fn get_balance(&self, address: &str) -> Result<Balance, ChainGangError> {
         log::debug!("get_balance");
         let get_utxo_balance_url = format!("/utxo/balance?address={}", address);
 
@@ -263,14 +242,14 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
                 log::debug!("address = {}", &address);
-                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
             }
         };
         let data: Balance = match serde_json::from_str(&txt) {
@@ -278,14 +257,14 @@ impl BlockchainInterface for UaaSInterface {
             Err(x) => {
                 log::debug!("address = {}", &address);
                 log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
             }
         };
         Ok(data)
     }
 
     /// Get UXTO associated with address
-    async fn get_utxo(&self, address: &str) -> Result<Utxo> {
+    async fn get_utxo(&self, address: &str) -> Result<Utxo, ChainGangError> {
         log::debug!("get_utxo");
 
         let get_utxo_url = format!("/utxo/get?address={}", address);
@@ -295,20 +274,20 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
             }
         };
         let data: GetUtxoResponse = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
             }
         };
         Ok(data.utxo)
@@ -316,7 +295,7 @@ impl BlockchainInterface for UaaSInterface {
 
     /// Broadcast Tx
     ///
-    async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String, ChainGangError> {
         log::debug!("broadcast_tx");
 
         let url = self.url.join("/tx/hex").unwrap();
@@ -341,12 +320,12 @@ impl BlockchainInterface for UaaSInterface {
             }
             _ => {
                 log::debug!("url = {}", &url);
-                std::result::Result::Err(anyhow!("response.status() = {}", status))
+                Err(ChainGangError::ResponseError(format!("response.status() = {}", status)))
             }
         }
     }
 
-    async fn get_tx(&self, txid: &str) -> Result<Tx> {
+    async fn get_tx(&self, txid: &str) -> Result<Tx, ChainGangError> {
         log::debug!("get_tx");
 
         let get_tx_url = format!("/tx/hex?hash={}", txid);
@@ -355,12 +334,12 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
             }
         };
 
@@ -368,7 +347,7 @@ impl BlockchainInterface for UaaSInterface {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
             }
         };
 
@@ -378,7 +357,7 @@ impl BlockchainInterface for UaaSInterface {
         Ok(tx)
     }
 
-    async fn get_latest_block_header(&self) -> Result<BlockHeader> {
+    async fn get_latest_block_header(&self) -> Result<BlockHeader, ChainGangError> {
         log::debug!("get_latest_block_header");
 
         let url = self.url.join("/block/last/hex").unwrap();
@@ -386,12 +365,12 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
             }
         };
 
@@ -399,7 +378,7 @@ impl BlockchainInterface for UaaSInterface {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
             }
         };
 
@@ -409,19 +388,19 @@ impl BlockchainInterface for UaaSInterface {
         Ok(blockheader)
     }
 
-    async fn get_block_headers(&self) -> Result<String> {
+    async fn get_block_headers(&self) -> Result<String, ChainGangError> {
         log::debug!("get_block_headers");
 
         let status_url = self.url.join("/block/latest").unwrap();
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
 
         return match response.text().await {
             Ok(headers) => Ok(headers),
-            Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
+            Err(x) => Err(ChainGangError::JSONParseError(format!("response.text() = {}", x))),
         };
     }
 }

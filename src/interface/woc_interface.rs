@@ -2,13 +2,13 @@ use async_trait::async_trait;
 use reqwest::StatusCode;
 
 use crate::util::Serializable;
-use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
     messages::{BlockHeader, Tx},
     network::Network,
+    util::ChainGangError,
 };
 
 /// Structure for json serialisation for broadcast_tx
@@ -53,7 +53,7 @@ impl BlockchainInterface for WocInterface {
     }
 
     // Return Ok(()) if connection is good
-    async fn status(&self) -> Result<()> {
+    async fn status(&self) -> Result<(), ChainGangError> {
         log::debug!("status");
 
         let network = self.get_network_str();
@@ -61,17 +61,17 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         match response.text().await {
             Ok(txt) if txt == "Whats On Chain" => Ok(()),
-            Ok(txt) => std::result::Result::Err(anyhow!("Unexpected txt = {}", txt)),
-            Err(err) => std::result::Result::Err(anyhow!("response.text() = {}", err)),
+            Ok(txt) => Err(ChainGangError::ResponseError(format!("Unexpected txt = {}", txt))),
+            Err(err) => Err(ChainGangError::ResponseError(format!("response.text() = {}", err))),
         }
     }
 
     /// Get balance associated with address
-    async fn get_balance(&self, address: &str) -> Result<Balance> {
+    async fn get_balance(&self, address: &str) -> Result<Balance, ChainGangError> {
         log::debug!("get_balance");
 
         let network = self.get_network_str();
@@ -80,13 +80,13 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
                 log::debug!("address = {}", &address);
-                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
             }
         };
         let data: Balance = match serde_json::from_str(&txt) {
@@ -94,14 +94,14 @@ impl BlockchainInterface for WocInterface {
             Err(x) => {
                 log::debug!("address = {}", &address);
                 log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
             }
         };
         Ok(data)
     }
 
     /// Get UXTO associated with address
-    async fn get_utxo(&self, address: &str) -> Result<Utxo> {
+    async fn get_utxo(&self, address: &str) -> Result<Utxo, ChainGangError> {
         log::debug!("get_utxo");
         let network = self.get_network_str();
 
@@ -110,19 +110,19 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return std::result::Result::Err(anyhow!("response.text() = {}", x));
+                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
             }
         };
         let data: Utxo = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return std::result::Result::Err(anyhow!("json parse error = {}", x));
+                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
             }
         };
         Ok(data)
@@ -130,7 +130,7 @@ impl BlockchainInterface for WocInterface {
 
     /// Broadcast Tx
     ///
-    async fn broadcast_tx(&self, tx: &Tx) -> Result<String> {
+    async fn broadcast_tx(&self, tx: &Tx) -> Result<String, ChainGangError> {
         log::debug!("broadcast_tx");
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
@@ -152,12 +152,12 @@ impl BlockchainInterface for WocInterface {
             }
             _ => {
                 log::debug!("url = {}", &url);
-                std::result::Result::Err(anyhow!("response.status() = {}", status))
+                Err(ChainGangError::ResponseError(format!("response.status() = {}", status)))
             }
         }
     }
 
-    async fn get_tx(&self, txid: &str) -> Result<Tx> {
+    async fn get_tx(&self, txid: &str) -> Result<Tx, ChainGangError> {
         log::debug!("get_tx");
 
         let network = self.get_network_str();
@@ -165,7 +165,7 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         match response.text().await {
             Ok(txt) => {
@@ -174,11 +174,11 @@ impl BlockchainInterface for WocInterface {
                 let tx: Tx = Tx::read(&mut byte_slice)?;
                 Ok(tx)
             }
-            Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
+            Err(x) => Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
         }
     }
 
-    async fn get_latest_block_header(&self) -> Result<BlockHeader> {
+    async fn get_latest_block_header(&self) -> Result<BlockHeader, ChainGangError> {
         log::debug!("get_latest_block_header");
         let network = self.get_network_str();
         let url =
@@ -186,7 +186,7 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         match response.text().await {
             Ok(txt) => {
@@ -195,22 +195,22 @@ impl BlockchainInterface for WocInterface {
                 let blockheader: BlockHeader = BlockHeader::read(&mut byte_slice)?;
                 Ok(blockheader)
             }
-            Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
+            Err(x) => Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
         }
     }
 
-    async fn get_block_headers(&self) -> Result<String> {
+    async fn get_block_headers(&self) -> Result<String, ChainGangError> {
         log::debug!("get_block_headers");
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers");
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return std::result::Result::Err(anyhow!("response.status() = {}", response.status()));
+            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
         };
         match response.text().await {
             Ok(headers) => Ok(headers),
-            Err(x) => std::result::Result::Err(anyhow!("response.text() = {}", x)),
+            Err(x) => Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
         }
     }
 }
