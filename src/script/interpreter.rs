@@ -428,6 +428,12 @@ pub fn core_eval<T: Checker>(
                 let product = a * b;
                 stack.push(encode_bigint(product));
             }
+            OP_2MUL => {
+                let a = pop_bigint(&mut stack)?;
+                let two = BigInt::from(2);
+                let product = a * two;
+                stack.push(encode_bigint(product));
+            }
             OP_DIV => {
                 let b = pop_bigint(&mut stack)?;
                 let a = pop_bigint(&mut stack)?;
@@ -435,6 +441,13 @@ pub fn core_eval<T: Checker>(
                     let msg = "OP_DIV failed, divide by 0".to_string();
                     return Err(Error::ScriptError(msg));
                 }
+                let quotient = a / b;
+                stack.push(encode_bigint(quotient));
+            }
+            OP_2DIV => {
+                let a = pop_bigint(&mut stack)?;
+                let b = BigInt::from(2);
+
                 let quotient = a / b;
                 stack.push(encode_bigint(quotient));
             }
@@ -1069,8 +1082,10 @@ mod tests {
             OP_MUL,
         ]);
         pass(&[OP_1, OP_1NEGATE, OP_MUL, OP_1NEGATE, OP_EQUAL]);
+        pass(&[OP_5, OP_2MUL, OP_10, OP_EQUAL]);
         pass(&[OP_1, OP_1, OP_DIV, OP_1, OP_EQUAL]);
         pass(&[OP_5, OP_2, OP_DIV, OP_2, OP_EQUAL]);
+        pass(&[OP_5, OP_2DIV, OP_2, OP_EQUAL]);
         pass(&[OP_2, OP_1NEGATE, OP_DIV, OP_PUSH + 1, 130, OP_EQUAL]);
         pass(&[OP_1, OP_1, OP_MOD, OP_0, OP_EQUAL]);
         pass(&[OP_5, OP_2, OP_MOD, OP_1, OP_EQUAL]);
@@ -1326,7 +1341,9 @@ mod tests {
         fail(&[OP_1, OP_MUL]);
         fail(&[OP_PUSH + 5, 0, 0, 0, 0, 0, OP_MUL]);
         fail(&[OP_PUSH + 2, 0, 0, OP_PUSH + 2, 0, 0, OP_MUL]);
+        fail(&[OP_2MUL]);
         fail(&[OP_DIV]);
+        fail(&[OP_2DIV]);
         fail(&[OP_1, OP_DIV]);
         fail(&[OP_PUSH + 5, 0, 0, 0, 0, 0, OP_DIV]);
         fail(&[OP_1, OP_0, OP_DIV]);
@@ -1446,7 +1463,6 @@ mod tests {
         fail(&[OP_RESERVED1, OP_1]);
         fail(&[OP_RESERVED2, OP_1]);
         fail(&[OP_INVERT, OP_1]);
-        fail(&[OP_2MUL, OP_1]);
         fail(&[OP_2DIV, OP_1]);
         fail(&[OP_MUL, OP_1]);
         fail(&[OP_LSHIFT, OP_1]);
