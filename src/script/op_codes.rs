@@ -169,8 +169,12 @@ pub const OP_ADD: u8 = 147;
 pub const OP_SUB: u8 = 148;
 /// Multiplies a by b
 pub(crate) const OP_MUL: u8 = 149;
+/// The input is multiplied by 2
+pub(crate) const OP_2MUL: u8 = 141;
 /// Divides a by b
 pub const OP_DIV: u8 = 150;
+/// The input is divided by 2
+pub(crate) const OP_2DIV: u8 = 142;
 /// Returns the remainder after dividing a by b
 pub const OP_MOD: u8 = 151;
 /// Shifts a left b bits, preserving sign
@@ -290,8 +294,3 @@ pub(crate) const OP_INVALID_ABOVE: u8 = 186;
 // --------------------------------------------------------------------------------------------
 // Disabled words
 // --------------------------------------------------------------------------------------------
-
-/// The input is multiplied by 2
-pub(crate) const OP_2MUL: u8 = 141;
-/// The input is divided by 2
-pub(crate) const OP_2DIV: u8 = 142;
