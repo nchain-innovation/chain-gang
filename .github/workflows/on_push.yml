@@ -54,6 +54,7 @@ jobs:
           cache: true
       - name: Clear wheel dir
         run: rm target/wheels/* | true
+        run: rm -rf target/ .maturin/ dist/ build/
       - name: Maturin build
         uses: PyO3/maturin-action@v1
         with:
