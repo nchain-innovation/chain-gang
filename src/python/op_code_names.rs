@@ -83,8 +83,8 @@ lazy_static! {
         ("OP_1ADD",  139),
         ("OP_1SUB",  140),
 
-        ("OP_2MUL",  141), // Disabled
-        ("OP_2DIV",  142), // Disabled
+        ("OP_2MUL",  141),
+        ("OP_2DIV",  142),
 
         ("OP_NEGATE",  143),
         ("OP_ABS",  144),

@@ -140,16 +140,16 @@ class BSVTests(unittest.TestCase):
         """
         script = Script([OP_16, OP_2MUL])
         context = Context(script=script)
-        # False as disabled in intepreter
-        self.assertFalse(context.evaluate_core(quiet=True))
+        self.assertTrue(context.evaluate_core())
+        self.assertEqual(context.get_stack(), Stack([[32]]))
 
     def test_2div(self):
         """ Simple check of 2DIV
         """
         script = Script([OP_16, OP_2DIV])
         context = Context(script=script)
-        # False as disabled in intepreter
-        self.assertFalse(context.evaluate_core(quiet=True))
+        self.assertTrue(context.evaluate_core())
+        self.assertEqual(context.get_stack(), Stack([[8]]))
 
     def test_mod(self):
         """ Simple check of MOD

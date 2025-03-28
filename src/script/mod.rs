@@ -269,7 +269,9 @@ impl Script {
                 OP_ADD => ret.push_str("OP_ADD"),
                 OP_SUB => ret.push_str("OP_SUB"),
                 OP_MUL => ret.push_str("OP_MUL"),
+                OP_2MUL => ret.push_str("OP_2MUL"),
                 OP_DIV => ret.push_str("OP_DIV"),
+                OP_2DIV => ret.push_str("OP_2DIV"),
                 OP_MOD => ret.push_str("OP_MOD"),
 
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
@@ -439,7 +441,9 @@ impl fmt::Debug for Script {
                 OP_ADD => ret.push_str("OP_ADD"),
                 OP_SUB => ret.push_str("OP_SUB"),
                 OP_MUL => ret.push_str("OP_MUL"),
+                OP_2MUL => ret.push_str("OP_2MUL"),
                 OP_DIV => ret.push_str("OP_DIV"),
+                OP_2DIV => ret.push_str("OP_2DIV"),
                 OP_MOD => ret.push_str("OP_MOD"),
 
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
