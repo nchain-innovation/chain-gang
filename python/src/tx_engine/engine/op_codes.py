@@ -83,8 +83,8 @@ OP_RESERVED2: Final = 0x8A
 # Artithmetic
 OP_1ADD: Final = 0x8B
 OP_1SUB: Final = 0x8C
-OP_2MUL: Final = 0x8D  # Disabled
-OP_2DIV: Final = 0x8E  # Disabled
+OP_2MUL: Final = 0x8D
+OP_2DIV: Final = 0x8E
 OP_NEGATE: Final = 0x8F
 OP_ABS: Final = 0x90
 OP_NOT: Final = 0x91
