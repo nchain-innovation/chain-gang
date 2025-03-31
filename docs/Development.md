@@ -45,6 +45,7 @@ For more information on the tests see [here](../python/src/tests/README.md)
 To perform static code analysis on the Python source code run the following:
 
 ```bash
+
 $ cd python
 $ ./lint.sh
 ```

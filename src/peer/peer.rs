@@ -80,13 +80,13 @@ impl PeerFilter for PeerNodeFilter {
     fn connectable(&self, version: &Version) -> bool {
         self.user_agent
             .as_ref()
-            .map_or(true, |user_agent| version.user_agent.contains(user_agent))
+            .is_none_or(|user_agent| version.user_agent.contains(user_agent))
             && self
                 .start_height
-                .map_or(true, |start_height| version.start_height >= start_height)
+                .is_none_or(|start_height| version.start_height >= start_height)
             && self
                 .services
-                .map_or(true, |services| version.services & services != 0)
+                .is_none_or(|services| version.services & services != 0)
     }
 }
 
