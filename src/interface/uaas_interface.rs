@@ -173,9 +173,9 @@ impl UaaSInterface {
         log::debug!("add_monitor");
         // check the input is valid
         if monitor.address.is_none() && monitor.locking_script_pattern.is_none() {
-            return Err(ChainGangError::BadArgument(format!(
-                "monitor requires address or locking_script pattern"
-            )));
+            return Err(ChainGangError::BadArgument(
+                "monitor requires address or locking_script pattern".to_string()
+            ));
         }
 
         let add_monitor_url = self.url.join("/collection/monitor").unwrap();

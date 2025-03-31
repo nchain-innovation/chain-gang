@@ -77,7 +77,7 @@ impl BloomFilter {
             let c = murmur3_32(&mut Cursor::new(&data), seed.0)
                 .expect("error encoding murmur3 hash")
                 % (self.filter.len() as u32 * 8);
-            if self.filter[c as usize / 8] & 1 << (c % 8) == 0 {
+            if self.filter[c as usize / 8] & (1 << (c % 8)) == 0 {
                 return false;
             }
         }
