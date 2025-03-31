@@ -45,3 +45,4 @@
 * v0.6.14 - Try again - remove platforms that did not read env vars
 * v0.6.15 - Try again - remove two more platforms that did not read env vars
 * v0.7.0 - Bump version for Python 3.13 support
+* v0.7.1 - Added OP_2MUL and OP_2DIV script operations
