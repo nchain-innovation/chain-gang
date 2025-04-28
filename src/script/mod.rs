@@ -273,6 +273,8 @@ impl Script {
                 OP_DIV => ret.push_str("OP_DIV"),
                 OP_2DIV => ret.push_str("OP_2DIV"),
                 OP_MOD => ret.push_str("OP_MOD"),
+                OP_LSHIFT => ret.push_str("OP_LSHIFT"),
+                OP_RSHIFT => ret.push_str("OP_RSHIFT"),
 
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
                 OP_BOOLOR => ret.push_str("OP_BOOLOR"),
@@ -445,6 +447,8 @@ impl fmt::Debug for Script {
                 OP_DIV => ret.push_str("OP_DIV"),
                 OP_2DIV => ret.push_str("OP_2DIV"),
                 OP_MOD => ret.push_str("OP_MOD"),
+                OP_LSHIFT => ret.push_str("OP_LSHIFT"),
+                OP_RSHIFT => ret.push_str("OP_RSHIFT"),
 
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
                 OP_BOOLOR => ret.push_str("OP_BOOLOR"),
