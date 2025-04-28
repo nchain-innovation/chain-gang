@@ -103,7 +103,7 @@ def get_chain_info(testnet: bool = True):
 def get_merkle_proof(tx_id: str, testnet: bool = True):
     """ This endpoint retrieves the merkle tree info for a given confirmed tx
     """
-    return get_response(f"{get_url(testnet)}/tx/{tx_id}/proof")
+    return get_response(f"{get_url(testnet)}/tx/{tx_id}/proof/tsc")
 
 
 def broadcast_tx(transaction: str, testnet: bool = True):

@@ -117,6 +117,19 @@ class WoCTests(unittest.TestCase):
             else:
                 self.assertEqual(result[k], v)
 
+    def test_get_merkle_proof(self):
+        block_hash = ""
+        txid = "6106903f0e8e905b749b73d2a7239a22d2f06faf95f66e2ee4db77d875bf7bea"
+        result = self.woc_interface.get_merkle_proof(block_hash, txid)
+        assert result is not None
+        expected_result = [{
+            'index': 3,
+            'txOrId': '6106903f0e8e905b749b73d2a7239a22d2f06faf95f66e2ee4db77d875bf7bea',
+            'target': '0000000011eb7961f5b07c64f130c19eb0e1c61a1273d5774eff54f72a847d14',
+            'nodes': ['d947f541793cccf9a43463d21a1318f99144a2a7ee4b41fd36c74dfe87df065a', '8205865d2b22f2a83367dd338498d7bf41c0a7cf3eedcfb0579885cb98a767d1']
+        }]
+        self.assertEqual(result, expected_result)
+
 
 if __name__ == "__main__":
     unittest.main()
