@@ -595,7 +595,7 @@ pub fn core_eval<T: Checker>(
                 }
                 // Add zeros
                 let diff = m.to_usize().unwrap() - n.len();
-                v.extend(std::iter::repeat(0).take(diff));
+                v.extend(std::iter::repeat_n(0, diff));
                 // Prepend the value
                 for b in n.iter().rev() {
                     v.insert(0, *b);

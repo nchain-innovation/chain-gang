@@ -35,7 +35,7 @@ impl MerkleBlock {
         let mut row_len = self.total_transactions as usize;
         let mut total_nodes = row_len;
         while row_len > 1 {
-            row_len = (row_len + 1) / 2;
+            row_len = row_len.div_ceil(2);
             total_nodes += row_len;
         }
 
@@ -61,7 +61,7 @@ impl MerkleBlock {
             return Err(ChainGangError::BadData("Not all nodes consumed".to_string()));
         }
 
-        if (flag_bits_used + 7) / 8 < self.flags.len() {
+        if flag_bits_used.div_ceil(8) < self.flags.len() {
             return Err(ChainGangError::BadData("Not all flag bits consumed".to_string()));
         }
 

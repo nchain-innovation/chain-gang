@@ -32,7 +32,7 @@ impl Bits {
         let mut vec = data.to_vec();
         let len = min(data.len() * 8, len);
         if len > vec.len() * 8 {
-            vec.truncate((len + 7) / 8);
+            vec.truncate(len.div_ceil(8));
         }
         let rem = (len % 8) as u8;
         if rem != 0 {
@@ -76,7 +76,7 @@ impl Bits {
         let end = i + len;
         let mut curr: u64 = 0;
         let mut i = i;
-        for j in i / 8..((i + len + 7) / 8) {
+        for j in i / 8..(i + len).div_ceil(8) {
             let b_len = min(end - i, 8 - (i - j * 8));
             curr = (curr << b_len) | self.extract_byte(i, b_len) as u64;
             i += b_len;
