@@ -74,7 +74,7 @@ impl<T> Observer<T> for Subject<T> {
             observers.retain(|observer| observer.upgrade().is_some());
         }
 
-        let any_pending = { self.pending.read().unwrap().len() > 0 };
+        let any_pending = { !self.pending.read().unwrap().is_empty() };
         if any_pending {
             let mut observers = self.observers.write().unwrap();
             let mut pending = self.pending.write().unwrap();
