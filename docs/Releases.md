@@ -47,3 +47,4 @@
 * v0.7.0 - Bump version for Python 3.13 support
 * v0.7.1 - Fixed OP_CODESEPARATOR
 * v0.7.2 - Added OP_2MUL and OP_2DIV script operations
+* v0.7.3 - Fixed WoC endpoints get_block_header and get_merkle_proof to use new TSC endpoint
