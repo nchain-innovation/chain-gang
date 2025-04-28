@@ -123,4 +123,4 @@ def get_block_by_hash(block_hash: str, testnet: bool = True):
 def get_block_header(block_hash: str, testnet: bool = True) -> Dict:
     """ Get a blockheader by hash
     """
-    return get_response(f"{get_url(testnet)}/block/hash/{block_hash}/header")
+    return get_response(f"{get_url(testnet)}/block/{block_hash}/header")
