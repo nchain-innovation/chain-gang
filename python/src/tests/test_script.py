@@ -162,6 +162,10 @@ class ScriptTest(unittest.TestCase):
         con = Context(script=script_test)
         self.assertFalse(con.evaluate())
 
+    def test_r_and_l_shift(self):
+        s = Script.parse_string("OP_RSHIFT OP_LSHIFT")
+        self.assertEqual(str(s), "OP_RSHIFT OP_LSHIFT")
+
 
 if __name__ == "__main__":
     unittest.main()
