@@ -31,11 +31,10 @@ impl PyStack {
     /// Push bytes onto the stack
     fn push_bytes_integer(&mut self, _py: Python, item: &Bound<'_, PyList>) -> PyResult<()> {
         for val in item.iter() {
-            let py_long = val
+            let py_long: &Bound<'_, PyInt> = val
                 .downcast::<PyInt>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
-                .as_ref();
-
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
+                        
             let big_int_str = py_long.str()?.to_str()?.to_owned();
             // Convert the string to a Rust BigInt (assumption is base-10)
             let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
@@ -116,10 +115,11 @@ impl PyStack {
         let mut inner_stack = Vec::new();
         //if let Ok(item) = array.iter() {
         for item in array.iter() {
-            let py_long = item
+
+            let py_long: &Bound<'_, PyInt> = item
                 .downcast::<PyInt>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
-                .as_ref();
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
+
 
             // Convert PyInt to BigInt
             //let big_int = BigInt::from_py(py_long);
@@ -142,10 +142,10 @@ impl PyStack {
         let mut inner_stack = Vec::new();
 
         for item in array.iter() {
-            let py_long = item
+            let py_long: &Bound<'_, PyInt> = item
                 .downcast::<PyInt>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
-                .as_ref();
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
+
             let val: u8 = py_long.extract()?;
             inner_stack.push(val);
         }
