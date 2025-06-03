@@ -117,7 +117,7 @@ class WoCTests(unittest.TestCase):
             else:
                 self.assertEqual(result[k], v)
 
-    @unittest.skip("WoC is currently returning 502 (Bad Gateway indicating server issue) for this call")
+    # @unittest.skip("WoC is currently returning 502 (Bad Gateway indicating server issue) for this call")
     def test_get_merkle_proof(self):
         """
         curl --location --request GET  "https://api.whatsonchain.com/v1/bsv/test/tx/6106903f0e8e905b749b73d2a7239a22d2f06faf95f66e2ee4db77d875bf7bea/proof/tsc"
