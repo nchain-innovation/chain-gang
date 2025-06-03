@@ -346,10 +346,10 @@ impl PyWallet {
         Python::with_gil(|_cls| {
             // Use the bound reference to access the PyAny
             // Downcast the PyAny reference to PyInt
-            let py_long = int_rep
+            let py_long: &Bound<'_, PyInt> = int_rep
                 .downcast::<PyInt>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?
-                .as_ref();
+                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
+
 
             // Convert the PyInt into a BigInt using to_string
             let big_int_str = py_long.str()?.to_str()?.to_owned();
