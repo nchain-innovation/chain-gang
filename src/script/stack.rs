@@ -206,26 +206,26 @@ mod tests {
 
     #[test]
     fn decode_bool_tests() {
-        assert!(decode_bool(&[1]) == true);
-        assert!(decode_bool(&[255, 0, 0, 0]) == true);
-        assert!(decode_bool(&[0, 0, 0, 129]) == true);
-        assert!(decode_bool(&[0]) == false);
-        assert!(decode_bool(&[0, 0, 0, 0]) == false);
-        assert!(decode_bool(&[0, 0, 0, 128]) == false);
-        assert!(decode_bool(&[]) == false);
+        assert!(decode_bool(&[1]));
+        assert!(decode_bool(&[255, 0, 0, 0]));
+        assert!(decode_bool(&[0, 0, 0, 129]));
+        assert!(!decode_bool(&[0]));
+        assert!(!decode_bool(&[0, 0, 0, 0]));
+        assert!(!decode_bool(&[0, 0, 0, 128]));
+        assert!(!decode_bool(&[]));
     }
 
     #[test]
     fn pop_bool_tests() {
-        assert!(pop_bool(&mut vec![vec![1]]).unwrap() == true);
-        assert!(pop_bool(&mut vec![vec![0, 0, 0, 127]]).unwrap() == true);
-        assert!(pop_bool(&mut vec![vec![0, 0, 0, 127]]).unwrap() == true);
+        assert!(pop_bool(&mut vec![vec![1]]).unwrap());
+        assert!(pop_bool(&mut vec![vec![0, 0, 0, 127]]).unwrap());
+        assert!(pop_bool(&mut vec![vec![0, 0, 0, 127]]).unwrap());
         assert!(pop_bool(&mut vec![]).is_err());
         assert!(pop_bool(&mut vec![vec![0, 0, 0, 0, 0]]).is_err());
-        assert!(pop_bool(&mut vec![vec![]]).unwrap() == false);
-        assert!(pop_bool(&mut vec![vec![0]]).unwrap() == false);
-        assert!(pop_bool(&mut vec![vec![0, 0, 0, 0]]).unwrap() == false);
-        assert!(pop_bool(&mut vec![vec![0, 0, 0, 128]]).unwrap() == false);
+        assert!(!pop_bool(&mut vec![vec![]]).unwrap());
+        assert!(!pop_bool(&mut vec![vec![0]]).unwrap());
+        assert!(!pop_bool(&mut vec![vec![0, 0, 0, 0]]).unwrap());
+        assert!(!pop_bool(&mut vec![vec![0, 0, 0, 128]]).unwrap());
     }
 
     #[test]

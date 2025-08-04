@@ -33,7 +33,7 @@ impl fmt::Display for Network {
             Network::BCH_Mainnet => "BCH_Mainnet",
             Network::BCH_Testnet => "BCH_Testnet",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

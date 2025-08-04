@@ -174,7 +174,7 @@ mod tests {
     fn payload() {
         let p = [0x22, 0x33, 0x44, 0x00, 0x11, 0x22, 0x45, 0x67, 0x89];
         // let hash = hash.as_ref();
-        let hash = Sha256::digest(&p);
+        let hash = Sha256::digest(p);
         let hash = Sha256::digest(hash);
 
         let checksum = [hash[0], hash[1], hash[2], hash[3]];

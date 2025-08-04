@@ -75,14 +75,14 @@ impl<T> FutureProvider<T> {
 impl<T> fmt::Debug for Future<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let state = if self.latch.opened() { "done" } else { "none" };
-        f.write_str(&format!("Future({})", state))
+        f.write_str(&format!("Future({state})"))
     }
 }
 
 impl<T> fmt::Debug for FutureProvider<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let state = if self.latch.opened() { "done" } else { "none" };
-        f.write_str(&format!("FutureProvider({})", state))
+        f.write_str(&format!("FutureProvider({state})"))
     }
 }
 

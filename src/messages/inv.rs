@@ -19,7 +19,7 @@ impl Serializable<Inv> for Inv {
     fn read(reader: &mut dyn Read) -> Result<Inv, ChainGangError> {
         let num_objects = var_int::read(reader)? as usize;
         if num_objects > MAX_INV_ENTRIES {
-            let msg = format!("Num objects exceeded maximum: {}", num_objects);
+            let msg = format!("Num objects exceeded maximum: {num_objects}");
             return Err(ChainGangError::BadData(msg));
         }
         let mut objects = Vec::with_capacity(num_objects);

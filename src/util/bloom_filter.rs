@@ -46,8 +46,7 @@ impl BloomFilter {
         let num_hash_funcs = num_hash_funcs.ceil() as usize;
         let tweak = random();
         debug!(
-            "Creating bloom filter of size: {}, n_hash funcs: {}, tweak: {}",
-            size, num_hash_funcs, tweak
+            "Creating bloom filter of size: {size}, n_hash funcs: {num_hash_funcs}, tweak: {tweak}"
         );
         Ok(BloomFilter {
             filter: vec![0; size],
@@ -138,7 +137,7 @@ mod tests {
     fn write_read() {
         let mut bf = BloomFilter::new(20000., 0.001).unwrap();
         for i in 0..5 {
-            bf.add(&vec![i; 32]);
+            bf.add(&[i; 32]);
         }
         let mut v = Vec::new();
         bf.write(&mut v).unwrap();
@@ -148,9 +147,9 @@ mod tests {
     #[test]
     fn contains() {
         let mut bf = BloomFilter::new(20000., 0.001).unwrap();
-        bf.add(&vec![5; 32]);
-        assert!(bf.contains(&vec![5; 32]));
-        assert!(!bf.contains(&vec![6; 32]));
+        bf.add(&[5; 32]);
+        assert!(bf.contains(&[5; 32]));
+        assert!(!bf.contains(&[6; 32]));
     }
 
     #[test]

@@ -130,9 +130,9 @@ mod tests {
     fn read_bytes() {
         let b = hex::decode("027478104f6d616e6461746f72792d7363726970742d7665726966792d666c61672d6661696c65642028536372697074206661696c656420616e204f505f455155414c564552494659206f7065726174696f6e292f174bfe9e5b6e32ef2fabd164df5469f44977d93e0625238465ded771083993".as_bytes()).unwrap();
         let m = Reject::read(&mut Cursor::new(&b)).unwrap();
-        assert!(m.message == "tx".to_string());
+        assert!(m.message == "tx");
         assert!(m.code == REJECT_INVALID);
-        assert!(m.reason == "mandatory-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)".to_string());
+        assert!(m.reason == "mandatory-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)");
         let data = "2f174bfe9e5b6e32ef2fabd164df5469f44977d93e0625238465ded771083993";
         assert!(m.data == hex::decode(data).unwrap());
     }

@@ -575,7 +575,7 @@ pub fn core_eval<T: Checker>(
                 let m = pop_bigint(&mut stack)?;
                 let mut n = stack.pop().unwrap();
                 if m < BigInt::one() {
-                    let msg = format!("OP_NUM2BIN failed. m too small: {}", m);
+                    let msg = format!("OP_NUM2BIN failed. m too small: {m}");
                     return Err(ChainGangError::ScriptError(msg));
                 }
                 let nlen = n.len();
@@ -818,7 +818,7 @@ fn remove_sig(sig: &[u8], script: &[u8]) -> Vec<u8> {
 #[inline]
 fn check_stack_size(minsize: usize, stack: &Stack) -> Result<(), ChainGangError> {
     if stack.len() < minsize {
-        return Err(ChainGangError::ScriptError(format!("Stack too small: {}", minsize)));
+        return Err(ChainGangError::ScriptError(format!("Stack too small: {minsize}")));
     }
     Ok(())
 }
@@ -1442,7 +1442,7 @@ mod tests {
         fail_pregenesis(&[OP_PUSH + 5, 129, 0, 0, 0, 0, OP_CHECKLOCKTIMEVERIFY, OP_1]);
         let mut c = MockChecker::locktime_checks(vec![false]);
         assert!(eval(
-            &vec![OP_0, OP_CHECKLOCKTIMEVERIFY, OP_1],
+            &[OP_0, OP_CHECKLOCKTIMEVERIFY, OP_1],
             &mut c,
             PREGENESIS_RULES
         )
@@ -1451,7 +1451,7 @@ mod tests {
         fail_pregenesis(&[OP_PUSH + 5, 129, 0, 0, 0, 0, OP_CHECKSEQUENCEVERIFY, OP_1]);
         let mut c = MockChecker::sequence_checks(vec![false]);
         assert!(eval(
-            &vec![OP_0, OP_CHECKSEQUENCEVERIFY, OP_1],
+            &[OP_0, OP_CHECKSEQUENCEVERIFY, OP_1],
             &mut c,
             PREGENESIS_RULES
         )

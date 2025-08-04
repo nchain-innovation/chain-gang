@@ -165,7 +165,7 @@ impl Script {
                     ret.push_str("OP_PUSHDATA1 ");
                     if i + 2 <= script.len() {
                         let len = script[i + 1] as usize;
-                        ret.push_str(&format!("{:#04x} ", len));
+                        ret.push_str(&format!("{len:#04x} "));
                         if i + 2 + len <= script.len() {
                             ret.push_str("0x");
                             ret.push_str(&hex::encode(&script[i + 2..i + 2 + len]));
@@ -310,7 +310,7 @@ impl Script {
         // Add whatever is remaining if we exited early
         if i < script.len() {
             for item in script.iter().skip(i) {
-                ret.push_str(&format!(" {}", item));
+                ret.push_str(&format!(" {item}"));
             }
         }
         ret
@@ -347,7 +347,7 @@ impl fmt::Debug for Script {
                 OP_15 => ret.push_str("OP_15"),
                 OP_16 => ret.push_str("OP_16"),
                 len @ 1..=75 => {
-                    ret.push_str(&format!("OP_PUSH+{} ", len));
+                    ret.push_str(&format!("OP_PUSH+{len} "));
                     if i + 1 + len as usize <= script.len() {
                         ret.push_str(&hex::encode(&script[i + 1..i + 1 + len as usize]));
                     } else {
@@ -358,7 +358,7 @@ impl fmt::Debug for Script {
                     ret.push_str("OP_PUSHDATA1 ");
                     if i + 2 <= script.len() {
                         let len = script[i + 1] as usize;
-                        ret.push_str(&format!("{} ", len));
+                        ret.push_str(&format!("{len} "));
                         if i + 2 + len <= script.len() {
                             ret.push_str(&hex::encode(&script[i + 2..i + 2 + len]));
                         } else {
@@ -372,7 +372,7 @@ impl fmt::Debug for Script {
                     ret.push_str("OP_PUSHDATA2 ");
                     if i + 3 <= script.len() {
                         let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
-                        ret.push_str(&format!("{} ", len));
+                        ret.push_str(&format!("{len} "));
                         if i + 3 + len <= script.len() {
                             ret.push_str(&hex::encode(&script[i + 3..i + 3 + len]));
                         } else {
@@ -389,7 +389,7 @@ impl fmt::Debug for Script {
                             + ((script[i + 2] as usize) << 8)
                             + ((script[i + 3] as usize) << 16)
                             + ((script[i + 4] as usize) << 24);
-                        ret.push_str(&format!("{} ", len));
+                        ret.push_str(&format!("{len} "));
                         if i + 5 + len <= script.len() {
                             ret.push_str(&hex::encode(&script[i + 5..i + 5 + len]));
                         } else {
@@ -484,7 +484,7 @@ impl fmt::Debug for Script {
         // Add whatever is remaining if we exited early
         if i < script.len() {
             for item in script.iter().skip(i) {
-                ret.push_str(&format!(" {}", item));
+                ret.push_str(&format!(" {item}"));
             }
         }
         ret.push(']');
@@ -500,19 +500,19 @@ mod tests {
     #[test]
     fn append_data() {
         let mut s = Script::new();
-        s.append_data(&vec![]);
+        s.append_data(&[]);
         assert!(s.0.len() == 1);
 
         let mut s = Script::new();
-        s.append_data(&vec![0; 1]);
+        s.append_data(&[0; 1]);
         assert!(s.0[0] == OP_PUSH + 1 && s.0.len() == 2);
 
         let mut s = Script::new();
-        s.append_data(&vec![0; 75]);
+        s.append_data(&[0; 75]);
         assert!(s.0[0] == OP_PUSH + 75 && s.0.len() == 76);
 
         let mut s = Script::new();
-        s.append_data(&vec![0; 76]);
+        s.append_data(&[0; 76]);
         assert!(s.0[0] == OP_PUSHDATA1 && s.0[1] == 76 && s.0.len() == 78);
 
         let mut s = Script::new();
