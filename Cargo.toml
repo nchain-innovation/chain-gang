@@ -36,8 +36,8 @@ pbkdf2 = "0.12.2"
 
 # Used by the interface feature
 serde = { version = "1.0.219", features = ["derive"], optional = true }
-serde_json = { version = "1.0.140", optional = true }
-reqwest = { version = "0.12.19", features = ["json"], optional = true }
+serde_json = { version = "1.0.142", optional = true }
+reqwest = { version = "0.12.22", features = ["json"], optional = true }
 async-mutex = { version = "1.4.1", optional = true }
 async-trait = { version = "0.1.88", optional = true }
 
