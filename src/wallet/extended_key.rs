@@ -141,7 +141,7 @@ impl ExtendedKey {
         } else if ver == TESTNET_PUBLIC_EXTENDED_KEY || ver == TESTNET_PRIVATE_EXTENDED_KEY {
             Ok(Network::BSV_Testnet)
         } else {
-            let msg = format!("Unknown extended key version {:?}", ver);
+            let msg = format!("Unknown extended key version {ver:?}");
             Err(ChainGangError::BadData(msg))
         }
     }
@@ -154,7 +154,7 @@ impl ExtendedKey {
         } else if ver == MAINNET_PRIVATE_EXTENDED_KEY || ver == TESTNET_PRIVATE_EXTENDED_KEY {
             Ok(ExtendedKeyType::Private)
         } else {
-            let msg = format!("Unknown extended key version {:?}", ver);
+            let msg = format!("Unknown extended key version {ver:?}");
             Err(ChainGangError::BadData(msg))
         }
     }
@@ -382,7 +382,7 @@ impl ExtendedKey {
 
     /// Decodes an extended key from a string
     pub fn decode(s: &str) -> Result<ExtendedKey, ChainGangError> {
-        let v = s.from_base58().map_err(|e| ChainGangError::Base58Error(format!("{:?}",e)))?;
+        let v = s.from_base58().map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
         let checksum = sha256d(&v[..78]);
         if checksum.0[..4] != v[78..] {
             return Err(ChainGangError::BadArgument("Invalid checksum".to_string()));
@@ -499,8 +499,8 @@ mod tests {
     #[test]
     fn private_key_range() {
         // Valid
-        let mut max = SECP256K1_CURVE_ORDER.clone();
-        max[31] = max[31] - 1;
+        let mut max = SECP256K1_CURVE_ORDER;
+        max[31] -= 1;
         assert!(is_private_key_valid(&max));
         assert!(is_private_key_valid(&[0x01; 32]));
 

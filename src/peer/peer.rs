@@ -172,7 +172,7 @@ impl Peer {
                 None => return Err(ChainGangError::IllegalState("No tcp stream".to_string())),
             };
 
-            debug!("{:?} Write {:#?}", self, message);
+            debug!("{self:?} Write {message:#?}");
 
             if let Err(e) = message.write(&mut tcp_writer, self.network.magic()) {
                 io_error = Some(e);
@@ -194,12 +194,12 @@ impl Peer {
     pub fn disconnect(&self) {
         self.connected.swap(false, Ordering::Relaxed);
 
-        info!("{:?} Disconnecting", self);
+        info!("{self:?} Disconnecting");
 
         let mut tcp_stream = self.tcp_writer.lock().unwrap();
         if let Some(tcp_stream) = tcp_stream.as_mut() {
             if let Err(e) = tcp_stream.shutdown(Shutdown::Both) {
-                warn!("{:?} Problem shutting down tcp stream: {:?}", self, e);
+                warn!("{self:?} Problem shutting down tcp stream: {e:?}");
             }
         }
 
@@ -265,7 +265,7 @@ impl Peer {
             let mut tcp_reader = match tpeer.handshake(version, filter) {
                 Ok(tcp_stream) => tcp_stream,
                 Err(e) => {
-                    error!("Failed to complete handshake: {:?}", e);
+                    error!("Failed to complete handshake: {e:?}");
                     tpeer.disconnect();
                     return;
                 }
@@ -301,11 +301,11 @@ impl Peer {
                         if let Message::Partial(header) = message {
                             partial = Some(header);
                         } else {
-                            debug!("{:?} Read {:#?}", tpeer, message);
+                            debug!("{tpeer:?} Read {message:#?}");
                             partial = None;
 
                             if let Err(e) = tpeer.handle_message(&message) {
-                                error!("{:?} Error handling message: {:?}", tpeer, e);
+                                error!("{tpeer:?} Error handling message: {e:?}");
                                 tpeer.disconnect();
                                 return;
                             }
@@ -327,7 +327,7 @@ impl Peer {
                             }
                         }
 
-                        error!("{:?} Error reading message {:?}", tpeer, e);
+                        error!("{tpeer:?} Error reading message {e:?}");
                         tpeer.disconnect();
                         return;
                     }
@@ -346,13 +346,13 @@ impl Peer {
 
         // Write our version
         let our_version = Message::Version(version);
-        debug!("{:?} Write {:#?}", self, our_version);
+        debug!("{self:?} Write {our_version:#?}");
         let magic = self.network.magic();
         our_version.write(&mut tcp_stream, magic)?;
 
         // Read their version
         let msg = Message::read(&mut tcp_stream, magic)?;
-        debug!("{:?} Read {:#?}", self, msg);
+        debug!("{self:?} Read {msg:#?}");
         let their_version = match msg {
             Message::Version(version) => version,
             _ => return Err(ChainGangError::BadData("Unexpected command".to_string())),
@@ -368,7 +368,7 @@ impl Peer {
 
         // Read their verack
         let their_verack = Message::read(&mut tcp_stream, magic)?;
-        debug!("{:?} Read {:#?}", self, their_verack);
+        debug!("{self:?} Read {their_verack:#?}");
         match their_verack {
             Message::Verack => {}
             _ => return Err(ChainGangError::BadData("Unexpected command".to_string())),
@@ -383,7 +383,7 @@ impl Peer {
         let ping = Message::Ping(Ping {
             nonce: secs_since(UNIX_EPOCH) as u64,
         });
-        debug!("{:?} Write {:#?}", self, ping);
+        debug!("{self:?} Write {ping:#?}");
         ping.write(&mut tcp_stream, magic)?;
 
         // After handshake, clone TCP stream and save the write version

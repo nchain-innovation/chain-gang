@@ -22,7 +22,7 @@ impl Serializable<Addr> for Addr {
         let mut ret = Addr { addrs: Vec::new() };
         let count = var_int::read(reader)?;
         if count > MAX_ADDR_COUNT {
-            let msg = format!("Too many addrs: {}", count);
+            let msg = format!("Too many addrs: {count}");
             return Err(ChainGangError::BadData(msg));
         }
         for _i in 0..count {
@@ -283,7 +283,7 @@ impl Serializable<AddrV2> for AddrV2 {
         let mut ret = AddrV2 { addrs: Vec::new() };
         let count = var_int::read(reader)?;
         if count > MAX_ADDR_COUNT {
-            let msg = format!("Too many addrs: {}", count);
+            let msg = format!("Too many addrs: {count}");
             return Err(ChainGangError::BadData(msg));
         }
         for _i in 0..count {

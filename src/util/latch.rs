@@ -57,7 +57,7 @@ impl Latch {
 impl fmt::Debug for Latch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let state = if self.opened() { "opened" } else { "closed" };
-        f.write_str(&format!("Latch({})", state))
+        f.write_str(&format!("Latch({state})"))
     }
 }
 

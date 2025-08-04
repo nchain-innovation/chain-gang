@@ -132,7 +132,7 @@ mod tests {
             nonce: 1111,
         };
 
-        assert!(header_hash(0, &vec![]).is_err());
+        assert!(header_hash(0, &[]).is_err());
 
         let headers = vec![header1.clone()];
         assert!(header_hash(0, &headers).unwrap() == header1.hash());

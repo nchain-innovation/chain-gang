@@ -64,7 +64,7 @@ pub fn mnemonic_decode(mnemonic: &[String], word_list: &[String]) -> Result<Vec<
     for word in mnemonic {
         let value = match word_list.binary_search(word) {
             Ok(value) => value,
-            Err(_) => return Err(ChainGangError::BadArgument(format!("Bad word: {}", word))),
+            Err(_) => return Err(ChainGangError::BadArgument(format!("Bad word: {word}"))),
         };
         let word_bits = Bits::from_slice(&[(value >> 3) as u8, ((value & 7) as u8) << 5], 11);
         bits.append(&word_bits);
@@ -110,8 +110,8 @@ mod tests {
     #[test]
     fn invalid() {
         let wordlist = load_wordlist(Wordlist::English);
-        assert!(mnemonic_encode(&[], &wordlist).len() == 0);
-        assert!(mnemonic_decode(&[], &wordlist).unwrap().len() == 0);
+        assert!(mnemonic_encode(&[], &wordlist).is_empty());
+        assert!(mnemonic_decode(&[], &wordlist).unwrap().is_empty());
 
         let mut data = Vec::new();
         for i in 0..16 {

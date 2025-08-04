@@ -57,7 +57,7 @@ pub fn addr_encode(hash160: &Hash160, addr_type: AddressType, network: Network) 
 pub fn addr_decode(input: &str, network: Network) -> Result<(Hash160, AddressType), ChainGangError> {
     // Make sure addr is at least some minimum to verify checksum and addr type
     // We will check the private key size later.
-    let v = input.from_base58().map_err(|e| ChainGangError::Base58Error(format!("{:?}",e)))?;
+    let v = input.from_base58().map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
     if v.len() < 6 {
         let msg = format!("Base58 address not long enough: {}", v.len());
         return Err(ChainGangError::BadData(msg));
@@ -79,7 +79,7 @@ pub fn addr_decode(input: &str, network: Network) -> Result<(Hash160, AddressTyp
     } else if addr_type_byte == network.addr_script_flag() {
         AddressType::P2SH
     } else {
-        let msg = format!("Unknown address type {}", addr_type_byte);
+        let msg = format!("Unknown address type {addr_type_byte}");
         return Err(ChainGangError::BadData(msg));
     };
 
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn from_addr() {
         let addr = "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn";
-        let result = addr_decode(&addr, Network::BSV_Mainnet).unwrap();
+        let result = addr_decode(addr, Network::BSV_Mainnet).unwrap();
         let hash160 = result.0;
         let addr_type = result.1;
         assert!(addr_type == AddressType::P2PKH);

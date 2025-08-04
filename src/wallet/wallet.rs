@@ -30,7 +30,7 @@ pub fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)
         MAIN_PRIVATE_KEY => Network::BSV_Mainnet,
         TEST_PRIVATE_KEY => Network::BSV_Testnet,
         _ => {
-            return Err(ChainGangError::BadArgument(format!("{:02x?} does not correspond to a mainnet nor testnet address.", prefix)));
+            return Err(ChainGangError::BadArgument(format!("{prefix:02x?} does not correspond to a mainnet nor testnet address.")));
         }
     };
     // Remove prefix byte and, if present, compression flag.

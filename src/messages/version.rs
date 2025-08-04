@@ -153,7 +153,7 @@ mod tests {
         assert!(v.nonce == 16977786322265395341);
         assert!(v.user_agent == "/Bitcoin ABC:0.16.0(EB8.0; bitcore)/");
         assert!(v.start_height == 525926);
-        assert!(v.relay == true);
+        assert!(v.relay);
     }
 
     #[test]

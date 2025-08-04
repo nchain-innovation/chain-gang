@@ -97,7 +97,7 @@ mod test {
         let mut r = AtomicReader::new(&mut c);
         r.buf = vec![1; 10];
         assert!(r.read(&mut o).is_ok());
-        assert!(r.buf.len() == 0);
+        assert!(r.buf.is_empty());
 
         // Success: Read partially buffered
         let v = vec![0; 6];

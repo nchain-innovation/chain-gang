@@ -66,7 +66,7 @@ impl Checker for ZChecker {
         let signature = match Signature::from_der(der_sig) {
             Ok(sig) => sig,
             Err(e) => {
-                println!("Failed to parse the signature: {}", e);
+                println!("Failed to parse the signature: {e}");
                 return Err(e.into()); // Return the error to the caller
             }
         };
@@ -76,7 +76,7 @@ impl Checker for ZChecker {
         let verifying_key = match VerifyingKey::from_sec1_bytes(pubkey) {
             Ok(verkey) => verkey,
             Err(e) => {
-                println!("Failed to parse the public key {}", e);
+                println!("Failed to parse the public key {e}");
                 return Err(e.into());
             }
         };
