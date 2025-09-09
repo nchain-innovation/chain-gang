@@ -346,10 +346,9 @@ impl PyWallet {
     #[classmethod]
     fn from_int(
         _cls: &Bound<'_, PyType>,
-        network_ref: Bound<'_, PyType>,
+        network: &str,
         int_rep: &Bound<'_, PyAny>,
     ) -> PyResult<Self> {
-        let network_string: String = network_ref.extract()?;
 
         // get a reference to the Python interpreter
         Python::attach(|_py| {
@@ -366,7 +365,7 @@ impl PyWallet {
             let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
                 .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Failed to parse BigInt"))?;
 
-            let test_wallet = wallet_from_int(&network_string, big_int)?;
+            let test_wallet = wallet_from_int(network, big_int)?;
             Ok(test_wallet)
         })
     }
