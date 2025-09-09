@@ -336,7 +336,11 @@ impl Peer {
         });
     }
 
-    fn handshake(self: &Peer, version: Version, filter: Arc<dyn PeerFilter>) -> Result<TcpStream, ChainGangError> {
+    fn handshake(
+        self: &Peer,
+        version: Version,
+        filter: Arc<dyn PeerFilter>,
+    ) -> Result<TcpStream, ChainGangError> {
         // Connect over TCP
         let tcp_addr = SocketAddr::new(self.ip, self.port);
         let mut tcp_stream = TcpStream::connect_timeout(&tcp_addr, CONNECT_TIMEOUT)?;
@@ -359,7 +363,9 @@ impl Peer {
         };
 
         if !filter.connectable(&their_version) {
-            return Err(ChainGangError::IllegalState("Peer filtered out".to_string()));
+            return Err(ChainGangError::IllegalState(
+                "Peer filtered out".to_string(),
+            ));
         }
 
         let now = secs_since(UNIX_EPOCH) as i64;

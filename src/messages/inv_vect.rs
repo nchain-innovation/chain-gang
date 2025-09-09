@@ -1,4 +1,4 @@
-use crate::util::{Hash256, ChainGangError, Serializable};
+use crate::util::{ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};

@@ -1,7 +1,7 @@
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
     python::py_script::PyScript,
-    util::{Hash256, Serializable, ChainGangError},
+    util::{ChainGangError, Hash256, Serializable},
 };
 use core::hash::Hash;
 use linked_hash_map::LinkedHashMap;
@@ -14,9 +14,6 @@ use std::{
     fmt,
     io::Cursor,
 };
-
-
-
 
 /// TxIn - This represents a bitcoin transaction input
 //
@@ -222,7 +219,7 @@ impl PyTx {
 
     /// Binary hash of the serialization
     /// def hash(self) -> bytes:
-    fn hash(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn hash(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let tx = self.as_tx();
         let hash = tx.hash();
         let bytes = PyBytes::new(py, &hash.0);
@@ -235,8 +232,8 @@ impl PyTx {
         tx.coinbase()
     }
 
-    /// Note that we return PyResult<PyObject> and not PyResult<PyBytes>
-    fn serialize(&self, py: Python<'_>) -> PyResult<PyObject> {
+    /// Note that we return PyResult<Py<PyAny>> and not PyResult<PyBytes>
+    fn serialize(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mut v = Vec::new();
         let tx = self.as_tx();
         tx.write(&mut v)?;

@@ -120,6 +120,7 @@ This is the build process for tx-engine for use with Jupyter Notebooks
 Then:
 
 ``` bash
+source ~/penv/bin/activate
 cd <chain-gang folder>
 maturin develop
 cd ~

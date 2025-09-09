@@ -53,7 +53,9 @@ pub fn header_hash(i: usize, headers: &[BlockHeader]) -> Result<Hash256, ChainGa
     match headers.len().cmp(&(i + 1)) {
         Ordering::Greater => Ok(headers[i + 1].prev_hash),
         Ordering::Equal => Ok(headers[i].hash()),
-        Ordering::Less => Err(ChainGangError::BadArgument("Index out of range".to_string())),
+        Ordering::Less => Err(ChainGangError::BadArgument(
+            "Index out of range".to_string(),
+        )),
     }
 }
 

@@ -50,19 +50,27 @@ impl MerkleBlock {
         )?;
 
         if merkle_root != self.header.merkle_root {
-            return Err(ChainGangError::BadData("Merkle root doesn't match".to_string()));
+            return Err(ChainGangError::BadData(
+                "Merkle root doesn't match".to_string(),
+            ));
         }
 
         if hashes_used < self.hashes.len() {
-            return Err(ChainGangError::BadData("Not all hashes consumed".to_string()));
+            return Err(ChainGangError::BadData(
+                "Not all hashes consumed".to_string(),
+            ));
         }
 
         if preorder_node < total_nodes {
-            return Err(ChainGangError::BadData("Not all nodes consumed".to_string()));
+            return Err(ChainGangError::BadData(
+                "Not all nodes consumed".to_string(),
+            ));
         }
 
         if flag_bits_used.div_ceil(8) < self.flags.len() {
-            return Err(ChainGangError::BadData("Not all flag bits consumed".to_string()));
+            return Err(ChainGangError::BadData(
+                "Not all flag bits consumed".to_string(),
+            ));
         }
 
         Ok(matches)
@@ -117,7 +125,9 @@ impl MerkleBlock {
                     matches,
                 )?;
                 if left == right {
-                    Err(ChainGangError::BadData("Duplicate transactions".to_string()))
+                    Err(ChainGangError::BadData(
+                        "Duplicate transactions".to_string(),
+                    ))
                 } else {
                     let mut concat = Vec::with_capacity(64);
                     concat.extend_from_slice(&left.0);

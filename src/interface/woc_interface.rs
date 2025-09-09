@@ -61,12 +61,21 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         match response.text().await {
             Ok(txt) if txt == "Whats On Chain" => Ok(()),
-            Ok(txt) => Err(ChainGangError::ResponseError(format!("Unexpected txt = {}", txt))),
-            Err(err) => Err(ChainGangError::ResponseError(format!("response.text() = {}", err))),
+            Ok(txt) => Err(ChainGangError::ResponseError(format!(
+                "Unexpected txt = {}",
+                txt
+            ))),
+            Err(err) => Err(ChainGangError::ResponseError(format!(
+                "response.text() = {}",
+                err
+            ))),
         }
     }
 
@@ -80,13 +89,19 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
                 log::debug!("address = {}", &address);
-                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )));
             }
         };
         let data: Balance = match serde_json::from_str(&txt) {
@@ -94,7 +109,10 @@ impl BlockchainInterface for WocInterface {
             Err(x) => {
                 log::debug!("address = {}", &address);
                 log::warn!("txt = {}", &txt);
-                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
+                return Err(ChainGangError::JSONParseError(format!(
+                    "json parse error = {}",
+                    x
+                )));
             }
         };
         Ok(data)
@@ -110,19 +128,28 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )));
             }
         };
         let data: Utxo = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
+                return Err(ChainGangError::JSONParseError(format!(
+                    "json parse error = {}",
+                    x
+                )));
             }
         };
         Ok(data)
@@ -152,7 +179,10 @@ impl BlockchainInterface for WocInterface {
             }
             _ => {
                 log::debug!("url = {}", &url);
-                Err(ChainGangError::ResponseError(format!("response.status() = {}", status)))
+                Err(ChainGangError::ResponseError(format!(
+                    "response.status() = {}",
+                    status
+                )))
             }
         }
     }
@@ -165,7 +195,10 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         match response.text().await {
             Ok(txt) => {
@@ -174,7 +207,10 @@ impl BlockchainInterface for WocInterface {
                 let tx: Tx = Tx::read(&mut byte_slice)?;
                 Ok(tx)
             }
-            Err(x) => Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
+            Err(x) => Err(ChainGangError::ResponseError(format!(
+                "response.text() = {}",
+                x
+            ))),
         }
     }
 
@@ -186,7 +222,10 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         match response.text().await {
             Ok(txt) => {
@@ -195,7 +234,10 @@ impl BlockchainInterface for WocInterface {
                 let blockheader: BlockHeader = BlockHeader::read(&mut byte_slice)?;
                 Ok(blockheader)
             }
-            Err(x) => Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
+            Err(x) => Err(ChainGangError::ResponseError(format!(
+                "response.text() = {}",
+                x
+            ))),
         }
     }
 
@@ -206,11 +248,17 @@ impl BlockchainInterface for WocInterface {
         let response = reqwest::get(&url).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         match response.text().await {
             Ok(headers) => Ok(headers),
-            Err(x) => Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
+            Err(x) => Err(ChainGangError::ResponseError(format!(
+                "response.text() = {}",
+                x
+            ))),
         }
     }
 }

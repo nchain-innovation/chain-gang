@@ -43,7 +43,11 @@ impl BlockHeader {
     }
 
     /// Checks that the block header is valid
-    pub fn validate(&self, hash: &Hash256, prev_headers: &[BlockHeader]) -> Result<(), ChainGangError> {
+    pub fn validate(
+        &self,
+        hash: &Hash256,
+        prev_headers: &[BlockHeader],
+    ) -> Result<(), ChainGangError> {
         // Timestamp > median timestamp of last 11 blocks
         if !prev_headers.is_empty() {
             let h = &prev_headers[prev_headers.len() - min(prev_headers.len(), 11)..];

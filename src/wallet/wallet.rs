@@ -12,7 +12,7 @@ use crate::{
         p2pkh::create_unlock_script,
         sighash::{sighash, sighash_checksig_index, SigHashCache},
     },
-    util::{hash160, Hash256, ChainGangError},
+    util::{hash160, ChainGangError, Hash256},
     wallet::base58_checksum::{decode_base58_checksum, encode_base58_checksum},
 };
 
@@ -25,16 +25,22 @@ const TEST_PUBKEY_HASH: u8 = 0x6f;
 pub fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey), ChainGangError> {
     let decode = decode_base58_checksum(wif)?;
     // Get first byte
-    let prefix: u8 = *decode.first().ok_or(ChainGangError::BadData("Invalid wif length".to_string()))?;
+    let prefix: u8 = *decode
+        .first()
+        .ok_or(ChainGangError::BadData("Invalid wif length".to_string()))?;
     let network: Network = match prefix {
         MAIN_PRIVATE_KEY => Network::BSV_Mainnet,
         TEST_PRIVATE_KEY => Network::BSV_Testnet,
         _ => {
-            return Err(ChainGangError::BadArgument(format!("{prefix:02x?} does not correspond to a mainnet nor testnet address.")));
+            return Err(ChainGangError::BadArgument(format!(
+                "{prefix:02x?} does not correspond to a mainnet nor testnet address."
+            )));
         }
     };
     // Remove prefix byte and, if present, compression flag.
-    let last_byte: u8 = *decode.last().ok_or(ChainGangError::BadData("Invalid wif length".to_string()))?;
+    let last_byte: u8 = *decode
+        .last()
+        .ok_or(ChainGangError::BadData("Invalid wif length".to_string()))?;
     let compressed: bool = wif.len() == 52 && last_byte == 1u8;
     let private_key_as_bytes: Vec<u8> = if compressed {
         decode[1..decode.len() - 1].to_vec()
@@ -46,17 +52,26 @@ pub fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)
 }
 
 // Given public_key and network return address as a string
-pub fn public_key_to_address(public_key: &[u8], network: Network) -> Result<String, ChainGangError> {
+pub fn public_key_to_address(
+    public_key: &[u8],
+    network: Network,
+) -> Result<String, ChainGangError> {
     let prefix_as_bytes: u8 = match network {
         Network::BSV_Mainnet => MAIN_PUBKEY_HASH,
         Network::BSV_Testnet => TEST_PUBKEY_HASH,
         _ => {
-            return Err(ChainGangError::BadArgument(format!("{} unknnown network.", &network)));
+            return Err(ChainGangError::BadArgument(format!(
+                "{} unknnown network.",
+                &network
+            )));
         }
     };
     // # 33 bytes compressed, 65 uncompressed.
     if public_key.len() != 33 && public_key.len() != 65 {
-        return Err(ChainGangError::BadArgument(format!("{} is an invalid length for a public key.", public_key.len())));
+        return Err(ChainGangError::BadArgument(format!(
+            "{} is an invalid length for a public key.",
+            public_key.len()
+        )));
     }
     let mut data: Vec<u8> = vec![prefix_as_bytes];
     data.extend(hash160(public_key).0);
@@ -159,7 +174,11 @@ impl Wallet {
         create_unlock_script(signature, &public_key)
     }
 
-    pub fn sign_sighash(&self, sighash: Hash256, sighash_flags: u8) -> Result<Vec<u8>, ChainGangError> {
+    pub fn sign_sighash(
+        &self,
+        sighash: Hash256,
+        sighash_flags: u8,
+    ) -> Result<Vec<u8>, ChainGangError> {
         // Get private key
         let private_key_as_bytes: [u8; 32] = self.private_key.to_bytes().into();
         let signature = generate_signature(&private_key_as_bytes, &sighash, sighash_flags)?;
@@ -177,7 +196,10 @@ impl Wallet {
         // Check correct input tx provided
         let prev_hash = tx.inputs[index].prev_output.hash;
         if prev_hash != tx_in.hash() {
-            return Err(ChainGangError::BadArgument(format!("Unable to find input tx {:?}", &prev_hash)));
+            return Err(ChainGangError::BadArgument(format!(
+                "Unable to find input tx {:?}",
+                &prev_hash
+            )));
         }
         // Gather data for sighash
         let prev_index: usize = tx.inputs[index]
@@ -209,7 +231,10 @@ impl Wallet {
         // Check correct input tx provided
         let prev_hash = tx.inputs[index].prev_output.hash;
         if prev_hash != tx_in.hash() {
-            return Err(ChainGangError::BadArgument(format!("Unable to find input tx {:?}", &prev_hash)));
+            return Err(ChainGangError::BadArgument(format!(
+                "Unable to find input tx {:?}",
+                &prev_hash
+            )));
         }
         // Gather data for sighash
         let prev_index: usize = tx.inputs[index]
@@ -236,7 +261,6 @@ impl Wallet {
         Ok(())
     }
 
-
     pub fn sign_tx_sighash_flags(
         &mut self,
         index: usize,
@@ -249,7 +273,6 @@ impl Wallet {
         Ok(new_tx)
     }
 
-
     pub fn sign_tx_sighash_flags_checksig_index(
         &mut self,
         index: usize,
@@ -259,8 +282,13 @@ impl Wallet {
         checksig_index: usize,
     ) -> Result<Tx, ChainGangError> {
         let mut new_tx = tx.clone();
-        self.sign_tx_input_checksig_index(&input_tx, &mut new_tx, index, sighash_flags, checksig_index)?;
+        self.sign_tx_input_checksig_index(
+            &input_tx,
+            &mut new_tx,
+            index,
+            sighash_flags,
+            checksig_index,
+        )?;
         Ok(new_tx)
     }
-
 }

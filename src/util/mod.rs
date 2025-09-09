@@ -25,9 +25,9 @@ pub(crate) use self::bits::{lshift, rshift, Bits};
 pub use self::bloom_filter::{
     BloomFilter, BLOOM_FILTER_MAX_FILTER_SIZE, BLOOM_FILTER_MAX_HASH_FUNCS,
 };
+pub use self::errors::ChainGangError;
 pub use self::hash160::{hash160, Hash160};
 pub use self::hash256::{sha256d, Hash256};
-pub use self::errors::ChainGangError;
 #[allow(unused_imports)]
 pub use self::serdes::Serializable;
 

@@ -73,7 +73,10 @@ pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
     encode_base58_checksum(&wif_bytes)
 }
 
-pub fn network_and_private_key_to_wif(network: Network, private_key: SigningKey) -> Result<String, ChainGangError> {
+pub fn network_and_private_key_to_wif(
+    network: Network,
+    private_key: SigningKey,
+) -> Result<String, ChainGangError> {
     let prefix: u8 = match network {
         Network::BSV_Mainnet => MAIN_PRIVATE_KEY,
         Network::BSV_Testnet => TEST_PRIVATE_KEY,
@@ -202,12 +205,16 @@ impl PyWallet {
         // Convert PyTx -> Tx
         let input_tx = input_pytx.as_tx();
         let mut tx = pytx.as_tx();
-        self.wallet
-            .sign_tx_input_checksig_index(&input_tx, &mut tx, index, sighash_type, checksig_index)?;
+        self.wallet.sign_tx_input_checksig_index(
+            &input_tx,
+            &mut tx,
+            index,
+            sighash_type,
+            checksig_index,
+        )?;
         let updated_txpy = tx_as_pytx(&tx);
         Ok(updated_txpy)
     }
-
 
     fn get_locking_script(&self) -> PyResult<PyScript> {
         let script = self.wallet.get_locking_script();
@@ -339,17 +346,18 @@ impl PyWallet {
     #[classmethod]
     fn from_int(
         _cls: &Bound<'_, PyType>,
-        network: &str,
+        network_ref: Bound<'_, PyType>,
         int_rep: &Bound<'_, PyAny>,
     ) -> PyResult<Self> {
-        // Use with_gil to get a reference to the Python interpreter
-        Python::with_gil(|_cls| {
+        let network_string: String = network_ref.extract()?;
+
+        // get a reference to the Python interpreter
+        Python::attach(|_py| {
             // Use the bound reference to access the PyAny
             // Downcast the PyAny reference to PyInt
             let py_long: &Bound<'_, PyInt> = int_rep
                 .downcast::<PyInt>()
                 .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
-
 
             // Convert the PyInt into a BigInt using to_string
             let big_int_str = py_long.str()?.to_str()?.to_owned();
@@ -358,7 +366,7 @@ impl PyWallet {
             let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
                 .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Failed to parse BigInt"))?;
 
-            let test_wallet = wallet_from_int(network, big_int)?;
+            let test_wallet = wallet_from_int(&network_string, big_int)?;
             Ok(test_wallet)
         })
     }

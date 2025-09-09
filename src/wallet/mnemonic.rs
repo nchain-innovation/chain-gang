@@ -59,7 +59,10 @@ pub fn mnemonic_encode(data: &[u8], word_list: &[String]) -> Vec<String> {
 }
 
 /// Decodes a neumonic into data using BIP-39
-pub fn mnemonic_decode(mnemonic: &[String], word_list: &[String]) -> Result<Vec<u8>, ChainGangError> {
+pub fn mnemonic_decode(
+    mnemonic: &[String],
+    word_list: &[String],
+) -> Result<Vec<u8>, ChainGangError> {
     let mut bits = Bits::with_capacity(mnemonic.len() * 11);
     for word in mnemonic {
         let value = match word_list.binary_search(word) {

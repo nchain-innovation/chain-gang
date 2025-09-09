@@ -54,10 +54,15 @@ pub fn addr_encode(hash160: &Hash160, addr_type: AddressType, network: Network) 
 }
 
 /// Decodes a base-58 address to a public key hash
-pub fn addr_decode(input: &str, network: Network) -> Result<(Hash160, AddressType), ChainGangError> {
+pub fn addr_decode(
+    input: &str,
+    network: Network,
+) -> Result<(Hash160, AddressType), ChainGangError> {
     // Make sure addr is at least some minimum to verify checksum and addr type
     // We will check the private key size later.
-    let v = input.from_base58().map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
+    let v = input
+        .from_base58()
+        .map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
     if v.len() < 6 {
         let msg = format!("Base58 address not long enough: {}", v.len());
         return Err(ChainGangError::BadData(msg));

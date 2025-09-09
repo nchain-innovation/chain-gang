@@ -81,7 +81,9 @@ pub fn extract_pubkeyhash(lock_script: &[u8]) -> Result<Hash160, ChainGangError>
         hash160.0.clone_from_slice(&lock_script[3..23]);
         Ok(hash160)
     } else {
-        Err(ChainGangError::BadData("Script is not a standard P2PKH".to_string()))
+        Err(ChainGangError::BadData(
+            "Script is not a standard P2PKH".to_string(),
+        ))
     }
 }
 

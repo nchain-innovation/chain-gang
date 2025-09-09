@@ -35,7 +35,9 @@ impl BloomFilter {
             return Err(ChainGangError::BadArgument("insert not valid".to_string()));
         }
         if !pr_false_pos.is_normal() || pr_false_pos < 0. {
-            return Err(ChainGangError::BadArgument("pr_false_po not valid".to_string()));
+            return Err(ChainGangError::BadArgument(
+                "pr_false_po not valid".to_string(),
+            ));
         }
         let ln2 = 2_f64.ln();
         let size = (-1_f64 / ln2.powf(2_f64) * insert * pr_false_pos.ln()) / 8_f64;

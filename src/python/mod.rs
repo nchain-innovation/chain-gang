@@ -21,7 +21,7 @@ use crate::{
     },
     script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
     transaction::sighash::{sig_hash_preimage, sig_hash_preimage_checksig_index, SigHashCache},
-    util::{hash160, sha256d, Hash256, ChainGangError},
+    util::{hash160, sha256d, ChainGangError, Hash256},
     wallet::{
         create_sighash, create_sighash_checksig_index, public_key_to_address, MAIN_PRIVATE_KEY,
         TEST_PRIVATE_KEY,
@@ -36,19 +36,19 @@ fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
 }
 
 #[pyfunction(name = "hash160")]
-pub fn py_hash160(py: Python, data: &[u8]) -> PyObject {
+pub fn py_hash160(py: Python, data: &[u8]) -> Py<PyAny> {
     let result = hash160(data).0;
     PyBytes::new(py, &result).into()
 }
 
 #[pyfunction(name = "hash256d")]
-pub fn py_hash256d(py: Python, data: &[u8]) -> PyObject {
+pub fn py_hash256d(py: Python, data: &[u8]) -> Py<PyAny> {
     let result = sha256d(data).0;
     PyBytes::new(py, &result).into()
 }
 
 #[pyfunction(name = "address_to_public_key_hash")]
-pub fn py_address_to_public_key_hash(py: Python, address: &str) -> PyResult<PyObject> {
+pub fn py_address_to_public_key_hash(py: Python, address: &str) -> PyResult<Py<PyAny>> {
     let result = address_to_public_key_hash(address)?;
     Ok(PyBytes::new(py, &result).into())
 }
@@ -201,7 +201,7 @@ pub fn py_sig_hash_preimage(
     script_pubkey: PyScript,
     prev_amount: i64,
     sighash_flags: u8,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let input_tx: Tx = tx.as_tx();
     let prev_lock_script: Script = script_pubkey.as_script();
 
@@ -237,7 +237,7 @@ pub fn py_sig_hash_preimage_checksig_index(
     checksig_index: usize,
     prev_amount: i64,
     sighash_flags: u8,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let input_tx: Tx = tx.as_tx();
     let prev_lock_script: Script = script_pubkey.as_script();
 
@@ -273,7 +273,7 @@ pub fn py_sig_hash(
     script_pubkey: PyScript,
     prev_amount: i64,
     sighash_flags: u8,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let input_tx = tx.as_tx();
     let prev_lock_script = script_pubkey.as_script();
 
@@ -308,7 +308,7 @@ pub fn py_sig_hash_checksig_index(
     checksig_index: usize,
     prev_amount: i64,
     sighash_flags: u8,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let input_tx = tx.as_tx();
     let prev_lock_script = script_pubkey.as_script();
 
@@ -326,7 +326,7 @@ pub fn py_sig_hash_checksig_index(
 }
 
 #[pyfunction(name = "wif_to_bytes")]
-pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<PyObject> {
+pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<Py<PyAny>> {
     let key_bytes = wif_to_bytes(wif)?;
     let bytes = PyBytes::new(py, &key_bytes);
     Ok(bytes.into())

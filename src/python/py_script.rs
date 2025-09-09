@@ -17,7 +17,7 @@ use crate::{
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-#[derive(FromPyObject, Debug)]
+#[derive(FromPyObject, Debug, Clone)]
 pub enum Command {
     Int(u8),
     Bytes(Vec<u8>),
@@ -198,7 +198,7 @@ impl PyScript {
     }
 
     // Return the serialised script without the length prepended
-    fn raw_serialize(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn raw_serialize(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mut v: Vec<u8> = Vec::new();
         v.write_all(&self.cmds)?;
 
@@ -207,7 +207,7 @@ impl PyScript {
     }
 
     /// Return the serialised script with the length prepended
-    pub fn serialize(&self, py: Python) -> PyResult<PyObject> {
+    pub fn serialize(&self, py: Python) -> PyResult<Py<PyAny>> {
         let mut script: Vec<u8> = Vec::new();
         script.write_all(&self.cmds)?;
         let length = script.len();
@@ -220,7 +220,7 @@ impl PyScript {
     }
 
     /// Return a copy of the commands in this script
-    fn get_commands(&self, py: Python<'_>) -> PyObject {
+    fn get_commands(&self, py: Python<'_>) -> Py<PyAny> {
         PyBytes::new(py, &self.cmds).into()
     }
 
