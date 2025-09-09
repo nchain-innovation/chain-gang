@@ -40,7 +40,7 @@ impl Iterator for SeedIter {
                 let i = (self.seed_index + self.random_offset) % self.seeds.len();
                 info!("Looking up DNS {:?}", self.seeds[i]);
                 match lookup_host(&self.seeds[i]) {
-                    Ok(ip_list) => self.nodes = ip_list,
+                    Ok(ip_list) => self.nodes = ip_list.collect(),
                     Err(e) => {
                         error!("Failed to look up DNS {:?}: {}", self.seeds[i], e);
                         self.seed_index += 1;
