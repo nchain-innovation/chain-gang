@@ -9,7 +9,7 @@ use crate::{
     interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
     messages::{BlockHeader, Tx},
     network::Network,
-    util::{Serializable, ChainGangError},
+    util::{ChainGangError, Serializable},
 };
 
 #[derive(Debug, Deserialize)]
@@ -119,11 +119,19 @@ impl UaaSInterface {
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
-            Err(err) => return Err(ChainGangError::ResponseError(format!("response.text() = {}", err))),
+            Err(err) => {
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    err
+                )))
+            }
         };
 
         let status: UaaSStatusResponse = serde_json::from_str(&txt)?;
@@ -137,16 +145,24 @@ impl UaaSInterface {
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
-            Err(x) => return Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
+            Err(x) => {
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )))
+            }
         };
 
         let blockheaders: BlockHeadersResponse = serde_json::from_str(&txt)?;
-        
+
         Ok(blockheaders)
     }
 
@@ -157,12 +173,20 @@ impl UaaSInterface {
         let response = reqwest::get(collection_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &collection_url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
-            Err(x) => return Err(ChainGangError::ResponseError(format!("response.text() = {}", x))),
+            Err(x) => {
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )))
+            }
         };
 
         let monitors: GetMonitorResponse = serde_json::from_str(&txt)?;
@@ -174,7 +198,7 @@ impl UaaSInterface {
         // check the input is valid
         if monitor.address.is_none() && monitor.locking_script_pattern.is_none() {
             return Err(ChainGangError::BadArgument(
-                "monitor requires address or locking_script pattern".to_string()
+                "monitor requires address or locking_script pattern".to_string(),
             ));
         }
 
@@ -188,7 +212,10 @@ impl UaaSInterface {
 
         if response.status() != 200 {
             log::warn!("url = {}", &add_monitor_url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         Ok(())
     }
@@ -204,7 +231,10 @@ impl UaaSInterface {
 
         if response.status() != 200 {
             log::warn!("url = {}", &delete_monitor_url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         Ok(())
     }
@@ -224,11 +254,17 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         match response.text().await {
             Ok(_txt) => Ok(()),
-            Err(err) => Err(ChainGangError::ResponseError(format!("response.text() = {}", err))),
+            Err(err) => Err(ChainGangError::ResponseError(format!(
+                "response.text() = {}",
+                err
+            ))),
         }
     }
 
@@ -242,14 +278,20 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
                 log::debug!("address = {}", &address);
-                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )));
             }
         };
         let data: Balance = match serde_json::from_str(&txt) {
@@ -257,7 +299,10 @@ impl BlockchainInterface for UaaSInterface {
             Err(x) => {
                 log::debug!("address = {}", &address);
                 log::warn!("txt = {}", &txt);
-                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
+                return Err(ChainGangError::JSONParseError(format!(
+                    "json parse error = {}",
+                    x
+                )));
             }
         };
         Ok(data)
@@ -274,20 +319,29 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
 
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )));
             }
         };
         let data: GetUtxoResponse = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
+                return Err(ChainGangError::JSONParseError(format!(
+                    "json parse error = {}",
+                    x
+                )));
             }
         };
         Ok(data.utxo)
@@ -320,7 +374,10 @@ impl BlockchainInterface for UaaSInterface {
             }
             _ => {
                 log::debug!("url = {}", &url);
-                Err(ChainGangError::ResponseError(format!("response.status() = {}", status)))
+                Err(ChainGangError::ResponseError(format!(
+                    "response.status() = {}",
+                    status
+                )))
             }
         }
     }
@@ -334,12 +391,18 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )));
             }
         };
 
@@ -347,7 +410,10 @@ impl BlockchainInterface for UaaSInterface {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
+                return Err(ChainGangError::JSONParseError(format!(
+                    "json parse error = {}",
+                    x
+                )));
             }
         };
 
@@ -365,12 +431,18 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                return Err(ChainGangError::ResponseError(format!("response.text() = {}", x)));
+                return Err(ChainGangError::ResponseError(format!(
+                    "response.text() = {}",
+                    x
+                )));
             }
         };
 
@@ -378,7 +450,10 @@ impl BlockchainInterface for UaaSInterface {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
-                return Err(ChainGangError::JSONParseError(format!("json parse error = {}", x)));
+                return Err(ChainGangError::JSONParseError(format!(
+                    "json parse error = {}",
+                    x
+                )));
             }
         };
 
@@ -395,12 +470,18 @@ impl BlockchainInterface for UaaSInterface {
         let response = reqwest::get(status_url.clone()).await?;
         if response.status() != 200 {
             log::warn!("url = {}", &status_url);
-            return Err(ChainGangError::ResponseError(format!("response.status() = {}", response.status())));
+            return Err(ChainGangError::ResponseError(format!(
+                "response.status() = {}",
+                response.status()
+            )));
         };
 
         return match response.text().await {
             Ok(headers) => Ok(headers),
-            Err(x) => Err(ChainGangError::JSONParseError(format!("response.text() = {}", x))),
+            Err(x) => Err(ChainGangError::JSONParseError(format!(
+                "response.text() = {}",
+                x
+            ))),
         };
     }
 }

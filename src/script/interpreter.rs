@@ -668,7 +668,9 @@ pub fn core_eval<T: Checker>(
                     cleaned_script = remove_sig(&sig, &cleaned_script);
                 }
                 if !checker.check_sig(&sig, &pubkey, &cleaned_script)? {
-                    return Err(ChainGangError::ScriptError("OP_CHECKSIGVERIFY failed".to_string()));
+                    return Err(ChainGangError::ScriptError(
+                        "OP_CHECKSIGVERIFY failed".to_string(),
+                    ));
                 }
             }
             OP_CHECKMULTISIG => {
@@ -732,7 +734,9 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
             // We don't call pop_bool here because the final stack element can be longer than 4 bytes
             check_stack_size(1, &stack)?;
             if !decode_bool(&stack[stack.len() - 1]) {
-                return Err(ChainGangError::ScriptError("Top of stack is false".to_string()));
+                return Err(ChainGangError::ScriptError(
+                    "Top of stack is false".to_string(),
+                ));
             }
             Ok(())
         }
@@ -741,11 +745,17 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
 }
 
 #[inline]
-fn check_multisig<T: Checker>(stack: &mut Stack, checker: &mut T, script: &[u8]) -> Result<bool, ChainGangError> {
+fn check_multisig<T: Checker>(
+    stack: &mut Stack,
+    checker: &mut T,
+    script: &[u8],
+) -> Result<bool, ChainGangError> {
     // Pop the keys
     let total = pop_num(stack)?;
     if total < 0 {
-        return Err(ChainGangError::ScriptError("total out of range".to_string()));
+        return Err(ChainGangError::ScriptError(
+            "total out of range".to_string(),
+        ));
     }
     check_stack_size(total as usize, stack)?;
     let mut keys = Vec::with_capacity(total as usize);
@@ -756,7 +766,9 @@ fn check_multisig<T: Checker>(stack: &mut Stack, checker: &mut T, script: &[u8])
     // Pop the sigs
     let required = pop_num(stack)?;
     if required < 0 || required > total {
-        return Err(ChainGangError::ScriptError("required out of range".to_string()));
+        return Err(ChainGangError::ScriptError(
+            "required out of range".to_string(),
+        ));
     }
     check_stack_size(required as usize, stack)?;
     let mut sigs = Vec::with_capacity(required as usize);
@@ -818,7 +830,9 @@ fn remove_sig(sig: &[u8], script: &[u8]) -> Vec<u8> {
 #[inline]
 fn check_stack_size(minsize: usize, stack: &Stack) -> Result<(), ChainGangError> {
     if stack.len() < minsize {
-        return Err(ChainGangError::ScriptError(format!("Stack too small: {minsize}")));
+        return Err(ChainGangError::ScriptError(format!(
+            "Stack too small: {minsize}"
+        )));
     }
     Ok(())
 }
@@ -826,7 +840,9 @@ fn check_stack_size(minsize: usize, stack: &Stack) -> Result<(), ChainGangError>
 #[inline]
 fn remains(i: usize, len: usize, script: &[u8]) -> Result<(), ChainGangError> {
     if i + len > script.len() {
-        Err(ChainGangError::ScriptError("Not enough data remaining".to_string()))
+        Err(ChainGangError::ScriptError(
+            "Not enough data remaining".to_string(),
+        ))
     } else {
         Ok(())
     }
@@ -1623,7 +1639,12 @@ mod tests {
     }
 
     impl Checker for MockChecker {
-        fn check_sig(&mut self, _sig: &[u8], _pubkey: &[u8], _script: &[u8]) -> Result<bool, ChainGangError> {
+        fn check_sig(
+            &mut self,
+            _sig: &[u8],
+            _pubkey: &[u8],
+            _script: &[u8],
+        ) -> Result<bool, ChainGangError> {
             Ok(self.sig_checks.borrow_mut().pop().unwrap())
         }
 

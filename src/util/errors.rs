@@ -1,26 +1,23 @@
-use thiserror::Error;
-use k256;
 use hex;
+use k256;
+use thiserror::Error;
 
 #[cfg(feature = "interface")]
 use reqwest;
 
-
 use url;
-
 
 // Errors used in the chain-gang library
 #[derive(Error, Debug)]
 pub enum ChainGangError {
     // Conversion from other Errors
     // --------------------------------------------
-    
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
 
     #[error("K256 ecdsa Error: {0}")]
     K256EcdsaError(#[from] k256::ecdsa::Error),
-    
+
     #[error("K256 elliptic_curve Error: {0}")]
     K256EcError(#[from] k256::elliptic_curve::Error),
 
@@ -65,13 +62,12 @@ pub enum ChainGangError {
 
     #[error("The operation is not valid on this object")]
     InvalidOperation(String),
-    
+
     #[error("Invalid reponse")]
     ResponseError(String),
 
     #[error("JSON Parse error")]
     JSONParseError(String),
-
 }
 
 #[cfg(feature = "python")]
@@ -79,7 +75,6 @@ use pyo3::exceptions::PyValueError;
 
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-
 
 // Convert ChainGangError to a Python Error
 #[cfg(feature = "python")]

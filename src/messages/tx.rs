@@ -55,12 +55,16 @@ impl Tx {
         let mut total_out = 0;
         for tx_out in self.outputs.iter() {
             if tx_out.satoshis < 0 {
-                return Err(ChainGangError::BadData("tx_out satoshis negative".to_string()));
+                return Err(ChainGangError::BadData(
+                    "tx_out satoshis negative".to_string(),
+                ));
             }
             total_out += tx_out.satoshis;
         }
         if total_out > MAX_SATOSHIS {
-            return Err(ChainGangError::BadData("Total out exceeds max satoshis".to_string()));
+            return Err(ChainGangError::BadData(
+                "Total out exceeds max satoshis".to_string(),
+            ));
         }
 
         // Make sure none of the inputs are coinbase transactions
@@ -83,7 +87,9 @@ impl Tx {
             let utxo = utxos.get(&tx_in.prev_output);
             if let Some(tx_out) = utxo {
                 if tx_out.satoshis < 0 {
-                    return Err(ChainGangError::BadData("tx_out satoshis negative".to_string()));
+                    return Err(ChainGangError::BadData(
+                        "tx_out satoshis negative".to_string(),
+                    ));
                 }
                 total_in += tx_out.satoshis;
             } else {
@@ -91,12 +97,16 @@ impl Tx {
             }
         }
         if total_in > MAX_SATOSHIS {
-            return Err(ChainGangError::BadData("Total in exceeds max satoshis".to_string()));
+            return Err(ChainGangError::BadData(
+                "Total in exceeds max satoshis".to_string(),
+            ));
         }
 
         // Check inputs spent > outputs received
         if total_in < total_out {
-            return Err(ChainGangError::BadData("Output total exceeds input".to_string()));
+            return Err(ChainGangError::BadData(
+                "Output total exceeds input".to_string(),
+            ));
         }
 
         // Verify each script

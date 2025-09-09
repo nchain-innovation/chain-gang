@@ -202,7 +202,10 @@ impl Message {
     /// Reads the complete message given a message header
     ///
     /// It may be used after read() returns Message::Partial.
-    pub fn read_partial(reader: &mut dyn Read, header: &MessageHeader) -> Result<Self, ChainGangError> {
+    pub fn read_partial(
+        reader: &mut dyn Read,
+        header: &MessageHeader,
+    ) -> Result<Self, ChainGangError> {
         // Addr
         if header.command == commands::ADDR {
             let payload = header.payload(reader)?;

@@ -99,7 +99,9 @@ pub fn decode_num(s: &[u8]) -> Result<i64, ChainGangError> {
 #[inline]
 pub fn encode_num(val: i64) -> Result<Vec<u8>, ChainGangError> {
     if !(-2147483647..=2147483647).contains(&val) {
-        return Err(ChainGangError::ScriptError("Number out of range".to_string()));
+        return Err(ChainGangError::ScriptError(
+            "Number out of range".to_string(),
+        ));
     }
     let (posval, negmask) = if val < 0 { (-val, 128) } else { (val, 0) };
     if posval == 0 {

@@ -32,12 +32,16 @@ impl PrefilledTransaction {
         let mut total_out = 0;
         for tx_out in self.tx.outputs.iter() {
             if tx_out.satoshis < 0 {
-                return Err(ChainGangError::BadData("tx_out satoshis negative".to_string()));
+                return Err(ChainGangError::BadData(
+                    "tx_out satoshis negative".to_string(),
+                ));
             }
             total_out += tx_out.satoshis;
         }
         if total_out > MAX_SATOSHIS {
-            return Err(ChainGangError::BadData("Total out exceeds max satoshis".to_string()));
+            return Err(ChainGangError::BadData(
+                "Total out exceeds max satoshis".to_string(),
+            ));
         }
         Ok(())
     }

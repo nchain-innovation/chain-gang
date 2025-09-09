@@ -1,6 +1,6 @@
 use crate::messages::OutPoint;
 use crate::script::Script;
-use crate::util::{var_int,  ChainGangError, Serializable};
+use crate::util::{var_int, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};

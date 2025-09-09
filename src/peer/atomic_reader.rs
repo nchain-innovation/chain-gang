@@ -9,8 +9,8 @@ pub struct AtomicReader<'a> {
     reader: &'a mut dyn Read,
 }
 
-impl AtomicReader<'_> {
-    pub fn new(reader: &mut dyn Read) -> AtomicReader {
+impl<'a> AtomicReader<'a> {
+    pub fn new(reader: &'a mut dyn Read) -> AtomicReader<'a> {
         let buf = Vec::new();
         AtomicReader { buf, reader }
     }

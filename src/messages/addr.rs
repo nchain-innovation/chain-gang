@@ -128,24 +128,24 @@ fn check_network_and_length(bip155_network_id: u8, length: u64) -> Result<(), Ch
         return Err(ChainGangError::BadData("Unknown network id".to_string()));
     }
     match bip155_network_id {
-        IPV4_NETWORK_ID if length != IPV4_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
-            "Length incorrect for IPv4 address".to_string(),
-        )),
-        IPV6_NETWORK_ID if length != IPV6_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
-            "Length incorrect for IPv6 address".to_string(),
-        )),
-        TORV2_NETWORK_ID if length != TORV2_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
-            "Length incorrect for TorV2 address".to_string(),
-        )),
-        TORV3_NETWORK_ID if length != TORV3_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
-            "Length incorrect for TorV3 address".to_string(),
-        )),
-        I2P_NETWORK_ID if length != I2P_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
-            "Length incorrect for I2P address".to_string(),
-        )),
-        CJDNS_NETWORK_ID if length != CJDNS_ADDRESS_LENGTH_BYTES as u64 => Err(ChainGangError::BadData(
-            "Length incorrect for CJDNS address".to_string(),
-        )),
+        IPV4_NETWORK_ID if length != IPV4_ADDRESS_LENGTH_BYTES as u64 => Err(
+            ChainGangError::BadData("Length incorrect for IPv4 address".to_string()),
+        ),
+        IPV6_NETWORK_ID if length != IPV6_ADDRESS_LENGTH_BYTES as u64 => Err(
+            ChainGangError::BadData("Length incorrect for IPv6 address".to_string()),
+        ),
+        TORV2_NETWORK_ID if length != TORV2_ADDRESS_LENGTH_BYTES as u64 => Err(
+            ChainGangError::BadData("Length incorrect for TorV2 address".to_string()),
+        ),
+        TORV3_NETWORK_ID if length != TORV3_ADDRESS_LENGTH_BYTES as u64 => Err(
+            ChainGangError::BadData("Length incorrect for TorV3 address".to_string()),
+        ),
+        I2P_NETWORK_ID if length != I2P_ADDRESS_LENGTH_BYTES as u64 => Err(
+            ChainGangError::BadData("Length incorrect for I2P address".to_string()),
+        ),
+        CJDNS_NETWORK_ID if length != CJDNS_ADDRESS_LENGTH_BYTES as u64 => Err(
+            ChainGangError::BadData("Length incorrect for CJDNS address".to_string()),
+        ),
         _ => Ok(()),
     }
 }

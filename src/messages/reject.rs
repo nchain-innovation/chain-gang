@@ -34,7 +34,9 @@ impl Reject {
     /// Returns the transaction ID for this message
     pub fn txid(&self) -> Result<Hash256, ChainGangError> {
         if self.data.len() != 32 {
-            return Err(ChainGangError::InvalidOperation("No transaction hash".to_string()));
+            return Err(ChainGangError::InvalidOperation(
+                "No transaction hash".to_string(),
+            ));
         }
         let mut txid = Hash256([0; 32]);
         txid.0.clone_from_slice(&self.data);

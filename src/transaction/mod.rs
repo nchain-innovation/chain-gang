@@ -29,7 +29,7 @@
 //! tx.inputs[0].unlock_script = create_unlock_script(&signature, &public_key);
 //! ```
 
-use crate::util::{Hash256, ChainGangError};
+use crate::util::{ChainGangError, Hash256};
 use k256::ecdsa::{
     signature::{hazmat::PrehashSigner, SignatureEncoding},
     Signature, SigningKey,
