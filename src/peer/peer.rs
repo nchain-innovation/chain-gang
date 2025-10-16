@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::time::{Duration, UNIX_EPOCH};
+use rand::Rng;
 
 /// Time to wait for the initial TCP connection
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -411,6 +412,12 @@ impl Peer {
             Message::Ping(ping) => {
                 let pong = Message::Pong(ping.clone());
                 self.send(&pong)?;
+                // John has indicated that the peer expects a ping too
+                let mut rng = rand::thread_rng();
+                let nonce = rng.gen::<u64>();
+                let our_ping = Message::Ping(Ping {nonce}) ;
+                self.send(&our_ping)?;
+
             }
             Message::SendHeaders => {
                 self.sendheaders.store(true, Ordering::Relaxed);
