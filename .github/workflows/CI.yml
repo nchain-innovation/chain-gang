@@ -18,6 +18,7 @@ on:
 env:
   PYO3_USE_ABI3_FORWARD_COMPATIBILITY: 1
   UNSAFE_PYO3_BUILD_FREE_THREADED: 1
+  RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
 
 # When these env vars are removed some of the platforms can be enabled
 # below. 
@@ -25,10 +26,6 @@ env:
 
 permissions:
   contents: read
-
-env:
-  RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
-
 
 jobs:
   linux:
