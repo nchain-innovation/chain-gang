@@ -26,6 +26,10 @@ env:
 permissions:
   contents: read
 
+env:
+  RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
+
+
 jobs:
   linux:
     runs-on: ${{ matrix.platform.runner }}
