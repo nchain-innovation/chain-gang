@@ -2,6 +2,8 @@ name: On Push
 on: [push]
 permissions:
   contents: read
+env:
+  RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
 
 jobs:
   python-lint:
