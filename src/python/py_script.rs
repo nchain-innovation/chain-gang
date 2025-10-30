@@ -339,7 +339,7 @@ impl PyScript {
         // Use the bound reference to access the PyAny
         // Downcast the PyAny reference to PyInt
         let py_long: &Bound<'_, PyInt> = int_rep
-            .downcast::<PyInt>()
+            .cast::<PyInt>()
             .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
 
         // Convert the PyInt into a BigInt using to_string
