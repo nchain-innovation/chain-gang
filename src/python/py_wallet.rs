@@ -269,7 +269,7 @@ impl PyWallet {
         let py_int = py.eval(&input, Some(&globals), None)?;
 
         // Cast to PyInt and return
-        Ok((*py_int.downcast::<PyInt>()?).clone().into())
+        Ok((*py_int.cast::<PyInt>()?).clone().into())
     }
 
     fn to_hex(&self) -> String {
@@ -355,7 +355,7 @@ impl PyWallet {
             // Use the bound reference to access the PyAny
             // Downcast the PyAny reference to PyInt
             let py_long: &Bound<'_, PyInt> = int_rep
-                .downcast::<PyInt>()
+                .cast::<PyInt>()
                 .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
 
             // Convert the PyInt into a BigInt using to_string
