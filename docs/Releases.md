@@ -49,3 +49,4 @@
 * v0.7.2 - Added OP_2MUL and OP_2DIV script operations
 * v0.7.3 - Fixed WoC endpoints get_block_header and get_merkle_proof to use new TSC endpoint
 * v0.7.4 - Updated to support Python 3.14
+* v0.7.5 - Updated Python dependencies cryptography and requests
