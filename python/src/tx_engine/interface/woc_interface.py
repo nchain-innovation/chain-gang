@@ -2,7 +2,6 @@
 """
 
 import logging
-import functools
 from typing import Dict, Optional, List, Any
 
 from . import woc
@@ -71,10 +70,8 @@ class WoCInterface(BlockchainInterface):
         """Return the transaction associated with this txid"""
         return woc.get_transaction(txid, testnet=self.is_testnet())
 
-    @functools.lru_cache
     def get_raw_transaction(self, txid: str) -> Optional[str]:
         """Return the transaction associated with this txid.
-        Use cached copy if available.
         """
         return woc.get_raw_transaction(txid, testnet=self.is_testnet())
 
