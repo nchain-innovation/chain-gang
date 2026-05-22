@@ -1,6 +1,7 @@
 use crate::script::op_codes::*;
 use crate::script::stack::{
-    decode_bigint, decode_bool, encode_bigint, encode_num, pop_bigint, pop_bool, pop_num, Stack,
+    decode_bigint, decode_bool, encode_bigint, encode_num, is_minimally_encoded, pop_bigint,
+    pop_bool, pop_bool_minimal, pop_num_minimal, Stack,
 };
 use crate::script::Checker;
 use crate::transaction::sighash::SIGHASH_FORKID;
@@ -23,6 +24,126 @@ pub const PREGENESIS_RULES: u32 = 0x01;
 /// Whether script inputs are evaluated in separate unlock/lock phases (Chronicle).
 pub fn uses_two_phase_eval(tx_version: u32) -> bool {
     tx_version > 1
+}
+
+/// Whether malleability-related script rules are relaxed (Chronicle).
+pub fn uses_relaxed_malleability(tx_version: u32) -> bool {
+    tx_version > 1
+}
+
+/// True when the script contains only push operations.
+pub fn is_push_only(script: &[u8]) -> bool {
+    let mut i = 0;
+    while i < script.len() {
+        match script[i] {
+            OP_0 | OP_1NEGATE | OP_1..=OP_16 | 1..=75 | OP_PUSHDATA1 | OP_PUSHDATA2 | OP_PUSHDATA4 => {}
+            _ => return false,
+        }
+        i = next_op(i, script);
+    }
+    true
+}
+
+fn tx_enforces_malleability_rules<T: Checker>(checker: &T) -> bool {
+    match checker.tx_version() {
+        Ok(version) => !uses_relaxed_malleability(version as u32),
+        Err(_) => false,
+    }
+}
+
+fn pop_num_for_eval<T: Checker>(stack: &mut Stack, checker: &T) -> Result<i32, ChainGangError> {
+    pop_num_minimal(stack, tx_enforces_malleability_rules(checker))
+}
+
+fn pop_bool_for_if<T: Checker>(stack: &mut Stack, checker: &T) -> Result<bool, ChainGangError> {
+    pop_bool_minimal(stack, tx_enforces_malleability_rules(checker))
+}
+
+fn check_canonical_push(i: usize, script: &[u8]) -> Result<(), ChainGangError> {
+    let op = script[i];
+    match op {
+        OP_0 => Ok(()),
+        1..=75 => {
+            let len = op as usize;
+            if len == 0 {
+                return Err(ChainGangError::ScriptError(
+                    "Non-minimal push".to_string(),
+                ));
+            }
+            if len == 1 {
+                match script[i + 1] {
+                    0 | 1..=16 | OP_1NEGATE => {
+                        return Err(ChainGangError::ScriptError(
+                            "Non-minimal push".to_string(),
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        }
+        OP_PUSHDATA1 => {
+            if i + 1 >= script.len() {
+                return Ok(());
+            }
+            if (script[i + 1] as usize) < 76 {
+                Err(ChainGangError::ScriptError(
+                    "Non-minimal push".to_string(),
+                ))
+            } else {
+                Ok(())
+            }
+        }
+        OP_PUSHDATA2 => {
+            if i + 2 >= script.len() {
+                return Ok(());
+            }
+            let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
+            if len <= 255 {
+                Err(ChainGangError::ScriptError(
+                    "Non-minimal push".to_string(),
+                ))
+            } else {
+                Ok(())
+            }
+        }
+        OP_PUSHDATA4 => {
+            if i + 4 >= script.len() {
+                return Ok(());
+            }
+            let len = (script[i + 1] as usize)
+                + ((script[i + 2] as usize) << 8)
+                + ((script[i + 3] as usize) << 16)
+                + ((script[i + 4] as usize) << 24);
+            if len <= 65535 {
+                Err(ChainGangError::ScriptError(
+                    "Non-minimal push".to_string(),
+                ))
+            } else {
+                Ok(())
+            }
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_final_stack<T: Checker>(stack: &Stack, checker: &T) -> Result<(), ChainGangError> {
+    if stack.is_empty() {
+        return Err(ChainGangError::ScriptError(
+            "Stack empty".to_string(),
+        ));
+    }
+    if !decode_bool(&stack[stack.len() - 1]) {
+        return Err(ChainGangError::ScriptError(
+            "Top of stack is false".to_string(),
+        ));
+    }
+    if tx_enforces_malleability_rules(checker) && stack.len() != 1 {
+        return Err(ChainGangError::ScriptError(
+            "Clean stack violation".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 /// Phase of a two-phase unlock/lock script evaluation.
@@ -156,19 +277,46 @@ pub fn core_eval<T: Checker>(
             OP_16 => stack.push(encode_num(16)?),
             len @ 1..=75 => {
                 remains(i + 1, len as usize, script)?;
-                stack.push(script[i + 1..i + 1 + len as usize].to_vec());
+                if tx_enforces_malleability_rules(checker) {
+                    check_canonical_push(i, script)?;
+                }
+                let data = &script[i + 1..i + 1 + len as usize];
+                if tx_enforces_malleability_rules(checker) && !is_minimally_encoded(data) {
+                    return Err(ChainGangError::ScriptError(
+                        "Non-minimal push data".to_string(),
+                    ));
+                }
+                stack.push(data.to_vec());
             }
             OP_PUSHDATA1 => {
                 remains(i + 1, 1, script)?;
                 let len = script[i + 1] as usize;
                 remains(i + 2, len, script)?;
-                stack.push(script[i + 2..i + 2 + len].to_vec());
+                if tx_enforces_malleability_rules(checker) {
+                    check_canonical_push(i, script)?;
+                }
+                let data = &script[i + 2..i + 2 + len];
+                if tx_enforces_malleability_rules(checker) && !is_minimally_encoded(data) {
+                    return Err(ChainGangError::ScriptError(
+                        "Non-minimal push data".to_string(),
+                    ));
+                }
+                stack.push(data.to_vec());
             }
             OP_PUSHDATA2 => {
                 remains(i + 1, 2, script)?;
                 let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
                 remains(i + 3, len, script)?;
-                stack.push(script[i + 3..i + 3 + len].to_vec());
+                if tx_enforces_malleability_rules(checker) {
+                    check_canonical_push(i, script)?;
+                }
+                let data = &script[i + 3..i + 3 + len];
+                if tx_enforces_malleability_rules(checker) && !is_minimally_encoded(data) {
+                    return Err(ChainGangError::ScriptError(
+                        "Non-minimal push data".to_string(),
+                    ));
+                }
+                stack.push(data.to_vec());
             }
             OP_PUSHDATA4 => {
                 remains(i + 1, 4, script)?;
@@ -177,14 +325,23 @@ pub fn core_eval<T: Checker>(
                     + ((script[i + 3] as usize) << 16)
                     + ((script[i + 4] as usize) << 24);
                 remains(i + 5, len, script)?;
-                stack.push(script[i + 5..i + 5 + len].to_vec());
+                if tx_enforces_malleability_rules(checker) {
+                    check_canonical_push(i, script)?;
+                }
+                let data = &script[i + 5..i + 5 + len];
+                if tx_enforces_malleability_rules(checker) && !is_minimally_encoded(data) {
+                    return Err(ChainGangError::ScriptError(
+                        "Non-minimal push data".to_string(),
+                    ));
+                }
+                stack.push(data.to_vec());
             }
             OP_NOP => {}
             OP_VER => {
                 stack.push(encode_num(checker.tx_version()? as i64)?);
             }
-            OP_IF => branch_exec.push(pop_bool(&mut stack)?),
-            OP_NOTIF => branch_exec.push(!pop_bool(&mut stack)?),
+            OP_IF => branch_exec.push(pop_bool_for_if(&mut stack, checker)?),
+            OP_NOTIF => branch_exec.push(!pop_bool_for_if(&mut stack, checker)?),
             OP_VERIF => {
                 let comparison = pop_bigint(&mut stack)?;
                 branch_exec.push(verif_branch_exec(checker, comparison, false)?);
@@ -259,7 +416,7 @@ pub fn core_eval<T: Checker>(
                 stack.push(copy);
             }
             OP_PICK => {
-                let n = pop_num(&mut stack)?;
+                let n = pop_num_for_eval(&mut stack, checker)?;
                 if n < 0 {
                     let msg = "OP_PICK failed, n negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -269,7 +426,7 @@ pub fn core_eval<T: Checker>(
                 stack.push(copy);
             }
             OP_ROLL => {
-                let n = pop_num(&mut stack)?;
+                let n = pop_num_for_eval(&mut stack, checker)?;
                 if n < 0 {
                     let msg = "OP_ROLL failed, n negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -353,7 +510,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_SPLIT => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num(&mut stack)?;
+                let n = pop_num_for_eval(&mut stack, checker)?;
                 let x = stack.pop().unwrap();
                 if n < 0 {
                     let msg = "OP_SPLIT failed, n negative".to_string();
@@ -374,8 +531,8 @@ pub fn core_eval<T: Checker>(
             }
             OP_SUBSTR => {
                 check_stack_size(3, &stack)?;
-                let length = pop_num(&mut stack)?;
-                let start = pop_num(&mut stack)?;
+                let length = pop_num_for_eval(&mut stack, checker)?;
+                let start = pop_num_for_eval(&mut stack, checker)?;
                 let s = stack.pop().unwrap();
                 if s.is_empty() {
                     return Err(substr_error("OP_SUBSTR failed, zero-length source"));
@@ -392,7 +549,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_LEFT => {
                 check_stack_size(2, &stack)?;
-                let length = pop_num(&mut stack)?;
+                let length = pop_num_for_eval(&mut stack, checker)?;
                 let s = stack.pop().unwrap();
                 if length < 0 {
                     return Err(substr_error("OP_LEFT failed, negative length"));
@@ -405,7 +562,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_RIGHT => {
                 check_stack_size(2, &stack)?;
-                let length = pop_num(&mut stack)?;
+                let length = pop_num_for_eval(&mut stack, checker)?;
                 let s = stack.pop().unwrap();
                 if length < 0 {
                     return Err(substr_error("OP_RIGHT failed, negative length"));
@@ -473,7 +630,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_LSHIFT => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num(&mut stack)?;
+                let n = pop_num_for_eval(&mut stack, checker)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -483,7 +640,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_RSHIFT => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num(&mut stack)?;
+                let n = pop_num_for_eval(&mut stack, checker)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -791,7 +948,13 @@ pub fn core_eval<T: Checker>(
                 let cleaned_script =
                     checksig_script_code(script, check_index, &sig, two_phase);
 
-                match checker.check_sig(&sig, &pubkey, &cleaned_script)? {
+                let success = checker.check_sig(&sig, &pubkey, &cleaned_script)?;
+                if tx_enforces_malleability_rules(checker) && !success && !sig.is_empty() {
+                    return Err(ChainGangError::ScriptError(
+                        "OP_CHECKSIG NULLFAIL".to_string(),
+                    ));
+                }
+                match success {
                     true => stack.push(encode_num(1)?),
                     false => stack.push(encode_num(0)?),
                 }
@@ -802,7 +965,13 @@ pub fn core_eval<T: Checker>(
                 let sig = stack.pop().unwrap();
                 let cleaned_script =
                     checksig_script_code(script, check_index, &sig, two_phase);
-                if !checker.check_sig(&sig, &pubkey, &cleaned_script)? {
+                let success = checker.check_sig(&sig, &pubkey, &cleaned_script)?;
+                if tx_enforces_malleability_rules(checker) && !success && !sig.is_empty() {
+                    return Err(ChainGangError::ScriptError(
+                        "OP_CHECKSIG NULLFAIL".to_string(),
+                    ));
+                }
+                if !success {
                     return Err(ChainGangError::ScriptError(
                         "OP_CHECKSIGVERIFY failed".to_string(),
                     ));
@@ -824,7 +993,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKLOCKTIMEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let locktime = pop_num(&mut stack)?;
+                    let locktime = pop_num_for_eval(&mut stack, checker)?;
                     if !checker.check_locktime(locktime)? {
                         let msg = "OP_CHECKLOCKTIMEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
@@ -833,7 +1002,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKSEQUENCEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let sequence = pop_num(&mut stack)?;
+                    let sequence = pop_num_for_eval(&mut stack, checker)?;
                     if !checker.check_sequence(sequence)? {
                         let msg = "OP_CHECKSEQUENCEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
@@ -843,7 +1012,7 @@ pub fn core_eval<T: Checker>(
             OP_NOP1 => {}
             OP_LSHIFTNUM => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num(&mut stack)?;
+                let n = pop_num_for_eval(&mut stack, checker)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -853,7 +1022,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_RSHIFTNUM => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num(&mut stack)?;
+                let n = pop_num_for_eval(&mut stack, checker)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -882,16 +1051,7 @@ pub fn core_eval<T: Checker>(
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(), ChainGangError> {
     match core_eval(script, checker, flags, None, None, None, None, None) {
-        Ok((stack, _alt_stack, _script_counter)) => {
-            // We don't call pop_bool here because the final stack element can be longer than 4 bytes
-            check_stack_size(1, &stack)?;
-            if !decode_bool(&stack[stack.len() - 1]) {
-                return Err(ChainGangError::ScriptError(
-                    "Top of stack is false".to_string(),
-                ));
-            }
-            Ok(())
-        }
+        Ok((stack, _alt_stack, _script_counter)) => validate_final_stack(&stack, checker),
         Err(x) => Err(x),
     }
 }
@@ -937,13 +1097,7 @@ pub fn eval_two_phase<T: Checker>(
         Some(&ctx_lock),
     )?;
 
-    check_stack_size(1, &stack)?;
-    if !decode_bool(&stack[stack.len() - 1]) {
-        return Err(ChainGangError::ScriptError(
-            "Top of stack is false".to_string(),
-        ));
-    }
-    Ok(())
+    validate_final_stack(&stack, checker)
 }
 
 #[inline]
@@ -953,7 +1107,7 @@ fn check_multisig<T: Checker>(
     script: &[u8],
 ) -> Result<bool, ChainGangError> {
     // Pop the keys
-    let total = pop_num(stack)?;
+    let total = pop_num_for_eval(stack, checker)?;
     if total < 0 {
         return Err(ChainGangError::ScriptError(
             "total out of range".to_string(),
@@ -966,7 +1120,7 @@ fn check_multisig<T: Checker>(
     }
 
     // Pop the sigs
-    let required = pop_num(stack)?;
+    let required = pop_num_for_eval(stack, checker)?;
     if required < 0 || required > total {
         return Err(ChainGangError::ScriptError(
             "required out of range".to_string(),
@@ -980,7 +1134,12 @@ fn check_multisig<T: Checker>(
 
     // Pop one more off. This isn't used and can't be changed.
     check_stack_size(1, stack)?;
-    stack.pop().unwrap();
+    let dummy = stack.pop().unwrap();
+    if tx_enforces_malleability_rules(checker) && !dummy.is_empty() {
+        return Err(ChainGangError::ScriptError(
+            "OP_CHECKMULTISIG NULLDUMMY".to_string(),
+        ));
+    }
 
     // Remove signature for pre-fork scripts
     let mut cleaned_script = script.to_vec();
@@ -1001,7 +1160,17 @@ fn check_multisig<T: Checker>(
         }
         key += 1;
     }
-    Ok(true)
+    let success = sig == sigs.len();
+    if !success && tx_enforces_malleability_rules(checker) {
+        for remaining in &sigs {
+            if !remaining.is_empty() {
+                return Err(ChainGangError::ScriptError(
+                    "OP_CHECKMULTISIG NULLFAIL".to_string(),
+                ));
+            }
+        }
+    }
+    Ok(success)
 }
 
 fn prefork(sig: &[u8]) -> bool {
@@ -2029,5 +2198,92 @@ mod tests {
 
         let stripped = strip_code_separators(&script.0);
         assert_eq!(stripped, [OP_1, OP_2, OP_3]);
+    }
+
+    #[test]
+    fn uses_relaxed_malleability_gated_on_version() {
+        assert!(!uses_relaxed_malleability(1));
+        assert!(uses_relaxed_malleability(2));
+    }
+
+    #[test]
+    fn chronicle_relaxed_clean_stack_allows_extra_items() {
+        let mut c = MockChecker::with_tx_version(2);
+        assert!(eval(&[OP_1, OP_1], &mut c, NO_FLAGS).is_ok());
+    }
+
+    #[test]
+    fn strict_clean_stack_rejects_extra_items() {
+        let mut c = MockChecker::with_tx_version(1);
+        assert!(eval(&[OP_1, OP_1], &mut c, NO_FLAGS).is_err());
+    }
+
+    #[test]
+    fn chronicle_minimalif_allows_non_minimal_true_operand() {
+        let mut s = Script::new();
+        s.append_data(&[0, 0, 0, 127]);
+        s.append(OP_IF);
+        s.append(OP_1);
+        s.append(OP_ENDIF);
+        s.append(OP_1);
+        let mut c = MockChecker::with_tx_version(2);
+        assert!(eval(&s.0, &mut c, NO_FLAGS).is_ok());
+    }
+
+    #[test]
+    fn strict_minimalif_rejects_non_minimal_true_operand() {
+        let mut s = Script::new();
+        s.append_data(&[0, 0, 0, 127]);
+        s.append(OP_IF);
+        s.append(OP_1);
+        s.append(OP_ENDIF);
+        s.append(OP_1);
+        let mut c = MockChecker::with_tx_version(1);
+        assert!(eval(&s.0, &mut c, NO_FLAGS).is_err());
+    }
+
+    #[test]
+    fn chronicle_nullfail_allows_failed_checksig_with_nonempty_sig() {
+        let mut c = MockChecker {
+            sig_checks: RefCell::new(vec![false]),
+            locktime_checks: RefCell::new(vec![true; 32]),
+            sequence_checks: RefCell::new(vec![true; 32]),
+            tx_version: Some(2),
+        };
+        let mut script = Script::new();
+        script.append_data(&[0x01]);
+        script.append_data(&[0x02]);
+        script.append(OP_CHECKSIG);
+        script.append(OP_DROP);
+        script.append(OP_1);
+        assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+    }
+
+    #[test]
+    fn strict_nullfail_rejects_failed_checksig_with_nonempty_sig() {
+        let mut c = MockChecker {
+            sig_checks: RefCell::new(vec![false]),
+            locktime_checks: RefCell::new(vec![true; 32]),
+            sequence_checks: RefCell::new(vec![true; 32]),
+            tx_version: Some(1),
+        };
+        let mut script = Script::new();
+        script.append_data(&[0x01]);
+        script.append_data(&[0x02]);
+        script.append(OP_CHECKSIG);
+        assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+    }
+
+    #[test]
+    fn is_push_only_accepts_data_pushes() {
+        let mut script = Script::new();
+        script.append_data(b"sig");
+        script.append_data(b"pubkey");
+        assert!(is_push_only(&script.0));
+    }
+
+    #[test]
+    fn is_push_only_rejects_functional_opcodes() {
+        assert!(!is_push_only(&[OP_2, OP_3, OP_ADD]));
     }
 }

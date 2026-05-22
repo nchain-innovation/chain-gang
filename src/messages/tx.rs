@@ -1,6 +1,9 @@
 use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
-use crate::script::{eval_two_phase, op_codes, Script, TransactionChecker, uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES};
+use crate::script::{
+    eval_two_phase, is_push_only, op_codes, Script, TransactionChecker, uses_relaxed_malleability,
+    uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES,
+};
 use crate::transaction::sighash::SigHashCache;
 use crate::util::{sha256d, var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -114,6 +117,14 @@ impl Tx {
         for input in 0..self.inputs.len() {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
+
+            if !uses_relaxed_malleability(self.version)
+                && !is_push_only(&tx_in.unlock_script.0)
+            {
+                return Err(ChainGangError::BadData(
+                    "Unlock script must be push-only".to_string(),
+                ));
+            }
 
             let mut tx_checker = TransactionChecker {
                 tx: self,
