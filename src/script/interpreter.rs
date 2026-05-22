@@ -1120,6 +1120,47 @@ pub fn eval_two_phase<T: Checker>(
     validate_final_stack(&stack, checker)
 }
 
+/// Like [`eval_two_phase`], but returns the final main and alt stacks after validation.
+pub fn eval_two_phase_with_stack<T: Checker>(
+    unlock: &[u8],
+    lock: &[u8],
+    checker: &mut T,
+    flags: u32,
+) -> Result<(Stack, Stack), ChainGangError> {
+    let ctx_unlock = TwoPhaseEvalContext {
+        lock_script: lock,
+        phase: TwoPhasePhase::Unlock,
+    };
+    let (stack, _, _) = core_eval(
+        unlock,
+        checker,
+        flags,
+        None,
+        None,
+        None,
+        None,
+        Some(&ctx_unlock),
+    )?;
+
+    let ctx_lock = TwoPhaseEvalContext {
+        lock_script: lock,
+        phase: TwoPhasePhase::Lock,
+    };
+    let (stack, alt_stack, _) = core_eval(
+        lock,
+        checker,
+        flags,
+        None,
+        None,
+        Some(stack),
+        None,
+        Some(&ctx_lock),
+    )?;
+
+    validate_final_stack(&stack, checker)?;
+    Ok((stack, alt_stack))
+}
+
 #[inline]
 fn check_multisig<T: Checker>(
     stack: &mut Stack,
@@ -2135,6 +2176,9 @@ mod tests {
         let lock = [OP_5, OP_EQUAL];
         let mut c = MockChecker::new();
         assert!(eval_two_phase(&unlock, &lock, &mut c, NO_FLAGS).is_ok());
+        let mut c2 = MockChecker::new();
+        let (stack, _) = eval_two_phase_with_stack(&unlock, &lock, &mut c2, NO_FLAGS).unwrap();
+        assert_eq!(stack.len(), 1);
     }
 
     #[test]

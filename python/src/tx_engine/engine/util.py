@@ -14,7 +14,6 @@ MAX_SCRIPT_NUM_LENGTH_CHRONICLE: Final = 32 * 1024 * 1024
 MAXIMUM_ELEMENT_SIZE: Final = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 # Curve constants
-# perhaps we can source these from the secp256k1 library rather than here?
 PRIME_INT: Final = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 GROUP_ORDER_INT: Final = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 HALF_GROUP_ORDER_INT: Final = GROUP_ORDER_INT // 2
@@ -22,6 +21,15 @@ Gx: Final = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798
 Gx_bytes: Final = bytes.fromhex('79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798')
 Gy: Final = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
 GUncompressed: Final = "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+
+
+def max_script_num_length(tx_version: int | None = None, pregenesis: bool = False) -> int:
+    """Return the maximum encoded script-number length for the given context."""
+    if pregenesis:
+        return MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS
+    if tx_version is not None and tx_version > 1:
+        return MAX_SCRIPT_NUM_LENGTH_CHRONICLE
+    return MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 
 def encode_num(num: int) -> bytes:
@@ -63,13 +71,15 @@ def is_minimally_encoded(element, max_element_size=MAXIMUM_ELEMENT_SIZE) -> bool
     return True
 
 
-def decode_num(element: StackElement, check_encoding=False) -> int:
+def decode_num(element: StackElement, check_encoding=False, tx_version: int | None = None) -> int:
     """ Take a byte(array), return a number
     """
     if element == b"":
         return 0
 
-    if check_encoding and not is_minimally_encoded(element):
+    if check_encoding and not is_minimally_encoded(
+        element, max_script_num_length(tx_version)
+    ):
         if isinstance(element, bytes):
             raise ValueError(f"Value is not minimally encoded: {element.hex()}")
         raise ValueError(f"Value is not minimally encoded: {element}")

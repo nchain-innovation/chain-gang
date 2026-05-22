@@ -117,6 +117,93 @@ impl Checker for ZChecker {
     }
 }
 
+/// Script checker that supplies `tx.version` for Chronicle opcodes without transaction validation.
+pub struct TxVersionChecker {
+    pub tx_version: i32,
+}
+
+impl Checker for TxVersionChecker {
+    fn check_sig(
+        &mut self,
+        _sig: &[u8],
+        _pubkey: &[u8],
+        _script: &[u8],
+    ) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState(
+            "Illegal transaction check".to_string(),
+        ))
+    }
+
+    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState(
+            "Illegal transaction check".to_string(),
+        ))
+    }
+
+    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState(
+            "Illegal transaction check".to_string(),
+        ))
+    }
+
+    fn tx_version(&self) -> Result<i32, ChainGangError> {
+        Ok(self.tx_version)
+    }
+}
+
+/// Script checker that uses a provided sighash and transaction version (Chronicle debugging).
+pub struct ZVersionChecker {
+    pub z: Hash256,
+    pub tx_version: i32,
+}
+
+impl Checker for ZVersionChecker {
+    fn check_sig(
+        &mut self,
+        sig: &[u8],
+        pubkey: &[u8],
+        _script: &[u8],
+    ) -> Result<bool, ChainGangError> {
+        if sig.is_empty() {
+            return Err(ChainGangError::ScriptError(
+                "Signature too short".to_string(),
+            ));
+        }
+        let sighash_type = sig[sig.len() - 1];
+        if sighash_type & SIGHASH_FORKID == 0 {
+            return Err(ChainGangError::ScriptError(
+                "SIGHASH_FORKID not present".to_string(),
+            ));
+        }
+
+        let sig_hash = self.z;
+        let der_sig = &sig[0..sig.len() - 1];
+        let signature = Signature::from_der(der_sig)?;
+
+        let message = sig_hash.0;
+
+        let verifying_key = VerifyingKey::from_sec1_bytes(pubkey)?;
+
+        Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
+    }
+
+    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState(
+            "Illegal transaction check".to_string(),
+        ))
+    }
+
+    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+        Err(ChainGangError::IllegalState(
+            "Illegal transaction check".to_string(),
+        ))
+    }
+
+    fn tx_version(&self) -> Result<i32, ChainGangError> {
+        Ok(self.tx_version)
+    }
+}
+
 /// Checks that external values in a script are correct for a specific transaction spend
 pub struct TransactionChecker<'a> {
     /// Spending transaction
