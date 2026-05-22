@@ -225,8 +225,11 @@ impl Script {
                     }
                 }
                 OP_NOP => ret.push_str("OP_NOP"),
+                OP_VER => ret.push_str("OP_VER"),
                 OP_IF => ret.push_str("OP_IF"),
                 OP_NOTIF => ret.push_str("OP_NOTIF"),
+                OP_VERIF => ret.push_str("OP_VERIF"),
+                OP_VERNOTIF => ret.push_str("OP_VERNOTIF"),
                 OP_ELSE => ret.push_str("OP_ELSE"),
                 OP_ENDIF => ret.push_str("OP_ENDIF"),
                 OP_VERIFY => ret.push_str("OP_VERIFY"),
@@ -252,6 +255,9 @@ impl Script {
                 OP_2SWAP => ret.push_str("OP_2SWAP"),
                 OP_CAT => ret.push_str("OP_CAT"),
                 OP_SPLIT => ret.push_str("OP_SPLIT"),
+                OP_SUBSTR => ret.push_str("OP_SUBSTR"),
+                OP_LEFT => ret.push_str("OP_LEFT"),
+                OP_RIGHT => ret.push_str("OP_RIGHT"),
                 OP_SIZE => ret.push_str("OP_SIZE"),
                 OP_AND => ret.push_str("OP_AND"),
                 OP_OR => ret.push_str("OP_OR"),
@@ -275,6 +281,8 @@ impl Script {
                 OP_MOD => ret.push_str("OP_MOD"),
                 OP_LSHIFT => ret.push_str("OP_LSHIFT"),
                 OP_RSHIFT => ret.push_str("OP_RSHIFT"),
+                OP_LSHIFTNUM => ret.push_str("OP_LSHIFTNUM"),
+                OP_RSHIFTNUM => ret.push_str("OP_RSHIFTNUM"),
 
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
                 OP_BOOLOR => ret.push_str("OP_BOOLOR"),
@@ -400,8 +408,11 @@ impl fmt::Debug for Script {
                     }
                 }
                 OP_NOP => ret.push_str("OP_NOP"),
+                OP_VER => ret.push_str("OP_VER"),
                 OP_IF => ret.push_str("OP_IF"),
                 OP_NOTIF => ret.push_str("OP_NOTIF"),
+                OP_VERIF => ret.push_str("OP_VERIF"),
+                OP_VERNOTIF => ret.push_str("OP_VERNOTIF"),
                 OP_ELSE => ret.push_str("OP_ELSE"),
                 OP_ENDIF => ret.push_str("OP_ENDIF"),
                 OP_VERIFY => ret.push_str("OP_VERIFY"),
@@ -427,6 +438,9 @@ impl fmt::Debug for Script {
                 OP_2SWAP => ret.push_str("OP_2SWAP"),
                 OP_CAT => ret.push_str("OP_CAT"),
                 OP_SPLIT => ret.push_str("OP_SPLIT"),
+                OP_SUBSTR => ret.push_str("OP_SUBSTR"),
+                OP_LEFT => ret.push_str("OP_LEFT"),
+                OP_RIGHT => ret.push_str("OP_RIGHT"),
                 OP_SIZE => ret.push_str("OP_SIZE"),
                 OP_AND => ret.push_str("OP_AND"),
                 OP_OR => ret.push_str("OP_OR"),
@@ -449,6 +463,8 @@ impl fmt::Debug for Script {
                 OP_MOD => ret.push_str("OP_MOD"),
                 OP_LSHIFT => ret.push_str("OP_LSHIFT"),
                 OP_RSHIFT => ret.push_str("OP_RSHIFT"),
+                OP_LSHIFTNUM => ret.push_str("OP_LSHIFTNUM"),
+                OP_RSHIFTNUM => ret.push_str("OP_RSHIFTNUM"),
 
                 OP_BOOLAND => ret.push_str("OP_BOOLAND"),
                 OP_BOOLOR => ret.push_str("OP_BOOLOR"),

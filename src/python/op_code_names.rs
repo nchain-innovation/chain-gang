@@ -31,13 +31,13 @@ lazy_static! {
         ("OP_16", 96),
         ("OP_NOP",  97),
 
-        ("OP_VER",  98), // Disabled
+        ("OP_VER",  98),
 
         ("OP_IF",  99),
         ("OP_NOTIF",  100),
 
-        ("OP_VERIF",  101), // Disabled
-        ("OP_VERNOTIF",  102), // Disabled
+        ("OP_VERIF",  101),
+        ("OP_VERNOTIF",  102),
 
         ("OP_ELSE",  103),
         ("OP_ENDIF",  104),
@@ -128,7 +128,11 @@ lazy_static! {
         ("OP_CHECKLOCKTIMEVERIFY",  177),
         ("OP_CHECKSEQUENCEVERIFY",  178),
 
-        // ("OP_PUBKEYHASH",  253),
+        ("OP_SUBSTR", 179),
+        ("OP_LEFT", 180),
+        ("OP_RIGHT", 181),
+        ("OP_LSHIFTNUM", 182),
+        ("OP_RSHIFTNUM", 183),
         // ("OP_PUBKEY",  254),
         // ("OP_INVALIDOPCODE",  255),
         // Reserved words
