@@ -126,8 +126,6 @@ impl PyStack {
             // Convert the string to a Rust BigInt (assumption is base-10)
             let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
                 .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Failed to parse BigInt"))?;
-            let (sign, magnitude) = big_int.to_bytes_le();
-            println!("from_array -> {:?} {:?}", sign, magnitude);
             inner_stack.extend(encode_bigint(big_int));
         }
         Ok(PyStack {
