@@ -15,7 +15,24 @@ Implementation plan and notes for [Chronicle Release](https://docs.bsvblockchain
 
 Constants: `CHRONICLE_ACTIVATION_MAINNET`, `CHRONICLE_ACTIVATION_TESTNET`, `activation_height()`.
 
-## Sighash routing
+## Library vs node
+
+This crate is a **transaction engine**, not a full BSV node. The distinction matters for Chronicle activation:
+
+| Concern | BSV node (consensus) | This library |
+|---------|----------------------|--------------|
+| When Chronicle activates | At documented block height on each network | **`Tx::validate()`:** when `tx.version > 1` (height ignored) |
+| Height-aware validation | Always uses confirming block height | **`Tx::validate_at_height()`:** height + `Network` required |
+| Mempool / offline signing | Height may be unknown | Use `validate()` or explicit `tx.version` opt-in |
+| Non-BSV networks | N/A | `activation_height()` returns `None`; height-aware path disables Chronicle script rules |
+
+**Practical guidance**
+
+- Building or checking a Chronicle spend **before activation** or **without knowing the block**: use `validate()` and set `version > 1` to exercise Chronicle script rules intentionally.
+- Validating a transaction **as a node would at a known height** (e.g. block 943,835 on mainnet): use `validate_at_height(..., block_height, Network::BSV_Mainnet)`.
+- Python `Tx.validate()` calls the Rust `validate()` path (version-only). Use Rust bindings or add a height-aware Python wrapper if you need consensus-faithful height gating.
+
+Sighash routing (`SIGHASH_CHRONICLE`) and signing policy (`uses_low_s_signing`) follow the signature flags independent of block height.
 
 Per [bitcoin-sv `SignatureHash`](https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/interpreter.cpp):
 

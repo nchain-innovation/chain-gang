@@ -83,6 +83,8 @@ mod reject;
 mod send_cmpct;
 mod streamack;
 mod tx;
+#[cfg(test)]
+mod tx_chronicle_validate;
 mod tx_in;
 mod tx_out;
 mod version;
