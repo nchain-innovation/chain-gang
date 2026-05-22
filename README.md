@@ -10,7 +10,7 @@ Bitcoin SV [Chronicle](https://docs.bsvblockchain.org/network-topology/nodes/sv-
 
 Chronicle behavior is gated on **`tx.version > 1`** when using `Tx.validate()` (Python or Rust). Use `version: 2` (or higher) on spending transactions to opt in. For consensus-faithful activation at documented block heights, use Rust `Tx::validate_at_height()` — see [docs/Chronicle.md](docs/Chronicle.md#library-vs-node).
 
-**Python `Context` debugger:** pass optional `tx_version` and `lock_script` for Chronicle two-phase eval, relaxed clean stack, and `OP_VER`. `Context` does not enforce block-height activation; for full transaction checks use `Tx.validate()` (version-only) or Rust `validate_at_height()`.
+**Python `Context` debugger:** pass optional `tx_version` and `lock_script` for Chronicle two-phase eval, relaxed clean stack, and `OP_VER`. `Context` does not enforce block-height activation; for full transaction checks use `Tx.validate()` (version-only) or `Tx.validate_at_height()` with a BSV network name.
 
 # Python Installation
 As this library is hosted on PyPi (https://pypi.org/project/tx-engine/) and is installed using:
