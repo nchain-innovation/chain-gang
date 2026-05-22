@@ -6,9 +6,11 @@ from .engine_types import StackElement
 
 # Maximum script number length before Genesis (equal to CScriptNum::MAXIMUM_ELEMENT_SIZE)
 MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS: Final = 4
-# Maximum script number length after Genesis
+# Maximum script number length after Genesis (750 KB)
 MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS: Final = 750 * 1000
-# Maximum size that we are using
+# Maximum script number length after Chronicle (32 MB)
+MAX_SCRIPT_NUM_LENGTH_CHRONICLE: Final = 32 * 1024 * 1024
+# Maximum size that we are using for legacy callers
 MAXIMUM_ELEMENT_SIZE: Final = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
 # Curve constants
