@@ -4,6 +4,14 @@ This library provides a Python interface for building BitcoinSV scripts and tran
 
 For documentation of the Python Classes see below.
 
+## Chronicle upgrade
+
+Bitcoin SV [Chronicle](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) support is implemented in the Rust library (`chain-gang`). See [docs/Chronicle.md](docs/Chronicle.md) for sighash routing, opcodes, two-phase script evaluation, malleability rules, and script number limits.
+
+Chronicle behavior is gated on **`tx.version > 1`** when using `Tx.validate()` (Python or Rust). Use `version: 2` (or higher) on spending transactions to opt in. For consensus-faithful activation at documented block heights, use Rust `Tx::validate_at_height()` — see [docs/Chronicle.md](docs/Chronicle.md#library-vs-node).
+
+**Python `Context` debugger:** pass optional `tx_version` and `lock_script` for Chronicle two-phase eval, relaxed clean stack, and `OP_VER`. `Context` does not enforce block-height activation; for full transaction checks use `Tx.validate()` (version-only) or Rust `validate_at_height()`.
+
 # Python Installation
 As this library is hosted on PyPi (https://pypi.org/project/tx-engine/) and is installed using:
 
@@ -96,15 +104,20 @@ Context has the following properties:
 * `cmds` - the commands to execute
 * `ip_start` - the byte offset of where to start executing the script from (optional)
 * `ip_limit` - the number of commands to execute before stopping (optional)
-* `z` - the hash of the transaction 
+* `z` - the hash of the transaction
+* `tx_version` - optional transaction version for Chronicle opcodes and rules (optional)
+* `lock_script` - optional lock script for Chronicle two-phase eval when `tx_version > 1` (optional)
 * `stack` - main data stack
 * `alt_stack` - seconary stack
 
 Context has the following methods:
 
-* `__init__(self, script: Script, cmds: Commands = None, ip_limit: int , z: bytes)` - constructor
+* `__init__(self, script: Script, cmds: Commands = None, ip_limit: int , z: bytes, tx_version: int = None, lock_script: Script = None)` - constructor
 * `evaluate_core(self, quiet: bool = False) -> bool` - evaluates the script/cmds using the the interpreter and returns the stacks (`tack`, `alt_stack`). if quiet is true, dont print exceptions
 * `evaluate(self, quiet: bool = False) -> bool` - executes the script and decode stack elements to numbers (`stack`, `alt_stack`). Checks `stack` is true on return. if quiet is true, dont print exceptions.
+
+When `tx_version` and `lock_script` are set (`tx_version > 1`), Chronicle two-phase eval and relaxed clean-stack rules apply. Without `tx_version`, legacy debugger semantics are used. Block-height activation is not applied in `Context`; see [Chronicle upgrade](#chronicle-upgrade).
+
 * `get_stack(self) -> Stack` - Return the `stack` as human readable
 * `get_altstack(self) -> Stack`-  Return the `alt_stack` as human readable
 * `set_ip_start(self, start: int)` - sets the start location for the intepreter. 

@@ -19,7 +19,10 @@ use crate::{
             PyWallet,
         },
     },
-    script::{stack::Stack, Script, TransactionlessChecker, ZChecker, NO_FLAGS},
+    script::{
+        eval_two_phase_with_stack, stack::Stack, Script, TransactionlessChecker, TxVersionChecker,
+        ZChecker, ZVersionChecker, NO_FLAGS,
+    },
     transaction::sighash::{sig_hash_preimage, sig_hash_preimage_checksig_index, SigHashCache},
     util::{hash160, sha256d, ChainGangError, Hash256},
     wallet::{
@@ -29,6 +32,88 @@ use crate::{
 };
 
 pub type Bytes = Vec<u8>;
+
+fn parse_z_bytes(sig_hash: &[u8]) -> PyResult<Hash256> {
+    let z_array: [u8; 32] = sig_hash.try_into().map_err(|_| {
+        PyErr::new::<pyo3::exceptions::PyValueError, _>("z_bytes must be exactly 32 bytes long")
+    })?;
+    Ok(Hash256(z_array))
+}
+
+fn eval_script_with_stack(
+    script: &Script,
+    z: Option<Hash256>,
+    tx_version: Option<i32>,
+    start_at: Option<usize>,
+    break_at: Option<usize>,
+    main_stack: Option<Stack>,
+    alternative_stack: Option<Stack>,
+) -> Result<(Stack, Stack, Option<usize>), ChainGangError> {
+    match (z, tx_version) {
+        (Some(z), Some(tx_version)) => {
+            let mut checker = ZVersionChecker { z, tx_version };
+            script.eval_with_stack(
+                &mut checker,
+                NO_FLAGS,
+                start_at,
+                break_at,
+                main_stack,
+                alternative_stack,
+            )
+        }
+        (Some(z), None) => {
+            let mut checker = ZChecker { z };
+            script.eval_with_stack(
+                &mut checker,
+                NO_FLAGS,
+                start_at,
+                break_at,
+                main_stack,
+                alternative_stack,
+            )
+        }
+        (None, Some(tx_version)) => {
+            let mut checker = TxVersionChecker { tx_version };
+            script.eval_with_stack(
+                &mut checker,
+                NO_FLAGS,
+                start_at,
+                break_at,
+                main_stack,
+                alternative_stack,
+            )
+        }
+        (None, None) => {
+            let mut checker = TransactionlessChecker {};
+            script.eval_with_stack(
+                &mut checker,
+                NO_FLAGS,
+                start_at,
+                break_at,
+                main_stack,
+                alternative_stack,
+            )
+        }
+    }
+}
+
+fn eval_two_phase_with_checker(
+    unlock: &[u8],
+    lock: &[u8],
+    z: Option<Hash256>,
+    tx_version: i32,
+) -> Result<(Stack, Stack), ChainGangError> {
+    match z {
+        Some(z) => {
+            let mut checker = ZVersionChecker { z, tx_version };
+            eval_two_phase_with_stack(unlock, lock, &mut checker, NO_FLAGS)
+        }
+        None => {
+            let mut checker = TxVersionChecker { tx_version };
+            eval_two_phase_with_stack(unlock, lock, &mut checker, NO_FLAGS)
+        }
+    }
+}
 
 #[pyfunction(name = "p2pkh_script")]
 fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
@@ -72,55 +157,35 @@ pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<St
 ///  * py_script - the script to execute
 ///  * break_at - the instruction to stop at, or None
 ///  * z - the sig_hash of the transaction as bytes, or None
+///  * tx_version - optional transaction version for Chronicle opcodes
 #[pyfunction]
-#[pyo3(signature = (py_script, break_at=None, z=None))]
+#[pyo3(signature = (py_script, break_at=None, z=None, tx_version=None))]
 fn py_script_eval(
     py_script: &[u8],
     break_at: Option<usize>,
     z: Option<&[u8]>,
+    tx_version: Option<i32>,
 ) -> PyResult<(Stack, Stack, Option<usize>)> {
     let mut script = Script::new();
     script.append_slice(py_script);
-    // Pick the appropriate transaction checker
-    match z {
-        Some(sig_hash) => {
-            // Ensure the slice is exactly 32 bytes long
-            let z_bytes = sig_hash;
-            let z_array: [u8; 32] = match z_bytes.try_into() {
-                Ok(array) => array,
-                Err(_) => {
-                    // Handle the error if `z_bytes` is not 32 bytes long
-                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                        "z_bytes must be exactly 32 bytes long",
-                    ));
-                }
-            };
-
-            let z = Hash256(z_array);
-            Ok(
-                script.eval_with_stack(
-                    &mut ZChecker { z },
-                    NO_FLAGS,
-                    None,
-                    break_at,
-                    None,
-                    None,
-                )?,
-            )
-        }
-        None => Ok(script.eval_with_stack(
-            &mut TransactionlessChecker {},
-            NO_FLAGS,
-            None,
-            break_at,
-            None,
-            None,
-        )?),
-    }
+    let z_hash = match z {
+        Some(sig_hash) => Some(parse_z_bytes(sig_hash)?),
+        None => None,
+    };
+    eval_script_with_stack(
+        &script,
+        z_hash,
+        tx_version,
+        None,
+        break_at,
+        None,
+        None,
+    )
+    .map_err(Into::into)
 }
 
 #[pyfunction]
-#[pyo3(signature = (py_script, start_at=None, break_at=None, z=None, stack_param=None, alt_stack_param=None))]
+#[pyo3(signature = (py_script, start_at=None, break_at=None, z=None, stack_param=None, alt_stack_param=None, tx_version=None))]
 fn py_script_eval_pystack(
     py_script: &[u8],
     start_at: Option<usize>,
@@ -128,47 +193,25 @@ fn py_script_eval_pystack(
     z: Option<&[u8]>,
     stack_param: Option<PyStack>,
     alt_stack_param: Option<PyStack>,
+    tx_version: Option<i32>,
 ) -> PyResult<(PyStack, PyStack, Option<usize>)> {
     let mut script = Script::new();
     script.append_slice(py_script);
-    // Handle stack and alt_stack parameters with match
     let main_stack = stack_param.map(|py_stack_main| py_stack_main.to_stack());
-
     let alternative_stack = alt_stack_param.map(|alt_stack_param| alt_stack_param.to_stack());
-
-    // Pick the appropriate transaction checker
-    let (main_stack, alt_stack, prog_counter) = match z {
-        Some(sig_hash) => {
-            // Ensure the slice is exactly 32 bytes long
-            let z_bytes = sig_hash;
-            let z_array: [u8; 32] = match z_bytes.try_into() {
-                Ok(array) => array,
-                Err(_) => {
-                    // Handle the error if `z_bytes` is not 32 bytes long
-                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                        "z_bytes must be exactly 32 bytes long",
-                    ));
-                }
-            };
-            let z = Hash256(z_array);
-            script.eval_with_stack(
-                &mut ZChecker { z },
-                NO_FLAGS,
-                break_at,
-                start_at,
-                main_stack,
-                alternative_stack,
-            )?
-        }
-        None => script.eval_with_stack(
-            &mut TransactionlessChecker {},
-            NO_FLAGS,
-            start_at,
-            break_at,
-            main_stack,
-            alternative_stack,
-        )?,
+    let z_hash = match z {
+        Some(sig_hash) => Some(parse_z_bytes(sig_hash)?),
+        None => None,
     };
+    let (main_stack, alt_stack, prog_counter) = eval_script_with_stack(
+        &script,
+        z_hash,
+        tx_version,
+        start_at,
+        break_at,
+        main_stack,
+        alternative_stack,
+    )?;
 
     let optional_i = match break_at {
         Some(_) => prog_counter,
@@ -179,6 +222,42 @@ fn py_script_eval_pystack(
         PyStack::from_stack(main_stack),
         PyStack::from_stack(alt_stack),
         optional_i,
+    ))
+}
+
+/// Evaluates unlock and lock scripts in separate phases (Chronicle, `tx.version > 1`).
+#[pyfunction]
+#[pyo3(signature = (unlock, lock, tx_version, z=None, stack_param=None, alt_stack_param=None))]
+fn py_script_eval_two_phase_pystack(
+    unlock: &[u8],
+    lock: &[u8],
+    tx_version: i32,
+    z: Option<&[u8]>,
+    stack_param: Option<PyStack>,
+    alt_stack_param: Option<PyStack>,
+) -> PyResult<(PyStack, PyStack, Option<usize>)> {
+    if tx_version <= 1 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "two-phase eval requires tx_version > 1",
+        ));
+    }
+    let main_stack = stack_param.map(|py_stack_main| py_stack_main.to_stack());
+    let alternative_stack = alt_stack_param.map(|alt_stack_param| alt_stack_param.to_stack());
+    if main_stack.is_some() || alternative_stack.is_some() {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "two-phase eval does not accept initial stacks",
+        ));
+    }
+    let z_hash = match z {
+        Some(sig_hash) => Some(parse_z_bytes(sig_hash)?),
+        None => None,
+    };
+    let (main_stack, alt_stack) =
+        eval_two_phase_with_checker(unlock, lock, z_hash, tx_version)?;
+    Ok((
+        PyStack::from_stack(main_stack),
+        PyStack::from_stack(alt_stack),
+        None,
     ))
 }
 
@@ -383,6 +462,7 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_generate_wif_from_pw_nonce, m)?)?;
     m.add_function(wrap_pyfunction!(decode_num_stack, m)?)?;
     m.add_function(wrap_pyfunction!(py_script_eval_pystack, m)?)?;
+    m.add_function(wrap_pyfunction!(py_script_eval_two_phase_pystack, m)?)?;
     // Script
     m.add_class::<PyScript>()?;
 

@@ -23,6 +23,7 @@ BSV only Features
 * Wallet key derivation and mnemonic parsing
 * Various Bitcoin primitives
 * Genesis upgrade support
+* [Chronicle upgrade](Chronicle.md) (OTDA sighash, opcodes, two-phase eval, `tx.version > 1` rules)
 
 `Chain-gang` is based on `Rust-SV` An open source library to build Bitcoin SV applications and infrastructure in Rust. The documentation for `Rust-SV` can be found here: 
 [Rust-SV Documentation](https://docs.rs/sv/)

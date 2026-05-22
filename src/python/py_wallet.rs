@@ -18,7 +18,6 @@ use pyo3::{
     prelude::*,
     types::{PyDict, PyInt, PyType},
 };
-//use std::ffi::CStr;
 use std::ffi::CString;
 
 use hmac::Hmac;
@@ -29,15 +28,17 @@ use rand::rngs::OsRng;
 use sha2::Sha256;
 use std::num::NonZeroU32;
 
-// TODO: note only tested for compressed key
-// Given a WIF, return bytes rather than SigningKey
+/// Decode a compressed WIF private key to 32 raw bytes.
+///
+/// Uncompressed WIF (51 characters, no trailing `0x01` suffix) is not supported here;
+/// `bytes_to_wif` always emits compressed WIF.
 pub fn wif_to_bytes(wif: &str) -> Result<Vec<u8>, ChainGangError> {
     let (_, private_key) = wif_to_network_and_private_key(wif)?;
     let private_key_as_bytes = private_key.to_bytes();
     Ok(private_key_as_bytes.to_vec())
 }
 
-// Given bytes generate a WIF (for a private key)
+/// Encode 32 private-key bytes as a compressed WIF (appends `0x01` suffix).
 pub fn bytes_to_wif(key_as_bytes: &[u8], prefix_as_bytes: u8) -> String {
     let mut wif_bytes = Vec::new();
     wif_bytes.push(prefix_as_bytes);

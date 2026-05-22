@@ -17,27 +17,39 @@ def get_url(testnet: bool = True) -> str:
     return "https://api.whatsonchain.com/v1/bsv/main"
 
 
-def get_response(url: str):
+def get_response(url: str, max_retries: int = 5):
     """This is the guts of all the WoC requests.
-    Retries until successful
-    """
-    data = None
-    while True:
-        try:
-            response = requests.get(url)
-        except ConnectionError as e:
-            # Retry on connection error
-            LOGGER.warning(f"WoC ConnectionError {e}")
-            time.sleep(1)
-        else:
-            break
 
-    if response.status_code == 200:
-        data = response.json()
-        LOGGER.debug(f"data = {data}")
-    else:
+    Retries on connection errors and transient HTTP responses (429/502/503/504).
+    """
+    transient_status = {429, 502, 503, 504}
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=30)
+        except (ConnectionError, requests.Timeout) as e:
+            LOGGER.warning(f"WoC request error for {url}: {e}")
+            if attempt + 1 >= max_retries:
+                return None
+            time.sleep(1 + attempt)
+            continue
+
+        if response.status_code == 200:
+            data = response.json()
+            LOGGER.debug(f"data = {data}")
+            return data
+
+        if response.status_code in transient_status and attempt + 1 < max_retries:
+            LOGGER.warning(
+                f"WoC HTTP {response.status_code} for {url}, retrying "
+                f"({attempt + 1}/{max_retries})"
+            )
+            time.sleep(1 + attempt)
+            continue
+
         LOGGER.debug(f"response = {response}")
-    return data
+        return None
+
+    return None
 
 
 def get_unspent_transactions(address: str, testnet: bool = True):

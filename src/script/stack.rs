@@ -5,6 +5,26 @@ use num_traits::Zero;
 // Type to simplify the types..
 pub type Stack = Vec<Vec<u8>>;
 
+/// Maximum script number size before Genesis (4 bytes).
+pub const MAX_SCRIPT_NUM_LENGTH_PREGENESIS: usize = 4;
+
+/// Maximum script number size after Genesis (750 KB).
+pub const MAX_SCRIPT_NUM_LENGTH_GENESIS: usize = 750_000;
+
+/// Maximum script number size after Chronicle (32 MB).
+pub const MAX_SCRIPT_NUM_LENGTH_CHRONICLE: usize = 32 * 1024 * 1024;
+
+/// Returns an error when a script number exceeds the allowed byte length.
+#[inline]
+pub fn check_script_num_length(len: usize, max_len: usize) -> Result<(), ChainGangError> {
+    if len > max_len {
+        return Err(ChainGangError::ScriptError(format!(
+            "Script number exceeds maximum length of {max_len}"
+        )));
+    }
+    Ok(())
+}
+
 /// Converts a stack item to a bool
 #[inline]
 pub fn decode_bool(s: &[u8]) -> bool {
@@ -109,6 +129,31 @@ pub fn pop_bigint(stack: &mut Stack) -> Result<BigInt, ChainGangError> {
     Ok(decode_bigint(&mut top))
 }
 
+/// Pops a bigint number, enforcing a maximum encoded byte length.
+#[inline]
+pub fn pop_bigint_checked(stack: &mut Stack, max_len: usize) -> Result<BigInt, ChainGangError> {
+    if stack.is_empty() {
+        let msg = "Cannot pop bigint, empty stack".to_string();
+        return Err(ChainGangError::ScriptError(msg));
+    }
+    let mut top = stack.pop().unwrap();
+    check_script_num_length(top.len(), max_len)?;
+    Ok(decode_bigint(&mut top))
+}
+
+/// Pushes a bigint number, enforcing a maximum encoded byte length.
+#[inline]
+pub fn push_bigint_checked(
+    stack: &mut Stack,
+    val: BigInt,
+    max_len: usize,
+) -> Result<(), ChainGangError> {
+    let encoded = encode_bigint(val);
+    check_script_num_length(encoded.len(), max_len)?;
+    stack.push(encoded);
+    Ok(())
+}
+
 /// Converts a stack item to a number
 #[inline]
 pub fn decode_num(s: &[u8]) -> Result<i64, ChainGangError> {
@@ -211,7 +256,6 @@ pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
     let len = s.len();
 
     if len == 0 {
-        println!("Zero length number");
         return Ok(BigInt::zero());
     }
 
@@ -233,7 +277,6 @@ pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
         if s[len - 1] & 128 != 0 {
             val = -val;
         }
-        println!("Returing this way");
         return Ok(BigInt::from(val));
     }
 
@@ -244,7 +287,6 @@ pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
     }
     let mut big_int_bytes = s.to_vec();
     big_int_bytes[len - 1] &= !0x80; // Clear the sign bit
-    println!("Returned this big num way");
     Ok(BigInt::from_bytes_le(sign, &big_int_bytes))
 }
 
@@ -318,6 +360,28 @@ mod tests {
     fn pop_num_minimal_rejects_non_minimal_encoding() {
         assert!(pop_num_minimal(&mut vec![vec![0, 0, 0, 0]], true).is_err());
         assert!(pop_num_minimal(&mut vec![vec![1]], true).unwrap() == 1);
+    }
+
+    #[test]
+    fn check_script_num_length_enforces_limit() {
+        assert!(check_script_num_length(750_000, MAX_SCRIPT_NUM_LENGTH_GENESIS).is_ok());
+        assert!(check_script_num_length(750_001, MAX_SCRIPT_NUM_LENGTH_GENESIS).is_err());
+        assert!(check_script_num_length(
+            MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
+            MAX_SCRIPT_NUM_LENGTH_CHRONICLE
+        )
+        .is_ok());
+        assert!(check_script_num_length(
+            MAX_SCRIPT_NUM_LENGTH_CHRONICLE + 1,
+            MAX_SCRIPT_NUM_LENGTH_CHRONICLE
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn push_bigint_checked_enforces_limit() {
+        let oversized = vec![1u8; MAX_SCRIPT_NUM_LENGTH_GENESIS + 1];
+        assert!(pop_bigint_checked(&mut vec![oversized], MAX_SCRIPT_NUM_LENGTH_GENESIS).is_err());
     }
 
     #[test]

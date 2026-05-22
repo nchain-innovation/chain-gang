@@ -9,7 +9,30 @@ Implementation plan and notes for [Chronicle Release](https://docs.bsvblockchain
 | TestNet | 1,713,022 |
 | MainNet | 943,835 |
 
-## Sighash routing
+**Library default:** `Tx::validate()` enables Chronicle script rules when **`tx.version > 1`**, without checking block height. This suits offline signing and mempool simulation where the confirming height is unknown.
+
+**Consensus-faithful validation:** use `Tx::validate_at_height(..., block_height, network)` or [`effective_chronicle_tx_version`](https://docs.rs/chain_gang/latest/chain_gang/chronicle/fn.effective_chronicle_tx_version.html) from `chain_gang::chronicle` to gate Chronicle rules on the documented BSV activation heights.
+
+Constants: `CHRONICLE_ACTIVATION_MAINNET`, `CHRONICLE_ACTIVATION_TESTNET`, `activation_height()`.
+
+## Library vs node
+
+This crate is a **transaction engine**, not a full BSV node. The distinction matters for Chronicle activation:
+
+| Concern | BSV node (consensus) | This library |
+|---------|----------------------|--------------|
+| When Chronicle activates | At documented block height on each network | **`Tx::validate()`:** when `tx.version > 1` (height ignored) |
+| Height-aware validation | Always uses confirming block height | **`Tx::validate_at_height()`:** height + `Network` required |
+| Mempool / offline signing | Height may be unknown | Use `validate()` or explicit `tx.version` opt-in |
+| Non-BSV networks | N/A | `activation_height()` returns `None`; height-aware path disables Chronicle script rules |
+
+**Practical guidance**
+
+- Building or checking a Chronicle spend **before activation** or **without knowing the block**: use `validate()` and set `version > 1` to exercise Chronicle script rules intentionally.
+- Validating a transaction **as a node would at a known height** (e.g. block 943,835 on mainnet): use `validate_at_height(..., block_height, Network::BSV_Mainnet)`.
+- Python `Tx.validate()` calls the Rust `validate()` path (version-only). Use Rust bindings or add a height-aware Python wrapper if you need consensus-faithful height gating.
+
+Sighash routing (`SIGHASH_CHRONICLE`) and signing policy (`uses_low_s_signing`) follow the signature flags independent of block height.
 
 Per [bitcoin-sv `SignatureHash`](https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/interpreter.cpp):
 
@@ -19,7 +42,7 @@ Per [bitcoin-sv `SignatureHash`](https://github.com/bitcoin-sv/bitcoin-sv/blob/m
 | `SIGHASH_CHRONICLE` set | OTDA (Original Transaction Digest Algorithm) |
 | Neither | OTDA (pre-fork legacy) |
 
-Constants in Rust: `SIGHASH_CHRONICLE = 0x20` in `src/transaction/sighash.rs`.
+Constants and signing policy: `SIGHASH_CHRONICLE`, `uses_low_s_signing()` — re-exported from `chain_gang::chronicle` (also in `src/transaction/sighash.rs` and `src/transaction/mod.rs`).
 
 Python: `SIGHASH.CHRONICLE` and `SIGHASH.ALL_FORKID_CHRONICLE` in `python/src/tx_engine/tx/sighash.py`.
 
@@ -32,7 +55,7 @@ Per the Chronicle spec, the low-S requirement is removed for transactions with `
 | Without `SIGHASH_CHRONICLE` | Signatures are normalized to low-S (BIP146) |
 | With `SIGHASH_CHRONICLE` | Raw signer output is preserved (high-S allowed) |
 
-Rust: `uses_low_s_signing()` and `generate_signature()` in `src/transaction/mod.rs`.
+Rust: `uses_low_s_signing()` and `generate_signature()` in `src/transaction/mod.rs` (see `chain_gang::chronicle`).
 
 Note: k256's deterministic signer currently returns low-S; the Chronicle path matters when encoding externally produced signatures or future signing backends.
 
@@ -67,7 +90,7 @@ Legacy transactions (`version == 1`) continue to concatenate `unlock + OP_CODESE
 
 CHECKSIG `scriptCode` in the unlock phase spans from the last `OP_CODESEPARATOR` in the unlock script through the end of the lock script (code separators stripped). CHECKSIG in the lock phase uses only the lock script from its last `OP_CODESEPARATOR`.
 
-Rust: `uses_two_phase_eval()`, `eval_two_phase()` in `src/script/interpreter.rs`; routed from `Tx::validate()` in `src/messages/tx.rs`.
+Rust: `uses_two_phase_eval()`, `eval_two_phase()` — re-exported from `chain_gang::chronicle`; routed from `Tx::validate()` in `src/messages/tx.rs`.
 
 ## Malleability relaxation
 
@@ -85,7 +108,38 @@ For transactions with `version > 1`, Chronicle relaxes malleability-related scri
 
 Rules apply when the checker provides a transaction version (`TransactionChecker`). Context-free script evaluation preserves prior behavior.
 
-Rust: `uses_relaxed_malleability()`, `is_push_only()` in `src/script/interpreter.rs`.
+Rust: `uses_relaxed_malleability()`, `is_push_only()` — re-exported from `chain_gang::chronicle`.
+
+## Script number limit
+
+The maximum encoded script number size increases from 750 KB to 32 MB for Chronicle transactions (`tx.version > 1`). Pre-genesis inputs (`PREGENESIS_RULES`) keep the 4-byte limit; post-genesis `version == 1` transactions keep 750 KB.
+
+Rust: `max_script_num_length()`, `MAX_SCRIPT_NUM_LENGTH_*` — re-exported from `chain_gang::chronicle`; enforced in `core_eval()` via `pop_bigint_checked()` and `OP_BIN2NUM` / `OP_NUM2BIN`.
+
+Python: `MAX_SCRIPT_NUM_LENGTH_CHRONICLE` in `python/src/tx_engine/engine/util.py`.
+
+## Rust API
+
+Import Chronicle helpers from one module:
+
+```rust
+use chain_gang::chronicle::{
+    activation_height, effective_chronicle_tx_version, eval_two_phase, is_push_only,
+    max_script_num_length, uses_low_s_signing, uses_relaxed_malleability, uses_two_phase_eval,
+    SIGHASH_CHRONICLE, CHRONICLE_ACTIVATION_MAINNET, MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
+    TxVersionChecker,
+};
+use chain_gang::messages::Tx;
+use chain_gang::network::Network;
+
+// Version-only validation (default):
+// tx.validate(require_sighash_forkid, use_genesis_rules, &utxos, &pregenesis_outputs)?;
+
+// Height-aware validation:
+// tx.validate_at_height(..., CHRONICLE_ACTIVATION_MAINNET, Network::BSV_Mainnet)?;
+```
+
+Version-only script debugging without a full transaction: `TxVersionChecker` and `ZVersionChecker` (also in `chain_gang::chronicle`).
 
 ## Implementation status
 
@@ -96,7 +150,7 @@ Rust: `uses_relaxed_malleability()`, `is_push_only()` in `src/script/interpreter
 - [x] Chronicle opcodes (OP_VER, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_LSHIFTNUM, OP_RSHIFTNUM)
 - [x] Two-phase unlock/lock script evaluation (`tx.version > 1`)
 - [x] Version-gated malleability relaxation (`tx.version > 1`)
-- [ ] 32 MB script number limit
+- [x] 32 MB script number limit (`tx.version > 1`)
 
 ## References
 
