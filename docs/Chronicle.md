@@ -9,6 +9,12 @@ Implementation plan and notes for [Chronicle Release](https://docs.bsvblockchain
 | TestNet | 1,713,022 |
 | MainNet | 943,835 |
 
+**Library default:** `Tx::validate()` enables Chronicle script rules when **`tx.version > 1`**, without checking block height. This suits offline signing and mempool simulation where the confirming height is unknown.
+
+**Consensus-faithful validation:** use `Tx::validate_at_height(..., block_height, network)` or [`effective_chronicle_tx_version`](https://docs.rs/chain_gang/latest/chain_gang/chronicle/fn.effective_chronicle_tx_version.html) from `chain_gang::chronicle` to gate Chronicle rules on the documented BSV activation heights.
+
+Constants: `CHRONICLE_ACTIVATION_MAINNET`, `CHRONICLE_ACTIVATION_TESTNET`, `activation_height()`.
+
 ## Sighash routing
 
 Per [bitcoin-sv `SignatureHash`](https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/interpreter.cpp):
@@ -101,10 +107,19 @@ Import Chronicle helpers from one module:
 
 ```rust
 use chain_gang::chronicle::{
-    eval_two_phase, is_push_only, max_script_num_length, uses_low_s_signing,
-    uses_relaxed_malleability, uses_two_phase_eval, SIGHASH_CHRONICLE,
-    MAX_SCRIPT_NUM_LENGTH_CHRONICLE, TxVersionChecker,
+    activation_height, effective_chronicle_tx_version, eval_two_phase, is_push_only,
+    max_script_num_length, uses_low_s_signing, uses_relaxed_malleability, uses_two_phase_eval,
+    SIGHASH_CHRONICLE, CHRONICLE_ACTIVATION_MAINNET, MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
+    TxVersionChecker,
 };
+use chain_gang::messages::Tx;
+use chain_gang::network::Network;
+
+// Version-only validation (default):
+// tx.validate(require_sighash_forkid, use_genesis_rules, &utxos, &pregenesis_outputs)?;
+
+// Height-aware validation:
+// tx.validate_at_height(..., CHRONICLE_ACTIVATION_MAINNET, Network::BSV_Mainnet)?;
 ```
 
 Version-only script debugging without a full transaction: `TxVersionChecker` and `ZVersionChecker` (also in `chain_gang::chronicle`).
