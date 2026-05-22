@@ -316,8 +316,7 @@ impl ExtendedKey {
 
         //let child_private_key =
         //    unsafe { slice::from_raw_parts(secp_child_secret_key.as_ptr(), 32) };
-        let child_bytes = child_sk.to_bytes();
-        let child_private_key = child_bytes.as_slice();
+        let child_private_key: [u8; 32] = child_sk.to_bytes().into();
 
         let child_chain_code = &hmac[32..];
         let fingerprint = self.fingerprint()?;
@@ -328,7 +327,7 @@ impl ExtendedKey {
             &fingerprint,
             index,
             child_chain_code,
-            child_private_key,
+            &child_private_key,
         )
     }
 
