@@ -216,6 +216,14 @@ pub struct TransactionChecker<'a> {
     pub satoshis: i64,
     /// True if the signature must have SIGHASH_FORKID present, false if not
     pub require_sighash_forkid: bool,
+    /// Override transaction version for Chronicle script rules (activation height gating).
+    pub script_tx_version: Option<u32>,
+}
+
+impl<'a> TransactionChecker<'a> {
+    fn chronicle_script_version(&self) -> u32 {
+        self.script_tx_version.unwrap_or(self.tx.version)
+    }
 }
 
 impl Checker for TransactionChecker<'_> {
@@ -248,7 +256,7 @@ impl Checker for TransactionChecker<'_> {
         let der_sig = &sig[0..sig.len() - 1];
 
         let mut signature = Signature::from_der(der_sig)?;
-        if self.tx.version > 1 {
+        if self.chronicle_script_version() > 1 {
             // Chronicle lifts the low-S rule; normalize so k256 accepts high-S encodings.
             signature = signature.normalize_s().unwrap_or(signature);
         }
@@ -258,7 +266,7 @@ impl Checker for TransactionChecker<'_> {
     }
 
     fn tx_version(&self) -> Result<i32, ChainGangError> {
-        Ok(self.tx.version as i32)
+        Ok(self.chronicle_script_version() as i32)
     }
 
     fn check_locktime(&self, locktime: i32) -> Result<bool, ChainGangError> {
@@ -415,6 +423,7 @@ mod tests {
             input: 0,
             satoshis: 10,
             require_sighash_forkid: true,
+            script_tx_version: None,
         };
 
         let mut script = Script::new();
@@ -487,6 +496,7 @@ mod tests {
             input: 0,
             satoshis: 10,
             require_sighash_forkid: false,
+            script_tx_version: None,
         };
 
         let mut script = Script::new();
@@ -584,6 +594,7 @@ mod tests {
             input: 0,
             satoshis: 10,
             require_sighash_forkid: false,
+            script_tx_version: None,
         };
 
         let mut script = Script::new();
@@ -699,6 +710,7 @@ mod tests {
             input: 0,
             satoshis: 10,
             require_sighash_forkid: false,
+            script_tx_version: None,
         };
 
         let mut script1 = Script::new();
@@ -714,6 +726,7 @@ mod tests {
             input: 1,
             satoshis: 20,
             require_sighash_forkid: false,
+            script_tx_version: None,
         };
 
         let mut script2 = Script::new();
@@ -840,6 +853,7 @@ mod tests {
             input: 0,
             satoshis: 10,
             require_sighash_forkid: false,
+            script_tx_version: None,
         };
 
         let mut script1 = Script::new();
@@ -855,6 +869,7 @@ mod tests {
             input: 1,
             satoshis: 20,
             require_sighash_forkid: false,
+            script_tx_version: None,
         };
 
         let mut script2 = Script::new();
@@ -891,6 +906,7 @@ mod tests {
                 input: 0,
                 satoshis: 0,
                 require_sighash_forkid: false,
+                script_tx_version: None,
             };
             assert!(lock_script.eval(&mut c, PREGENESIS_RULES).is_err());
         }
@@ -903,6 +919,7 @@ mod tests {
                 input: 0,
                 satoshis: 0,
                 require_sighash_forkid: false,
+                script_tx_version: None,
             };
             assert!(lock_script.eval(&mut c, PREGENESIS_RULES).is_ok());
         }
@@ -937,6 +954,7 @@ mod tests {
                 input: 0,
                 satoshis: 0,
                 require_sighash_forkid: false,
+                script_tx_version: None,
             };
             assert!(lock_script.eval(&mut c, PREGENESIS_RULES).is_err());
         }
@@ -949,6 +967,7 @@ mod tests {
                 input: 0,
                 satoshis: 0,
                 require_sighash_forkid: false,
+                script_tx_version: None,
             };
             assert!(lock_script.eval(&mut c, PREGENESIS_RULES).is_ok());
         }

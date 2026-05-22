@@ -1,5 +1,7 @@
+use crate::chronicle::effective_chronicle_tx_version;
 use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
+use crate::network::Network;
 use crate::script::{
     eval_two_phase, is_push_only, op_codes, Script, TransactionChecker, uses_relaxed_malleability,
     uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES,
@@ -38,13 +40,49 @@ impl Tx {
         sha256d(&b)
     }
 
-    /// Validates a non-coinbase transaction
+    /// Validates a non-coinbase transaction using version-only Chronicle gating (`tx.version > 1`).
     pub fn validate(
         &self,
         require_sighash_forkid: bool,
         use_genesis_rules: bool,
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            None,
+        )
+    }
+
+    /// Validates a non-coinbase transaction with BSV Chronicle activation height enforcement.
+    pub fn validate_at_height(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        block_height: u64,
+        network: Network,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            Some((block_height, network)),
+        )
+    }
+
+    fn validate_with_context(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        chronicle_context: Option<(u64, Network)>,
     ) -> Result<(), ChainGangError> {
         // Make sure neither in or out lists are empty
         if self.inputs.is_empty() {
@@ -114,11 +152,17 @@ impl Tx {
 
         // Verify each script
         let mut sighash_cache = SigHashCache::new();
+        let (block_height, network) = match chronicle_context {
+            Some((height, net)) => (Some(height), Some(net)),
+            None => (None, None),
+        };
+        let script_version =
+            effective_chronicle_tx_version(self.version, block_height, network);
         for input in 0..self.inputs.len() {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
 
-            if !uses_relaxed_malleability(self.version)
+            if !uses_relaxed_malleability(script_version)
                 && !is_push_only(&tx_in.unlock_script.0)
             {
                 return Err(ChainGangError::BadData(
@@ -132,6 +176,7 @@ impl Tx {
                 input,
                 satoshis: tx_out.satoshis,
                 require_sighash_forkid,
+                script_tx_version: Some(script_version),
             };
 
             let is_pregenesis_input = pregenesis_outputs.contains(&tx_in.prev_output);
@@ -141,7 +186,7 @@ impl Tx {
                 NO_FLAGS
             };
 
-            if uses_two_phase_eval(self.version) {
+            if uses_two_phase_eval(script_version) {
                 eval_two_phase(
                     &tx_in.unlock_script.0,
                     &tx_out.lock_script.0,
@@ -472,6 +517,61 @@ mod tests {
             .is_ok());
         assert!(tx_test
             .validate(true, true, &utxos, &HashSet::new())
+            .is_err());
+    }
+
+    #[test]
+    fn validate_at_height_gates_chronicle() {
+        use crate::chronicle::CHRONICLE_ACTIVATION_MAINNET;
+        use crate::network::Network;
+
+        let utxo = (
+            OutPoint {
+                hash: Hash256([6; 32]),
+                index: 0,
+            },
+            TxOut {
+                satoshis: 100,
+                lock_script: Script(vec![op_codes::OP_5, op_codes::OP_EQUAL]),
+            },
+        );
+        let mut utxos = LinkedHashMap::new();
+        utxos.insert(utxo.0.clone(), utxo.1.clone());
+
+        let tx = Tx {
+            version: 2,
+            inputs: vec![TxIn {
+                prev_output: utxo.0.clone(),
+                unlock_script: Script(vec![op_codes::OP_2, op_codes::OP_3, op_codes::OP_ADD]),
+                sequence: 0,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 90,
+                lock_script: Script(vec![]),
+            }],
+            lock_time: 0,
+        };
+
+        assert!(tx.validate(true, true, &utxos, &HashSet::new()).is_ok());
+        assert!(tx
+            .validate_at_height(
+                true,
+                true,
+                &utxos,
+                &HashSet::new(),
+                CHRONICLE_ACTIVATION_MAINNET,
+                Network::BSV_Mainnet,
+            )
+            .is_ok());
+        assert!(tx
+            .validate_at_height(
+                true,
+                true,
+                &utxos,
+                &HashSet::new(),
+                CHRONICLE_ACTIVATION_MAINNET - 1,
+                Network::BSV_Mainnet,
+            )
             .is_err());
     }
 }
