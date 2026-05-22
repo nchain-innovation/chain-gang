@@ -9,7 +9,6 @@ from tx_engine.engine.op_codes import (
     OP_IF,
     OP_PUSHDATA1,
     OP_PUSHDATA4,
-    OP_TOALTSTACK,
     OP_1,
 )
 from tx_engine.engine.util import max_script_num_length, MAX_SCRIPT_NUM_LENGTH_CHRONICLE
