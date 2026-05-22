@@ -127,6 +127,12 @@ pub const OP_2SWAP: u8 = 114;
 pub const OP_CAT: u8 = 126;
 /// Splits the byte sequence at position n
 pub const OP_SPLIT: u8 = 127;
+/// Returns substring defined by start index and length (Chronicle; opcode 179)
+pub const OP_SUBSTR: u8 = 179;
+/// Returns leftmost substring of specified length (Chronicle; opcode 180)
+pub const OP_LEFT: u8 = 180;
+/// Returns rightmost substring of specified length (Chronicle; opcode 181)
+pub const OP_RIGHT: u8 = 181;
 /// Pushes the byte sequence length of the top stack item without popping it
 pub const OP_SIZE: u8 = 130;
 
@@ -170,11 +176,11 @@ pub const OP_SUB: u8 = 148;
 /// Multiplies a by b
 pub(crate) const OP_MUL: u8 = 149;
 /// The input is multiplied by 2
-pub(crate) const OP_2MUL: u8 = 141;
+pub const OP_2MUL: u8 = 141;
 /// Divides a by b
 pub const OP_DIV: u8 = 150;
 /// The input is divided by 2
-pub(crate) const OP_2DIV: u8 = 142;
+pub const OP_2DIV: u8 = 142;
 /// Returns the remainder after dividing a by b
 pub const OP_MOD: u8 = 151;
 /// Shifts a left b bits, preserving sign
@@ -262,27 +268,21 @@ pub(crate) const OP_INVALIDOPCODE: u8 = 255;
 /// Transaction is invalid unless occuring in an unexecuted OP_IF branch
 pub(crate) const OP_RESERVED: u8 = 80;
 /// Transaction is invalid unless occuring in an unexecuted OP_IF branch
-pub(crate) const OP_VER: u8 = 98;
+pub const OP_VER: u8 = 98;
 /// Transaction is invalid even when occuring in an unexecuted OP_IF branch
-pub(crate) const OP_VERIF: u8 = 101;
+pub const OP_VERIF: u8 = 101;
 /// Transaction is invalid even when occuring in an unexecuted OP_IF branch
-pub(crate) const OP_VERNOTIF: u8 = 102;
+pub const OP_VERNOTIF: u8 = 102;
 /// Transaction is invalid unless occuring in an unexecuted OP_IF branch
 pub(crate) const OP_RESERVED1: u8 = 137;
 /// Transaction is invalid unless occuring in an unexecuted OP_IF branch
 pub(crate) const OP_RESERVED2: u8 = 138;
 /// The word is ignored. Does not mark transaction as invalid.
 pub(crate) const OP_NOP1: u8 = 176;
-/// The word is ignored. Does not mark transaction as invalid.
-pub(crate) const OP_NOP4: u8 = 179;
-/// The word is ignored. Does not mark transaction as invalid.
-pub(crate) const OP_NOP5: u8 = 180;
-/// The word is ignored. Does not mark transaction as invalid.
-pub(crate) const OP_NOP6: u8 = 181;
-/// The word is ignored. Does not mark transaction as invalid.
-pub(crate) const OP_NOP7: u8 = 182;
-/// The word is ignored. Does not mark transaction as invalid.
-pub(crate) const OP_NOP8: u8 = 183;
+/// Shifts a left b bits, preserving sign (Chronicle; was OP_NOP7)
+pub const OP_LSHIFTNUM: u8 = 182;
+/// Shifts a right b bits, preserving sign (Chronicle; was OP_NOP8)
+pub const OP_RSHIFTNUM: u8 = 183;
 /// The word is ignored. Does not mark transaction as invalid.
 pub(crate) const OP_NOP9: u8 = 184;
 /// The word is ignored. Does not mark transaction as invalid.

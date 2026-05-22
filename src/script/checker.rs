@@ -29,6 +29,13 @@ pub trait Checker {
 
     /// Checks that the relative lock time enforced by the sequence is valid according to BIP 112
     fn check_sequence(&self, sequence: i32) -> Result<bool, ChainGangError>;
+
+    /// Returns the executing transaction version for Chronicle OP_VER opcodes
+    fn tx_version(&self) -> Result<i32, ChainGangError> {
+        Err(ChainGangError::IllegalState(
+            "Illegal transaction version check".to_string(),
+        ))
+    }
 }
 
 /// Script checker that fails all transaction checks
@@ -173,6 +180,10 @@ impl Checker for TransactionChecker<'_> {
         let message = sig_hash.0;
         let verifying_key: VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
+    }
+
+    fn tx_version(&self) -> Result<i32, ChainGangError> {
+        Ok(self.tx.version as i32)
     }
 
     fn check_locktime(&self, locktime: i32) -> Result<bool, ChainGangError> {

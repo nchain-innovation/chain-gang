@@ -20,6 +20,20 @@ pub const NO_FLAGS: u32 = 0x00;
 /// Flag to execute the script with pre-genesis rules
 pub const PREGENESIS_RULES: u32 = 0x01;
 
+fn verif_branch_exec<T: Checker>(
+    checker: &T,
+    comparison: BigInt,
+    invert: bool,
+) -> Result<bool, ChainGangError> {
+    let version = BigInt::from(checker.tx_version()?);
+    let execute = version >= comparison;
+    Ok(if invert { !execute } else { execute })
+}
+
+fn substr_error(msg: &str) -> ChainGangError {
+    ChainGangError::ScriptError(msg.to_string())
+}
+
 /// Core of the script evaluation - split out for debugging
 pub fn core_eval<T: Checker>(
     script: &[u8],
@@ -97,8 +111,19 @@ pub fn core_eval<T: Checker>(
                 stack.push(script[i + 5..i + 5 + len].to_vec());
             }
             OP_NOP => {}
+            OP_VER => {
+                stack.push(encode_num(checker.tx_version()? as i64)?);
+            }
             OP_IF => branch_exec.push(pop_bool(&mut stack)?),
             OP_NOTIF => branch_exec.push(!pop_bool(&mut stack)?),
+            OP_VERIF => {
+                let comparison = pop_bigint(&mut stack)?;
+                branch_exec.push(verif_branch_exec(checker, comparison, false)?);
+            }
+            OP_VERNOTIF => {
+                let comparison = pop_bigint(&mut stack)?;
+                branch_exec.push(verif_branch_exec(checker, comparison, true)?);
+            }
             OP_ELSE => {
                 let len = branch_exec.len();
                 if len == 0 {
@@ -277,6 +302,51 @@ pub fn core_eval<T: Checker>(
                     stack.push(x[..n as usize].to_vec());
                     stack.push(x[n as usize..].to_vec());
                 }
+            }
+            OP_SUBSTR => {
+                check_stack_size(3, &stack)?;
+                let length = pop_num(&mut stack)?;
+                let start = pop_num(&mut stack)?;
+                let s = stack.pop().unwrap();
+                if s.is_empty() {
+                    return Err(substr_error("OP_SUBSTR failed, zero-length source"));
+                }
+                if length < 0 || start < 0 {
+                    return Err(substr_error("OP_SUBSTR failed, negative index or length"));
+                }
+                let start = start as usize;
+                let length = length as usize;
+                if start + length > s.len() {
+                    return Err(substr_error("OP_SUBSTR failed, length out of range"));
+                }
+                stack.push(s[start..start + length].to_vec());
+            }
+            OP_LEFT => {
+                check_stack_size(2, &stack)?;
+                let length = pop_num(&mut stack)?;
+                let s = stack.pop().unwrap();
+                if length < 0 {
+                    return Err(substr_error("OP_LEFT failed, negative length"));
+                }
+                let length = length as usize;
+                if length > s.len() {
+                    return Err(substr_error("OP_LEFT failed, length out of range"));
+                }
+                stack.push(s[..length].to_vec());
+            }
+            OP_RIGHT => {
+                check_stack_size(2, &stack)?;
+                let length = pop_num(&mut stack)?;
+                let s = stack.pop().unwrap();
+                if length < 0 {
+                    return Err(substr_error("OP_RIGHT failed, negative length"));
+                }
+                let length = length as usize;
+                if length > s.len() {
+                    return Err(substr_error("OP_RIGHT failed, length out of range"));
+                }
+                let start = s.len() - length;
+                stack.push(s[start..].to_vec());
             }
             OP_SIZE => {
                 check_stack_size(1, &stack)?;
@@ -704,11 +774,26 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_NOP1 => {}
-            OP_NOP4 => {}
-            OP_NOP5 => {}
-            OP_NOP6 => {}
-            OP_NOP7 => {}
-            OP_NOP8 => {}
+            OP_LSHIFTNUM => {
+                check_stack_size(2, &stack)?;
+                let n = pop_num(&mut stack)?;
+                if n < 0 {
+                    let msg = "n must be non-negative".to_string();
+                    return Err(ChainGangError::ScriptError(msg));
+                }
+                let v = stack.pop().unwrap();
+                stack.push(lshift(&v, n as usize));
+            }
+            OP_RSHIFTNUM => {
+                check_stack_size(2, &stack)?;
+                let n = pop_num(&mut stack)?;
+                if n < 0 {
+                    let msg = "n must be non-negative".to_string();
+                    return Err(ChainGangError::ScriptError(msg));
+                }
+                let v = stack.pop().unwrap();
+                stack.push(rshift(&v, n as usize));
+            }
             OP_NOP9 => {}
             OP_NOP10 => {}
             _ => {
@@ -894,6 +979,8 @@ fn skip_branch(script: &[u8], mut i: usize) -> usize {
         match script[i] {
             OP_IF => sub += 1,
             OP_NOTIF => sub += 1,
+            OP_VERIF => sub += 1,
+            OP_VERNOTIF => sub += 1,
             OP_ELSE => {
                 if sub == 0 {
                     return i;
@@ -1219,11 +1306,6 @@ mod tests {
         pass_pregenesis(&[OP_0, OP_CHECKSEQUENCEVERIFY, OP_1]);
         pass(&[OP_CHECKSEQUENCEVERIFY, OP_1]);
         pass(&[OP_NOP1, OP_1]);
-        pass(&[OP_NOP4, OP_1]);
-        pass(&[OP_NOP5, OP_1]);
-        pass(&[OP_NOP6, OP_1]);
-        pass(&[OP_NOP7, OP_1]);
-        pass(&[OP_NOP8, OP_1]);
         pass(&[OP_NOP9, OP_1]);
         pass(&[OP_NOP10, OP_1]);
         let mut v = vec![OP_DEPTH; 501];
@@ -1567,41 +1649,25 @@ mod tests {
 
     /// A test run that doesn't do signature checks and expects failure
     fn pass(script: &[u8]) {
-        let mut c = MockChecker {
-            sig_checks: RefCell::new(vec![true; 32]),
-            locktime_checks: RefCell::new(vec![true; 32]),
-            sequence_checks: RefCell::new(vec![true; 32]),
-        };
+        let mut c = MockChecker::new();
         assert!(eval(script, &mut c, NO_FLAGS).is_ok());
     }
 
     /// A test run that doesn't do signature checks and expects failure
     fn fail(script: &[u8]) {
-        let mut c = MockChecker {
-            sig_checks: RefCell::new(vec![true; 32]),
-            locktime_checks: RefCell::new(vec![true; 32]),
-            sequence_checks: RefCell::new(vec![true; 32]),
-        };
+        let mut c = MockChecker::new();
         assert!(eval(script, &mut c, NO_FLAGS).is_err());
     }
 
     /// Pre-genesis versions of the above checks
     fn pass_pregenesis(script: &[u8]) {
-        let mut c = MockChecker {
-            sig_checks: RefCell::new(vec![true; 32]),
-            locktime_checks: RefCell::new(vec![true; 32]),
-            sequence_checks: RefCell::new(vec![true; 32]),
-        };
+        let mut c = MockChecker::new();
         assert!(eval(script, &mut c, PREGENESIS_RULES).is_ok());
     }
 
     /// A test run that doesn't do signature checks and expects failure
     fn fail_pregenesis(script: &[u8]) {
-        let mut c = MockChecker {
-            sig_checks: RefCell::new(vec![true; 32]),
-            locktime_checks: RefCell::new(vec![true; 32]),
-            sequence_checks: RefCell::new(vec![true; 32]),
-        };
+        let mut c = MockChecker::new();
         assert!(eval(script, &mut c, PREGENESIS_RULES).is_err());
     }
 
@@ -1610,14 +1676,34 @@ mod tests {
         sig_checks: RefCell<Vec<bool>>,
         locktime_checks: RefCell<Vec<bool>>,
         sequence_checks: RefCell<Vec<bool>>,
+        tx_version: Option<i32>,
     }
 
     impl MockChecker {
+        fn new() -> MockChecker {
+            MockChecker {
+                sig_checks: RefCell::new(vec![true; 32]),
+                locktime_checks: RefCell::new(vec![true; 32]),
+                sequence_checks: RefCell::new(vec![true; 32]),
+                tx_version: None,
+            }
+        }
+
+        fn with_tx_version(version: i32) -> MockChecker {
+            MockChecker {
+                sig_checks: RefCell::new(vec![true; 32]),
+                locktime_checks: RefCell::new(vec![true; 32]),
+                sequence_checks: RefCell::new(vec![true; 32]),
+                tx_version: Some(version),
+            }
+        }
+
         fn sig_checks(sig_checks: Vec<bool>) -> MockChecker {
             MockChecker {
                 sig_checks: RefCell::new(sig_checks),
                 locktime_checks: RefCell::new(vec![true; 32]),
                 sequence_checks: RefCell::new(vec![true; 32]),
+                tx_version: None,
             }
         }
 
@@ -1626,6 +1712,7 @@ mod tests {
                 sig_checks: RefCell::new(vec![true; 32]),
                 locktime_checks: RefCell::new(locktime_checks),
                 sequence_checks: RefCell::new(vec![true; 32]),
+                tx_version: None,
             }
         }
 
@@ -1634,6 +1721,7 @@ mod tests {
                 sig_checks: RefCell::new(vec![true; 32]),
                 locktime_checks: RefCell::new(vec![true; 32]),
                 sequence_checks: RefCell::new(sequence_checks),
+                tx_version: None,
             }
         }
     }
@@ -1655,5 +1743,73 @@ mod tests {
         fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
             Ok(self.sequence_checks.borrow_mut().pop().unwrap())
         }
+
+        fn tx_version(&self) -> Result<i32, ChainGangError> {
+            self.tx_version.ok_or_else(|| {
+                ChainGangError::IllegalState("Illegal transaction version check".to_string())
+            })
+        }
+    }
+
+    fn pass_with_version(script: &[u8], version: i32) {
+        let mut c = MockChecker::with_tx_version(version);
+        assert!(eval(script, &mut c, NO_FLAGS).is_ok());
+    }
+
+    #[test]
+    fn chronicle_op_ver_pushes_tx_version() {
+        pass_with_version(&[OP_VER, OP_2, OP_NUMEQUAL], 2);
+    }
+
+    #[test]
+    fn chronicle_op_verif_executes_when_version_is_high_enough() {
+        pass_with_version(&[OP_2, OP_VERIF, OP_1, OP_ELSE, OP_0, OP_ENDIF], 2);
+        let mut c = MockChecker::with_tx_version(1);
+        assert!(eval(
+            &[OP_2, OP_VERIF, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+            &mut c,
+            NO_FLAGS
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn chronicle_op_vernotif_executes_when_version_is_too_low() {
+        pass_with_version(&[OP_2, OP_VERNOTIF, OP_1, OP_ELSE, OP_0, OP_ENDIF], 1);
+        let mut c = MockChecker::with_tx_version(2);
+        assert!(eval(
+            &[OP_2, OP_VERNOTIF, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+            &mut c,
+            NO_FLAGS
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn chronicle_op_substr_left_right() {
+        let mut s = Script::new();
+        s.append_data(b"BSV Blockchain");
+        s.append(OP_4);
+        s.append(OP_5);
+        s.append(OP_SUBSTR);
+        s.append_data(b"Block");
+        s.append(OP_EQUALVERIFY);
+        s.append_data(b"BSV Blockchain");
+        s.append(OP_3);
+        s.append(OP_LEFT);
+        s.append_data(b"BSV");
+        s.append(OP_EQUALVERIFY);
+        s.append_data(b"BSV Blockchain");
+        s.append(OP_5);
+        s.append(OP_RIGHT);
+        s.append_data(b"chain");
+        s.append(OP_EQUAL);
+        pass(&s.0);
+    }
+
+    #[test]
+    fn chronicle_op_lshiftnum_rshiftnum() {
+        pass(&[OP_4, OP_2, OP_LSHIFTNUM, OP_16, OP_EQUAL]);
+        pass(&[OP_4, OP_2, OP_RSHIFTNUM, OP_1, OP_EQUAL]);
     }
 }
