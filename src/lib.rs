@@ -7,6 +7,7 @@ extern crate log;
 extern crate lazy_static;
 
 pub mod address;
+pub mod chronicle;
 pub mod messages;
 pub mod network;
 pub mod peer;
