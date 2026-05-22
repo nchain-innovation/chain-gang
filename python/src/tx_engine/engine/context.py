@@ -57,11 +57,7 @@ class Context:
         self.alt_stack = Stack()
 
     def _uses_two_phase(self) -> bool:
-        return (
-            self.lock_cmds is not None
-            and self.tx_version is not None
-            and self.tx_version > 1
-        )
+        return self.lock_cmds is not None and self.tx_version is not None and self.tx_version > 1
 
     def _stack_top_is_true(self) -> bool:
         if self.stack.size() == 0:
@@ -122,6 +118,9 @@ class Context:
         if self.tx_version is not None and self.tx_version > 1:
             return self._stack_top_is_true()
 
+        if self.tx_version == 1 and self.stack.size() != 1:
+            return False
+
         if self.stack.size() == 0:
             return False
 
@@ -130,9 +129,6 @@ class Context:
             # no entry or 0 => false.
             if self.get_stack() == Stack([[]]) or self.get_stack() == Stack([[0]]):
                 return False
-
-        if self.stack.size() != 1:
-            return False
 
         if self.get_stack()[0] == [0] or self.get_stack()[0] == []:
             return False
