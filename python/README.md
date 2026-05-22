@@ -5,7 +5,8 @@ Python bindings for the [chain-gang](../) Rust library, published on PyPI as [`t
 ## Documentation
 
 - [docs/README.md](../docs/README.md) — documentation index
-- [README.md](../README.md) — install and Python class API reference
+- [README.md](../README.md) — install and quick start
+- [docs/Python-API.md](../docs/Python-API.md) — Python class reference
 - [docs/Chronicle-Python.md](../docs/Chronicle-Python.md) — Chronicle Python guide (examples)
 - [docs/Chronicle.md](../docs/Chronicle.md) — Chronicle upgrade (full spec)
 

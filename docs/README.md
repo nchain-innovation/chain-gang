@@ -6,7 +6,8 @@ Index for **chain-gang** (Rust library) and **tx-engine** (Python bindings).
 
 | Document | Description |
 |----------|-------------|
-| [README.md](../README.md) | Install from PyPI, class API reference, Chronicle overview |
+| [README.md](../README.md) | Install from PyPI, quick start, Chronicle overview |
+| [Python-API.md](Python-API.md) | **Python class reference** — Script, Tx, Context, Wallet, interfaces |
 | [python/README.md](../python/README.md) | Python package layout, local dev, and tests |
 | [Chronicle-Python.md](Chronicle-Python.md) | **Python Chronicle guide** — examples for Context, Tx, signing, helpers |
 | [Chronicle.md](Chronicle.md) | Chronicle upgrade: sighash, opcodes, validation modes, Rust API |
@@ -15,6 +16,7 @@ Index for **chain-gang** (Rust library) and **tx-engine** (Python bindings).
 
 - Install: `pip install tx-engine` (Python 3.11+)
 - Chronicle validation: [Chronicle-Python.md](Chronicle-Python.md) — `Tx.validate()`, `Tx.validate_at_height()`, `Context`
+- Class reference: [Python-API.md](Python-API.md)
 - Node RPC flag reference: `tx_engine.interface.verify_script`
 
 ## Rust (`chain-gang`)

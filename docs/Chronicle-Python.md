@@ -178,5 +178,6 @@ Python Chronicle coverage lives under `python/src/tests/`:
 ## See also
 
 - [Chronicle.md](Chronicle.md) — full upgrade spec and Rust API  
-- [README.md](../README.md) — Python class reference  
+- [Python-API.md](Python-API.md) — Python class reference  
+- [README.md](../README.md) — install and quick start  
 - [Chronicle release (BSV docs)](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release)
