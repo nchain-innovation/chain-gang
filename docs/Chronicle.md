@@ -2,6 +2,8 @@
 
 Implementation plan and notes for [Chronicle Release](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) support.
 
+**Python users:** see [Chronicle-Python.md](Chronicle-Python.md) for copy-paste examples (`Context`, `Tx.validate`, signing, activation helpers).
+
 ## Activation
 
 | Network | Block height |
@@ -29,8 +31,8 @@ This crate is a **transaction engine**, not a full BSV node. The distinction mat
 **Practical guidance**
 
 - Building or checking a Chronicle spend **before activation** or **without knowing the block**: use `validate()` and set `version > 1` to exercise Chronicle script rules intentionally.
-- Validating a transaction **as a node would at a known height** (e.g. block 943,835 on mainnet): use `validate_at_height(..., block_height, Network::BSV_Mainnet)`.
-- Python `Tx.validate()` calls the Rust `validate()` path (version-only). Use Rust bindings or add a height-aware Python wrapper if you need consensus-faithful height gating.
+- Validating a transaction **as a node would at a known height** (e.g. block 943,835 on mainnet): use `validate_at_height(..., block_height, Network::BSV_Mainnet)` (Rust) or `Tx.validate_at_height(utxos, block_height, "BSV_Mainnet")` (Python).
+- Python `Tx.validate()` uses version-only gating (`tx.version > 1`). Use `Tx.validate_at_height()` when you need consensus-faithful activation at a known height.
 
 Sighash routing (`SIGHASH_CHRONICLE`) and signing policy (`uses_low_s_signing`) follow the signature flags independent of block height.
 
@@ -151,6 +153,8 @@ Version-only script debugging without a full transaction: `TxVersionChecker` and
 - [x] Two-phase unlock/lock script evaluation (`tx.version > 1`)
 - [x] Version-gated malleability relaxation (`tx.version > 1`)
 - [x] 32 MB script number limit (`tx.version > 1`)
+- [x] Python `Tx.validate_at_height()` binding
+- [x] Python `Context` two-phase eval (`tx_version`, `lock_script`)
 
 ## References
 

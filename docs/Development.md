@@ -8,6 +8,9 @@ Notes on the development of `chain-gang` and the `tx_engine` Python interface.
 ```
 ├── README.md
 ├── docs
+│   ├── README.md
+│   ├── Chronicle-Python.md
+│   ├── Chronicle.md
 │   ├── Development.md
 │   └── diagrams
 ├── python

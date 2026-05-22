@@ -52,7 +52,7 @@ To build the library with the `python` feature
 ```bash
 cargo build --features "python"
 ```
-For more details of the `python` feature see [here](python/README.md)
+For more details of the `python` feature see [python/README.md](../python/README.md). Full documentation index: [docs/README.md](README.md).
 
 # Known limitations
 

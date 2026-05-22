@@ -2,15 +2,21 @@
 
 This library provides a Python interface for building BitcoinSV scripts and transactions.
 
-For documentation of the Python Classes see below.
+See [docs/README.md](docs/README.md) for the full documentation index. Class API reference is below.
 
 ## Chronicle upgrade
 
-Bitcoin SV [Chronicle](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) support is implemented in the Rust library (`chain-gang`). See [docs/Chronicle.md](docs/Chronicle.md) for sighash routing, opcodes, two-phase script evaluation, malleability rules, and script number limits.
+Bitcoin SV [Chronicle](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) is supported in both the Rust library (`chain-gang`) and Python (`tx-engine`). See [docs/Chronicle.md](docs/Chronicle.md) for sighash routing, opcodes, two-phase script evaluation, malleability rules, and script number limits.
 
-Chronicle behavior is gated on **`tx.version > 1`** when using `Tx.validate()` (Python or Rust). Use `version: 2` (or higher) on spending transactions to opt in. For consensus-faithful activation at documented block heights, use Rust `Tx::validate_at_height()` — see [docs/Chronicle.md](docs/Chronicle.md#library-vs-node).
+Chronicle script rules apply when **`tx.version > 1`**. Use `version: 2` (or higher) on spending transactions to opt in. **Guide:** [docs/Chronicle-Python.md](docs/Chronicle-Python.md).
 
-**Python `Context` debugger:** pass optional `tx_version` and `lock_script` for Chronicle two-phase eval, relaxed clean stack, and `OP_VER`. `Context` does not enforce block-height activation; for full transaction checks use `Tx.validate()` (version-only) or Rust `validate_at_height()`.
+| Check | Python API |
+|-------|------------|
+| Version-only (offline / mempool-style) | `Tx.validate(utxos)` |
+| Consensus at a known block height | `Tx.validate_at_height(utxos, block_height, network)` — `network` is `BSV_Mainnet`, `BSV_Testnet`, or `BSV_STN` |
+| Script debugger / partial eval | `Context(tx_version=2, lock_script=...)` |
+
+See [docs/Chronicle-Python.md](docs/Chronicle-Python.md) for copy-paste Python examples. Full spec: [docs/Chronicle.md](docs/Chronicle.md).
 
 # Python Installation
 As this library is hosted on PyPi (https://pypi.org/project/tx-engine/) and is installed using:
@@ -98,7 +104,7 @@ Stack has the following methods:
 
 ## Context
 
-The `context` is the environment in which bitcoin scripts are executed.
+The `Context` class is the environment in which bitcoin scripts are executed. For Chronicle usage (two-phase eval, `OP_VER`, relaxed clean stack), see [docs/Chronicle-Python.md](docs/Chronicle-Python.md#context-and-chronicle-opcodes).
 
 Context has the following properties:
 * `cmds` - the commands to execute
@@ -112,33 +118,31 @@ Context has the following properties:
 
 Context has the following methods:
 
-* `__init__(self, script: Script, cmds: Commands = None, ip_limit: int , z: bytes, tx_version: int = None, lock_script: Script = None)` - constructor
-* `evaluate_core(self, quiet: bool = False) -> bool` - evaluates the script/cmds using the the interpreter and returns the stacks (`tack`, `alt_stack`). if quiet is true, dont print exceptions
-* `evaluate(self, quiet: bool = False) -> bool` - executes the script and decode stack elements to numbers (`stack`, `alt_stack`). Checks `stack` is true on return. if quiet is true, dont print exceptions.
+* `__init__(self, script: Script, ip_start: int = None, ip_limit: int = None, z: bytes = None, tx_version: int = None, lock_script: Script = None)` - constructor
+* `evaluate_core(self, quiet: bool = False) -> bool` - evaluates the script/cmds using the interpreter and returns the stacks (`stack`, `alt_stack`). If `quiet` is true, do not print exceptions
+* `evaluate(self, quiet: bool = False) -> bool` - executes the script and decode stack elements to numbers (`stack`, `alt_stack`). Checks `stack` is true on return. If `quiet` is true, do not print exceptions
 
-When `tx_version` and `lock_script` are set (`tx_version > 1`), Chronicle two-phase eval and relaxed clean-stack rules apply. Without `tx_version`, legacy debugger semantics are used. Block-height activation is not applied in `Context`; see [Chronicle upgrade](#chronicle-upgrade).
+When `tx_version > 1` and `lock_script` are set, Chronicle **two-phase** unlock/lock evaluation runs. When `tx_version > 1` alone, Chronicle opcodes and relaxed clean-stack rules apply. Block-height activation is not applied in `Context`; use `Tx.validate_at_height()` for that — see [Chronicle upgrade](#chronicle-upgrade) and [docs/Chronicle-Python.md](docs/Chronicle-Python.md).
 
 * `get_stack(self) -> Stack` - Return the `stack` as human readable
 * `get_altstack(self) -> Stack`-  Return the `alt_stack` as human readable
-* `set_ip_start(self, start: int)` - sets the start location for the intepreter. 
-* `set_ip_limit(self, limit: int)` - sets the end location for the intepreter
+* `set_ip_start(self, start: int)` - sets the start location for the interpreter
+* `set_ip_limit(self, limit: int)` - sets the end location for the interpreter
 
-Example from unit tests of using `evaluate_core` and `raw_stack`:
+Example from unit tests using `evaluate_core` and `Context`:
 ```python
+from tx_engine import Context, Script, Stack
+from tx_engine.engine.op_codes import OP_PUSHDATA1, OP_4, OP_NUM2BIN
+
 script = Script([OP_PUSHDATA1, 0x01, b"\x85", OP_4, OP_NUM2BIN])
-context_py_stack = Context_PyStack(script=script)
-self.assertTrue(context_py_stack.evaluate_core())
-self.assertEqual(context_py_stack.get_stack(), Stack([[0x85, 0x00, 0x00, 0x00]]))
+context = Context(script=script)
+context.evaluate_core()
+assert context.get_stack() == Stack([[0x85, 0x00, 0x00, 0x00]])
 
-script1 = Script.parse_string('19 1 0 0 1 OP_DEPTH OP_1SUB OP_PICK 0x13 OP_EQUALVERIFY OP_ROT OP_ADD OP_TOALTSTACK OP_ADD OP_DEPTH OP_1SUB OP_ROLL OP_TUCK OP_MOD OP_OVER OP_ADD OP_OVER OP_MOD OP_FROMALTSTACK OP_ROT OP_TUCK OP_MOD OP_OVER OP_ADD OP_SWAP OP_MOD 1 OP_EQUALVERIFY 1 OP_EQUAL')
-context_py_stack = Context_PyStack(script=script1)
-self.assertTrue(context_py_stack.evaluate_core())
-self.assertEqual(context_py_stack.get_stack(), Stack([[1]])
-
-script = Script([OP_1, OP_2, OP_3, OP_4, OP_5, OP_6, OP_2ROT])
-context_py_stack = Context_PyStack(script=script)
-self.assertTrue(context_py_stack.evaluate())
-self.assertEqual(context_py_stack.get_stack(), Stack([[3], [4], [5], [6], [1], [2]]))
+# Chronicle two-phase: unlock computes, lock checks
+unlock = Script.parse_string("OP_2 OP_3 OP_ADD")
+lock = Script.parse_string("OP_5 OP_EQUAL")
+assert Context(script=unlock, lock_script=lock, tx_version=2).evaluate()
 ```
 
 ### Quiet Evalutation
@@ -148,7 +152,7 @@ self.assertEqual(context_py_stack.get_stack(), Stack([[3], [4], [5], [6], [1], [
 
 ## Tx
 
-Tx represents a bitcoin transaction.
+Tx represents a bitcoin transaction. Chronicle validation (`validate`, `validate_at_height`) is described in [docs/Chronicle-Python.md](docs/Chronicle-Python.md).
 
 Tx has the following properties:
 * `version` - unsigned integer
@@ -166,7 +170,8 @@ Tx has the following methods:
 * `to_hexstr(self) -> str` - Returns Tx as hex string
 * `copy(self) -> Tx` - Returns a copy of the Tx
 * `to_string(self) -> String` - return the Tx as a string. Note also that you can just print the tx (`print(tx)`).
-* `validate(self, [Tx]) -> Result` - provide the input txs, returns None on success and throws a RuntimeError exception on failure. Note can not validate coinbase or pre-genesis transactions.
+* `validate(self, [Tx]) -> Result` - provide the input txs, returns None on success and throws a RuntimeError exception on failure. Note can not validate coinbase or pre-genesis transactions. Chronicle rules apply when `version > 1` (block height ignored).
+* `validate_at_height(self, [Tx], block_height: int, network: str) -> Result` - like `validate`, but gates Chronicle rules on the documented activation height for `network` (`BSV_Mainnet`, `BSV_Testnet`, or `BSV_STN`). See [docs/Chronicle-Python.md](docs/Chronicle-Python.md#height-aware-validation).
 
     
 Tx has the following class methods:
@@ -232,8 +237,8 @@ This class represents the Wallet functionality, including handling of private an
 Wallet class has the following methods:
 
 * `__init__(wif_key: str) -> Wallet` - Constructor that takes a private key in WIF format
-* `sign_tx(self, index: int, input_tx: Tx, tx: Tx) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
-* `sign_tx_sighash(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int) -> Tx` - Sign a transaction input with the provided previous tx and sighash flags, Returns new signed tx
+* `sign_tx(self, index: int, input_tx: Tx, tx: Tx) -> Tx` - Sign with default `SIGHASH.ALL_FORKID` (low-S). Returns new signed tx
+* `sign_tx_sighash(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int) -> Tx` - Sign with explicit sighash flags. Use `SIGHASH.ALL_FORKID_CHRONICLE` for Chronicle (OTDA) spends — see [docs/Chronicle-Python.md](docs/Chronicle-Python.md#signing-with-otda-chronicle-sighash)
 * `sign_tx_sighash_flags_checksig_index(self, index: int, input_tx: Tx, tx: Tx, sighash_type: int, checksig_index: int) -> Tx` - as `sign_tx_sighash` with checksig_index
 * `get_locking_script(self) -> Script` - Returns a locking script based on the public key
 * `get_public_key_as_hexstr(self) -> String` - Return the public key as a hex string
