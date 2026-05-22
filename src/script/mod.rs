@@ -27,11 +27,14 @@ mod interpreter;
 pub mod op_codes;
 pub mod stack;
 
-pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker, ZChecker};
+pub use self::checker::{
+    Checker, TransactionChecker, TransactionlessChecker, TxVersionChecker, ZChecker,
+    ZVersionChecker,
+};
 pub(crate) use self::interpreter::next_op;
 pub use self::interpreter::{
-    eval_two_phase, is_push_only, max_script_num_length, uses_relaxed_malleability,
-    uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES,
+    eval_two_phase, eval_two_phase_with_stack, is_push_only, max_script_num_length,
+    uses_relaxed_malleability, uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES,
 };
 pub use self::stack::{
     check_script_num_length, MAX_SCRIPT_NUM_LENGTH_CHRONICLE, MAX_SCRIPT_NUM_LENGTH_GENESIS,
