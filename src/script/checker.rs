@@ -165,7 +165,11 @@ impl Checker for TransactionChecker<'_> {
         )?;
         let der_sig = &sig[0..sig.len() - 1];
 
-        let signature = Signature::from_der(der_sig)?;
+        let mut signature = Signature::from_der(der_sig)?;
+        if self.tx.version > 1 {
+            // Chronicle lifts the low-S rule; normalize so k256 accepts high-S encodings.
+            signature = signature.normalize_s().unwrap_or(signature);
+        }
         let message = sig_hash.0;
         let verifying_key: VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
@@ -240,11 +244,98 @@ mod tests {
     use crate::transaction::sighash::{SIGHASH_ALL, SIGHASH_FORKID};
     use crate::util::hash160;
     use k256::ecdsa::{SigningKey, VerifyingKey};
+    use k256::ecdsa::signature::hazmat::PrehashSigner;
+    use k256::ecdsa::signature::SignatureEncoding;
 
     #[test]
     fn standard_p2pkh() {
         standard_p2pkh_test(SIGHASH_ALL);
         standard_p2pkh_test(SIGHASH_ALL | SIGHASH_FORKID);
+    }
+
+    #[test]
+    fn chronicle_high_s_signature_verifies() {
+        use crate::transaction::sighash::SIGHASH_CHRONICLE;
+        use k256::ecdsa::Signature;
+        use num_bigint::BigUint;
+
+        const SECP256K1_N: &str =
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141";
+
+        let private_key = [2; 32];
+        let secret_key = SigningKey::from_slice(&private_key).unwrap();
+        let verifying_key = secret_key.verifying_key();
+        let pk = verifying_key_as_bytes(verifying_key);
+        let pkh = hash160(&pk);
+
+        let mut lock_script = Script::new();
+        lock_script.append(OP_DUP);
+        lock_script.append(OP_HASH160);
+        lock_script.append_data(&pkh.0);
+        lock_script.append(OP_EQUALVERIFY);
+        lock_script.append(OP_CHECKSIG);
+
+        let tx_1 = Tx {
+            version: 2,
+            inputs: vec![],
+            outputs: vec![TxOut {
+                satoshis: 10,
+                lock_script,
+            }],
+            lock_time: 0,
+        };
+
+        let mut tx_2 = Tx {
+            version: 2,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: tx_1.hash(),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![],
+            lock_time: 0,
+        };
+
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID | SIGHASH_CHRONICLE;
+        let mut cache = SigHashCache::new();
+        let lock_script = &tx_1.outputs[0].lock_script.0;
+        let sig_hash = sighash(&tx_2, 0, lock_script, 10, sighash_type, &mut cache).unwrap();
+
+        let low_sig: Signature = secret_key.sign_prehash(&sig_hash.0).unwrap();
+        let compact = low_sig.to_bytes();
+        let n = BigUint::parse_bytes(SECP256K1_N.as_bytes(), 16).unwrap();
+        let s = BigUint::from_bytes_be(&compact[32..]);
+        let high_s = &n - &s;
+        let mut high_compact = compact;
+        let high_s_bytes = high_s.to_bytes_be();
+        high_compact[64 - high_s_bytes.len()..].copy_from_slice(&high_s_bytes);
+        let high_sig = Signature::try_from(high_compact.as_ref()).unwrap();
+
+        let mut sig = high_sig.to_der().to_vec();
+        sig.push(sighash_type);
+
+        let mut unlock_script = Script::new();
+        unlock_script.append_data(&sig);
+        unlock_script.append_data(&pk);
+        tx_2.inputs[0].unlock_script = unlock_script;
+
+        let mut cache = SigHashCache::new();
+        let mut c = TransactionChecker {
+            tx: &tx_2,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 10,
+            require_sighash_forkid: true,
+        };
+
+        let mut script = Script::new();
+        script.append_slice(&tx_2.inputs[0].unlock_script.0);
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(&tx_1.outputs[0].lock_script.0);
+        assert!(script.eval(&mut c, NO_FLAGS).is_ok());
     }
 
     fn verifying_key_as_bytes(verifying_key: &VerifyingKey) -> [u8; 33] {
