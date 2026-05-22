@@ -55,6 +55,20 @@ Chronicle reinstates and reassigns opcodes per the [Chronicle spec](https://gith
 
 `OP_2MUL` and `OP_2DIV` were already implemented; `OP_VER` requires a transaction context (`Checker::tx_version()`).
 
+## Two-phase script evaluation
+
+For transactions with `version > 1`, unlock and lock scripts are evaluated separately per the [Chronicle spec](https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/chronicle-spec.md):
+
+1. Evaluate the **unlock script** first.
+2. Keep the **main stack**; clear **conditional** and **alt** stacks.
+3. Evaluate the **lock script** with the inherited main stack.
+
+Legacy transactions (`version == 1`) continue to concatenate `unlock + OP_CODESEPARATOR + lock` into a single script.
+
+CHECKSIG `scriptCode` in the unlock phase spans from the last `OP_CODESEPARATOR` in the unlock script through the end of the lock script (code separators stripped). CHECKSIG in the lock phase uses only the lock script from its last `OP_CODESEPARATOR`.
+
+Rust: `uses_two_phase_eval()`, `eval_two_phase()` in `src/script/interpreter.rs`; routed from `Tx::validate()` in `src/messages/tx.rs`.
+
 ## Implementation status
 
 - [x] OTDA sighash routing (`SIGHASH_CHRONICLE`)
@@ -62,8 +76,8 @@ Chronicle reinstates and reassigns opcodes per the [Chronicle spec](https://gith
 - [x] Optional high-S signing when `SIGHASH_CHRONICLE` is set
 - [x] High-S acceptance during script verification for `tx.version > 1`
 - [x] Chronicle opcodes (OP_VER, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_LSHIFTNUM, OP_RSHIFTNUM)
+- [x] Two-phase unlock/lock script evaluation (`tx.version > 1`)
 - [ ] Version-gated malleability relaxation (`tx.version > 1`)
-- [ ] Two-phase unlock/lock script evaluation
 - [ ] 32 MB script number limit
 
 ## References

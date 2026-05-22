@@ -29,7 +29,7 @@ pub mod stack;
 
 pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker, ZChecker};
 pub(crate) use self::interpreter::next_op;
-pub use self::interpreter::{NO_FLAGS, PREGENESIS_RULES};
+pub use self::interpreter::{eval_two_phase, uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES};
 pub use self::stack::Stack;
 
 /// Transaction script
@@ -114,6 +114,7 @@ impl Script {
             break_at,
             stack_val,
             alt_stack_val,
+            None,
         )
     }
 
