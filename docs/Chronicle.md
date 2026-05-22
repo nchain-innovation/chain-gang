@@ -19,7 +19,7 @@ Per [bitcoin-sv `SignatureHash`](https://github.com/bitcoin-sv/bitcoin-sv/blob/m
 | `SIGHASH_CHRONICLE` set | OTDA (Original Transaction Digest Algorithm) |
 | Neither | OTDA (pre-fork legacy) |
 
-Constants in Rust: `SIGHASH_CHRONICLE = 0x20` in `src/transaction/sighash.rs`.
+Constants and signing policy: `SIGHASH_CHRONICLE`, `uses_low_s_signing()` — re-exported from `chain_gang::chronicle` (also in `src/transaction/sighash.rs` and `src/transaction/mod.rs`).
 
 Python: `SIGHASH.CHRONICLE` and `SIGHASH.ALL_FORKID_CHRONICLE` in `python/src/tx_engine/tx/sighash.py`.
 
@@ -32,7 +32,7 @@ Per the Chronicle spec, the low-S requirement is removed for transactions with `
 | Without `SIGHASH_CHRONICLE` | Signatures are normalized to low-S (BIP146) |
 | With `SIGHASH_CHRONICLE` | Raw signer output is preserved (high-S allowed) |
 
-Rust: `uses_low_s_signing()` and `generate_signature()` in `src/transaction/mod.rs`.
+Rust: `uses_low_s_signing()` and `generate_signature()` in `src/transaction/mod.rs` (see `chain_gang::chronicle`).
 
 Note: k256's deterministic signer currently returns low-S; the Chronicle path matters when encoding externally produced signatures or future signing backends.
 
@@ -67,7 +67,7 @@ Legacy transactions (`version == 1`) continue to concatenate `unlock + OP_CODESE
 
 CHECKSIG `scriptCode` in the unlock phase spans from the last `OP_CODESEPARATOR` in the unlock script through the end of the lock script (code separators stripped). CHECKSIG in the lock phase uses only the lock script from its last `OP_CODESEPARATOR`.
 
-Rust: `uses_two_phase_eval()`, `eval_two_phase()` in `src/script/interpreter.rs`; routed from `Tx::validate()` in `src/messages/tx.rs`.
+Rust: `uses_two_phase_eval()`, `eval_two_phase()` — re-exported from `chain_gang::chronicle`; routed from `Tx::validate()` in `src/messages/tx.rs`.
 
 ## Malleability relaxation
 
@@ -85,15 +85,29 @@ For transactions with `version > 1`, Chronicle relaxes malleability-related scri
 
 Rules apply when the checker provides a transaction version (`TransactionChecker`). Context-free script evaluation preserves prior behavior.
 
-Rust: `uses_relaxed_malleability()`, `is_push_only()` in `src/script/interpreter.rs`.
+Rust: `uses_relaxed_malleability()`, `is_push_only()` — re-exported from `chain_gang::chronicle`.
 
 ## Script number limit
 
 The maximum encoded script number size increases from 750 KB to 32 MB for Chronicle transactions (`tx.version > 1`). Pre-genesis inputs (`PREGENESIS_RULES`) keep the 4-byte limit; post-genesis `version == 1` transactions keep 750 KB.
 
-Rust: `max_script_num_length()`, `MAX_SCRIPT_NUM_LENGTH_*` in `src/script/stack.rs`; enforced in `core_eval()` via `pop_bigint_checked()` and `OP_BIN2NUM` / `OP_NUM2BIN`.
+Rust: `max_script_num_length()`, `MAX_SCRIPT_NUM_LENGTH_*` — re-exported from `chain_gang::chronicle`; enforced in `core_eval()` via `pop_bigint_checked()` and `OP_BIN2NUM` / `OP_NUM2BIN`.
 
 Python: `MAX_SCRIPT_NUM_LENGTH_CHRONICLE` in `python/src/tx_engine/engine/util.py`.
+
+## Rust API
+
+Import Chronicle helpers from one module:
+
+```rust
+use chain_gang::chronicle::{
+    eval_two_phase, is_push_only, max_script_num_length, uses_low_s_signing,
+    uses_relaxed_malleability, uses_two_phase_eval, SIGHASH_CHRONICLE,
+    MAX_SCRIPT_NUM_LENGTH_CHRONICLE, TxVersionChecker,
+};
+```
+
+Version-only script debugging without a full transaction: `TxVersionChecker` and `ZVersionChecker` (also in `chain_gang::chronicle`).
 
 ## Implementation status
 
