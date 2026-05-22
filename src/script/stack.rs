@@ -256,7 +256,6 @@ pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
     let len = s.len();
 
     if len == 0 {
-        println!("Zero length number");
         return Ok(BigInt::zero());
     }
 
@@ -278,7 +277,6 @@ pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
         if s[len - 1] & 128 != 0 {
             val = -val;
         }
-        println!("Returing this way");
         return Ok(BigInt::from(val));
     }
 
@@ -289,7 +287,6 @@ pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
     }
     let mut big_int_bytes = s.to_vec();
     big_int_bytes[len - 1] &= !0x80; // Clear the sign bit
-    println!("Returned this big num way");
     Ok(BigInt::from_bytes_le(sign, &big_int_bytes))
 }
 

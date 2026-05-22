@@ -154,8 +154,8 @@ fn py_script_eval_pystack(
             script.eval_with_stack(
                 &mut ZChecker { z },
                 NO_FLAGS,
-                break_at,
                 start_at,
+                break_at,
                 main_stack,
                 alternative_stack,
             )?
