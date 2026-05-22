@@ -69,6 +69,24 @@ CHECKSIG `scriptCode` in the unlock phase spans from the last `OP_CODESEPARATOR`
 
 Rust: `uses_two_phase_eval()`, `eval_two_phase()` in `src/script/interpreter.rs`; routed from `Tx::validate()` in `src/messages/tx.rs`.
 
+## Malleability relaxation
+
+For transactions with `version > 1`, Chronicle relaxes malleability-related script rules per the [Chronicle spec](https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/chronicle-spec.md):
+
+| Rule | `version == 1` | `version > 1` |
+|------|----------------|---------------|
+| Clean stack (exactly one true item) | Enforced | Top item must be true; extra stack items allowed |
+| MINIMALIF (`OP_IF` / `OP_NOTIF` operands) | Empty or `0x01` only | Any valid bool encoding |
+| MINIMALDATA (push / number encoding) | Enforced | Relaxed |
+| NULLFAIL (`OP_CHECKSIG` failure) | Non-empty sig is an error | Pushes false |
+| NULLDUMMY (`OP_CHECKMULTISIG` dummy) | Must be empty | Any dummy value |
+| Push-only unlock script | Required | Functional opcodes allowed (two-phase eval) |
+| Low-S signatures | Enforced at verify | High-S accepted (Phase 2) |
+
+Rules apply when the checker provides a transaction version (`TransactionChecker`). Context-free script evaluation preserves prior behavior.
+
+Rust: `uses_relaxed_malleability()`, `is_push_only()` in `src/script/interpreter.rs`.
+
 ## Implementation status
 
 - [x] OTDA sighash routing (`SIGHASH_CHRONICLE`)
@@ -77,7 +95,7 @@ Rust: `uses_two_phase_eval()`, `eval_two_phase()` in `src/script/interpreter.rs`
 - [x] High-S acceptance during script verification for `tx.version > 1`
 - [x] Chronicle opcodes (OP_VER, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_LSHIFTNUM, OP_RSHIFTNUM)
 - [x] Two-phase unlock/lock script evaluation (`tx.version > 1`)
-- [ ] Version-gated malleability relaxation (`tx.version > 1`)
+- [x] Version-gated malleability relaxation (`tx.version > 1`)
 - [ ] 32 MB script number limit
 
 ## References

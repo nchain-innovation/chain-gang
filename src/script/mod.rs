@@ -29,7 +29,10 @@ pub mod stack;
 
 pub use self::checker::{Checker, TransactionChecker, TransactionlessChecker, ZChecker};
 pub(crate) use self::interpreter::next_op;
-pub use self::interpreter::{eval_two_phase, uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES};
+pub use self::interpreter::{
+    eval_two_phase, is_push_only, uses_relaxed_malleability, uses_two_phase_eval, NO_FLAGS,
+    PREGENESIS_RULES,
+};
 pub use self::stack::Stack;
 
 /// Transaction script

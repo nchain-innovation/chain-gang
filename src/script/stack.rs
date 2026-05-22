@@ -5,18 +5,66 @@ use num_traits::Zero;
 // Type to simplify the types..
 pub type Stack = Vec<Vec<u8>>;
 
+/// Converts a stack item to a bool
+#[inline]
+pub fn decode_bool(s: &[u8]) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    for item in s.iter().take(s.len() - 1) {
+        if *item != 0 {
+            return true;
+        }
+    }
+    s[s.len() - 1] & 127 != 0
+}
+
+/// True when a script number uses the shortest possible byte encoding.
+#[inline]
+pub fn is_minimally_encoded(s: &[u8]) -> bool {
+    let size = s.len();
+    if size == 0 {
+        return true;
+    }
+    if s[size - 1] & 0x7f == 0 {
+        if size <= 1 || s[size - 2] & 0x80 == 0 {
+            return false;
+        }
+    }
+    true
+}
+
+/// True when an OP_IF/OP_NOTIF operand is empty or exactly `0x01`.
+#[inline]
+pub fn is_minimal_if_operand(s: &[u8]) -> bool {
+    s.is_empty() || s == [1]
+}
+
 /// Pops a bool off the stack
 #[inline]
 pub fn pop_bool(stack: &mut Stack) -> Result<bool, ChainGangError> {
+    pop_bool_minimal(stack, false)
+}
+
+/// Pops a bool, optionally enforcing MINIMALIF encoding.
+#[inline]
+pub fn pop_bool_minimal(
+    stack: &mut Stack,
+    require_minimal_if: bool,
+) -> Result<bool, ChainGangError> {
     if stack.is_empty() {
         let msg = "Cannot pop bool, empty stack".to_string();
         return Err(ChainGangError::ScriptError(msg));
     }
     let top = stack.pop().unwrap();
-    // Bools cannot be popped having more than 32-bits, but may be used in other ways
     if top.len() > 4 {
         let msg = format!("Cannot pop bool, len too long {}", top.len());
         return Err(ChainGangError::ScriptError(msg));
+    }
+    if require_minimal_if && !is_minimal_if_operand(&top) {
+        return Err(ChainGangError::ScriptError(
+            "OP_IF/OP_NOTIF operand is not minimal".to_string(),
+        ));
     }
     Ok(decode_bool(&top))
 }
@@ -24,16 +72,28 @@ pub fn pop_bool(stack: &mut Stack) -> Result<bool, ChainGangError> {
 /// Pops a pre-genesis number off the stack
 #[inline]
 pub fn pop_num(stack: &mut Stack) -> Result<i32, ChainGangError> {
+    pop_num_minimal(stack, false)
+}
+
+/// Pops a pre-genesis number, optionally enforcing minimal encoding.
+#[inline]
+pub fn pop_num_minimal(
+    stack: &mut Stack,
+    require_minimal: bool,
+) -> Result<i32, ChainGangError> {
     if stack.is_empty() {
         let msg = "Cannot pop num, empty stack".to_string();
         return Err(ChainGangError::ScriptError(msg));
     }
     let top = stack.pop().unwrap();
-    // Numbers cannot be popped having more than 4 bytes, but may overflow on the stack to 5 bytes
-    // after certain operations and may be used as byte vectors.
     if top.len() > 4 {
         let msg = format!("Cannot pop num, len too long {}", top.len());
         return Err(ChainGangError::ScriptError(msg));
+    }
+    if require_minimal && !is_minimally_encoded(&top) {
+        return Err(ChainGangError::ScriptError(
+            "Number is not minimally encoded".to_string(),
+        ));
     }
     Ok(decode_num(&top)? as i32)
 }
@@ -47,20 +107,6 @@ pub fn pop_bigint(stack: &mut Stack) -> Result<BigInt, ChainGangError> {
     }
     let mut top = stack.pop().unwrap();
     Ok(decode_bigint(&mut top))
-}
-
-/// Converts a stack item to a bool
-#[inline]
-pub fn decode_bool(s: &[u8]) -> bool {
-    if s.is_empty() {
-        return false;
-    }
-    for item in s.iter().take(s.len() - 1) {
-        if *item != 0 {
-            return true;
-        }
-    }
-    s[s.len() - 1] & 127 != 0
 }
 
 /// Converts a stack item to a number
@@ -256,6 +302,22 @@ mod tests {
         assert!(pop_num(&mut vec![vec![129]]).unwrap() == -1);
         assert!(pop_num(&mut vec![vec![0, 0, 0, 0]]).unwrap() == 0);
         assert!(pop_num(&mut vec![vec![0, 0, 0, 0, 0]]).is_err());
+    }
+
+    #[test]
+    fn is_minimally_encoded_tests() {
+        assert!(is_minimally_encoded(&[]));
+        assert!(is_minimally_encoded(&[1]));
+        assert!(!is_minimally_encoded(&[0, 0, 0, 0]));
+        assert!(is_minimal_if_operand(&[]));
+        assert!(is_minimal_if_operand(&[1]));
+        assert!(!is_minimal_if_operand(&[0, 0, 0, 127]));
+    }
+
+    #[test]
+    fn pop_num_minimal_rejects_non_minimal_encoding() {
+        assert!(pop_num_minimal(&mut vec![vec![0, 0, 0, 0]], true).is_err());
+        assert!(pop_num_minimal(&mut vec![vec![1]], true).unwrap() == 1);
     }
 
     #[test]
