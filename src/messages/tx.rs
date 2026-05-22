@@ -1,6 +1,6 @@
 use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
-use crate::script::{op_codes, Script, TransactionChecker, NO_FLAGS, PREGENESIS_RULES};
+use crate::script::{eval_two_phase, op_codes, Script, TransactionChecker, uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES};
 use crate::transaction::sighash::SigHashCache;
 use crate::util::{sha256d, var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -115,11 +115,6 @@ impl Tx {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
 
-            let mut script = Script::new();
-            script.append_slice(&tx_in.unlock_script.0);
-            script.append(op_codes::OP_CODESEPARATOR);
-            script.append_slice(&tx_out.lock_script.0);
-
             let mut tx_checker = TransactionChecker {
                 tx: self,
                 sig_hash_cache: &mut sighash_cache,
@@ -135,7 +130,20 @@ impl Tx {
                 NO_FLAGS
             };
 
-            script.eval(&mut tx_checker, flags)?;
+            if uses_two_phase_eval(self.version) {
+                eval_two_phase(
+                    &tx_in.unlock_script.0,
+                    &tx_out.lock_script.0,
+                    &mut tx_checker,
+                    flags,
+                )?;
+            } else {
+                let mut script = Script::new();
+                script.append_slice(&tx_in.unlock_script.0);
+                script.append(op_codes::OP_CODESEPARATOR);
+                script.append_slice(&tx_out.lock_script.0);
+                script.eval(&mut tx_checker, flags)?;
+            }
         }
 
         if use_genesis_rules {

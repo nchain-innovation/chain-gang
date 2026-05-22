@@ -20,6 +20,24 @@ pub const NO_FLAGS: u32 = 0x00;
 /// Flag to execute the script with pre-genesis rules
 pub const PREGENESIS_RULES: u32 = 0x01;
 
+/// Whether script inputs are evaluated in separate unlock/lock phases (Chronicle).
+pub fn uses_two_phase_eval(tx_version: u32) -> bool {
+    tx_version > 1
+}
+
+/// Phase of a two-phase unlock/lock script evaluation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TwoPhasePhase {
+    Unlock,
+    Lock,
+}
+
+/// Context for Chronicle two-phase script evaluation (`tx.version > 1`).
+pub struct TwoPhaseEvalContext<'a> {
+    pub lock_script: &'a [u8],
+    pub phase: TwoPhasePhase,
+}
+
 fn verif_branch_exec<T: Checker>(
     checker: &T,
     comparison: BigInt,
@@ -34,6 +52,56 @@ fn substr_error(msg: &str) -> ChainGangError {
     ChainGangError::ScriptError(msg.to_string())
 }
 
+fn strip_code_separators(script: &[u8]) -> Vec<u8> {
+    let mut result = Vec::with_capacity(script.len());
+    let mut i = 0;
+    while i < script.len() {
+        let next = next_op(i, script);
+        if script[i] != OP_CODESEPARATOR {
+            result.extend_from_slice(&script[i..next]);
+        }
+        i = next;
+    }
+    result
+}
+
+fn checksig_script_code(
+    script: &[u8],
+    check_index: usize,
+    sig: &[u8],
+    two_phase: Option<&TwoPhaseEvalContext>,
+) -> Vec<u8> {
+    let mut cleaned_script = match two_phase {
+        None => script[check_index..].to_vec(),
+        Some(ctx) if ctx.phase == TwoPhasePhase::Unlock => {
+            let mut code = strip_code_separators(&script[check_index..]);
+            code.extend(strip_code_separators(ctx.lock_script));
+            code
+        }
+        Some(_) => strip_code_separators(&script[check_index..]),
+    };
+    if prefork(sig) {
+        cleaned_script = remove_sig(sig, &cleaned_script);
+    }
+    cleaned_script
+}
+
+fn multisig_script_code(
+    script: &[u8],
+    check_index: usize,
+    two_phase: Option<&TwoPhaseEvalContext>,
+) -> Vec<u8> {
+    match two_phase {
+        None => script[check_index..].to_vec(),
+        Some(ctx) if ctx.phase == TwoPhasePhase::Unlock => {
+            let mut code = strip_code_separators(&script[check_index..]);
+            code.extend(strip_code_separators(ctx.lock_script));
+            code
+        }
+        Some(_) => strip_code_separators(&script[check_index..]),
+    }
+}
+
 /// Core of the script evaluation - split out for debugging
 pub fn core_eval<T: Checker>(
     script: &[u8],
@@ -43,6 +111,7 @@ pub fn core_eval<T: Checker>(
     break_at: Option<usize>,
     stack_param: Option<Stack>,
     alt_stack_param: Option<Stack>,
+    two_phase: Option<&TwoPhaseEvalContext>,
 ) -> Result<(Stack, Stack, Option<usize>), ChainGangError> {
     let mut stack: Stack = stack_param.unwrap_or_else(|| Vec::with_capacity(STACK_CAPACITY));
     let mut alt_stack: Stack =
@@ -719,10 +788,8 @@ pub fn core_eval<T: Checker>(
                 check_stack_size(2, &stack)?;
                 let pubkey = stack.pop().unwrap();
                 let sig = stack.pop().unwrap();
-                let mut cleaned_script = script[check_index..].to_vec();
-                if prefork(&sig) {
-                    cleaned_script = remove_sig(&sig, &cleaned_script);
-                }
+                let cleaned_script =
+                    checksig_script_code(script, check_index, &sig, two_phase);
 
                 match checker.check_sig(&sig, &pubkey, &cleaned_script)? {
                     true => stack.push(encode_num(1)?),
@@ -733,10 +800,8 @@ pub fn core_eval<T: Checker>(
                 check_stack_size(2, &stack)?;
                 let pubkey = stack.pop().unwrap();
                 let sig = stack.pop().unwrap();
-                let mut cleaned_script = script[check_index..].to_vec();
-                if prefork(&sig) {
-                    cleaned_script = remove_sig(&sig, &cleaned_script);
-                }
+                let cleaned_script =
+                    checksig_script_code(script, check_index, &sig, two_phase);
                 if !checker.check_sig(&sig, &pubkey, &cleaned_script)? {
                     return Err(ChainGangError::ScriptError(
                         "OP_CHECKSIGVERIFY failed".to_string(),
@@ -744,13 +809,15 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_CHECKMULTISIG => {
-                match check_multisig(&mut stack, checker, &script[check_index..])? {
+                let cleaned_script = multisig_script_code(script, check_index, two_phase);
+                match check_multisig(&mut stack, checker, &cleaned_script)? {
                     true => stack.push(encode_num(1)?),
                     false => stack.push(encode_num(0)?),
                 }
             }
             OP_CHECKMULTISIGVERIFY => {
-                if !check_multisig(&mut stack, checker, &script[check_index..])? {
+                let cleaned_script = multisig_script_code(script, check_index, two_phase);
+                if !check_multisig(&mut stack, checker, &cleaned_script)? {
                     let msg = "OP_CHECKMULTISIGVERIFY failed".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }
@@ -814,7 +881,7 @@ pub fn core_eval<T: Checker>(
 
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(), ChainGangError> {
-    match core_eval(script, checker, flags, None, None, None, None) {
+    match core_eval(script, checker, flags, None, None, None, None, None) {
         Ok((stack, _alt_stack, _script_counter)) => {
             // We don't call pop_bool here because the final stack element can be longer than 4 bytes
             check_stack_size(1, &stack)?;
@@ -827,6 +894,56 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
         }
         Err(x) => Err(x),
     }
+}
+
+/// Evaluates unlock and lock scripts in separate phases (Chronicle, `tx.version > 1`).
+///
+/// The main stack is carried from unlock to lock; conditional and alt stacks are cleared
+/// between phases. CHECKSIG scriptCode in the unlock phase spans from the last
+/// OP_CODESEPARATOR in the unlock script through the end of the lock script.
+pub fn eval_two_phase<T: Checker>(
+    unlock: &[u8],
+    lock: &[u8],
+    checker: &mut T,
+    flags: u32,
+) -> Result<(), ChainGangError> {
+    let ctx_unlock = TwoPhaseEvalContext {
+        lock_script: lock,
+        phase: TwoPhasePhase::Unlock,
+    };
+    let (stack, _, _) = core_eval(
+        unlock,
+        checker,
+        flags,
+        None,
+        None,
+        None,
+        None,
+        Some(&ctx_unlock),
+    )?;
+
+    let ctx_lock = TwoPhaseEvalContext {
+        lock_script: lock,
+        phase: TwoPhasePhase::Lock,
+    };
+    let (stack, _, _) = core_eval(
+        lock,
+        checker,
+        flags,
+        None,
+        None,
+        Some(stack),
+        None,
+        Some(&ctx_lock),
+    )?;
+
+    check_stack_size(1, &stack)?;
+    if !decode_bool(&stack[stack.len() - 1]) {
+        return Err(ChainGangError::ScriptError(
+            "Top of stack is false".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 #[inline]
@@ -1811,5 +1928,106 @@ mod tests {
     fn chronicle_op_lshiftnum_rshiftnum() {
         pass(&[OP_4, OP_2, OP_LSHIFTNUM, OP_16, OP_EQUAL]);
         pass(&[OP_4, OP_2, OP_RSHIFTNUM, OP_1, OP_EQUAL]);
+    }
+
+    #[test]
+    fn uses_two_phase_eval_gated_on_version() {
+        assert!(!uses_two_phase_eval(1));
+        assert!(uses_two_phase_eval(2));
+    }
+
+    #[test]
+    fn chronicle_two_phase_carries_stack() {
+        let unlock = [OP_2, OP_3, OP_ADD];
+        let lock = [OP_5, OP_EQUAL];
+        let mut c = MockChecker::new();
+        assert!(eval_two_phase(&unlock, &lock, &mut c, NO_FLAGS).is_ok());
+    }
+
+    #[test]
+    fn chronicle_two_phase_clears_alt_stack() {
+        let unlock = [OP_1, OP_TOALTSTACK, OP_2, OP_3, OP_ADD];
+        let lock = [OP_5, OP_EQUAL];
+        let mut c = MockChecker::new();
+        assert!(eval_two_phase(&unlock, &lock, &mut c, NO_FLAGS).is_ok());
+    }
+
+    struct ScriptRecordingChecker {
+        sig_checks: RefCell<Vec<bool>>,
+        scripts: RefCell<Vec<Vec<u8>>>,
+    }
+
+    impl ScriptRecordingChecker {
+        fn new(sig_checks: Vec<bool>) -> Self {
+            ScriptRecordingChecker {
+                sig_checks: RefCell::new(sig_checks),
+                scripts: RefCell::new(Vec::new()),
+            }
+        }
+    }
+
+    impl Checker for ScriptRecordingChecker {
+        fn check_sig(
+            &mut self,
+            _sig: &[u8],
+            _pubkey: &[u8],
+            script: &[u8],
+        ) -> Result<bool, ChainGangError> {
+            self.scripts.borrow_mut().push(script.to_vec());
+            Ok(self.sig_checks.borrow_mut().pop().unwrap())
+        }
+
+        fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+            Ok(true)
+        }
+
+        fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+            Ok(true)
+        }
+    }
+
+    #[test]
+    fn chronicle_two_phase_unlock_checksig_script_code() {
+        let mut unlock = Script::new();
+        unlock.append_data(b"s0");
+        unlock.append_data(b"s1");
+        unlock.append(OP_CODESEPARATOR);
+        unlock.append_data(b"p1");
+        unlock.append(OP_CHECKSIG);
+
+        let mut lock = Script::new();
+        lock.append_data(b"p0");
+        lock.append(OP_CHECKSIG);
+
+        let mut expected_unlock_code = Script::new();
+        expected_unlock_code.append_data(b"p1");
+        expected_unlock_code.append(OP_CHECKSIG);
+        expected_unlock_code.append_data(b"p0");
+        expected_unlock_code.append(OP_CHECKSIG);
+
+        let mut expected_lock_code = Script::new();
+        expected_lock_code.append_data(b"p0");
+        expected_lock_code.append(OP_CHECKSIG);
+
+        let mut checker = ScriptRecordingChecker::new(vec![true, true]);
+        assert!(eval_two_phase(&unlock.0, &lock.0, &mut checker, NO_FLAGS).is_ok());
+
+        let scripts = checker.scripts.borrow();
+        assert_eq!(scripts.len(), 2);
+        assert_eq!(scripts[0], expected_unlock_code.0);
+        assert_eq!(scripts[1], expected_lock_code.0);
+    }
+
+    #[test]
+    fn strip_code_separators_removes_codesep_bytes() {
+        let mut script = Script::new();
+        script.append(OP_1);
+        script.append(OP_CODESEPARATOR);
+        script.append(OP_2);
+        script.append(OP_CODESEPARATOR);
+        script.append(OP_3);
+
+        let stripped = strip_code_separators(&script.0);
+        assert_eq!(stripped, [OP_1, OP_2, OP_3]);
     }
 }
