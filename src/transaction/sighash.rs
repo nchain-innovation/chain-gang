@@ -17,6 +17,8 @@ pub const SIGHASH_SINGLE: u8 = 0x03;
 pub const SIGHASH_ANYONECANPAY: u8 = 0x80;
 /// Bitcoin Cash / SV sighash flag for use on outputs after the fork
 pub const SIGHASH_FORKID: u8 = 0x40;
+/// Chronicle sighash flag selecting the Original Transaction Digest Algorithm (OTDA)
+pub const SIGHASH_CHRONICLE: u8 = 0x20;
 
 /// The 24-bit fork ID for Bitcoin Cash / SV
 const FORK_ID: u32 = 0;
@@ -31,7 +33,9 @@ const FORK_ID: u32 = 0;
 
 /// Generates a transaction digest for signing
 ///
-/// This will use either BIP-143 or the legacy algorithm depending on if SIGHASH_FORKID is set.
+/// When `SIGHASH_FORKID` is set without `SIGHASH_CHRONICLE`, BIP-143 is used.
+/// When `SIGHASH_CHRONICLE` is set, the Original Transaction Digest Algorithm
+/// (OTDA) is used. Otherwise the legacy pre-fork algorithm is used.
 ///
 /// # Arguments
 ///
@@ -73,7 +77,7 @@ pub fn sighash_checksig_index(
     sighash_type: u8,
     cache: &mut SigHashCache,
 ) -> Result<Hash256, ChainGangError> {
-    if sighash_type & SIGHASH_FORKID != 0 {
+    if uses_bip143(sighash_type) {
         bip143_sighash(
             tx,
             n_input,
@@ -84,8 +88,13 @@ pub fn sighash_checksig_index(
             cache,
         )
     } else {
-        legacy_sighash(tx, n_input, script_code, checksig_index, sighash_type)
+        otda_sighash(tx, n_input, script_code, checksig_index, sighash_type)
     }
+}
+
+/// BIP-143 is used when FORKID is set and CHRONICLE is not, matching bitcoin-sv.
+fn uses_bip143(sighash_type: u8) -> bool {
+    sighash_type & SIGHASH_FORKID != 0 && sighash_type & SIGHASH_CHRONICLE == 0
 }
 
 /// Cache for sighash intermediate values to avoid quadratic hashing
@@ -166,7 +175,7 @@ fn bip143_sighash(
 ) -> Result<Hash256, ChainGangError> {
     // The intention is to return any error(s) without any extra processing & according to the
     // docs the '?' operator is the most idiomatic & concise.
-    let s = sig_hash_preimage_checksig_index(
+    let s = bip143_sighash_preimage(
         tx,
         n_input,
         script_code,
@@ -244,16 +253,33 @@ fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8
     }
 }
 
-/// Generates the transaction digest for signing using the legacy algorithm
+/// Generates the transaction digest for signing using OTDA (Original Transaction Digest Algorithm).
 ///
-/// This is used for all transaction validation before the August 2017 fork.
-fn legacy_sighash(
+/// This is the original Bitcoin sighash, selected when the Chronicle flag is set or
+/// when signing pre-fork transactions without `SIGHASH_FORKID`.
+fn otda_sighash(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
     checksig_index: usize,
     sighash_type: u8,
 ) -> Result<Hash256, ChainGangError> {
+    Ok(sha256d(&otda_sighash_preimage(
+        tx,
+        n_input,
+        script_code,
+        checksig_index,
+        sighash_type,
+    )?))
+}
+
+fn otda_sighash_preimage(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    checksig_index: usize,
+    sighash_type: u8,
+) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
         return Err(ChainGangError::BadArgument(
             "input out of tx_in range".to_string(),
@@ -322,9 +348,20 @@ fn legacy_sighash(
     // Serialize the lock time
     s.write_u32::<LittleEndian>(tx.lock_time)?;
 
-    // Append the sighash_type and finally double hash the result
+    // Append the sighash_type and return the serialized preimage
     s.write_u32::<LittleEndian>(sighash_type as u32)?;
-    Ok(sha256d(&s))
+    Ok(s)
+}
+
+/// Pre-fork alias for OTDA sighash.
+fn legacy_sighash(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    checksig_index: usize,
+    sighash_type: u8,
+) -> Result<Hash256, ChainGangError> {
+    otda_sighash(tx, n_input, script_code, checksig_index, sighash_type)
 }
 
 pub fn sig_hash_preimage(
@@ -351,6 +388,30 @@ pub fn sig_hash_preimage(
 // this code was duplicated from bip143_sighash above (that function now calls this one)
 // as above with checksig_index
 pub fn sig_hash_preimage_checksig_index(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    checksig_index: usize,
+    satoshis: i64,
+    sighash_type: u8,
+    cache: &mut SigHashCache,
+) -> Result<Vec<u8>, ChainGangError> {
+    if uses_bip143(sighash_type) {
+        bip143_sighash_preimage(
+            tx,
+            n_input,
+            script_code,
+            checksig_index,
+            satoshis,
+            sighash_type,
+            cache,
+        )
+    } else {
+        otda_sighash_preimage(tx, n_input, script_code, checksig_index, sighash_type)
+    }
+}
+
+fn bip143_sighash_preimage(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
@@ -455,8 +516,7 @@ mod tests {
     use crate::transaction::p2pkh;
     use hex;
 
-    #[test]
-    fn bip143_sighash_test() {
+    fn bip143_sighash_test_tx() -> (Tx, Vec<u8>) {
         let lock_script =
             hex::decode("76a91402b74813b047606b4b3fbdfb1a6e8e053fdb8dab88ac").unwrap();
         let addr = "mfmKD4cP6Na7T8D87XRSiR7shA1HNGSaec";
@@ -486,6 +546,12 @@ mod tests {
             ],
             lock_time: 0,
         };
+        (tx, lock_script)
+    }
+
+    #[test]
+    fn bip143_sighash_test() {
+        let (tx, lock_script) = bip143_sighash_test_tx();
         let mut cache = SigHashCache::new();
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         let sighash =
@@ -495,6 +561,51 @@ mod tests {
         assert!(cache.hash_prevouts.is_some());
         assert!(cache.hash_sequence.is_some());
         assert!(cache.hash_outputs.is_some());
+    }
+
+    #[test]
+    fn sighash_without_chronicle_uses_bip143() {
+        let (tx, lock_script) = bip143_sighash_test_tx();
+        let mut cache = SigHashCache::new();
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let routed = sighash(&tx, 0, &lock_script, 260000000, sighash_type, &mut cache).unwrap();
+        let expected =
+            bip143_sighash(&tx, 0, &lock_script, 0, 260000000, sighash_type, &mut cache).unwrap();
+        assert_eq!(routed, expected);
+    }
+
+    #[test]
+    fn sighash_chronicle_routes_to_otda() {
+        let (tx, lock_script) = bip143_sighash_test_tx();
+        let mut cache = SigHashCache::new();
+        let bip143_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let chronicle_type = SIGHASH_ALL | SIGHASH_FORKID | SIGHASH_CHRONICLE;
+
+        let bip143_hash = sighash(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
+        let chronicle_hash =
+            sighash(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
+        let otda_hash = legacy_sighash(&tx, 0, &lock_script, 0, chronicle_type).unwrap();
+
+        assert_ne!(bip143_hash, chronicle_hash);
+        assert_eq!(chronicle_hash, otda_hash);
+    }
+
+    #[test]
+    fn sighash_chronicle_preimage_matches_hash() {
+        let (tx, lock_script) = bip143_sighash_test_tx();
+        let mut cache = SigHashCache::new();
+        let bip143_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let chronicle_type = SIGHASH_ALL | SIGHASH_FORKID | SIGHASH_CHRONICLE;
+
+        let chronicle_hash =
+            sighash(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
+        let chronicle_preimage =
+            sig_hash_preimage(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
+        let bip143_preimage =
+            sig_hash_preimage(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
+
+        assert_ne!(bip143_preimage, chronicle_preimage);
+        assert_eq!(chronicle_hash, sha256d(&chronicle_preimage));
     }
 
     #[test]
