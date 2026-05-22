@@ -95,23 +95,11 @@ impl Checker for ZChecker {
 
         let sig_hash = self.z;
         let der_sig = &sig[0..sig.len() - 1];
-        let signature = match Signature::from_der(der_sig) {
-            Ok(sig) => sig,
-            Err(e) => {
-                println!("Failed to parse the signature: {e}");
-                return Err(e.into()); // Return the error to the caller
-            }
-        };
+        let signature = Signature::from_der(der_sig)?;
 
         let message = sig_hash.0;
 
-        let verifying_key = match VerifyingKey::from_sec1_bytes(pubkey) {
-            Ok(verkey) => verkey,
-            Err(e) => {
-                println!("Failed to parse the public key {e}");
-                return Err(e.into());
-            }
-        };
+        let verifying_key = VerifyingKey::from_sec1_bytes(pubkey)?;
 
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }

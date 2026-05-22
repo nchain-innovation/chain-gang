@@ -4,6 +4,14 @@ This library provides a Python interface for building BitcoinSV scripts and tran
 
 For documentation of the Python Classes see below.
 
+## Chronicle upgrade
+
+Bitcoin SV [Chronicle](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) support is implemented in the Rust library (`chain-gang`). See [docs/Chronicle.md](docs/Chronicle.md) for sighash routing, opcodes, two-phase script evaluation, malleability rules, and script number limits.
+
+Chronicle behavior is gated on **`tx.version > 1`** when validating transactions in Rust (`Tx.validate`). Use `version: 2` (or higher) on spending transactions to opt in.
+
+**Python `Context` debugger:** stepping scripts via `Context` uses the legacy single-script evaluator without transaction version. It does not perform two-phase unlock/lock evaluation or version-gated malleability rules. For Chronicle-accurate validation, use Rust `Tx.validate` or build unlock/lock scripts explicitly. `OP_VER` and related opcodes require a transaction version and will fail in `Context` unless a version-aware checker is added.
+
 # Python Installation
 As this library is hosted on PyPi (https://pypi.org/project/tx-engine/) and is installed using:
 
@@ -105,6 +113,9 @@ Context has the following methods:
 * `__init__(self, script: Script, cmds: Commands = None, ip_limit: int , z: bytes)` - constructor
 * `evaluate_core(self, quiet: bool = False) -> bool` - evaluates the script/cmds using the the interpreter and returns the stacks (`tack`, `alt_stack`). if quiet is true, dont print exceptions
 * `evaluate(self, quiet: bool = False) -> bool` - executes the script and decode stack elements to numbers (`stack`, `alt_stack`). Checks `stack` is true on return. if quiet is true, dont print exceptions.
+
+Note: `evaluate` / `evaluate_core` use the legacy debugger path (see [Chronicle upgrade](#chronicle-upgrade)). They do not apply Chronicle two-phase eval or version-gated malleability rules.
+
 * `get_stack(self) -> Stack` - Return the `stack` as human readable
 * `get_altstack(self) -> Stack`-  Return the `alt_stack` as human readable
 * `set_ip_start(self, start: int)` - sets the start location for the intepreter. 

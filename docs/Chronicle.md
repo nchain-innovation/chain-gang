@@ -87,6 +87,14 @@ Rules apply when the checker provides a transaction version (`TransactionChecker
 
 Rust: `uses_relaxed_malleability()`, `is_push_only()` in `src/script/interpreter.rs`.
 
+## Script number limit
+
+The maximum encoded script number size increases from 750 KB to 32 MB for Chronicle transactions (`tx.version > 1`). Pre-genesis inputs (`PREGENESIS_RULES`) keep the 4-byte limit; post-genesis `version == 1` transactions keep 750 KB.
+
+Rust: `max_script_num_length()`, `MAX_SCRIPT_NUM_LENGTH_*` in `src/script/stack.rs`; enforced in `core_eval()` via `pop_bigint_checked()` and `OP_BIN2NUM` / `OP_NUM2BIN`.
+
+Python: `MAX_SCRIPT_NUM_LENGTH_CHRONICLE` in `python/src/tx_engine/engine/util.py`.
+
 ## Implementation status
 
 - [x] OTDA sighash routing (`SIGHASH_CHRONICLE`)
@@ -96,7 +104,7 @@ Rust: `uses_relaxed_malleability()`, `is_push_only()` in `src/script/interpreter
 - [x] Chronicle opcodes (OP_VER, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_LSHIFTNUM, OP_RSHIFTNUM)
 - [x] Two-phase unlock/lock script evaluation (`tx.version > 1`)
 - [x] Version-gated malleability relaxation (`tx.version > 1`)
-- [ ] 32 MB script number limit
+- [x] 32 MB script number limit (`tx.version > 1`)
 
 ## References
 
