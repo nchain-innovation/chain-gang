@@ -2,11 +2,19 @@
 
 Index for **chain-gang** (Rust library) and **tx-engine** (Python bindings).
 
+## Readmes (by platform)
+
+| File | Shown on |
+|------|----------|
+| [README.md](../README.md) | **GitHub** repo home (Rust monorepo landing) |
+| [README-pypi.md](../README-pypi.md) | **PyPI** (`tx-engine` package page) |
+| [README-chain-gang.md](README-chain-gang.md) | **crates.io** / **docs.rs** (`chain-gang` crate) |
+
 ## Python (`tx-engine`)
 
 | Document | Description |
 |----------|-------------|
-| [README.md](../README.md) | Install from PyPI, quick start, Chronicle overview |
+| [README-pypi.md](../README-pypi.md) | PyPI package page — install, quick start, Chronicle overview |
 | [Python-API.md](Python-API.md) | **Python class reference** — Script, Tx, Context, Wallet, interfaces |
 | [python/README.md](../python/README.md) | Python package layout, local dev, and tests |
 | [Chronicle-Python.md](Chronicle-Python.md) | **Python Chronicle guide** — examples for Context, Tx, signing, helpers |

@@ -1,6 +1,6 @@
 # Python API reference
 
-Class and function reference for **tx-engine**. For install and a quick start, see [README.md](../README.md). Chronicle examples: [Chronicle-Python.md](Chronicle-Python.md).
+Class and function reference for **tx-engine**. For install and a quick start, see [README-pypi.md](../README-pypi.md) (PyPI) or [README.md](../README.md) (GitHub). Chronicle examples: [Chronicle-Python.md](Chronicle-Python.md).
 
 ## Overview
 

@@ -6,7 +6,8 @@ Notes on the development of `chain-gang` and the `tx_engine` Python interface.
 
 # Project directory structure
 ```
-├── README.md
+├── README.md              # GitHub repo home (Rust)
+├── README-pypi.md         # PyPI readme (Python)
 ├── docs
 │   ├── README.md
 │   ├── Python-API.md

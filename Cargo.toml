@@ -7,6 +7,7 @@ authors = ["Arthur Gordon <a.gordon@nchain.com>"]
 keywords = ["bitcoin", "sv", "cash", "crypto"]
 license = "MIT"
 edition = "2021"
+readme = "docs/README-chain-gang.md"
 
 [dependencies]
 byteorder = "1.5"
