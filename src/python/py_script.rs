@@ -63,8 +63,6 @@ fn handle_pushdata(cmd: &Command, is_pushdata: usize) -> usize {
 
 fn decode_op(op: &str, is_pushdata: usize) -> Command {
     let op = op.trim();
-    // println!("decode_op({:?})", &op);
-    // Command
     if let Some(val) = OP_CODE_NAMES.get(op) {
         return Command::Int(*val);
     }

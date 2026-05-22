@@ -6,7 +6,6 @@ use pyo3::{
     types::{PyDict, PyInt, PyList},
 };
 
-//use std::ffi::CStr;
 use std::ffi::CString;
 
 #[pyclass(name = "Stack", get_all, set_all, dict)]
