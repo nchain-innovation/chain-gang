@@ -12,14 +12,12 @@ use crate::{
         wallet::{wif_to_network_and_private_key, Wallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
     },
 };
-use k256::{ecdsa::SigningKey, elliptic_curve::generic_array::GenericArray};
+use k256::ecdsa::SigningKey;
 use num_bigint::{BigInt, Sign};
 use pyo3::{
     prelude::*,
     types::{PyDict, PyInt, PyType},
 };
-
-use typenum::U32;
 //use std::ffi::CStr;
 use std::ffi::CString;
 
@@ -133,10 +131,8 @@ pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet, Chain
         while big_int_bytes.len() < 32 {
             big_int_bytes.insert(0, 0);
         }
-        // Convert the 32-byte array to a slice
-        let key_bytes: &[u8; 32] = &big_int_bytes.try_into().expect("Expected 32-byte array");
-        let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(key_bytes);
-        let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
+        let key_bytes: [u8; 32] = big_int_bytes.try_into().expect("Expected 32-byte array");
+        let private_key = SigningKey::from_slice(&key_bytes).expect("Invalid private key");
 
         let public_key = *private_key.verifying_key();
         let wallet = Wallet::new(private_key, public_key, netwrk);
@@ -247,13 +243,7 @@ impl PyWallet {
     }
 
     fn to_int(&self, py: Python<'_>) -> PyResult<Py<PyInt>> {
-        // Convert the private key into bytes
-        let private_key_bytes = self.wallet.private_key.to_bytes();
-        // Convert GenericArray<u8, _> to [u8; 32]
-        let private_key_array: [u8; 32] = private_key_bytes
-            .as_slice()
-            .try_into()
-            .expect("Private key size mismatch");
+        let private_key_array: [u8; 32] = self.wallet.private_key.to_bytes().into();
 
         // convert to a BitInt (signed for now)
         let big_int_signed_rep = BigInt::from_bytes_be(Sign::Plus, &private_key_array);
@@ -273,13 +263,7 @@ impl PyWallet {
     }
 
     fn to_hex(&self) -> String {
-        // Convert the private key into bytes
-        let private_key_bytes = self.wallet.private_key.to_bytes();
-        // Convert GenericArray<u8, _> to [u8; 32]
-        let private_key_array: [u8; 32] = private_key_bytes
-            .as_slice()
-            .try_into()
-            .expect("Private key size mismatch");
+        let private_key_array: [u8; 32] = self.wallet.private_key.to_bytes().into();
         hex::encode(private_key_array)
     }
 
@@ -304,9 +288,8 @@ impl PyWallet {
                 let msg = "Private key must be 32 bytes long".to_string();
                 return Err(ChainGangError::BadData(msg).into());
             }
-            // Convert &[u8] to a GenericArray<u8, 32>
-            let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(key_bytes);
-            let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
+            let key_array: [u8; 32] = key_bytes.try_into().expect("Private key must be 32 bytes");
+            let private_key = SigningKey::from_slice(&key_array).expect("Invalid private key");
             let public_key = *private_key.verifying_key();
             let wallet = Wallet::new(private_key, public_key, netwrk);
             Ok(PyWallet { wallet })
@@ -331,9 +314,8 @@ impl PyWallet {
                 return Err(ChainGangError::BadData(msg).into());
             }
 
-            // Convert &[u8] to a GenericArray<u8, 32>
-            let key_array: &GenericArray<u8, U32> = GenericArray::from_slice(&key_bytes);
-            let private_key = SigningKey::from_bytes(key_array).expect("Invalid private key");
+            let key_array: [u8; 32] = key_bytes.try_into().expect("Private key must be 32 bytes");
+            let private_key = SigningKey::from_slice(&key_array).expect("Invalid private key");
             let public_key = *private_key.verifying_key();
             let wallet = Wallet::new(private_key, public_key, netwrk);
             Ok(PyWallet { wallet })
