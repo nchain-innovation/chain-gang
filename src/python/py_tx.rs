@@ -1,5 +1,6 @@
 use crate::{
     messages::{OutPoint, Tx, TxIn, TxOut},
+    network::Network,
     python::py_script::PyScript,
     util::{ChainGangError, Hash256, Serializable},
 };
@@ -14,6 +15,53 @@ use std::{
     fmt,
     io::Cursor,
 };
+
+fn parse_network(network: &str) -> Result<Network, ChainGangError> {
+    match network {
+        "BSV_Mainnet" => Ok(Network::BSV_Mainnet),
+        "BSV_Testnet" => Ok(Network::BSV_Testnet),
+        "BSV_STN" => Ok(Network::BSV_STN),
+        _ => Err(ChainGangError::BadData(format!(
+            "Unknown network: {network}"
+        ))),
+    }
+}
+
+fn build_processed_utxos(
+    tx: &Tx,
+    utxos: &[PyTx],
+) -> Result<LinkedHashMap<OutPoint, TxOut>, ChainGangError> {
+    let outpoints: Vec<OutPoint> = tx.inputs.iter().map(|x| x.prev_output.clone()).collect();
+    let utxo_as_tx: HashMap<Hash256, Tx> = utxos
+        .iter()
+        .map(|x| x.as_tx())
+        .map(|tx| (tx.hash(), tx))
+        .collect();
+
+    let mut processed_utxo: LinkedHashMap<OutPoint, TxOut> = LinkedHashMap::new();
+    for op in outpoints {
+        match utxo_as_tx.get(&op.hash) {
+            Some(tx) => match tx.outputs.get(op.index as usize) {
+                Some(txout) => {
+                    processed_utxo.insert(op, txout.clone());
+                }
+                None => {
+                    return Err(ChainGangError::BadData(format!(
+                        "Invalid Outpoint index {}",
+                        op.index
+                    )));
+                }
+            },
+            None => {
+                return Err(ChainGangError::BadData(format!(
+                    "Unable to find hash {:?}",
+                    op.hash
+                )));
+            }
+        };
+    }
+    Ok(processed_utxo)
+}
 
 /// TxIn - This represents a bitcoin transaction input
 //
@@ -301,39 +349,39 @@ impl PyTx {
             return Err(ChainGangError::BadData(msg).into());
         }
 
-        // Get the tx input OutPoints
-        let outpoints: Vec<OutPoint> = tx.inputs.iter().map(|x| x.prev_output.clone()).collect();
-
-        // Speed up the OutPoint lookups by preparing HashMap
-        let utxo_as_tx: HashMap<Hash256, Tx> = utxos
-            .iter()
-            .map(|x| x.as_tx())
-            .map(|tx| (tx.hash(), tx))
-            .collect();
-
-        // Convert input utxos into processed_utxo: &LinkedHashMap<OutPoint, TxOut>,
-        let mut processed_utxo: LinkedHashMap<OutPoint, TxOut> = LinkedHashMap::new();
-        for op in outpoints {
-            match utxo_as_tx.get(&op.hash) {
-                Some(tx) => match tx.outputs.get(op.index as usize) {
-                    Some(txout) => processed_utxo.insert(op, txout.clone()),
-                    None => {
-                        let msg = format!("Invalid Outpoint index {}", op.index);
-                        return Err(ChainGangError::BadData(msg).into());
-                    }
-                },
-                None => {
-                    let msg = format!("Unable to find hash {:?}", op.hash);
-                    return Err(ChainGangError::BadData(msg).into());
-                }
-            };
-        }
-        // Empty HashSet
+        let processed_utxo = build_processed_utxos(&tx, &utxos)?;
         let pregenesis_outputs: HashSet<OutPoint> = HashSet::new();
+        Ok(tx.validate(true, true, &processed_utxo, &pregenesis_outputs)?)
+    }
 
-        // Call validate
-        let result = tx.validate(true, true, &processed_utxo, &pregenesis_outputs);
-        Ok(result?)
+    /// Validate with BSV Chronicle activation enforced at ``block_height`` on ``network``.
+    ///
+    /// ``network`` is one of ``BSV_Mainnet``, ``BSV_Testnet``, or ``BSV_STN``.
+    /// Unlike :meth:`validate`, this rejects ``tx.version > 1`` spends before the
+    /// documented Chronicle activation height on that network.
+    fn validate_at_height(
+        &self,
+        utxos: Vec<PyTx>,
+        block_height: u64,
+        network: &str,
+    ) -> PyResult<()> {
+        let tx = self.as_tx();
+        if tx.coinbase() {
+            let msg = "Validate can not check coinbase transactions.".to_string();
+            return Err(ChainGangError::BadData(msg).into());
+        }
+
+        let processed_utxo = build_processed_utxos(&tx, &utxos)?;
+        let pregenesis_outputs: HashSet<OutPoint> = HashSet::new();
+        let network = parse_network(network)?;
+        Ok(tx.validate_at_height(
+            true,
+            true,
+            &processed_utxo,
+            &pregenesis_outputs,
+            block_height,
+            network,
+        )?)
     }
 
     /// Parse Bytes to produce Tx
