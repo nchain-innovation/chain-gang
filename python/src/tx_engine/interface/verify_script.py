@@ -1,129 +1,149 @@
-""" Script Verification Flags
+"""Helpers for BSV node ``verifyscript`` RPC and Chronicle validation in chain-gang.
+
+**Local validation (chain-gang):** ``Tx.validate()`` and ``Context`` do **not** use
+``ScriptFlags``. Chronicle script rules (two-phase eval, malleability relaxation,
+32 MB script numbers, high-S verify) are gated on ``tx.version > 1``. Rust also
+supports height-aware checks via ``Tx::validate_at_height()``; Python ``Tx.validate()``
+uses version-only gating. See ``docs/Chronicle.md``.
+
+**Node RPC:** ``ScriptFlags`` documents flag bits for ``verifyscript`` calls through
+``RPCInterface`` to a bitcoin-sv node. The node applies its own Chronicle activation
+at consensus block heights; do not assume the same bitmask controls chain-gang eval.
 """
 from enum import Enum
-from typing import Dict, Any
+from typing import Any, Dict, Final, Optional
+
+# BSV Chronicle activation heights (consensus). See docs/Chronicle.md.
+CHRONICLE_ACTIVATION_MAINNET: Final = 943_835
+CHRONICLE_ACTIVATION_TESTNET: Final = 1_713_022
+
+
+def activation_height(network: Optional[str]) -> Optional[int]:
+    """Return the Chronicle activation height for a BSV network name, if known."""
+    if network is None:
+        return None
+    normalized = network.lower().replace("_", "")
+    if normalized in ("bsvmainnet", "mainnet", "main"):
+        return CHRONICLE_ACTIVATION_MAINNET
+    if normalized in ("bsvtestnet", "testnet", "test", "bsvstn", "stn"):
+        return CHRONICLE_ACTIVATION_TESTNET
+    return None
+
+
+def chronicle_rules_active(
+    tx_version: int,
+    block_height: Optional[int] = None,
+    network: Optional[str] = None,
+) -> bool:
+    """Whether Chronicle script rules apply (mirrors ``chain_gang::chronicle``).
+
+    When ``block_height`` and ``network`` are omitted, returns ``tx_version > 1``
+    (chain-gang ``Tx.validate()`` default). When both are set on a BSV network,
+    activation height is enforced.
+    """
+    if tx_version <= 1:
+        return False
+    if block_height is None and network is None:
+        return True
+    if block_height is not None and network is not None:
+        threshold = activation_height(network)
+        if threshold is None:
+            return False
+        return block_height >= threshold
+    return True
+
+
+def effective_chronicle_tx_version(
+    tx_version: int,
+    block_height: Optional[int] = None,
+    network: Optional[str] = None,
+) -> int:
+    """Script version for Chronicle rules after optional activation context."""
+    if chronicle_rules_active(tx_version, block_height, network):
+        return tx_version
+    if tx_version > 1:
+        return 1
+    return tx_version
 
 
 class ScriptFlags(int, Enum):
-    """ Script Verification flags, for details see bitcoin source code src/script/script_flags.h
+    """Bitcoin-SV node ``verifyscript`` flag bits (RPC reference only).
+
+    These flags are passed to a **node** ``verifyscript`` RPC call. They are **not**
+    used by chain-gang's Rust/Python script interpreter. For local validation, set
+    ``tx.version`` and use ``Tx.validate()`` / ``Context(tx_version=...)`` instead.
+
+    Legacy node flags such as ``CLEANSTACK``, ``MINIMALIF``, ``NULLFAIL``, and
+    ``SIGPUSHONLY`` correspond to malleability rules that chain-gang applies
+    automatically from ``tx.version`` when ``chronicle_rules_active()`` is true.
     """
+
     SCRIPT_VERIFY_NONE = 0
 
-    ''' Evaluate P2SH subscripts (softfork safe, BIP16).
-    '''
+    # Evaluate P2SH subscripts (BIP16).
     SCRIPT_VERIFY_P2SH = 1 << 0
 
-    ''' Passing a non-strict-DER signature or one with undefined hashtype to a
-        checksig operation causes script failure. Evaluating a pubkey that is not
-        (0x04 + 64 bytes) or (0x02 or 0x03 + 32 bytes) by checksig causes script
-        failure.
-    '''
+    # Strict signature and pubkey encoding (BIP62-related).
     SCRIPT_VERIFY_STRICTENC = 1 << 1
 
-    '''Passing a non-strict-DER signature to a checksig operation causes script
-        failure (softfork safe, BIP62 rule 1)
-    '''
+    # Strict DER signatures (BIP62 rule 1).
     SCRIPT_VERIFY_DERSIG = 1 << 2
 
-    '''Passing a non-strict-DER signature or one with S > order/2 to a checksig
-        operation causes script failure
-        (softfork safe, BIP62 rule 5).
-    '''
+    # Low-S signatures (BIP62 rule 5). Relaxed for Chronicle txs (version > 1) on-node.
     SCRIPT_VERIFY_LOW_S = 1 << 3
 
-    ''' verify dummy stack item consumed by CHECKMULTISIG is of zero-length
-        (softfork safe, BIP62 rule 7).
-    '''
+    # CHECKMULTISIG dummy must be empty (BIP62 rule 7). Relaxed locally when Chronicle active.
     SCRIPT_VERIFY_NULLDUMMY = 1 << 4
 
-    ''' Using a non-push operator in the scriptSig causes script failure
-        (softfork safe, BIP62 rule 2).
-    '''
+    # scriptSig must be push-only (BIP62 rule 2). Relaxed locally when Chronicle active.
     SCRIPT_VERIFY_SIGPUSHONLY = 1 << 5
 
-    ''' Require minimal encodings for all push operations (OP_0... OP_16,
-        OP_1NEGATE where possible, direct pushes up to 75 bytes, OP_PUSHDATA up
-        to 255 bytes, OP_PUSHDATA2 for anything larger). Evaluating any other
-        push causes the script to fail (BIP62 rule 3). In addition, whenever a
-        stack element is interpreted as a number, it must be of minimal length
-        (BIP62 rule 4).
-        (softfork safe)
-    '''
+    # Minimal push and number encodings (BIP62 rules 3–4). Relaxed locally when Chronicle active.
     SCRIPT_VERIFY_MINIMALDATA = 1 << 6
 
-    ''' Discourage use of NOPs reserved for upgrades (NOP1-10)
-        Provided so that nodes can avoid accepting or mining transactions
-        containing executed NOP's whose meaning may change after a soft-fork,
-        thus rendering the script invalid; with this flag set executing
-        discouraged NOPs fails the script. This verification flag will never be a
-        mandatory flag applied to scripts in a block. NOPs that are not executed,
-        e.g.  within an unexecuted IF ENDIF block, are *not* rejected.
-    '''
     SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS = 1 << 7
 
-    ''' Require that only a single stack element remains after evaluation. This
-        changes the success criterion from "At least one stack element must
-        remain, and when interpreted as a boolean, it must be true" to "Exactly
-        one stack element must remain, and when interpreted as a boolean, it must
-        be true".
-        (softfork safe, BIP62 rule 6)
-        Note: CLEANSTACK should never be used without P2SH or WITNESS.
-    '''
+    # Exactly one true stack item (BIP62 rule 6). Relaxed locally when Chronicle active.
     SCRIPT_VERIFY_CLEANSTACK = 1 << 8
 
-    ''' Verify CHECKLOCKTIMEVERIFY
-        See BIP65 for details.
-    '''
     SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY = 1 << 9
-
-    ''' Support CHECKSEQUENCEVERIFY opcode
-
-        See BIP112 for details
-    '''
     SCRIPT_VERIFY_CHECKSEQUENCEVERIFY = 1 << 10
 
-    '''Require the argument of OP_IF/NOTIF to be exactly 0x01 or empty vector
-    '''
+    # OP_IF/NOTIF operand must be empty or 0x01. Relaxed locally when Chronicle active.
     SCRIPT_VERIFY_MINIMALIF = 1 << 13
 
-    ''' Signature(s) must be empty vector if an CHECK(MULTI)SIG operation failed
-    '''
+    # Failed CHECK(MULTI)SIG requires empty signature. Relaxed locally when Chronicle active.
     SCRIPT_VERIFY_NULLFAIL = 1 << 14
 
-    '''Public keys in scripts must be compressed
-    '''
     SCRIPT_VERIFY_COMPRESSED_PUBKEYTYPE = 1 << 15
-
-    ''' Do we accept signature using SIGHASH_FORKID
-    '''
     SCRIPT_ENABLE_SIGHASH_FORKID = 1 << 16
-
-    '''Is Genesis enabled - transcations that is being executed is part of block that uses Geneisis rules.
-    '''
     SCRIPT_GENESIS = 1 << 18
-
-    ''' UTXO being used in this script was created *after* Genesis upgrade
-        has been activated. This activates new rules (such as original meaning of OP_RETURN)
-        This is per (input!) UTXO flag
-    '''
     SCRIPT_UTXO_AFTER_GENESIS = 1 << 19
-
-    ''' Not actual flag. Used for marking largest flag value.
-    '''
     SCRIPT_FLAG_LAST = 1 << 20
 
 
+# Typical post-Genesis BSV node verifyscript flags (not used by chain-gang eval).
+DEFAULT_NODE_VERIFYSCRIPT_FLAGS: Final = int(ScriptFlags.SCRIPT_VERIFY_P2SH | ScriptFlags.SCRIPT_VERIFY_DERSIG | ScriptFlags.SCRIPT_VERIFY_LOW_S | ScriptFlags.SCRIPT_VERIFY_NULLDUMMY | ScriptFlags.SCRIPT_VERIFY_SIGPUSHONLY | ScriptFlags.SCRIPT_VERIFY_MINIMALDATA | ScriptFlags.SCRIPT_VERIFY_CLEANSTACK | ScriptFlags.SCRIPT_VERIFY_MINIMALIF | ScriptFlags.SCRIPT_VERIFY_NULLFAIL | ScriptFlags.SCRIPT_ENABLE_SIGHASH_FORKID | ScriptFlags.SCRIPT_GENESIS)
+
+
 def verifyscript_params(
-        tx_hash: str,
-        index: int,
-        lock_script: str,
-        lock_script_amt: int,
-        block_height: int = -1,
-        script_flags: int = -1,
-        report_flags: bool = False) -> Dict[str, Any]:
-    """ Given the provided details return the verifyscript parameters as a dictionary
+    tx_hash: str,
+    index: int,
+    lock_script: str,
+    lock_script_amt: int,
+    block_height: int = -1,
+    script_flags: int = -1,
+    report_flags: bool = False,
+) -> Dict[str, Any]:
+    """Build a ``verifyscript`` RPC request payload for a bitcoin-sv node.
+
+    ``script_flags`` uses :class:`ScriptFlags` node bits. It does not configure
+    chain-gang local script evaluation; use ``Tx.validate()`` for that.
+
+    When ``script_flags`` is ``-1``, ``DEFAULT_NODE_VERIFYSCRIPT_FLAGS`` is not
+    inserted (same as before: omit flags and let the node default).
     """
-    scripts = {"tx": tx_hash, "n": index}
+    scripts: Dict[str, Any] = {"tx": tx_hash, "n": index}
     if script_flags > -1:
         scripts["flags"] = script_flags
     scripts["reportflags"] = report_flags
