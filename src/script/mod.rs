@@ -520,6 +520,7 @@ impl fmt::Debug for Script {
 mod tests {
     use super::op_codes::*;
     use super::*;
+    use crate::script::stack::encode_num;
 
     #[test]
     fn append_data() {
@@ -555,6 +556,24 @@ mod tests {
         s.append_data(&vec![0; 65536]);
         assert!(s.0[0] == OP_PUSHDATA4 && s.0[1] == 0 && s.0[2] == 0 && s.0[3] == 1);
         assert!(s.0.len() == 65541);
+    }
+
+    #[test]
+    fn eval_with_stack_start_at_skips_prefix() {
+        use crate::script::op_codes::*;
+        let script = [OP_1, OP_2, OP_3];
+        let (stack, _, _) = Script(script.to_vec())
+            .eval_with_stack(
+                &mut TransactionlessChecker {},
+                NO_FLAGS,
+                Some(2),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(stack.len(), 1);
+        assert_eq!(stack[0], encode_num(3).unwrap());
     }
 
     #[test]

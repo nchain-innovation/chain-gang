@@ -39,8 +39,10 @@ class Context:
         self.alt_stack = Stack()
 
     def evaluate_core(self, quiet: bool = False) -> bool:
-        """ evaluate_core calls the interpreter and returns the stacks
-            if quiet is true, dont print exceptions
+        """Evaluate script opcodes and update stack/alt_stack.
+
+        Uses the legacy single-phase evaluator without transaction version.
+        For Chronicle rules (two-phase eval, malleability), use Rust Tx.validate.
         """
 
         try:
