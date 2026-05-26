@@ -17,7 +17,7 @@ Full documentation index: [docs/README.md](docs/README.md).
 | Bitcoin | `BTC` | BTC_Mainnet, BTC_Testnet |
 | Bitcoin Cash | `BCH` | BCH_Mainnet, BCH_Testnet |
 
-## Features
+**Python `Context` debugger:** pass optional `tx_version` and `lock_script` for Chronicle two-phase eval, relaxed clean stack, and `OP_VER`. `Context` does not enforce block-height activation; for full transaction checks use `Tx.validate()` (version-only) or `Tx.validate_at_height()` with a BSV network name.
 
 **All chains:** P2P messages, address encoding, node connections, mainnet/testnet.
 

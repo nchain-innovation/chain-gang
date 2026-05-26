@@ -31,8 +31,8 @@ This crate is a **transaction engine**, not a full BSV node. The distinction mat
 **Practical guidance**
 
 - Building or checking a Chronicle spend **before activation** or **without knowing the block**: use `validate()` and set `version > 1` to exercise Chronicle script rules intentionally.
-- Validating a transaction **as a node would at a known height** (e.g. block 943,835 on mainnet): use `validate_at_height(..., block_height, Network::BSV_Mainnet)` (Rust) or `Tx.validate_at_height(utxos, block_height, "BSV_Mainnet")` (Python).
-- Python `Tx.validate()` uses version-only gating (`tx.version > 1`). Use `Tx.validate_at_height()` when you need consensus-faithful activation at a known height.
+- Validating a transaction **as a node would at a known height** (e.g. block 943,835 on mainnet): use `validate_at_height(..., block_height, Network::BSV_Mainnet)`.
+- Python `Tx.validate()` calls the Rust `validate()` path (version-only). Use `Tx.validate_at_height(utxos, block_height, network)` for consensus-faithful height gating (`BSV_Mainnet`, `BSV_Testnet`, or `BSV_STN`).
 
 Sighash routing (`SIGHASH_CHRONICLE`) and signing policy (`uses_low_s_signing`) follow the signature flags independent of block height.
 

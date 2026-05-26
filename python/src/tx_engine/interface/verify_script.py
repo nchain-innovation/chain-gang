@@ -3,9 +3,7 @@
 **Local validation (chain-gang):** ``Tx.validate()`` and ``Context`` do **not** use
 ``ScriptFlags``. Chronicle script rules (two-phase eval, malleability relaxation,
 32 MB script numbers, high-S verify) are gated on ``tx.version > 1``. Rust also
-supports height-aware checks via ``Tx::validate_at_height()`` (Rust) or
-``Tx.validate_at_height()`` (Python); ``Tx.validate()`` uses version-only gating.
-See ``docs/Chronicle.md``.
+supports height-aware checks via ``Tx.validate_at_height()`` on Python and Rust.
 
 **Node RPC:** ``ScriptFlags`` documents flag bits for ``verifyscript`` calls through
 ``RPCInterface`` to a bitcoin-sv node. The node applies its own Chronicle activation

@@ -39,15 +39,19 @@ jobs:
         run: cargo test --all-features
 
   python-test:
-    name: Python Tests
+    name: Python Tests (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v4
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
           cache: 'pip'
       - name: Install Rust 
         uses: actions-rust-lang/setup-rust-toolchain@v1
