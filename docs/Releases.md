@@ -51,3 +51,4 @@
 * v0.7.4 - Updated to support Python 3.14
 * v0.7.5 - Updated Python dependencies cryptography and requests
 * v0.7.6 - Removed the use of LRU cache around WoCInterface for get_raw_transaction
+* v0.8.0 - BSV Chronicle support (OTDA sighash, opcodes, two-phase eval, height-aware validation, Python bindings), documentation overhaul, Python 3.11–3.14 CI matrix
