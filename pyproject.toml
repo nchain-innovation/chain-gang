@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "tx_engine"
-readme = "README.md"
+readme = "README-pypi.md"
 description = "This library provides a Python interface for building BitcoinSV scripts and transactions."
 requires-python = ">=3.11"
 classifiers = [
@@ -24,7 +24,7 @@ dependencies = ["requests==2.34.2", "python-bitcoinrpc==1.0", "cryptography==48.
 features = ["pyo3/extension-module", "python"]
 python-source = "python/src"
 module-name = "tx_engine"
-sdist-include = ["LICENSE", "README.md"]
+sdist-include = ["LICENSE", "README-pypi.md"]
 bindings = "pyo3"
 sdist-generator = "cargo"
-readme = "README.md"
+readme = "README-pypi.md"

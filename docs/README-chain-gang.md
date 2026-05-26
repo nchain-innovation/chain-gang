@@ -2,6 +2,8 @@
 
 This is a Rust library that enables interacting with Bitcoin derived blockchains.
 
+This file is the **crates.io / docs.rs** readme (`Cargo.toml` → `readme = "docs/README-chain-gang.md"`). The GitHub repo root uses [README.md](../README.md); PyPI uses [README-pypi.md](../README-pypi.md).
+
 This library currently supports the following blockchains:
 
 | Name | Code | Networks |
@@ -52,7 +54,7 @@ To build the library with the `python` feature
 ```bash
 cargo build --features "python"
 ```
-For more details of the `python` feature see [here](python/README.md)
+For more details of the `python` feature see [python/README.md](../python/README.md). Full documentation index: [docs/README.md](README.md).
 
 # Known limitations
 

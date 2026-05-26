@@ -2,6 +2,8 @@
 
 Implementation plan and notes for [Chronicle Release](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) support.
 
+**Python users:** see [Chronicle-Python.md](Chronicle-Python.md) for copy-paste examples (`Context`, `Tx.validate`, signing, activation helpers).
+
 ## Activation
 
 | Network | Block height |
@@ -151,6 +153,8 @@ Version-only script debugging without a full transaction: `TxVersionChecker` and
 - [x] Two-phase unlock/lock script evaluation (`tx.version > 1`)
 - [x] Version-gated malleability relaxation (`tx.version > 1`)
 - [x] 32 MB script number limit (`tx.version > 1`)
+- [x] Python `Tx.validate_at_height()` binding
+- [x] Python `Context` two-phase eval (`tx_version`, `lock_script`)
 
 ## References
 
