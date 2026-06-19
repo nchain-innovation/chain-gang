@@ -22,7 +22,7 @@ Features (all blockchains)
 BSV only Features
 * Transaction signing 
 * Script evaluation 
-* Wallet key derivation and mnemonic parsing
+* Wallet key derivation, BIP-32 HD wallets (`HdWallet`), and mnemonic parsing
 * Various Bitcoin primitives
 * Genesis upgrade support
 * [Chronicle upgrade](Chronicle.md) (OTDA sighash, opcodes, two-phase eval, `tx.version > 1` rules)

@@ -13,6 +13,7 @@ Class and function reference for **tx-engine**. For install and a quick start, s
 * [TxIn](#txin)
 * [TxOut](#txout)
 * [Wallet](#wallet)
+* [HdWallet](#hdwallet)
 * [Interface Factory](#interface-factory)
 * [Blockchain Interface](#blockchain-interface)
 * [Other Functions](#other-functions)
@@ -218,6 +219,47 @@ The library provides some additional helper functions to handle keys in differen
 
 
 ![Bitcoin Keys](diagrams/keys.png)
+
+
+## HdWallet
+
+BIP-32 hierarchical deterministic wallet. Derive child keys along a path, obtain P2PKH addresses (BIP-44 style), and get a leaf [`Wallet`](#wallet) for signing. Stacks on BIP-39 mnemonic support (`mnemonic_to_seed`).
+
+`HdWallet` class methods:
+
+* `HdWallet.from_seed(network: str, seed: bytes) -> HdWallet` - Master key from a 64-byte BIP-39 seed
+* `HdWallet.from_mnemonic(network: str, mnemonic: str, passphrase: str = "") -> HdWallet` - English BIP-39 mnemonic (validated) then seed derivation
+* `HdWallet.from_xprv(xprv: str) -> HdWallet` - Root from an encoded extended private key (`xprv...`)
+
+`HdWallet` methods:
+
+* `master_xprv() -> str` - Encoded master extended private key
+* `master_xpub() -> str` - Encoded master extended public key
+* `address_at(account: int, external: bool, index: int) -> str` - P2PKH address at `m/{account}'/{change}/{index}` (`external=True` → change 0)
+* `address_at_bip44(coin_type: int, account: int, external: bool, index: int) -> str` - P2PKH address at a full BIP-44 path
+* `wallet_at_path(path: str) -> Wallet` - Leaf signing wallet at the given path (e.g. `m/0'/0/0`)
+* `derive_xprv(path: str) -> str` - Extended private key at `path`
+* `derive_xpub(path: str) -> str` - Extended public key at `path`
+
+Path helpers (module functions):
+
+* `bip32_path(account: int, change: int, index: int) -> str` - `m/{account}'/{change}/{index}`
+* `bip44_path(coin_type: int, account: int, external: bool, index: int) -> str` - `m/44'/{coin_type}'/{account}'/{change}/{index}`
+* `bsv_coin_type() -> int` - BSV SLIP-44 coin type (`236`)
+* `mnemonic_to_seed(mnemonic: str, passphrase: str) -> bytes` - 64-byte BIP-39 seed (does not validate words)
+* `derive_extended_key(xprv: str, path: str) -> str` - Derive extended private key from master `xprv` and path
+
+Example:
+
+```Python
+from tx_engine import HdWallet, bip44_path, bsv_coin_type, mnemonic_to_seed
+
+mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+hd = HdWallet.from_mnemonic("BSV_Mainnet", mnemonic)
+addr = hd.address_at_bip44(bsv_coin_type(), 0, True, 0)
+wallet = hd.wallet_at_path(bip44_path(bsv_coin_type(), 0, True, 0))
+signed_tx = wallet.sign_tx(0, prev_tx, tx)
+```
 
 
 ## Interface Factory
