@@ -1,9 +1,51 @@
 //! Functions to convert data to and from mnemonic words
 
 use crate::util::{Bits, ChainGangError};
-use sha2::{Digest, Sha256};
-
+use hmac::Hmac;
+use pbkdf2::pbkdf2;
+use sha2::{Digest, Sha256, Sha512};
 use std::str;
+
+type HmacSha512 = Hmac<Sha512>;
+
+/// PBKDF2 iteration count for BIP-39 seed generation.
+pub const BIP39_PBKDF2_ITERATIONS: u32 = 2048;
+
+/// PBKDF2 salt prefix for BIP-39 (`mnemonic` + passphrase).
+pub const BIP39_SALT_PREFIX: &str = "mnemonic";
+
+/// Splits a mnemonic phrase into normalized words.
+pub fn mnemonic_parse(mnemonic: &str) -> Vec<String> {
+    mnemonic
+        .split_whitespace()
+        .map(|word| word.to_string())
+        .collect()
+}
+
+/// Derives a BIP-39 seed (64 bytes) from a mnemonic sentence and optional passphrase.
+pub fn mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> [u8; 64] {
+    let salt = format!("{}{}", BIP39_SALT_PREFIX, passphrase);
+    let mut seed = [0u8; 64];
+    pbkdf2::<HmacSha512>(
+        mnemonic.as_bytes(),
+        salt.as_bytes(),
+        BIP39_PBKDF2_ITERATIONS,
+        &mut seed,
+    )
+    .expect("HMAC can take key of any size");
+    seed
+}
+
+/// Validates a mnemonic against a word list and returns the BIP-39 seed.
+pub fn mnemonic_to_seed_validated(
+    mnemonic: &str,
+    passphrase: &str,
+    word_list: &[String],
+) -> Result<[u8; 64], ChainGangError> {
+    let words = mnemonic_parse(mnemonic);
+    mnemonic_decode(&words, word_list)?;
+    Ok(mnemonic_to_seed(mnemonic, passphrase))
+}
 
 /// Wordlist language
 pub enum Wordlist {
@@ -87,6 +129,19 @@ pub fn mnemonic_decode(
 mod tests {
     use super::*;
     use hex;
+
+    #[test]
+    fn mnemonic_to_seed_vector() {
+        let wordlist = load_wordlist(Wordlist::English);
+        let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        mnemonic_decode(&mnemonic_parse(mnemonic), &wordlist).unwrap();
+        let seed = mnemonic_to_seed(mnemonic, "");
+        let expected = hex::decode(
+            "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4",
+        )
+        .unwrap();
+        assert_eq!(seed.as_slice(), expected.as_slice());
+    }
 
     #[test]
     fn wordlists() {

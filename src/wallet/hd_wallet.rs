@@ -6,6 +6,7 @@ use crate::util::ChainGangError;
 use crate::wallet::extended_key::{
     derive_extended_key, master_extended_key_from_seed, ExtendedKey, ExtendedKeyType,
 };
+use crate::wallet::mnemonic::mnemonic_to_seed_validated;
 use crate::wallet::wallet::Wallet;
 
 /// BSV mainnet coin type per SLIP-44.
@@ -45,6 +46,17 @@ impl HdWallet {
     pub fn from_seed(network: Network, seed: &[u8]) -> Result<Self, ChainGangError> {
         let master = master_extended_key_from_seed(network, seed)?;
         Ok(HdWallet { master })
+    }
+
+    /// Creates an HD wallet from a validated BIP-39 mnemonic (English word list).
+    pub fn from_mnemonic(
+        network: Network,
+        mnemonic: &str,
+        passphrase: &str,
+        word_list: &[String],
+    ) -> Result<Self, ChainGangError> {
+        let seed = mnemonic_to_seed_validated(mnemonic, passphrase, word_list)?;
+        Self::from_seed(network, &seed)
     }
 
     /// Master extended private key (`m`).
@@ -109,6 +121,17 @@ mod tests {
 
     fn test_seed() -> Vec<u8> {
         hex::decode("000102030405060708090a0b0c0d0e0f").unwrap()
+    }
+
+    #[test]
+    fn from_mnemonic_matches_from_seed() {
+        let wordlist = crate::wallet::load_wordlist(crate::wallet::Wordlist::English);
+        let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        let seed = crate::wallet::mnemonic_to_seed_validated(mnemonic, "", &wordlist).unwrap();
+        let from_seed = HdWallet::from_seed(Network::BSV_Mainnet, &seed).unwrap();
+        let from_mnemonic =
+            HdWallet::from_mnemonic(Network::BSV_Mainnet, mnemonic, "", &wordlist).unwrap();
+        assert_eq!(from_seed.master(), from_mnemonic.master());
     }
 
     #[test]

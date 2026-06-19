@@ -14,7 +14,10 @@ pub use self::extended_key::{
     MAINNET_PUBLIC_EXTENDED_KEY, TESTNET_PRIVATE_EXTENDED_KEY, TESTNET_PUBLIC_EXTENDED_KEY,
 };
 pub use self::hd_wallet::{bip32_path, bip44_path, BSV_COIN_TYPE, HdWallet};
-pub use self::mnemonic::{load_wordlist, mnemonic_decode, mnemonic_encode, Wordlist};
+pub use self::mnemonic::{
+    load_wordlist, mnemonic_decode, mnemonic_encode, mnemonic_parse, mnemonic_to_seed,
+    mnemonic_to_seed_validated, Wordlist, BIP39_PBKDF2_ITERATIONS, BIP39_SALT_PREFIX,
+};
 
 pub use self::wallet::{
     create_sighash, create_sighash_checksig_index, public_key_to_address, Wallet, MAIN_PRIVATE_KEY,

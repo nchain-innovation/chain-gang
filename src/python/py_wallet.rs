@@ -152,6 +152,12 @@ pub struct PyWallet {
     wallet: Wallet,
 }
 
+impl PyWallet {
+    pub(crate) fn from_wallet(wallet: Wallet) -> Self {
+        PyWallet { wallet }
+    }
+}
+
 #[pymethods]
 impl PyWallet {
     // Given the wif_key, set up the wallet
