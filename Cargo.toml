@@ -14,7 +14,7 @@ byteorder = "1.5"
 dns-lookup = "3.0.1"
 hex = "0.4.3"
 linked-hash-map = "0.5"
-log = { version = "0.4.29", features = ["max_level_trace", "release_max_level_warn"] }
+log = { version = "0.4.32", features = ["max_level_trace", "release_max_level_warn"] }
 db-key = "0.0.5"  # this is a non-trival update
 thiserror = "2.0.18"
 url = "2.5.8"
@@ -38,16 +38,16 @@ pbkdf2 = "0.12.2"
 # Used by the interface feature
 serde = { version = "1.0.228", features = ["derive"], optional = true }
 serde_json = { version = "1.0.150", optional = true }
-reqwest = { version = "0.13.3", features = ["json"], optional = true }
+reqwest = { version = "0.13.4", features = ["json"], optional = true }
 async-mutex = { version = "1.4.1", optional = true }
 async-trait = { version = "0.1.89", optional = true }
 
 # For python feature
-pyo3 = { version = "0.27.2", optional = true }
-regex = "^1.12.3"
+pyo3 = { version = "0.28.2", optional = true }
+regex = "1.12.4"
 lazy_static = "1.5.0"
 rand_core = "0.9.5"
-typenum = "1.20.0"
+typenum = "1.20.1"
 
 
 [lib]
