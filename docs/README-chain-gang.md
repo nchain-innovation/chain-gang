@@ -54,7 +54,19 @@ To build the library with the `python` feature
 ```bash
 cargo build --features "python"
 ```
-For more details of the `python` feature see [python/README.md](../python/README.md). Full documentation index: [docs/README.md](README.md).
+For more details of the `python` feature see [python/README.md](../python/README.md). Full documentation index: [docs/README.md](README.md). HD wallets: [BIP-32.md](BIP-32.md).
+
+## HD wallets (BIP-32)
+
+```rust
+use chain_gang::network::Network;
+use chain_gang::wallet::{HdWallet, bip44_path, BSV_COIN_TYPE};
+
+let hd = HdWallet::from_seed(Network::BSV_Mainnet, &seed)?;
+let addr = hd.address_at_bip44(BSV_COIN_TYPE, 0, true, 0)?;
+```
+
+See [BIP-32.md](BIP-32.md) for mnemonics, watch-only `xpub`, and gap-limit scanning.
 
 # Known limitations
 

@@ -130,6 +130,10 @@ impl PyHdWatchWallet {
     Ok(self.inner.address_at_path(path)?)
   }
 
+  fn derive_xpub(&self, path: &str) -> PyResult<String> {
+    Ok(self.inner.derive_path(path)?.encode())
+  }
+
   fn scan_addresses(
     &self,
     external: bool,

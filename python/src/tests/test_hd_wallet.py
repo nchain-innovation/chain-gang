@@ -44,6 +44,7 @@ class HdWalletTest(unittest.TestCase):
             watch.address_at(True, 0),
             hd.address_at(0, True, 0),
         )
+        self.assertEqual(watch.derive_xpub("M/0/0"), hd.derive_xpub(bip32_path(0, 0, 0)))
 
 
 if __name__ == "__main__":

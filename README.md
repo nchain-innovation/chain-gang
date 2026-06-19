@@ -21,7 +21,7 @@ Full documentation index: [docs/README.md](docs/README.md).
 
 **All chains:** P2P messages, address encoding, node connections, mainnet/testnet.
 
-**BSV only:** transaction signing, script evaluation, wallet/key derivation, Genesis upgrade, [Chronicle upgrade](docs/Chronicle.md) (OTDA sighash, opcodes, two-phase eval, `tx.version > 1` rules).
+**BSV only:** transaction signing, script evaluation, wallet/key derivation (BIP-32 HD wallets), Genesis upgrade, [Chronicle upgrade](docs/Chronicle.md) (OTDA sighash, opcodes, two-phase eval, `tx.version > 1` rules).
 
 ## Rust usage
 
@@ -46,7 +46,7 @@ Chronicle helpers: `chain_gang::chronicle` — see [docs/Chronicle.md](docs/Chro
 pip install tx-engine   # Python 3.11+
 ```
 
-PyPI shows [README-pypi.md](README-pypi.md). Class reference: [docs/Python-API.md](docs/Python-API.md). Chronicle examples: [docs/Chronicle-Python.md](docs/Chronicle-Python.md). Local dev: [python/README.md](python/README.md).
+PyPI shows [README-pypi.md](README-pypi.md). Class reference: [docs/Python-API.md](docs/Python-API.md). Chronicle examples: [docs/Chronicle-Python.md](docs/Chronicle-Python.md). HD wallets: [docs/BIP-32.md](docs/BIP-32.md). Local dev: [python/README.md](python/README.md).
 
 ## Development
 

@@ -276,6 +276,7 @@ Watch-only BIP-32 wallet from an account-level `xpub`. Use relative paths (`M/0/
 * `address_at(external: bool, index: int) -> str` — relative `M/{change}/{index}`
 * `address_at_bip44(external: bool, index: int) -> str`
 * `address_at_path(path: str) -> str`
+* `derive_xpub(path: str) -> str`
 * `scan_addresses(external: bool, gap_limit: int, is_used: callable) -> List[str]` — gap-limit discovery; `is_used(address)` returns whether the address has been seen on-chain
 
 Path helpers for account-level `xpub`:

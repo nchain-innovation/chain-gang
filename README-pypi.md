@@ -14,6 +14,7 @@ pip install tx-engine
 |-------|------|
 | Documentation index | [docs/README.md](docs/README.md) |
 | Python class reference | [docs/Python-API.md](docs/Python-API.md) |
+| HD wallets (mnemonic, BIP-44) | [docs/BIP-32-Python.md](docs/BIP-32-Python.md) |
 | Chronicle (Python examples) | [docs/Chronicle-Python.md](docs/Chronicle-Python.md) |
 | Chronicle (full spec) | [docs/Chronicle.md](docs/Chronicle.md) |
 | Local development | [python/README.md](python/README.md) |
@@ -48,3 +49,14 @@ Chronicle script rules apply when **`tx.version > 1`**. Use `version: 2` (or hig
 | Script debugger / partial eval | `Context(tx_version=2, lock_script=...)` |
 
 See [docs/Chronicle.md](docs/Chronicle.md) for sighash routing, opcodes, two-phase evaluation, malleability rules, and script number limits.
+
+## HD wallets
+
+BIP-32 / BIP-39 / BIP-44 support via `HdWallet` and watch-only `HdWatchWallet`. Guide: [docs/BIP-32-Python.md](docs/BIP-32-Python.md).
+
+```python
+from tx_engine import HdWallet, bsv_coin_type
+
+hd = HdWallet.from_mnemonic("BSV_Mainnet", "abandon abandon ... about")
+print(hd.address_at_bip44(bsv_coin_type(), 0, True, 0))
+```
