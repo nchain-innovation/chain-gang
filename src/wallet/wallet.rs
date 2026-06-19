@@ -154,6 +154,24 @@ impl Wallet {
             network,
         }
     }
+
+    /// Builds a signing wallet from an extended **private** key (leaf or intermediate).
+    pub fn from_extended_key(key: &crate::wallet::extended_key::ExtendedKey) -> Result<Self, ChainGangError> {
+        if key.key_type()? != crate::wallet::extended_key::ExtendedKeyType::Private {
+            return Err(ChainGangError::BadArgument(
+                "Cannot build Wallet from an extended public key".to_string(),
+            ));
+        }
+        let network = key.network()?;
+        let private_key = SigningKey::from_slice(&key.private_key()?)?;
+        let public_key = *private_key.verifying_key();
+        Ok(Wallet {
+            private_key,
+            public_key,
+            network,
+        })
+    }
+
     pub fn get_address(&self) -> Result<String, ChainGangError> {
         public_key_to_address(&self.public_key_serialize(), self.network)
     }

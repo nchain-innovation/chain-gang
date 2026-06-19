@@ -21,6 +21,9 @@ const SECP256K1_CURVE_ORDER: [u8; 32] = [
 /// Index which begins the derived hardened keys
 pub const HARDENED_KEY: u32 = 2147483648;
 
+/// Error message when BIP-32 child derivation must skip to the next index.
+pub const INVALID_CHILD_KEY_MSG: &str = "Invalid key. Try next index.";
+
 /// "xpub" prefix for public extended keys on mainnet
 pub const MAINNET_PUBLIC_EXTENDED_KEY: u32 = 0x0488B21E;
 /// "xprv" prefix for private extended keys on mainnet
@@ -259,8 +262,28 @@ impl ExtendedKey {
         }
     }
 
-    /// Derives an extended child private key from an extended parent private key
+    /// Derives an extended child private key from an extended parent private key.
+    ///
+    /// If the derived key is invalid per BIP-32, increments the child index and retries.
     pub fn derive_private_key(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
+        let mut idx = index;
+        loop {
+            match self.try_derive_private_key_once(idx) {
+                Ok(key) => return Ok(key),
+                Err(ChainGangError::IllegalState(ref msg)) if msg == INVALID_CHILD_KEY_MSG => {
+                    if idx == u32::MAX {
+                        return Err(ChainGangError::BadData(
+                            "No valid BIP-32 child private key found".to_string(),
+                        ));
+                    }
+                    idx += 1;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    fn try_derive_private_key_once(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
         if self.key_type()? == ExtendedKeyType::Public {
             let msg = "Cannot derive private key from public key";
             return Err(ChainGangError::BadData(msg.to_string()));
@@ -303,19 +326,13 @@ impl ExtendedKey {
         }
 
         if !is_private_key_valid(&hmac[..32]) {
-            let msg = "Invalid key. Try next index.".to_string();
-            return Err(ChainGangError::IllegalState(msg));
+            return Err(ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string()));
         }
 
         let secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
         let child_sk = *secp_child_secret_key.as_scalar_primitive();
         let private_sk = secp_par_secret_key.as_scalar_primitive();
-
-        //secp_child_secret_key.add_assign(private_key)?;
         let child_sk = child_sk.add(private_sk);
-
-        //let child_private_key =
-        //    unsafe { slice::from_raw_parts(secp_child_secret_key.as_ptr(), 32) };
         let child_private_key: [u8; 32] = child_sk.to_bytes().into();
 
         let child_chain_code = &hmac[32..];
@@ -331,8 +348,28 @@ impl ExtendedKey {
         )
     }
 
-    /// Derives an extended child public key from an extended parent public key
+    /// Derives an extended child public key from an extended parent public key.
+    ///
+    /// If the derived key is invalid per BIP-32, increments the child index and retries.
     pub fn derive_public_key(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
+        let mut idx = index;
+        loop {
+            match self.try_derive_public_key_once(idx) {
+                Ok(key) => return Ok(key),
+                Err(ChainGangError::IllegalState(ref msg)) if msg == INVALID_CHILD_KEY_MSG => {
+                    if idx == u32::MAX {
+                        return Err(ChainGangError::BadData(
+                            "No valid BIP-32 child public key found".to_string(),
+                        ));
+                    }
+                    idx += 1;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    fn try_derive_public_key_once(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
         if index >= HARDENED_KEY {
             return Err(ChainGangError::BadArgument(
                 "i cannot be hardened".to_string(),
@@ -361,16 +398,19 @@ impl ExtendedKey {
         }
 
         if !is_private_key_valid(&hmac[..32]) {
-            let msg = "Invalid key. Try next index.".to_string();
-            return Err(ChainGangError::IllegalState(msg));
+            return Err(ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string()));
         }
 
         let secret_key = SecretKey::from_slice(&hmac[..32])?;
-        let public_key = secret_key.public_key();
-        let child_offset = public_key.to_projective();
-        let child_offset = child_offset.add(child_offset);
-        let child_public_key = PublicKey::<Secp256k1>::try_from(child_offset)?;
-        let child_bytes = child_public_key.to_sec1_bytes();
+        let parent_bytes = self.public_key()?;
+        let parent_pk = PublicKey::<Secp256k1>::from_sec1_bytes(&parent_bytes)
+            .map_err(|_| ChainGangError::BadData("Invalid parent public key".to_string()))?;
+        let offset_pk = secret_key.public_key();
+        let child_point = parent_pk.to_projective() + offset_pk.to_projective();
+        let child_pk = PublicKey::<Secp256k1>::try_from(child_point).map_err(|_| {
+            ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string())
+        })?;
+        let child_bytes = child_pk.to_sec1_bytes();
         let pk_vec = child_bytes.to_vec();
         assert!(pk_vec.len() == 33);
         let child_public_key: [u8; 33] = pk_vec[..].try_into().unwrap();
@@ -488,6 +528,34 @@ pub fn derive_extended_key(
     }
 
     Ok(key)
+}
+
+/// BIP-32 HMAC-SHA512 key for master extended key generation.
+pub const BIP32_MASTER_SEED_KEY: &[u8] = b"Bitcoin seed";
+
+/// Minimum BIP-32 seed length in bytes (128 bits).
+pub const MIN_BIP32_SEED_LENGTH: usize = 16;
+
+/// Derives a BIP-32 master extended private key from a seed (HMAC-SHA512).
+pub fn master_extended_key_from_seed(
+    network: Network,
+    seed: &[u8],
+) -> Result<ExtendedKey, ChainGangError> {
+    if seed.len() < MIN_BIP32_SEED_LENGTH {
+        return Err(ChainGangError::BadArgument(
+            "BIP-32 seed must be at least 16 bytes".to_string(),
+        ));
+    }
+    let mut mac = HmacSha512::new_from_slice(BIP32_MASTER_SEED_KEY)
+        .map_err(|_| ChainGangError::IllegalState("HMAC-SHA512 init failed".to_string()))?;
+    mac.update(seed);
+    let hmac = mac.finalize().into_bytes();
+    if !is_private_key_valid(&hmac[..32]) {
+        return Err(ChainGangError::BadData(
+            "BIP-32 master key invalid for seed".to_string(),
+        ));
+    }
+    ExtendedKey::new_private_key(network, 0, &[0; 4], 0, &hmac[32..], &hmac[..32])
 }
 
 /// Checks that a private key is in valid SECP256K1 range
@@ -713,28 +781,64 @@ mod tests {
     }
 
     #[test]
+    fn public_derivation_matches_private_extended_public_key() {
+        let m = master_extended_key_from_seed(
+            Network::BSV_Mainnet,
+            &hex::decode("000102030405060708090a0b0c0d0e0f").unwrap(),
+        )
+        .unwrap();
+        let hardened_child_pub = derive_extended_key(&m, "m/0H")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_private = derive_extended_key(&m, "m/0h/1")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_public = derive_extended_key(&hardened_child_pub, "M/1").unwrap();
+        assert_eq!(from_private, from_public);
+        assert_eq!(
+            from_public.encode(),
+            "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMiGj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ"
+        );
+
+        let m2 = master_extended_key_from_seed(
+            Network::BSV_Mainnet,
+            &hex::decode(
+                "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let account_pub = derive_extended_key(&m2, "m/0")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_private = derive_extended_key(&m2, "m/0/1")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_public = derive_extended_key(&account_pub, "M/1").unwrap();
+        assert_eq!(from_private, from_public);
+    }
+
+    #[test]
+    fn master_from_seed_rejects_short_seed() {
+        assert!(master_extended_key_from_seed(Network::BSV_Mainnet, &[0u8; 8]).is_err());
+    }
+
+    #[test]
     fn encode_decode() {
-        let k = master_private_key("0123456789abcdef");
+        let k = master_private_key("0123456789abcdef0123456789abcdef");
         assert!(k == ExtendedKey::decode(&k.encode()).unwrap());
         let k = derive_extended_key(&k, "M/1/2/3/4/5").unwrap();
         assert!(k == ExtendedKey::decode(&k.encode()).unwrap());
     }
 
     fn master_private_key(seed: &str) -> ExtendedKey {
-        let seed = hex::decode(seed).unwrap();
-        let key = "Bitcoin seed".to_string();
-
-        let mut key = HmacSha512::new_from_slice(key.as_bytes()).expect("hmac512 error");
-        key.update(&seed);
-        let hmac = key.finalize().into_bytes();
-
-        ExtendedKey::new_private_key(
+        master_extended_key_from_seed(
             Network::BSV_Mainnet,
-            0,
-            &[0; 4],
-            0,
-            &hmac[32..],
-            &hmac[0..32],
+            &hex::decode(seed).unwrap(),
         )
         .unwrap()
     }

@@ -18,12 +18,14 @@ Index for **chain-gang** (Rust library) and **tx-engine** (Python bindings).
 | [Python-API.md](Python-API.md) | **Python class reference** — Script, Tx, Context, Wallet, interfaces |
 | [python/README.md](../python/README.md) | Python package layout, local dev, and tests |
 | [Chronicle-Python.md](Chronicle-Python.md) | **Python Chronicle guide** — examples for Context, Tx, signing, helpers |
+| [BIP-32-Python.md](BIP-32-Python.md) | **Python HD wallet guide** — mnemonic, `HdWallet`, watch-only `xpub`, gap scan |
 | [Chronicle.md](Chronicle.md) | Chronicle upgrade: sighash, opcodes, validation modes, Rust API |
 
 **Quick links**
 
 - Install: `pip install tx-engine` (Python 3.11+)
 - Chronicle validation: [Chronicle-Python.md](Chronicle-Python.md) — `Tx.validate()`, `Tx.validate_at_height()`, `Context`
+- HD wallets: [BIP-32-Python.md](BIP-32-Python.md) — `HdWallet`, `HdWatchWallet`, mnemonic
 - Class reference: [Python-API.md](Python-API.md)
 - Node RPC flag reference: `tx_engine.interface.verify_script`
 
@@ -32,6 +34,7 @@ Index for **chain-gang** (Rust library) and **tx-engine** (Python bindings).
 | Document | Description |
 |----------|-------------|
 | [README-chain-gang.md](README-chain-gang.md) | Crate overview, feature flags, installation |
+| [BIP-32.md](BIP-32.md) | HD wallets — BIP-32/39/44, `HdWallet`, watch-only `xpub`, Rust + Python |
 | [Chronicle.md](Chronicle.md) | Same Chronicle spec; Rust examples use `chain_gang::chronicle` |
 | [docs.rs](https://docs.rs/chain-gang) | Generated Rust API (`chain_gang::chronicle`, `Tx::validate_at_height`, etc.) |
 
