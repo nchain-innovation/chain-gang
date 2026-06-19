@@ -1,6 +1,7 @@
 //! Wallet and key management
 
 mod extended_key;
+mod hd_wallet;
 mod mnemonic;
 
 pub mod base58_checksum;
@@ -12,6 +13,7 @@ pub use self::extended_key::{
     BIP32_MASTER_SEED_KEY, HARDENED_KEY, MIN_BIP32_SEED_LENGTH, MAINNET_PRIVATE_EXTENDED_KEY,
     MAINNET_PUBLIC_EXTENDED_KEY, TESTNET_PRIVATE_EXTENDED_KEY, TESTNET_PUBLIC_EXTENDED_KEY,
 };
+pub use self::hd_wallet::{bip32_path, bip44_path, BSV_COIN_TYPE, HdWallet};
 pub use self::mnemonic::{load_wordlist, mnemonic_decode, mnemonic_encode, Wordlist};
 
 pub use self::wallet::{
