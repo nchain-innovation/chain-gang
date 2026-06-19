@@ -28,7 +28,7 @@ Full documentation index: [docs/README.md](docs/README.md).
 Add to `Cargo.toml`:
 
 ```toml
-chain-gang = "0.7"
+chain-gang = "0.9"
 ```
 
 Build with optional features:

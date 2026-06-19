@@ -52,3 +52,4 @@
 * v0.7.5 - Updated Python dependencies cryptography and requests
 * v0.7.6 - Removed the use of LRU cache around WoCInterface for get_raw_transaction
 * v0.8.0 - BSV Chronicle support (OTDA sighash, opcodes, two-phase eval, height-aware validation, Python bindings), documentation overhaul, Python 3.11–3.14 CI matrix
+* v0.9.0 - BIP-32 HD wallets (`HdWallet`, `HdWatchWallet`, BIP-39 mnemonic seed, Python bindings), watch-only `xpub` and gap-limit scanning, BIP-32 documentation; dependency updates (`pyo3` 0.28.2, `cryptography` 49.0.0, `log`, `reqwest`, `regex`, `typenum`)
