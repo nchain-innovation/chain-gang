@@ -8,7 +8,8 @@ pub mod base58_checksum;
 pub mod wallet;
 
 pub use self::extended_key::{
-    derive_extended_key, ExtendedKey, ExtendedKeyType, HARDENED_KEY, MAINNET_PRIVATE_EXTENDED_KEY,
+    derive_extended_key, master_extended_key_from_seed, ExtendedKey, ExtendedKeyType,
+    BIP32_MASTER_SEED_KEY, HARDENED_KEY, MIN_BIP32_SEED_LENGTH, MAINNET_PRIVATE_EXTENDED_KEY,
     MAINNET_PUBLIC_EXTENDED_KEY, TESTNET_PRIVATE_EXTENDED_KEY, TESTNET_PUBLIC_EXTENDED_KEY,
 };
 pub use self::mnemonic::{load_wordlist, mnemonic_decode, mnemonic_encode, Wordlist};

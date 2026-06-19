@@ -366,11 +366,14 @@ impl ExtendedKey {
         }
 
         let secret_key = SecretKey::from_slice(&hmac[..32])?;
-        let public_key = secret_key.public_key();
-        let child_offset = public_key.to_projective();
-        let child_offset = child_offset.add(child_offset);
-        let child_public_key = PublicKey::<Secp256k1>::try_from(child_offset)?;
-        let child_bytes = child_public_key.to_sec1_bytes();
+        let parent_bytes = self.public_key()?;
+        let parent_pk = PublicKey::<Secp256k1>::from_sec1_bytes(&parent_bytes)
+            .map_err(|_| ChainGangError::BadData("Invalid parent public key".to_string()))?;
+        let offset_pk = secret_key.public_key();
+        let child_point = parent_pk.to_projective() + offset_pk.to_projective();
+        let child_pk = PublicKey::<Secp256k1>::try_from(child_point)
+            .map_err(|_| ChainGangError::BadData("Invalid derived public key".to_string()))?;
+        let child_bytes = child_pk.to_sec1_bytes();
         let pk_vec = child_bytes.to_vec();
         assert!(pk_vec.len() == 33);
         let child_public_key: [u8; 33] = pk_vec[..].try_into().unwrap();
@@ -488,6 +491,34 @@ pub fn derive_extended_key(
     }
 
     Ok(key)
+}
+
+/// BIP-32 HMAC-SHA512 key for master extended key generation.
+pub const BIP32_MASTER_SEED_KEY: &[u8] = b"Bitcoin seed";
+
+/// Minimum BIP-32 seed length in bytes (128 bits).
+pub const MIN_BIP32_SEED_LENGTH: usize = 16;
+
+/// Derives a BIP-32 master extended private key from a seed (HMAC-SHA512).
+pub fn master_extended_key_from_seed(
+    network: Network,
+    seed: &[u8],
+) -> Result<ExtendedKey, ChainGangError> {
+    if seed.len() < MIN_BIP32_SEED_LENGTH {
+        return Err(ChainGangError::BadArgument(
+            "BIP-32 seed must be at least 16 bytes".to_string(),
+        ));
+    }
+    let mut mac = HmacSha512::new_from_slice(BIP32_MASTER_SEED_KEY)
+        .map_err(|_| ChainGangError::IllegalState("HMAC-SHA512 init failed".to_string()))?;
+    mac.update(seed);
+    let hmac = mac.finalize().into_bytes();
+    if !is_private_key_valid(&hmac[..32]) {
+        return Err(ChainGangError::BadData(
+            "BIP-32 master key invalid for seed".to_string(),
+        ));
+    }
+    ExtendedKey::new_private_key(network, 0, &[0; 4], 0, &hmac[32..], &hmac[..32])
 }
 
 /// Checks that a private key is in valid SECP256K1 range
@@ -713,28 +744,64 @@ mod tests {
     }
 
     #[test]
+    fn public_derivation_matches_private_extended_public_key() {
+        let m = master_extended_key_from_seed(
+            Network::BSV_Mainnet,
+            &hex::decode("000102030405060708090a0b0c0d0e0f").unwrap(),
+        )
+        .unwrap();
+        let hardened_child_pub = derive_extended_key(&m, "m/0H")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_private = derive_extended_key(&m, "m/0h/1")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_public = derive_extended_key(&hardened_child_pub, "M/1").unwrap();
+        assert_eq!(from_private, from_public);
+        assert_eq!(
+            from_public.encode(),
+            "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMiGj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ"
+        );
+
+        let m2 = master_extended_key_from_seed(
+            Network::BSV_Mainnet,
+            &hex::decode(
+                "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let account_pub = derive_extended_key(&m2, "m/0")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_private = derive_extended_key(&m2, "m/0/1")
+            .unwrap()
+            .extended_public_key()
+            .unwrap();
+        let from_public = derive_extended_key(&account_pub, "M/1").unwrap();
+        assert_eq!(from_private, from_public);
+    }
+
+    #[test]
+    fn master_from_seed_rejects_short_seed() {
+        assert!(master_extended_key_from_seed(Network::BSV_Mainnet, &[0u8; 8]).is_err());
+    }
+
+    #[test]
     fn encode_decode() {
-        let k = master_private_key("0123456789abcdef");
+        let k = master_private_key("0123456789abcdef0123456789abcdef");
         assert!(k == ExtendedKey::decode(&k.encode()).unwrap());
         let k = derive_extended_key(&k, "M/1/2/3/4/5").unwrap();
         assert!(k == ExtendedKey::decode(&k.encode()).unwrap());
     }
 
     fn master_private_key(seed: &str) -> ExtendedKey {
-        let seed = hex::decode(seed).unwrap();
-        let key = "Bitcoin seed".to_string();
-
-        let mut key = HmacSha512::new_from_slice(key.as_bytes()).expect("hmac512 error");
-        key.update(&seed);
-        let hmac = key.finalize().into_bytes();
-
-        ExtendedKey::new_private_key(
+        master_extended_key_from_seed(
             Network::BSV_Mainnet,
-            0,
-            &[0; 4],
-            0,
-            &hmac[32..],
-            &hmac[0..32],
+            &hex::decode(seed).unwrap(),
         )
         .unwrap()
     }
