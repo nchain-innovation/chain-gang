@@ -17,7 +17,8 @@ use crate::{
         py_tx::{PyTx, PyTxIn, PyTxOut},
         py_hd_wallet::{
             py_bip32_path, py_bip44_path, py_bsv_coin_type, py_derive_extended_key,
-            py_mnemonic_to_seed, PyHdWallet,
+            py_mnemonic_to_seed, py_watch_bip32_path, py_watch_bip44_path, PyHdWallet,
+            PyHdWatchWallet,
         },
         py_wallet::{
             address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript, wif_to_bytes,
@@ -480,9 +481,12 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_bip32_path, m)?)?;
     m.add_function(wrap_pyfunction!(py_bip44_path, m)?)?;
     m.add_function(wrap_pyfunction!(py_bsv_coin_type, m)?)?;
+    m.add_function(wrap_pyfunction!(py_watch_bip32_path, m)?)?;
+    m.add_function(wrap_pyfunction!(py_watch_bip44_path, m)?)?;
     // Wallet class
     m.add_class::<PyWallet>()?;
     m.add_class::<PyHdWallet>()?;
+    m.add_class::<PyHdWatchWallet>()?;
     // stack class
     m.add_class::<PyStack>()?;
     Ok(())

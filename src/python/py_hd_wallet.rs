@@ -3,8 +3,8 @@ use crate::{
     python::py_wallet::{str_to_network, PyWallet},
     util::ChainGangError,
     wallet::{
-        bip32_path, bip44_path, derive_extended_key, load_wordlist, mnemonic_to_seed, Wordlist,
-        BSV_COIN_TYPE, ExtendedKey, HdWallet,
+        bip32_path, bip44_path, derive_extended_key, load_wordlist, mnemonic_to_seed, watch_bip32_path,
+        watch_bip44_path, Wordlist, BSV_COIN_TYPE, ExtendedKey, HdWallet, HdWatchWallet,
     },
 };
 
@@ -87,6 +87,66 @@ impl PyHdWallet {
       .extended_public_key()?
       .encode())
   }
+
+  fn scan_external_addresses(
+    &self,
+    account: u32,
+    gap_limit: u32,
+    is_used: &Bound<'_, PyAny>,
+  ) -> PyResult<Vec<String>> {
+    Ok(self
+      .inner
+      .scan_external_addresses(account, gap_limit, |addr| call_is_used(is_used, addr))?)
+  }
+}
+
+#[pyclass(name = "HdWatchWallet")]
+pub struct PyHdWatchWallet {
+  inner: HdWatchWallet,
+}
+
+#[pymethods]
+impl PyHdWatchWallet {
+  #[classmethod]
+  fn from_xpub(_cls: &Bound<'_, PyType>, xpub: &str) -> PyResult<Self> {
+    Ok(PyHdWatchWallet {
+      inner: HdWatchWallet::from_xpub(xpub)?,
+    })
+  }
+
+  fn master_xpub(&self) -> PyResult<String> {
+    Ok(self.inner.master().encode())
+  }
+
+  fn address_at(&self, external: bool, index: u32) -> PyResult<String> {
+    Ok(self.inner.address_at(external, index)?)
+  }
+
+  fn address_at_bip44(&self, external: bool, index: u32) -> PyResult<String> {
+    Ok(self.inner.address_at_bip44(external, index)?)
+  }
+
+  fn address_at_path(&self, path: &str) -> PyResult<String> {
+    Ok(self.inner.address_at_path(path)?)
+  }
+
+  fn scan_addresses(
+    &self,
+    external: bool,
+    gap_limit: u32,
+    is_used: &Bound<'_, PyAny>,
+  ) -> PyResult<Vec<String>> {
+    Ok(self
+      .inner
+      .scan_addresses(external, gap_limit, |addr| call_is_used(is_used, addr))?)
+  }
+}
+
+fn call_is_used(is_used: &Bound<'_, PyAny>, addr: &str) -> bool {
+  is_used
+    .call1((addr,))
+    .and_then(|v| v.extract::<bool>())
+    .unwrap_or(false)
 }
 
 fn parse_network(network: &str) -> PyResult<Network> {
@@ -119,4 +179,14 @@ pub fn py_bip44_path(coin_type: u32, account: u32, external: bool, index: u32) -
 #[pyfunction(name = "bsv_coin_type")]
 pub fn py_bsv_coin_type() -> u32 {
   BSV_COIN_TYPE
+}
+
+#[pyfunction(name = "watch_bip32_path")]
+pub fn py_watch_bip32_path(change: u32, index: u32) -> String {
+  watch_bip32_path(change, index)
+}
+
+#[pyfunction(name = "watch_bip44_path")]
+pub fn py_watch_bip44_path(external: bool, index: u32) -> String {
+  watch_bip44_path(external, index)
 }

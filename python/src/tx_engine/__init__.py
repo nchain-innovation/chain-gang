@@ -3,8 +3,8 @@ This is a tx_engine doc str
 """
 # noqa: F401 - 'x' - imported but unused
 
-from tx_engine.tx_engine import Tx, TxIn, TxOut, Script, Stack, Wallet, HdWallet, p2pkh_script, hash160, hash256d, address_to_public_key_hash, public_key_to_address  # noqa: F401
-from tx_engine.tx_engine import sig_hash_preimage, sig_hash_preimage_checksig_index, sig_hash, sig_hash_checksig_index, wif_to_bytes, bytes_to_wif, wif_from_pw_nonce, mnemonic_to_seed, derive_extended_key, bip32_path, bip44_path, bsv_coin_type  # noqa: F401
+from tx_engine.tx_engine import Tx, TxIn, TxOut, Script, Stack, Wallet, HdWallet, HdWatchWallet, p2pkh_script, hash160, hash256d, address_to_public_key_hash, public_key_to_address  # noqa: F401
+from tx_engine.tx_engine import sig_hash_preimage, sig_hash_preimage_checksig_index, sig_hash, sig_hash_checksig_index, wif_to_bytes, bytes_to_wif, wif_from_pw_nonce, mnemonic_to_seed, derive_extended_key, bip32_path, bip44_path, bsv_coin_type, watch_bip32_path, watch_bip44_path  # noqa: F401
 from tx_engine.engine.context import Context  # noqa: F401
 from tx_engine.engine.util import encode_num, decode_num  # noqa: F401
 from tx_engine.tx.sighash import SIGHASH  # noqa: F401

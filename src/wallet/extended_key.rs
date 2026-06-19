@@ -21,6 +21,9 @@ const SECP256K1_CURVE_ORDER: [u8; 32] = [
 /// Index which begins the derived hardened keys
 pub const HARDENED_KEY: u32 = 2147483648;
 
+/// Error message when BIP-32 child derivation must skip to the next index.
+pub const INVALID_CHILD_KEY_MSG: &str = "Invalid key. Try next index.";
+
 /// "xpub" prefix for public extended keys on mainnet
 pub const MAINNET_PUBLIC_EXTENDED_KEY: u32 = 0x0488B21E;
 /// "xprv" prefix for private extended keys on mainnet
@@ -259,8 +262,28 @@ impl ExtendedKey {
         }
     }
 
-    /// Derives an extended child private key from an extended parent private key
+    /// Derives an extended child private key from an extended parent private key.
+    ///
+    /// If the derived key is invalid per BIP-32, increments the child index and retries.
     pub fn derive_private_key(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
+        let mut idx = index;
+        loop {
+            match self.try_derive_private_key_once(idx) {
+                Ok(key) => return Ok(key),
+                Err(ChainGangError::IllegalState(ref msg)) if msg == INVALID_CHILD_KEY_MSG => {
+                    if idx == u32::MAX {
+                        return Err(ChainGangError::BadData(
+                            "No valid BIP-32 child private key found".to_string(),
+                        ));
+                    }
+                    idx += 1;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    fn try_derive_private_key_once(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
         if self.key_type()? == ExtendedKeyType::Public {
             let msg = "Cannot derive private key from public key";
             return Err(ChainGangError::BadData(msg.to_string()));
@@ -303,19 +326,13 @@ impl ExtendedKey {
         }
 
         if !is_private_key_valid(&hmac[..32]) {
-            let msg = "Invalid key. Try next index.".to_string();
-            return Err(ChainGangError::IllegalState(msg));
+            return Err(ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string()));
         }
 
         let secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
         let child_sk = *secp_child_secret_key.as_scalar_primitive();
         let private_sk = secp_par_secret_key.as_scalar_primitive();
-
-        //secp_child_secret_key.add_assign(private_key)?;
         let child_sk = child_sk.add(private_sk);
-
-        //let child_private_key =
-        //    unsafe { slice::from_raw_parts(secp_child_secret_key.as_ptr(), 32) };
         let child_private_key: [u8; 32] = child_sk.to_bytes().into();
 
         let child_chain_code = &hmac[32..];
@@ -331,8 +348,28 @@ impl ExtendedKey {
         )
     }
 
-    /// Derives an extended child public key from an extended parent public key
+    /// Derives an extended child public key from an extended parent public key.
+    ///
+    /// If the derived key is invalid per BIP-32, increments the child index and retries.
     pub fn derive_public_key(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
+        let mut idx = index;
+        loop {
+            match self.try_derive_public_key_once(idx) {
+                Ok(key) => return Ok(key),
+                Err(ChainGangError::IllegalState(ref msg)) if msg == INVALID_CHILD_KEY_MSG => {
+                    if idx == u32::MAX {
+                        return Err(ChainGangError::BadData(
+                            "No valid BIP-32 child public key found".to_string(),
+                        ));
+                    }
+                    idx += 1;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    fn try_derive_public_key_once(&self, index: u32) -> Result<ExtendedKey, ChainGangError> {
         if index >= HARDENED_KEY {
             return Err(ChainGangError::BadArgument(
                 "i cannot be hardened".to_string(),
@@ -361,8 +398,7 @@ impl ExtendedKey {
         }
 
         if !is_private_key_valid(&hmac[..32]) {
-            let msg = "Invalid key. Try next index.".to_string();
-            return Err(ChainGangError::IllegalState(msg));
+            return Err(ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string()));
         }
 
         let secret_key = SecretKey::from_slice(&hmac[..32])?;
@@ -371,8 +407,9 @@ impl ExtendedKey {
             .map_err(|_| ChainGangError::BadData("Invalid parent public key".to_string()))?;
         let offset_pk = secret_key.public_key();
         let child_point = parent_pk.to_projective() + offset_pk.to_projective();
-        let child_pk = PublicKey::<Secp256k1>::try_from(child_point)
-            .map_err(|_| ChainGangError::BadData("Invalid derived public key".to_string()))?;
+        let child_pk = PublicKey::<Secp256k1>::try_from(child_point).map_err(|_| {
+            ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string())
+        })?;
         let child_bytes = child_pk.to_sec1_bytes();
         let pk_vec = child_bytes.to_vec();
         assert!(pk_vec.len() == 33);

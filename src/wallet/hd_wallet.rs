@@ -108,6 +108,23 @@ impl HdWallet {
     ) -> Result<String, ChainGangError> {
         self.wallet_at_path(&bip44_path(coin_type, account, external, index))?.get_address()
     }
+
+    /// Scans external receive addresses for `account` until `gap_limit` consecutive unused indices.
+    pub fn scan_external_addresses<F>(
+        &self,
+        account: u32,
+        gap_limit: u32,
+        is_used: F,
+    ) -> Result<Vec<String>, ChainGangError>
+    where
+        F: Fn(&str) -> bool,
+    {
+        crate::wallet::hd_watch_wallet::scan_address_indices(
+            |i| self.address_at(account, true, i),
+            gap_limit,
+            is_used,
+        )
+    }
 }
 
 #[cfg(test)]

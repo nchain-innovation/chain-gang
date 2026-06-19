@@ -2,7 +2,7 @@
 """
 import unittest
 
-from tx_engine import HdWallet, bip32_path, bip44_path, bsv_coin_type, derive_extended_key, mnemonic_to_seed
+from tx_engine import HdWallet, HdWatchWallet, bip32_path, bip44_path, bsv_coin_type, derive_extended_key, mnemonic_to_seed
 
 
 ABANDON_MNEMONIC = (
@@ -35,6 +35,15 @@ class HdWalletTest(unittest.TestCase):
         path = bip44_path(bsv_coin_type(), 0, True, 1)
         xprv = hd.derive_xprv(path)
         self.assertEqual(derive_extended_key(hd.master_xprv(), path), xprv)
+
+    def test_watch_wallet_from_account_xpub(self):
+        hd = HdWallet.from_mnemonic("BSV_Mainnet", ABANDON_MNEMONIC)
+        account_xpub = hd.derive_xpub("m/0'")
+        watch = HdWatchWallet.from_xpub(account_xpub)
+        self.assertEqual(
+            watch.address_at(True, 0),
+            hd.address_at(0, True, 0),
+        )
 
 
 if __name__ == "__main__":

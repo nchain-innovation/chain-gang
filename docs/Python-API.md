@@ -14,6 +14,7 @@ Class and function reference for **tx-engine**. For install and a quick start, s
 * [TxOut](#txout)
 * [Wallet](#wallet)
 * [HdWallet](#hdwallet)
+* [HdWatchWallet](#hdwatchwallet)
 * [Interface Factory](#interface-factory)
 * [Blockchain Interface](#blockchain-interface)
 * [Other Functions](#other-functions)
@@ -260,6 +261,29 @@ addr = hd.address_at_bip44(bsv_coin_type(), 0, True, 0)
 wallet = hd.wallet_at_path(bip44_path(bsv_coin_type(), 0, True, 0))
 signed_tx = wallet.sign_tx(0, prev_tx, tx)
 ```
+
+## HdWatchWallet
+
+Watch-only BIP-32 wallet from an account-level `xpub`. Use relative paths (`M/0/0`) for receive/change indices. Cannot sign transactions.
+
+`HdWatchWallet` class methods:
+
+* `HdWatchWallet.from_xpub(xpub: str) -> HdWatchWallet`
+
+`HdWatchWallet` methods:
+
+* `master_xpub() -> str`
+* `address_at(external: bool, index: int) -> str` — relative `M/{change}/{index}`
+* `address_at_bip44(external: bool, index: int) -> str`
+* `address_at_path(path: str) -> str`
+* `scan_addresses(external: bool, gap_limit: int, is_used: callable) -> List[str]` — gap-limit discovery; `is_used(address)` returns whether the address has been seen on-chain
+
+Path helpers for account-level `xpub`:
+
+* `watch_bip32_path(change: int, index: int) -> str`
+* `watch_bip44_path(external: bool, index: int) -> str`
+
+`HdWallet.scan_external_addresses(account, gap_limit, is_used)` scans receive addresses for a full HD wallet.
 
 
 ## Interface Factory
