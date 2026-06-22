@@ -20,9 +20,7 @@ use pyo3::{
 };
 use std::ffi::CString;
 
-use hmac::Hmac;
-use pbkdf2::pbkdf2;
-use sha2::Sha256;
+use pbkdf2::{hmac::Hmac, pbkdf2, sha2::Sha256};
 use std::num::NonZeroU32;
 
 /// Decode a compressed WIF private key to 32 raw bytes.
@@ -51,7 +49,7 @@ pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
     let salt_bytes = nonce.as_bytes();
     let iterations = NonZeroU32::new(100_000).unwrap();
     let mut dk = [0u8; 32]; // 256-bit key
-    pbkdf2::<Hmac<Sha256>>(pw_bytes, salt_bytes, iterations.into(), &mut dk)
+    pbkdf2::<Hmac<Sha256>>(pw_bytes, salt_bytes, iterations.get(), &mut dk)
         .expect("HMAC can be initialized with any key length");
 
     // Choose prefix bytes based on network (mainnet or testnet)
