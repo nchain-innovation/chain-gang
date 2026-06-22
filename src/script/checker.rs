@@ -258,7 +258,7 @@ impl Checker for TransactionChecker<'_> {
         let mut signature = Signature::from_der(der_sig)?;
         if self.chronicle_script_version() > 1 {
             // Chronicle lifts the low-S rule; normalize so k256 accepts high-S encodings.
-            signature = signature.normalize_s().unwrap_or(signature);
+            signature = signature.normalize_s();
         }
         let message = sig_hash.0;
         let verifying_key: VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;

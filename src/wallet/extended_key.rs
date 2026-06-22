@@ -330,8 +330,8 @@ impl ExtendedKey {
         }
 
         let secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
-        let child_sk = *secp_child_secret_key.as_scalar_primitive();
-        let private_sk = secp_par_secret_key.as_scalar_primitive();
+        let child_sk = *secp_child_secret_key.as_scalar_value();
+        let private_sk = secp_par_secret_key.as_scalar_value();
         let child_sk = child_sk.add(private_sk);
         let child_private_key: [u8; 32] = child_sk.to_bytes().into();
 
