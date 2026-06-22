@@ -20,7 +20,9 @@ use pyo3::{
 };
 use std::ffi::CString;
 
-use pbkdf2::{hmac::Hmac, pbkdf2, sha2::Sha256};
+use hmac::Hmac;
+use pbkdf2::pbkdf2;
+use sha2::Sha256;
 use std::num::NonZeroU32;
 
 /// Decode a compressed WIF private key to 32 raw bytes.

@@ -1,7 +1,9 @@
 //! Functions to convert data to and from mnemonic words
 
 use crate::util::{Bits, ChainGangError};
-use pbkdf2::{hmac::Hmac, pbkdf2, sha2::{Digest, Sha256, Sha512}};
+use hmac::Hmac;
+use pbkdf2::pbkdf2;
+use sha2::{Digest, Sha256, Sha512};
 use std::str;
 
 type HmacSha512 = Hmac<Sha512>;

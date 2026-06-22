@@ -1,7 +1,7 @@
 use crate::network::Network;
 use crate::util::{hash160, sha256d, ChainGangError, Serializable};
 use byteorder::{BigEndian, WriteBytesExt};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
 
 use base58::{FromBase58, ToBase58};
