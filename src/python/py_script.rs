@@ -144,7 +144,7 @@ fn decode_op(op: &str, is_pushdata: usize) -> Command {
     }
 }
 
-#[pyclass(name = "Script", get_all, set_all)]
+#[pyclass(name = "Script", get_all, set_all, from_py_object)]
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct PyScript {
     pub cmds: Vec<u8>,

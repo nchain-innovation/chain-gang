@@ -8,7 +8,7 @@ use pyo3::{
 
 use std::ffi::CString;
 
-#[pyclass(name = "Stack", get_all, set_all, dict)]
+#[pyclass(name = "Stack", get_all, set_all, dict, from_py_object)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyStack {
     inner: Stack, // internal representation of py_stack

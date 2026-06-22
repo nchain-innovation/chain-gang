@@ -65,7 +65,7 @@ fn build_processed_utxos(
 
 /// TxIn - This represents a bitcoin transaction input
 //
-#[pyclass(name = "TxIn", get_all, set_all, dict)]
+#[pyclass(name = "TxIn", get_all, set_all, dict, from_py_object)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxIn {
     pub prev_tx: String,
@@ -121,7 +121,7 @@ impl PyTxIn {
 /// TxOut - This represents a bitcoin transaction output
 //
 //#[pyclass(name = "TxOut")]
-#[pyclass(name = "TxOut", get_all, set_all, dict)]
+#[pyclass(name = "TxOut", get_all, set_all, dict, from_py_object)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PyTxOut {
     pub amount: i64,
@@ -203,7 +203,7 @@ pub fn tx_as_pytx(tx: &Tx) -> PyTx {
 /// * serialise a transaction - rust
 /// * sign tx - rust
 /// * verify tx - rust
-#[pyclass(name = "Tx", get_all, set_all, dict)]
+#[pyclass(name = "Tx", get_all, set_all, dict, from_py_object)]
 #[derive(Default, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct PyTx {
     pub version: u32,
