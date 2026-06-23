@@ -353,17 +353,6 @@ fn otda_sighash_preimage(
     Ok(s)
 }
 
-/// Pre-fork alias for OTDA sighash.
-fn legacy_sighash(
-    tx: &Tx,
-    n_input: usize,
-    script_code: &[u8],
-    checksig_index: usize,
-    sighash_type: u8,
-) -> Result<Hash256, ChainGangError> {
-    otda_sighash(tx, n_input, script_code, checksig_index, sighash_type)
-}
-
 pub fn sig_hash_preimage(
     tx: &Tx,
     n_input: usize,
@@ -584,10 +573,11 @@ mod tests {
         let bip143_hash = sighash(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
         let chronicle_hash =
             sighash(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
-        let otda_hash = legacy_sighash(&tx, 0, &lock_script, 0, chronicle_type).unwrap();
+        let expected_otda =
+            otda_sighash(&tx, 0, &lock_script, 0, chronicle_type).unwrap();
 
         assert_ne!(bip143_hash, chronicle_hash);
-        assert_eq!(chronicle_hash, otda_hash);
+        assert_eq!(chronicle_hash, expected_otda);
     }
 
     #[test]
@@ -609,7 +599,7 @@ mod tests {
     }
 
     #[test]
-    fn legacy_sighash_test() {
+    fn otda_sighash_test() {
         let lock_script =
             hex::decode("76a914d951eb562f1ff26b6cbe89f04eda365ea6bd95ce88ac").unwrap();
         let tx = Tx {
@@ -633,7 +623,7 @@ mod tests {
             }],
             lock_time: 0,
         };
-        let sighash = legacy_sighash(&tx, 0, &lock_script, 0, SIGHASH_ALL).unwrap();
+        let sighash = otda_sighash(&tx, 0, &lock_script, 0, SIGHASH_ALL).unwrap();
         let expected = "ad16084eccf26464a84c5ee2f8b96b4daff9a3154ac3c1b320346aed042abe57";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
     }
