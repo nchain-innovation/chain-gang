@@ -12,7 +12,7 @@ use crate::{
         wallet::{wif_to_network_and_private_key, Wallet, MAIN_PRIVATE_KEY, TEST_PRIVATE_KEY},
     },
 };
-use k256::ecdsa::SigningKey;
+use k256::{ecdsa::SigningKey, elliptic_curve::Generate};
 use num_bigint::{BigInt, Sign};
 use pyo3::{
     prelude::*,
@@ -22,9 +22,6 @@ use std::ffi::CString;
 
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
-
-use rand::rngs::OsRng;
-
 use sha2::Sha256;
 use std::num::NonZeroU32;
 
@@ -54,7 +51,7 @@ pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
     let salt_bytes = nonce.as_bytes();
     let iterations = NonZeroU32::new(100_000).unwrap();
     let mut dk = [0u8; 32]; // 256-bit key
-    pbkdf2::<Hmac<Sha256>>(pw_bytes, salt_bytes, iterations.into(), &mut dk)
+    pbkdf2::<Hmac<Sha256>>(pw_bytes, salt_bytes, iterations.get(), &mut dk)
         .expect("HMAC can be initialized with any key length");
 
     // Choose prefix bytes based on network (mainnet or testnet)
@@ -277,7 +274,7 @@ impl PyWallet {
     #[classmethod]
     fn generate_keypair(_cls: &Bound<'_, PyType>, network: &str) -> PyResult<Self> {
         if let Some(netwrk) = str_to_network(network) {
-            let private_key = SigningKey::random(&mut OsRng);
+            let private_key = SigningKey::generate();
             let public_key = *private_key.verifying_key();
             let wallet = Wallet::new(private_key, public_key, netwrk);
             Ok(PyWallet { wallet })

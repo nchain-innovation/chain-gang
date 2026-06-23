@@ -48,7 +48,7 @@ pub fn uses_low_s_signing(sighash_type: u8) -> bool {
 /// Applies low-S normalization policy and appends the sighash type byte.
 fn encode_signature(signature: Signature, sighash_type: u8) -> Vec<u8> {
     let signature = if uses_low_s_signing(sighash_type) {
-        signature.normalize_s().unwrap_or(signature)
+        signature.normalize_s()
     } else {
         signature
     };
@@ -80,14 +80,12 @@ mod tests {
 
     fn signature_has_high_s(der: &[u8]) -> bool {
         let sig = Signature::from_der(der).unwrap();
-        sig.normalize_s()
-            .map(|normalized| normalized != sig)
-            .unwrap_or(false)
+        sig.normalize_s() != sig
     }
 
     fn flip_der_to_high_s(der: &[u8]) -> Vec<u8> {
         let sig = Signature::from_der(der).unwrap();
-        let low_s = sig.normalize_s().unwrap_or(sig);
+        let low_s = sig.normalize_s();
         assert!(
             !signature_has_high_s(low_s.to_der().as_bytes()),
             "expected low-S input for flip helper"
@@ -160,7 +158,7 @@ mod tests {
         let raw: Signature = signing_key.sign_prehash(&sighash.0).unwrap();
         let high_s =
             Signature::from_der(flip_der_to_high_s(raw.to_der().as_bytes()).as_slice()).unwrap();
-        let normalized = high_s.normalize_s().unwrap();
+        let normalized = high_s.normalize_s();
         assert_eq!(normalized, raw);
         assert!(
             signing_key
