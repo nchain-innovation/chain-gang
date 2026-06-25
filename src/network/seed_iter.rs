@@ -1,5 +1,5 @@
 use dns_lookup::lookup_host;
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 use std::net::IpAddr;
 
 /// Iterates through DNS seeds semi-randomly
