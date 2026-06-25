@@ -16,13 +16,11 @@ on:
   workflow_dispatch:
 
 env:
-  PYO3_USE_ABI3_FORWARD_COMPATIBILITY: 1
-  UNSAFE_PYO3_BUILD_FREE_THREADED: 1
   RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
 
-# When these env vars are removed some of the platforms can be enabled
-# below. 
-# They have had to be disabled as they didn't read these env vars.
+# Wheels are built against the stable ABI (pyo3 abi3-py311), so a single
+# cp311-abi3 wheel per platform covers Python 3.11 through 3.14 and beyond.
+# No --find-interpreter and no per-version matrix are needed.
 
 permissions:
   contents: read
@@ -50,12 +48,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.11'
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --interpreter 3.11
           sccache: 'true'
           manylinux: auto
       - name: Upload wheels
@@ -78,13 +76,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.11'
           architecture: ${{ matrix.platform.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --interpreter 3.11
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -106,12 +104,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.11'
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --interpreter 3.11
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
