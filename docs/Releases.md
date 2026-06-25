@@ -53,3 +53,4 @@
 * v0.7.6 - Removed the use of LRU cache around WoCInterface for get_raw_transaction
 * v0.8.0 - BSV Chronicle support (OTDA sighash, opcodes, two-phase eval, height-aware validation, Python bindings), documentation overhaul, Python 3.11–3.14 CI matrix
 * v0.9.0 - BIP-32 HD wallets (`HdWallet`, `HdWatchWallet`, BIP-39 mnemonic seed, Python bindings), watch-only `xpub` and gap-limit scanning, BIP-32 documentation; dependency updates (`pyo3` 0.28.2, `cryptography` 49.0.0, `log`, `reqwest`, `regex`, `typenum`)
+* v0.9.1 - abi3 wheels: a single `cp311-abi3` wheel now covers Python 3.11–3.14 and beyond (fixes the missing cp314 wheel); bumped `pyo3` 0.28→0.29 to fix security advisories GHSA-36hh-v3qg-5jq4 (`PyList`/`PyTuple` iterator out-of-bounds read) and GHSA-chgr-c6px-7xpp (`PyCFunction::new_closure` missing `Sync` bound); added Dependabot config for weekly cargo updates
