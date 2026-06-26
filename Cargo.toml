@@ -15,7 +15,6 @@ dns-lookup = "3.0.1"
 hex = "0.4.3"
 linked-hash-map = "0.5"
 log = { version = "0.4.32", features = ["max_level_trace", "release_max_level_warn"] }
-db-key = "0.0.5"  # this is a non-trival update
 thiserror = "2.0.18"
 url = "2.5.8"
 
