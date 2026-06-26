@@ -17,6 +17,9 @@ on:
 
 env:
   RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
+  # Disable cargo's HTTP/2 multiplexing to avoid intermittent
+  # "[16] Error in the HTTP2 framing layer" failures when fetching from crates.io.
+  CARGO_HTTP_MULTIPLEXING: false
 
 # Wheels are built against the stable ABI (pyo3 abi3-py311), so a single
 # cp311-abi3 wheel per platform covers Python 3.11 through 3.14 and beyond.
