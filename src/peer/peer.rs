@@ -14,11 +14,26 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::time::{Duration, UNIX_EPOCH};
 
-/// Time to wait for the initial TCP connection
+/// Default time to wait for the initial TCP connection.
+/// Override at runtime with env var `CHAIN_GANG_CONNECT_TIMEOUT_SECS`.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Time to wait for handshake messages before failing to connect
+/// Default time to wait for handshake messages before failing to connect.
+/// Override at runtime with env var `CHAIN_GANG_HANDSHAKE_READ_TIMEOUT_SECS`.
 const HANDSHAKE_READ_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Read a `Duration` (whole seconds) from `env_var`, falling back to `default`
+/// when the var is unset or not a positive integer. Lets operators tune the
+/// handshake timeouts without a rebuild; with no env vars set, behaviour is
+/// unchanged.
+fn duration_from_env_secs(env_var: &str, default: Duration) -> Duration {
+    std::env::var(env_var)
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|&secs| secs > 0)
+        .map(Duration::from_secs)
+        .unwrap_or(default)
+}
 
 /// Event emitted when a connection is established with the peer
 #[derive(Clone, Debug)]
@@ -343,9 +358,15 @@ impl Peer {
     ) -> Result<TcpStream, ChainGangError> {
         // Connect over TCP
         let tcp_addr = SocketAddr::new(self.ip, self.port);
-        let mut tcp_stream = TcpStream::connect_timeout(&tcp_addr, CONNECT_TIMEOUT)?;
+        let connect_timeout =
+            duration_from_env_secs("CHAIN_GANG_CONNECT_TIMEOUT_SECS", CONNECT_TIMEOUT);
+        let handshake_read_timeout = duration_from_env_secs(
+            "CHAIN_GANG_HANDSHAKE_READ_TIMEOUT_SECS",
+            HANDSHAKE_READ_TIMEOUT,
+        );
+        let mut tcp_stream = TcpStream::connect_timeout(&tcp_addr, connect_timeout)?;
         tcp_stream.set_nodelay(true)?; // Disable buffering
-        tcp_stream.set_read_timeout(Some(HANDSHAKE_READ_TIMEOUT))?;
+        tcp_stream.set_read_timeout(Some(handshake_read_timeout))?;
         tcp_stream.set_nonblocking(false)?;
 
         // Write our version
