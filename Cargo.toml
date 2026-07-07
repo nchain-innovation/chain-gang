@@ -21,7 +21,7 @@ url = "2.5.8"
 
 # Crypto
 murmur3 = "0.5.2"
-num-bigint = "0.4.6"
+num-bigint = "0.5.1"
 num-traits = "0.2"
 rand = "0.10.1"
 ripemd = "0.2.0"
