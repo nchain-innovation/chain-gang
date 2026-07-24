@@ -269,6 +269,18 @@ impl Serializable<Tx> for Tx {
     }
 }
 
+impl serde::Serialize for Tx {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        crate::util::serde_bytes::serialize(self, serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Tx {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        crate::util::serde_bytes::deserialize(deserializer)
+    }
+}
+
 impl Payload<Tx> for Tx {
     fn size(&self) -> usize {
         let mut size = 8;
@@ -573,5 +585,36 @@ mod tests {
                 Network::BSV_Mainnet,
             )
             .is_err());
+    }
+
+    #[test]
+    fn serde_bytes_match_serializable() {
+        let tx = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: Hash256([9; 32]),
+                    index: 9,
+                },
+                unlock_script: Script(vec![1, 3, 5, 7, 9]),
+                sequence: 100,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 99,
+                lock_script: Script(vec![1, 2, 3, 4, 5]),
+            }],
+            lock_time: 1000,
+        };
+
+        // The serde representation is exactly the raw wire-format bytes.
+        let mut wire = Vec::new();
+        tx.write(&mut wire).unwrap();
+        let json = serde_json::to_string(&tx).unwrap();
+        let encoded: Vec<u8> = serde_json::from_str(&json).unwrap();
+        assert_eq!(encoded, wire);
+
+        // ... and it round-trips back to an identical Tx.
+        let decoded: Tx = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, tx);
     }
 }
