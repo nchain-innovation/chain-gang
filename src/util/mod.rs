@@ -30,6 +30,7 @@ pub use self::hash160::{hash160, Hash160};
 pub use self::hash256::{sha256d, Hash256};
 #[allow(unused_imports)]
 pub use self::serdes::Serializable;
+pub use self::serdes::serde_bytes;
 
 /// Gets the time in seconds since a time in the past
 pub fn secs_since(time: SystemTime) -> u32 {
