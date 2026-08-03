@@ -378,3 +378,128 @@ impl RpcInterface {
         self.call("gettxoutproof", json!([[tx_id], block_hash])).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use httpmock::prelude::*;
+
+    fn rpc(url: &str) -> RpcInterface {
+        RpcInterface::new(url, "user", "pass", Network::BSV_Testnet).unwrap()
+    }
+
+    #[tokio::test]
+    async fn get_block_count_ok() {
+        let server = MockServer::start_async().await;
+        server
+            .mock_async(|when, then| {
+                when.method(POST).body_contains("getblockcount");
+                then.status(200).json_body(json!({
+                    "result": 12345, "error": null, "id": "chain-gang"
+                }));
+            })
+            .await;
+
+        let count = rpc(&server.base_url()).get_block_count().await.unwrap();
+        assert_eq!(count, 12345);
+    }
+
+    #[tokio::test]
+    async fn rpc_error_is_mapped() {
+        let server = MockServer::start_async().await;
+        server
+            .mock_async(|when, then| {
+                when.method(POST).body_contains("getrawtransaction");
+                // bitcoind reports RPC errors with HTTP 500 + an error object.
+                then.status(500).json_body(json!({
+                    "result": null,
+                    "error": {"code": -5, "message": "No such mempool transaction"},
+                    "id": "chain-gang"
+                }));
+            })
+            .await;
+
+        let err = rpc(&server.base_url())
+            .get_raw_transaction("deadbeef")
+            .await
+            .unwrap_err();
+        match err {
+            ChainGangError::RpcError { code, message } => {
+                assert_eq!(code, -5);
+                assert!(message.contains("No such mempool"));
+            }
+            other => panic!("expected RpcError, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn basic_auth_header_is_sent() {
+        let server = MockServer::start_async().await;
+        server
+            .mock_async(|when, then| {
+                when.method(POST)
+                    .header_exists("authorization")
+                    .body_contains("getbestblockhash");
+                then.status(200).json_body(json!({
+                    "result": "00ff", "error": null, "id": "chain-gang"
+                }));
+            })
+            .await;
+
+        let hash = rpc(&server.base_url())
+            .get_best_block_hash()
+            .await
+            .unwrap();
+        assert_eq!(hash, "00ff");
+    }
+
+    #[tokio::test]
+    async fn get_utxo_maps_filters_and_sorts() {
+        let server = MockServer::start_async().await;
+        server
+            .mock_async(|when, then| {
+                when.method(POST).body_contains("listunspent");
+                then.status(200).json_body(json!({
+                    "result": [
+                        {"txid":"aa","vout":0,"address":"addr","amount":1.0,"confirmations":10},
+                        {"txid":"bb","vout":2,"address":"addr","amount":0.5,"confirmations":2},
+                        {"txid":"cc","vout":1,"address":"other","amount":9.0,"confirmations":3}
+                    ],
+                    "error": null, "id": "chain-gang"
+                }));
+            })
+            .await;
+        server
+            .mock_async(|when, then| {
+                when.method(POST).body_contains("getblockcount");
+                then.status(200).json_body(json!({
+                    "result": 100, "error": null, "id": "chain-gang"
+                }));
+            })
+            .await;
+
+        let utxo = rpc(&server.base_url()).get_utxo("addr").await.unwrap();
+
+        // "other" address is filtered out; results sorted by ascending height.
+        assert_eq!(utxo.len(), 2);
+        // aa: height = 100 - 10 - 1 = 89, value = 1.0 * 1e8
+        assert_eq!(utxo[0].tx_hash, "aa");
+        assert_eq!(utxo[0].height, 89);
+        assert_eq!(utxo[0].tx_pos, 0);
+        assert_eq!(utxo[0].value, 100_000_000);
+        // bb: height = 100 - 2 - 1 = 97, value = 0.5 * 1e8
+        assert_eq!(utxo[1].tx_hash, "bb");
+        assert_eq!(utxo[1].height, 97);
+        assert_eq!(utxo[1].value, 50_000_000);
+    }
+
+    #[tokio::test]
+    async fn connection_error_surfaces_after_retries_exhausted() {
+        // Port 1 refuses connections; with zero retries this returns promptly.
+        let iface = RpcInterface::new("http://127.0.0.1:1", "u", "p", Network::BSV_Testnet)
+            .unwrap()
+            .with_retries(0, Duration::from_millis(1));
+        let err = iface.get_block_count().await.unwrap_err();
+        assert!(matches!(err, ChainGangError::ReqwestError(_)));
+    }
+}
