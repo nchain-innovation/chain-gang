@@ -262,11 +262,14 @@ impl BlockchainInterface for RpcInterface {
         let mut utxo: Utxo = unspent
             .into_iter()
             .map(|entry| {
-                // Height derived from confirmations, matching the Python client.
+                // True block height the output was mined at: for N confirmations
+                // at tip height H, the output is in block H - N + 1. (This
+                // deliberately differs from the Python RPCInterface, which uses
+                // H - N - 1 and is off by two.) Unconfirmed outputs get 0.
                 let height = if entry.confirmations == 0 {
                     0
                 } else {
-                    block_count - entry.confirmations as i32 - 1
+                    block_count - entry.confirmations as i32 + 1
                 };
                 UtxoEntry {
                     height,
@@ -482,14 +485,14 @@ mod tests {
 
         // "other" address is filtered out; results sorted by ascending height.
         assert_eq!(utxo.len(), 2);
-        // aa: height = 100 - 10 - 1 = 89, value = 1.0 * 1e8
+        // aa: height = 100 - 10 + 1 = 91, value = 1.0 * 1e8
         assert_eq!(utxo[0].tx_hash, "aa");
-        assert_eq!(utxo[0].height, 89);
+        assert_eq!(utxo[0].height, 91);
         assert_eq!(utxo[0].tx_pos, 0);
         assert_eq!(utxo[0].value, 100_000_000);
-        // bb: height = 100 - 2 - 1 = 97, value = 0.5 * 1e8
+        // bb: height = 100 - 2 + 1 = 99, value = 0.5 * 1e8
         assert_eq!(utxo[1].tx_hash, "bb");
-        assert_eq!(utxo[1].height, 97);
+        assert_eq!(utxo[1].height, 99);
         assert_eq!(utxo[1].value, 50_000_000);
     }
 

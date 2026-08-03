@@ -77,8 +77,10 @@ Wallet and regtest **mutation** calls (`getnewaddress`, `generatetoaddress`,
   address returns empty until the node has `importaddress`-ed it and rescanned.
 - **`get_block_headers` is not available over RPC** and returns
   `ChainGangError::InvalidOperation`.
-- Balance/UTXO height and satoshi conversions mirror the Python `RPCInterface`
-  for behavioural parity.
+- Satoshi conversions mirror the Python `RPCInterface`. The `UtxoEntry.height`
+  is the true block height the output was mined at (`block_count -
+  confirmations + 1`); this **intentionally differs** from the Python client,
+  which uses `- 1` and is off by two.
 
 ## Errors
 
