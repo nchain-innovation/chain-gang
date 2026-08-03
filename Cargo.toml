@@ -40,6 +40,7 @@ serde_json = { version = "1.0.151", optional = true }
 reqwest = { version = "0.13.4", features = ["json"], optional = true }
 async-mutex = { version = "1.4.1", optional = true }
 async-trait = { version = "0.1.91", optional = true }
+tokio = { version = "1", features = ["time"], optional = true }
 
 # For python feature
 # abi3-py311 builds against the stable ABI: one wheel (cp311-abi3) works on
@@ -62,5 +63,5 @@ lto = true          # Enable link-time optimizations to shrink binary
 
 [features]
 default = ["dep:serde", "dep:serde_json"]
-interface = ["dep:serde", "dep:serde_json", "dep:reqwest", "dep:async-mutex", "dep:async-trait"]
+interface = ["dep:serde", "dep:serde_json", "dep:reqwest", "dep:async-mutex", "dep:async-trait", "dep:tokio"]
 python = ["dep:serde", "dep:serde_json", "dep:pyo3"]

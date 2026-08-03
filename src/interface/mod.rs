@@ -1,6 +1,7 @@
 // This module provides the blockchain interface
 
 pub mod blockchain_interface;
+pub mod rpc_interface;
 pub mod uaas_interface;
 pub mod woc_interface;
 
