@@ -68,6 +68,9 @@ pub enum ChainGangError {
 
     #[error("JSON Parse error")]
     JSONParseError(String),
+
+    #[error("RPC error {code}: {message}")]
+    RpcError { code: i32, message: String },
 }
 
 #[cfg(feature = "python")]
