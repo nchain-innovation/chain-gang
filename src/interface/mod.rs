@@ -9,6 +9,7 @@ pub mod woc_interface;
 pub mod test_interface;
 
 pub use blockchain_interface::{Balance, BlockchainInterface, Utxo, UtxoEntry};
+pub use rpc_interface::RpcInterface;
 pub use uaas_interface::{Monitor, UaaSInterface};
 pub use woc_interface::WocInterface;
 
