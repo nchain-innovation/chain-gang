@@ -42,7 +42,7 @@ chain-gang = { path = "../chain-gang" }
 
 The `chain-gang` library uses the following feature flags:
 
-* `interface` - this provides a blockchain interface for accessing the current blockchain status, via servers such as WhatsOnChain.
+* `interface` - this provides a blockchain interface for accessing the current blockchain status, via WhatsOnChain (`WocInterface`), UaaS (`UaaSInterface`), or a bitcoind/BSV node over JSON-RPC (`RpcInterface`, see [RPC-Interface.md](RPC-Interface.md)).
 * `python` - this provides a Python interface to the `chain_gang` library.
 
 To build the library with the `interface` feature
