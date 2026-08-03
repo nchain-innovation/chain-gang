@@ -324,3 +324,57 @@ impl BlockchainInterface for RpcInterface {
         ))
     }
 }
+
+/// Read-only query helpers beyond the shared trait. These mirror the read
+/// calls of the Python `RPCInterface`; loosely-shaped node responses are
+/// returned as [`serde_json::Value`] for the caller to interpret.
+impl RpcInterface {
+    /// Current block height (`getblockcount`).
+    pub async fn get_block_count(&self) -> Result<u64, ChainGangError> {
+        self.call("getblockcount", json!([])).await
+    }
+
+    /// Best (tip) block hash (`getbestblockhash`).
+    pub async fn get_best_block_hash(&self) -> Result<String, ChainGangError> {
+        self.call("getbestblockhash", json!([])).await
+    }
+
+    /// Block hash at the given height (`getblockhash`).
+    pub async fn get_block_hash(&self, index: u64) -> Result<String, ChainGangError> {
+        self.call("getblockhash", json!([index])).await
+    }
+
+    /// Raw transaction hex for a txid (`getrawtransaction`).
+    pub async fn get_raw_transaction(&self, txid: &str) -> Result<String, ChainGangError> {
+        self.call("getrawtransaction", json!([txid])).await
+    }
+
+    /// Unspent output details (`gettxout`).
+    pub async fn get_tx_out(&self, txid: &str, index: u32) -> Result<Value, ChainGangError> {
+        self.call("gettxout", json!([txid, index])).await
+    }
+
+    /// Full block for a block hash (`getblock`).
+    pub async fn get_block(&self, block_hash: &str) -> Result<Value, ChainGangError> {
+        self.call("getblock", json!([block_hash])).await
+    }
+
+    /// Verbose block header for a block hash (`getblockheader`).
+    pub async fn get_block_header(&self, block_hash: &str) -> Result<Value, ChainGangError> {
+        self.call("getblockheader", json!([block_hash])).await
+    }
+
+    /// Current mempool contents (`getrawmempool`).
+    pub async fn get_raw_mempool(&self) -> Result<Value, ChainGangError> {
+        self.call("getrawmempool", json!([])).await
+    }
+
+    /// Merkle proof (hex) that a txid is in a block (`gettxoutproof`).
+    pub async fn get_merkle_proof(
+        &self,
+        block_hash: &str,
+        tx_id: &str,
+    ) -> Result<String, ChainGangError> {
+        self.call("gettxoutproof", json!([[tx_id], block_hash])).await
+    }
+}
