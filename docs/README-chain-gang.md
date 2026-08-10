@@ -2,8 +2,6 @@
 
 This is a Rust library that enables interacting with Bitcoin derived blockchains.
 
-This file is the **crates.io / docs.rs** readme (`Cargo.toml` → `readme = "docs/README-chain-gang.md"`). The GitHub repo root uses [README.md](../README.md); PyPI uses [README-pypi.md](../README-pypi.md).
-
 This library currently supports the following blockchains:
 
 | Name | Code | Networks |
@@ -25,7 +23,7 @@ BSV only Features
 * Wallet key derivation, BIP-32 HD wallets (`HdWallet`), and mnemonic parsing
 * Various Bitcoin primitives
 * Genesis upgrade support
-* [Chronicle upgrade](Chronicle.md) (OTDA sighash, opcodes, two-phase eval, `tx.version > 1` rules)
+* [Chronicle upgrade](https://github.com/nchain-innovation/chain-gang/blob/main/docs/Chronicle.md) (OTDA sighash, opcodes, two-phase eval, `tx.version > 1` rules)
 
 `Chain-gang` is based on `Rust-SV` An open source library to build Bitcoin SV applications and infrastructure in Rust. The documentation for `Rust-SV` can be found here: 
 [Rust-SV Documentation](https://docs.rs/sv/)
@@ -33,10 +31,10 @@ BSV only Features
 
 # Installation
 
-To call the library from a Rust project add the following line to to Cargo.toml:
+To call the library from a Rust project add the following line to Cargo.toml:
 ```toml
-chain-gang = { path = "../chain-gang" }
-``` 
+chain-gang = "0.10"
+```
 
 ## Feature Flags
 
@@ -54,11 +52,11 @@ To build the library with the `python` feature
 ```bash
 cargo build --features "python"
 ```
-For more details of the `python` feature see [python/README.md](../python/README.md). Full documentation index: [docs/README.md](README.md). HD wallets: [BIP-32.md](BIP-32.md).
+For more details of the `python` feature see [python/README.md](https://github.com/nchain-innovation/chain-gang/blob/main/python/README.md). Full documentation index: [docs/README.md](https://github.com/nchain-innovation/chain-gang/blob/main/docs/README.md). HD wallets: [BIP-32.md](https://github.com/nchain-innovation/chain-gang/blob/main/docs/BIP-32.md).
 
 ## HD wallets (BIP-32)
 
-```rust
+```rust,ignore
 use chain_gang::network::Network;
 use chain_gang::wallet::{HdWallet, bip44_path, BSV_COIN_TYPE};
 
@@ -66,7 +64,7 @@ let hd = HdWallet::from_seed(Network::BSV_Mainnet, &seed)?;
 let addr = hd.address_at_bip44(BSV_COIN_TYPE, 0, true, 0)?;
 ```
 
-See [BIP-32.md](BIP-32.md) for mnemonics, watch-only `xpub`, and gap-limit scanning.
+See [BIP-32.md](https://github.com/nchain-innovation/chain-gang/blob/main/docs/BIP-32.md) for mnemonics, watch-only `xpub`, and gap-limit scanning.
 
 # Known limitations
 
@@ -74,8 +72,7 @@ This library should not be used for consensus code because its validation checks
 
 # License
 
-Still to be agreed with nChain IP etc.
+`chain-gang` is licensed under the [MIT license](https://github.com/nchain-innovation/chain-gang/blob/main/LICENSE).
 
-(Rust-sv is licensed under the MIT license.)
-See [here](LICENSE)
+It is based on `Rust-SV`, which is also licensed under the MIT license (see [LICENSE-rust-sv](https://github.com/nchain-innovation/chain-gang/blob/main/LICENSE-rust-sv)).
 
