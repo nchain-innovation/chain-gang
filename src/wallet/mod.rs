@@ -5,8 +5,10 @@ mod hd_wallet;
 mod hd_watch_wallet;
 mod mnemonic;
 
+/// Base58Check encoding and decoding.
 pub mod base58_checksum;
 #[allow(clippy::module_inception)]
+/// Keys, addresses and transaction signing.
 pub mod wallet;
 
 pub use self::extended_key::{

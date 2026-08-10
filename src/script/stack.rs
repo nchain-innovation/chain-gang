@@ -3,6 +3,7 @@ use num_bigint::{BigInt, Sign};
 use num_traits::Zero;
 
 // Type to simplify the types..
+/// Script evaluation stack: a stack of byte-vector elements
 pub type Stack = Vec<Vec<u8>>;
 
 /// Maximum script number size before Genesis (4 bytes).
@@ -251,6 +252,8 @@ pub fn encode_bigint(val: BigInt) -> Vec<u8> {
     result.1
 }
 
+/// Decodes a little-endian, sign-magnitude script number into a `BigInt`, handling both small
+/// (up to 4-byte) and arbitrary-length encodings.
 #[inline]
 pub fn decode_number_combined(s: &[u8]) -> Result<BigInt, ChainGangError> {
     let len = s.len();

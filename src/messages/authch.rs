@@ -21,7 +21,7 @@ pub struct Authch {
 }
 
 impl Authch {
-    // Checks the authch message is valid
+    /// Checks the authch message is valid
     pub fn validate(&self) -> Result<(), ChainGangError> {
         if self.version != SUPPORTED_VERSION {
             let msg = format!("Unsupported version: {}", self.version);

@@ -39,6 +39,7 @@ pub mod commands {
     /// [Addr command] <https://en.bitcoin.it/wiki/Protocol_documentation#addr>
     pub const ADDR: [u8; 12] = *b"addr\0\0\0\0\0\0\0\0";
 
+    /// [Addr version 2 command] <https://github.com/bitcoin/bips/blob/master/bip-0155.mediawiki>
     pub const ADDRV2: [u8; 12] = *b"addrv2\0\0\0\0\0\0";
 
     /// [Alert command] <https://en.bitcoin.it/wiki/Protocol_documentation#alert> (deprecated)
@@ -139,39 +140,73 @@ pub mod commands {
 /// Bitcoin peer-to-peer message with its payload
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Message {
+    /// Advertises known network addresses of peers
     Addr(Addr),
+    /// Advertises known network addresses of peers (version 2, BIP-155)
     AddrV2(AddrV2),
+    /// A full block
     Block(Block),
+    /// Sets the minimum fee rate for transactions to be relayed to this peer
     FeeFilter(FeeFilter),
+    /// Adds a data element to the peer's bloom filter
     FilterAdd(FilterAdd),
+    /// Removes the peer's current bloom filter
     FilterClear,
+    /// Sets a bloom filter on the connection
     FilterLoad(FilterLoad),
+    /// Requests known peer addresses
     GetAddr,
+    /// Requests an inv of blocks following a block locator
     GetBlocks(BlockLocator),
+    /// Requests objects identified by an inventory list
     GetData(Inv),
+    /// Requests block headers following a block locator
     GetHeaders(BlockLocator),
+    /// A list of block headers
     Headers(Headers),
+    /// Advertises objects the peer knows about via an inventory list
     Inv(Inv),
+    /// Requests an inv of the transactions in the peer's mempool
     Mempool,
+    /// A block matched against a bloom filter with its partial merkle tree
     MerkleBlock(MerkleBlock),
+    /// Response indicating requested objects were not found
     NotFound(Inv),
+    /// An unknown or unsupported message identified by its command string
     Other(String),
+    /// A message whose header was read but whose payload is not yet available
     Partial(MessageHeader),
+    /// Keepalive request with a nonce
     Ping(Ping),
+    /// Keepalive response echoing a ping nonce
     Pong(Ping),
+    /// Notifies the peer that a message was rejected
     Reject(Reject),
+    /// Requests that new blocks be announced via headers messages
     SendHeaders,
+    /// Announces support for compact block relay (BIP-152)
     SendCmpct(SendCmpct),
+    /// A single transaction
     Tx(Tx),
+    /// Acknowledges a version message, completing the handshake
     Verack,
+    /// Advertises the peer's protocol version and capabilities
     Version(Version),
+    /// Advertises protocol configuration parameters (BSV protoconf)
     Protoconf(Protoconf),
+    /// Starts the BSV authentication handshake
     Authch(Authch),
+    /// Requests creation of a new stream (BSV multistreams)
     Createstrm(Createstrm),
+    /// Acknowledges a stream creation request (BSV multistreams)
     Streamack(Streamack),
+    /// A compact block (BIP-152)
     Cmpctblock(Cmpctblock),
+    /// Requests specific transactions from a block (BIP-152)
     Getblocktxn(Getblocktxn),
+    /// Provides specific transactions from a block (BIP-152)
     Blocktxn(Blocktxn),
+    /// Signals support for addrv2 messages (BIP-155)
     SendAddrV2,
 }
 
@@ -585,6 +620,7 @@ fn write_with_payload<T: Serializable<T>>(
 
 /// Message payload that is writable to bytes
 pub trait Payload<T>: Serializable<T> + fmt::Debug {
+    /// Returns the size of the payload in bytes when serialized
     fn size(&self) -> usize;
 }
 

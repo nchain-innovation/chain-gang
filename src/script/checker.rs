@@ -119,6 +119,7 @@ impl Checker for ZChecker {
 
 /// Script checker that supplies `tx.version` for Chronicle opcodes without transaction validation.
 pub struct TxVersionChecker {
+    /// Transaction version supplied to Chronicle opcodes
     pub tx_version: i32,
 }
 
@@ -153,7 +154,9 @@ impl Checker for TxVersionChecker {
 
 /// Script checker that uses a provided sighash and transaction version (Chronicle debugging).
 pub struct ZVersionChecker {
+    /// Precomputed sighash digest used to verify signatures
     pub z: Hash256,
+    /// Transaction version supplied to Chronicle opcodes
     pub tx_version: i32,
 }
 

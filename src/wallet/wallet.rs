@@ -16,12 +16,15 @@ use crate::{
     wallet::base58_checksum::{decode_base58_checksum, encode_base58_checksum},
 };
 
+/// WIF version byte prefix for mainnet private keys.
 pub const MAIN_PRIVATE_KEY: u8 = 0x80;
+/// WIF version byte prefix for testnet private keys.
 pub const TEST_PRIVATE_KEY: u8 = 0xef;
 
 const MAIN_PUBKEY_HASH: u8 = 0x00;
 const TEST_PUBKEY_HASH: u8 = 0x6f;
 
+/// Decodes a WIF string into its network and signing key.
 pub fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey), ChainGangError> {
     let decode = decode_base58_checksum(wif)?;
     // Get first byte
@@ -51,7 +54,7 @@ pub fn wif_to_network_and_private_key(wif: &str) -> Result<(Network, SigningKey)
     Ok((network, private_key))
 }
 
-// Given public_key and network return address as a string
+/// Converts a compressed or uncompressed public key into a P2PKH address for `network`.
 pub fn public_key_to_address(
     public_key: &[u8],
     network: Network,
@@ -78,6 +81,7 @@ pub fn public_key_to_address(
     Ok(encode_base58_checksum(&data))
 }
 
+/// Builds a P2PKH locking script for the given public key hash (`hash160`).
 pub fn p2pkh_script(h160: &[u8]) -> Script {
     let mut script = Script::new();
     script.append_slice(&[OP_DUP, OP_HASH160]);
@@ -86,6 +90,7 @@ pub fn p2pkh_script(h160: &[u8]) -> Script {
     script
 }
 
+/// Computes the sighash for input `n_input` of `tx` given the previous output's script and amount.
 pub fn create_sighash(
     tx: &Tx,
     n_input: usize,
@@ -106,6 +111,7 @@ pub fn create_sighash(
     Ok(sighash)
 }
 
+/// Computes the sighash for input `n_input` of `tx`, targeting a specific `OP_CHECKSIG` in the script.
 pub fn create_sighash_checksig_index(
     tx: &Tx,
     n_input: usize,
@@ -129,13 +135,18 @@ pub fn create_sighash_checksig_index(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// A single-key wallet holding a private/public key pair and its network.
 pub struct Wallet {
+    /// The ECDSA signing (private) key.
     pub private_key: SigningKey,
+    /// The ECDSA verifying (public) key.
     pub public_key: VerifyingKey,
+    /// The network this key belongs to.
     pub network: Network,
 }
 
 impl Wallet {
+    /// Creates a wallet from a WIF-encoded private key.
     pub fn from_wif(wif_key: &str) -> Result<Self, ChainGangError> {
         let (network, private_key) = wif_to_network_and_private_key(wif_key)?;
         let public_key = *private_key.verifying_key();
@@ -147,6 +158,7 @@ impl Wallet {
         })
     }
 
+    /// Creates a wallet from an existing key pair and network.
     pub fn new(private_key: SigningKey, public_key: VerifyingKey, network: Network) -> Self {
         Wallet {
             private_key,
@@ -172,26 +184,31 @@ impl Wallet {
         })
     }
 
+    /// Returns the P2PKH address for this wallet's public key.
     pub fn get_address(&self) -> Result<String, ChainGangError> {
         public_key_to_address(&self.public_key_serialize(), self.network)
     }
 
+    /// Returns the 33-byte compressed SEC1 encoding of the public key.
     pub fn public_key_serialize(&self) -> [u8; 33] {
         let vk_bytes = self.public_key.to_sec1_bytes();
         let vk_vec = vk_bytes.to_vec();
         vk_vec.try_into().unwrap()
     }
 
+    /// Returns the P2PKH locking script for this wallet's public key.
     pub fn get_locking_script(&self) -> Script {
         let serial = self.public_key_serialize();
         p2pkh_script(&hash160(&serial).0)
     }
 
+    /// Builds a P2PKH unlocking script from `signature` and this wallet's public key.
     pub fn create_unlock_script(&self, signature: &[u8]) -> Script {
         let public_key = self.public_key_serialize();
         create_unlock_script(signature, &public_key)
     }
 
+    /// Signs a precomputed sighash with this wallet's private key.
     pub fn sign_sighash(
         &self,
         sighash: Hash256,
@@ -203,7 +220,7 @@ impl Wallet {
         Ok(signature)
     }
 
-    // sign_transaction_with_inputs(input_txs, tx, self.private_key)
+    /// Signs input `index` of `tx`, spending the matching output of `tx_in`, and sets its unlock script.
     pub fn sign_tx_input(
         &self,
         tx_in: &Tx,
@@ -237,7 +254,7 @@ impl Wallet {
         Ok(())
     }
 
-    // As above sign_tx_input
+    /// Like `sign_tx_input`, but targets a specific `OP_CHECKSIG` via `checksig_index`.
     pub fn sign_tx_input_checksig_index(
         &self,
         tx_in: &Tx,
@@ -279,6 +296,7 @@ impl Wallet {
         Ok(())
     }
 
+    /// Returns a clone of `tx` with input `index` signed using the given sighash flags.
     pub fn sign_tx_sighash_flags(
         &mut self,
         index: usize,
@@ -291,6 +309,7 @@ impl Wallet {
         Ok(new_tx)
     }
 
+    /// Like `sign_tx_sighash_flags`, but targets a specific `OP_CHECKSIG` via `checksig_index`.
     pub fn sign_tx_sighash_flags_checksig_index(
         &mut self,
         index: usize,

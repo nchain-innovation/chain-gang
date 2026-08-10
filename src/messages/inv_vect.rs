@@ -19,7 +19,7 @@ pub const INV_VECT_COMPACT_BLOCK: u32 = 4;
 /// Inventory vector describing an object being requested or announced
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct InvVect {
-    // Object type linked to this inventory
+    /// Object type of the referenced inventory (one of the `INV_VECT_*` constants)
     pub obj_type: u32,
     /// Hash of the object
     pub hash: Hash256,

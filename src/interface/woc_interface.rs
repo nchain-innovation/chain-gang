@@ -17,6 +17,7 @@ struct BroadcastTxType {
     pub txhex: String,
 }
 
+/// Blockchain interface backed by the WhatsOnChain API.
 #[derive(Debug, Clone)]
 pub struct WocInterface {
     network_type: Network,
@@ -29,6 +30,7 @@ impl Default for WocInterface {
 }
 
 impl WocInterface {
+    /// Create a new `WocInterface` defaulting to the BSV testnet.
     pub fn new() -> Self {
         WocInterface {
             network_type: Network::BSV_Testnet,

@@ -37,6 +37,7 @@ use crate::{
     },
 };
 
+/// Byte buffer type used across the Python bindings
 pub type Bytes = Vec<u8>;
 
 fn parse_z_bytes(sig_hash: &[u8]) -> PyResult<Hash256> {
@@ -126,24 +127,28 @@ fn py_p2pkh_pyscript(h160: &[u8]) -> PyScript {
     p2pkh_pyscript(h160)
 }
 
+/// Python binding: returns the HASH160 (RIPEMD160 of SHA256) of `data`
 #[pyfunction(name = "hash160")]
 pub fn py_hash160(py: Python, data: &[u8]) -> Py<PyAny> {
     let result = hash160(data).0;
     PyBytes::new(py, &result).into()
 }
 
+/// Python binding: returns the double-SHA256 (SHA256d) of `data`
 #[pyfunction(name = "hash256d")]
 pub fn py_hash256d(py: Python, data: &[u8]) -> Py<PyAny> {
     let result = sha256d(data).0;
     PyBytes::new(py, &result).into()
 }
 
+/// Python binding: decodes a base58 address into its public key hash bytes
 #[pyfunction(name = "address_to_public_key_hash")]
 pub fn py_address_to_public_key_hash(py: Python, address: &str) -> PyResult<Py<PyAny>> {
     let result = address_to_public_key_hash(address)?;
     Ok(PyBytes::new(py, &result).into())
 }
 
+/// Python binding: encodes a public key as a base58 address for the given network
 #[pyfunction(name = "public_key_to_address")]
 pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<String> {
     // network conversion
@@ -410,6 +415,7 @@ pub fn py_sig_hash_checksig_index(
     Ok(bytes.into())
 }
 
+/// Python binding: decodes a WIF-encoded private key into its raw key bytes
 #[pyfunction(name = "wif_to_bytes")]
 pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<Py<PyAny>> {
     let key_bytes = wif_to_bytes(wif)?;
@@ -417,6 +423,7 @@ pub fn py_wif_to_bytes(py: Python, wif: &str) -> PyResult<Py<PyAny>> {
     Ok(bytes.into())
 }
 
+/// Python binding: encodes raw private key bytes as WIF for the given network
 #[pyfunction(name = "bytes_to_wif")]
 pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
     // network conversion
@@ -431,6 +438,7 @@ pub fn py_bytes_to_wif(key_bytes: &[u8], network: &str) -> PyResult<String> {
     Ok(bytes_to_wif(key_bytes, network_prefix))
 }
 
+/// Python binding: deterministically derives a WIF private key from a password and nonce
 #[pyfunction(name = "wif_from_pw_nonce")]
 #[pyo3(signature = (password, nonce, network=None))]
 pub fn py_generate_wif_from_pw_nonce(

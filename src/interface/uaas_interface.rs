@@ -12,27 +12,38 @@ use crate::{
     util::{ChainGangError, Serializable},
 };
 
+/// Status information reported by a UaaS node.
 #[derive(Debug, Deserialize)]
 pub struct UaaSStatus {
+    /// UaaS software version, if reported.
     pub version: Option<String>,
+    /// Network the node is running on (e.g. `main`, `test`).
     pub network: String,
+    /// Timestamp of the most recent block.
     #[serde(alias = "last block time")]
     pub last_block_time: String,
+    /// Height of the chain tip.
     #[serde(alias = "block height")]
     pub block_height: u64,
+    /// Total number of transactions known to the node.
     #[serde(alias = "number of txs")]
     pub number_of_txs: u64,
+    /// Number of entries in the UTXO set.
     #[serde(alias = "number of utxo entries")]
     pub number_of_utxo_entries: u64,
+    /// Number of entries in the mempool.
     #[serde(alias = "number of mempool entries")]
     pub number_of_mempool_entries: u64,
 }
 
+/// Response wrapper for the UaaS `/status` endpoint.
 #[derive(Debug, Deserialize)]
 pub struct UaaSStatusResponse {
+    /// The node status payload.
     pub status: UaaSStatus,
 }
 
+/// Decoded fields of a block header as returned by UaaS.
 #[allow(non_snake_case, dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct HeaderFields {
@@ -45,35 +56,49 @@ pub struct HeaderFields {
     nNonce: String,
 }
 
+/// A block header together with associated block metadata.
 #[derive(Debug, Deserialize)]
 pub struct HeaderFormat {
+    /// Height of the block.
     pub height: u64,
+    /// Decoded block header fields.
     pub header: HeaderFields,
+    /// Size of the block in bytes.
     pub blocksize: u64,
+    /// Number of transactions in the block.
     #[serde(alias = "number of tx")]
     pub number_of_tx: u64,
 }
 
+/// Response wrapper for a list of block headers.
 #[derive(Debug, Deserialize)]
 pub struct BlockHeadersResponse {
+    /// The returned block headers.
     pub blocks: Vec<HeaderFormat>,
 }
 
+/// Response wrapper carrying a hex-encoded block header.
 #[derive(Debug, Deserialize)]
 pub struct BlockHeaderHexResponse {
+    /// Hex-encoded block header.
     pub block: String,
 }
 
+/// Response wrapper carrying a hex-encoded transaction.
 #[derive(Debug, Deserialize)]
 pub struct TxResponse {
+    /// Hex-encoded transaction.
     pub result: String,
 }
 
+/// Request body for broadcasting a transaction to UaaS.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UaaSBroadcastTxType {
+    /// Hex-encoded transaction to broadcast.
     pub tx: String,
 }
 
+/// Blockchain interface backed by a UaaS (UTXO-as-a-Service) node.
 #[derive(Debug, Clone)]
 pub struct UaaSInterface {
     url: Url,
@@ -81,11 +106,16 @@ pub struct UaaSInterface {
 }
 
 // This represents an address or locking script monitor
+/// A UaaS monitor tracking an address or locking script pattern.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Monitor {
+    /// Name identifying the monitor.
     pub name: String,
+    /// Whether to also track descendant transactions.
     pub track_descendants: bool,
+    /// Address to monitor, if monitoring by address.
     pub address: Option<String>,
+    /// Locking script pattern to monitor, if monitoring by script.
     pub locking_script_pattern: Option<String>,
 }
 
@@ -101,6 +131,7 @@ struct GetUtxoResponse {
 
 /// UaaS specific funtionality
 impl UaaSInterface {
+    /// Create a new `UaaSInterface` targeting the UaaS node at `input_url`.
     pub fn new(input_url: &str) -> Result<Self, ChainGangError> {
         // Check this is a valid URL
         let url = Url::parse(input_url)?;
@@ -112,6 +143,7 @@ impl UaaSInterface {
     }
 
     // Return Ok(UaaSStatusResponse) if UaaS responds...
+    /// Query the node's `/status` endpoint and return its status.
     pub async fn get_uaas_status(&self) -> Result<UaaSStatusResponse, ChainGangError> {
         log::debug!("status");
 
@@ -138,6 +170,7 @@ impl UaaSInterface {
         Ok(status)
     }
 
+    /// Fetch the latest block headers known to the node.
     pub async fn get_uaas_block_headers(&self) -> Result<BlockHeadersResponse, ChainGangError> {
         log::debug!("get_uaas_block_headers");
 
@@ -166,6 +199,7 @@ impl UaaSInterface {
         Ok(blockheaders)
     }
 
+    /// Return the names of the monitor collections configured on the node.
     pub async fn get_monitors(&self) -> Result<Vec<String>, ChainGangError> {
         log::debug!("get_monitors");
 
@@ -193,6 +227,7 @@ impl UaaSInterface {
         Ok(monitors.collections)
     }
 
+    /// Register a new monitor on the node.
     pub async fn add_monitor(&self, monitor: &Monitor) -> Result<(), ChainGangError> {
         log::debug!("add_monitor");
         // check the input is valid
@@ -220,6 +255,7 @@ impl UaaSInterface {
         Ok(())
     }
 
+    /// Remove the monitor with the given name from the node.
     pub async fn delete_monitor(&self, monitor_name: &str) -> Result<(), ChainGangError> {
         log::debug!("delete_monitor");
 

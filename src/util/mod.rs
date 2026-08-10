@@ -14,10 +14,13 @@ mod hash256;
 mod latch;
 pub mod rx;
 mod serdes;
+/// SHA-1 hashing helper
 pub mod sha1;
+/// SHA-256 hashing helper
 pub mod sha256;
 pub(crate) mod var_int;
 
+/// Error types used throughout the crate
 pub mod errors;
 
 pub(crate) use self::bits::{lshift, rshift, Bits};

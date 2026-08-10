@@ -20,5 +20,6 @@ pub mod wallet;
 #[cfg(feature = "interface")]
 pub mod interface;
 
+/// Python (PyO3) bindings, compiled only with the `python` feature.
 #[cfg(feature = "python")]
 pub mod python;

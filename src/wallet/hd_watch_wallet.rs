@@ -44,10 +44,12 @@ impl HdWatchWallet {
         Ok(HdWatchWallet { master })
     }
 
+    /// Returns the master extended public key backing this wallet.
     pub fn master(&self) -> ExtendedKey {
         self.master
     }
 
+    /// Returns the network of the master extended public key.
     pub fn network(&self) -> Result<Network, ChainGangError> {
         self.master.network()
     }

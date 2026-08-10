@@ -36,7 +36,9 @@ pub const TESTNET_PRIVATE_EXTENDED_KEY: u32 = 0x04358394;
 /// Public or private key type
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum ExtendedKeyType {
+    /// Public extended key (`xpub`/`tpub`).
     Public,
+    /// Private extended key (`xprv`/`tprv`).
     Private,
 }
 

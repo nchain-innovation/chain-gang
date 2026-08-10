@@ -2,7 +2,7 @@ use crate::util::{sha256d, ChainGangError};
 
 use base58::{FromBase58, ToBase58};
 
-// Return first 4 digits of double sha256
+/// Returns the first 4 bytes of the double SHA-256 of `data` (Base58Check checksum).
 pub fn short_double_sha256_checksum(data: &[u8]) -> Vec<u8> {
     sha256d(data).0[..4].to_vec()
 }

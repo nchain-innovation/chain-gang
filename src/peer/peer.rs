@@ -38,30 +38,36 @@ fn duration_from_env_secs(env_var: &str, default: Duration) -> Duration {
 /// Event emitted when a connection is established with the peer
 #[derive(Clone, Debug)]
 pub struct PeerConnected {
+    /// The peer that connected
     pub peer: Arc<Peer>,
 }
 
 /// Event emitted when the connection with the peer is terminated
 #[derive(Clone, Debug)]
 pub struct PeerDisconnected {
+    /// The peer that disconnected
     pub peer: Arc<Peer>,
 }
 
 /// Event emitted when the peer receives a network message
 #[derive(Clone, Debug)]
 pub struct PeerMessage {
+    /// The peer that received the message
     pub peer: Arc<Peer>,
+    /// The network message received
     pub message: Message,
 }
 
 /// Filters peers based on their version information before connecting
 pub trait PeerFilter: Send + Sync {
+    /// Returns true if a peer advertising the given `Version` may be connected to
     fn connectable(&self, _: &Version) -> bool;
 }
 
 /// Filters out all peers except for Bitcoin SV full nodes
 #[derive(Clone, Default, Debug)]
 pub struct SVPeerFilter {
+    /// Minimum starting chain height a peer must advertise to be connectable
     pub min_start_height: i32,
 }
 
@@ -85,8 +91,11 @@ impl PeerFilter for SVPeerFilter {
 /// Not these fields are optional, so if not provided are ignored
 #[derive(Default)]
 pub struct PeerNodeFilter {
+    /// Minimum starting chain height required, if set
     pub start_height: Option<i32>,
+    /// Substring the peer's user agent must contain, if set
     pub user_agent: Option<String>,
+    /// Service bits the peer must provide, if set
     pub services: Option<u64>,
 }
 

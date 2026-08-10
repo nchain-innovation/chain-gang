@@ -67,6 +67,8 @@ pub fn sighash(
     )
 }
 
+/// Same as [`sighash`] but with an additional `checksig_index` parameter selecting the
+/// OP_CHECKSIG occurrence to sign against.
 // Same as above `sighash` function with an additional `checksig_index` parameter
 pub fn sighash_checksig_index(
     tx: &Tx,
@@ -116,39 +118,48 @@ impl SigHashCache {
         }
     }
     // getter/setter/clear hash_prevouts
+    /// Returns the cached hash of the previous outputs, if set
     pub fn hash_prevouts(&self) -> Option<&Hash256> {
         self.hash_prevouts.as_ref()
     }
 
+    /// Sets the cached hash of the previous outputs
     pub fn set_hash_prevouts(&mut self, hash: Hash256) {
         self.hash_prevouts = Some(hash);
     }
 
+    /// Clears the cached hash of the previous outputs
     pub fn clear_hash_prevouts(&mut self) {
         self.hash_prevouts = None;
     }
     //getter/setter/clear hash_sequence
+    /// Returns the cached hash of the input sequence numbers, if set
     pub fn hash_sequence(&self) -> Option<&Hash256> {
         self.hash_sequence.as_ref()
     }
 
+    /// Sets the cached hash of the input sequence numbers
     pub fn set_hash_sequence(&mut self, hash: Hash256) {
         self.hash_sequence = Some(hash);
     }
 
+    /// Clears the cached hash of the input sequence numbers
     pub fn clear_hash_sequence(&mut self) {
         self.hash_sequence = None;
     }
 
     //getter/setter/clear hash_outputs
+    /// Returns the cached hash of the outputs, if set
     pub fn hash_outputs(&self) -> Option<&Hash256> {
         self.hash_outputs.as_ref()
     }
 
+    /// Sets the cached hash of the outputs
     pub fn set_hash_outputs(&mut self, hash: Hash256) {
         self.hash_outputs = Some(hash)
     }
 
+    /// Clears the cached hash of the outputs
     pub fn clear_hash_outputs(&mut self) {
         self.hash_outputs = None;
     }
@@ -353,6 +364,7 @@ fn otda_sighash_preimage(
     Ok(s)
 }
 
+/// Returns the serialized sighash preimage (the bytes hashed to produce the digest) for signing
 pub fn sig_hash_preimage(
     tx: &Tx,
     n_input: usize,
@@ -374,6 +386,8 @@ pub fn sig_hash_preimage(
     )
 }
 
+/// Same as [`sig_hash_preimage`] but with an additional `checksig_index` parameter selecting the
+/// OP_CHECKSIG occurrence to sign against.
 // this code was duplicated from bip143_sighash above (that function now calls this one)
 // as above with checksig_index
 pub fn sig_hash_preimage_checksig_index(

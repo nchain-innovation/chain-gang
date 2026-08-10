@@ -49,13 +49,21 @@ pub fn mnemonic_to_seed_validated(
 
 /// Wordlist language
 pub enum Wordlist {
+    /// Simplified Chinese word list.
     ChineseSimplified,
+    /// Traditional Chinese word list.
     ChineseTraditional,
+    /// English word list.
     English,
+    /// French word list.
     French,
+    /// Italian word list.
     Italian,
+    /// Japanese word list.
     Japanese,
+    /// Korean word list.
     Korean,
+    /// Spanish word list.
     Spanish,
 }
 

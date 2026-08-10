@@ -12,7 +12,7 @@ use crate::util::{var_int, ChainGangError, Hash256, Serializable};
 pub struct Getblocktxn {
     /// Hash of the block
     pub blockhash: Hash256,
-    //  The indexes of the transactions being requested in the block
+    /// The indexes of the transactions being requested from the block
     pub indexes: Vec<u64>,
 }
 
