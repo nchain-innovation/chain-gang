@@ -6,13 +6,21 @@ use std::io;
 use std::io::{Cursor, Read, Write};
 
 // Message rejection error codes
+/// Message could not be decoded / is malformed
 pub const REJECT_MALFORMED: u8 = 0x01;
+/// Message contents are invalid
 pub const REJECT_INVALID: u8 = 0x10;
+/// Message uses an obsolete version or feature
 pub const REJECT_OBSOLETE: u8 = 0x11;
+/// Message is a duplicate of one already seen
 pub const REJECT_DUPLICATE: u8 = 0x12;
+/// Transaction or message is non-standard
 pub const REJECT_NONSTANDARD: u8 = 0x40;
+/// Transaction output is below the dust threshold
 pub const REJECT_DUST: u8 = 0x41;
+/// Transaction fee is insufficient
 pub const REJECT_INSUFFICIENT_FEE: u8 = 0x42;
+/// Block conflicts with a hardcoded checkpoint
 pub const REJECT_CHECKPOINT: u8 = 0x43;
 
 /// Rejected message

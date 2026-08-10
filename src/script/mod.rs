@@ -24,6 +24,7 @@ mod format;
 mod interpreter;
 #[allow(dead_code)]
 pub mod op_codes;
+/// Script evaluation stack and numeric encoding helpers
 pub mod stack;
 
 pub use self::checker::{
@@ -129,6 +130,8 @@ impl Script {
         )
     }
 
+    /// Returns a human-readable string representation of the script, optionally annotated with
+    /// each opcode's byte offset.
     // Used by PyScript
     pub fn string_representation(&self, include_byte_offsets: bool) -> String {
         format_script(

@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 pub struct Blocktxn {
     /// Hash of the block
     pub blockhash: Hash256,
-    // List of Transactions
+    /// List of transactions from the block
     pub transactions: Vec<Tx>,
 }
 

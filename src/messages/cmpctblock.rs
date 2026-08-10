@@ -7,8 +7,10 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 type ShortTXID = Vec<u8>;
 
+/// Length in bytes of a short transaction ID used in compact blocks
 pub const SHORT_TX_ID_LEN: usize = 6;
 
+/// A transaction sent explicitly within a compact block, along with its block index
 #[derive(Debug, Default, PartialEq, Eq, Hash, Clone)]
 pub struct PrefilledTransaction {
     ///  The index into the block at which this transaction is
@@ -81,7 +83,7 @@ impl Payload<PrefilledTransaction> for PrefilledTransaction {
 pub struct Cmpctblock {
     /// First 80 bytes of the block as defined by the encoding used by "block" messages
     pub header: BlockHeader,
-    // nonce for use in short transaction ID calculations
+    /// Nonce for use in short transaction ID calculations
     pub nonce: u64,
 
     /// The short transaction IDs calculated from the transactions which were not provided explicitly in prefilledtxn

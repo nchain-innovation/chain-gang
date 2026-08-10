@@ -10,14 +10,21 @@ use std::fmt;
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Network {
     // BSV
+    /// Bitcoin SV mainnet
     BSV_Mainnet,
+    /// Bitcoin SV testnet
     BSV_Testnet,
+    /// Bitcoin SV scaling test network (STN)
     BSV_STN,
     // BTC
+    /// Bitcoin (BTC) mainnet
     BTC_Mainnet,
+    /// Bitcoin (BTC) testnet
     BTC_Testnet,
     // BCH
+    /// Bitcoin Cash mainnet
     BCH_Mainnet,
+    /// Bitcoin Cash testnet
     BCH_Testnet,
 }
 

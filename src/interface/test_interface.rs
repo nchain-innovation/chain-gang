@@ -19,6 +19,7 @@ pub struct TestData {
     broadcast: Vec<String>,
 }
 
+/// Mock `BlockchainInterface` implementation backed by in-memory `TestData`
 #[derive(Debug, Clone)]
 pub struct TestInterface {
     network_type: Network,
@@ -33,6 +34,7 @@ impl Default for TestInterface {
 }
 
 impl TestInterface {
+    /// Create a new `TestInterface` with empty test data on BCH testnet
     pub fn new() -> Self {
         TestInterface {
             network_type: Network::BCH_Testnet,
@@ -40,6 +42,7 @@ impl TestInterface {
         }
     }
 
+    /// Populate the interface with the UTXO set and block height from `test_data`
     pub async fn set_test_data(&mut self, test_data: &TestData) {
         // Check there is no broadcast data
         assert!(test_data.broadcast.is_empty());
@@ -50,11 +53,13 @@ impl TestInterface {
         self.set_height(test_data.height).await;
     }
 
+    /// Set the UTXO set associated with `address`
     pub async fn set_utxo(&self, address: &str, utxo: &Utxo) {
         let mut test_data = self.test_data.lock().await;
         test_data.utxo.insert(address.to_string(), utxo.to_vec());
     }
 
+    /// Set the current block height used for confirmation calculations
     pub async fn set_height(&self, height: u32) {
         let mut test_data = self.test_data.lock().await;
         test_data.height = height;

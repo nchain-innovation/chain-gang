@@ -7,7 +7,9 @@ use std::io::{Read, Write};
 
 // [createstrm message format] <https://github.com/bitcoin-sv-specs/protocol/blob/master/p2p/multistreams.md>
 
+/// Minimum supported stream type value
 pub const MIN_SUPPORTED_STREAM_TYPE: u8 = 1;
+/// Maximum supported stream type value
 pub const MAX_SUPPORTED_STREAM_TYPE: u8 = 4;
 
 /// Createstrm payload

@@ -6,9 +6,11 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use crate::messages::message::Payload;
 use crate::util::{var_int, ChainGangError, Serializable};
 
-/// Supported version numbers (2).
+/// Protoconf version 1
 pub const VERSION_1: u64 = 1;
+/// Protoconf version 2 (adds the stream policies field)
 pub const VERSION_2: u64 = 2;
+/// The protoconf version numbers supported by this implementation
 pub const SUPPORTED_VERSIONS: [u64; 2] = [VERSION_1, VERSION_2];
 
 /// The minimum value for this parameter is 1.048.576. Advertising a lower value is treated as a protocol violation.
@@ -28,7 +30,7 @@ pub struct Protoconf {
 }
 
 impl Protoconf {
-    // Checks the protoconf message is valid
+    /// Checks the protoconf message is valid
     pub fn validate(&self) -> Result<(), ChainGangError> {
         if !SUPPORTED_VERSIONS.contains(&self.version) {
             let msg = format!("Unsupported version: {}", self.version);

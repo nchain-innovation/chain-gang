@@ -3,11 +3,15 @@
 //!
 //! Enabled by the `interface` feature flag.
 
+/// Core `BlockchainInterface` trait and shared balance/UTXO types.
 pub mod blockchain_interface;
+/// UaaS (UTXO-as-a-Service) blockchain query backend.
 pub mod uaas_interface;
+/// WhatsOnChain blockchain query backend.
 pub mod woc_interface;
 
 //#[cfg(test)]
+/// In-memory blockchain interface used for testing.
 pub mod test_interface;
 
 pub use blockchain_interface::{Balance, BlockchainInterface, Utxo, UtxoEntry};
