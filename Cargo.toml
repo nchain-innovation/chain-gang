@@ -2,8 +2,10 @@
 name = "chain-gang"
 version = "0.10.0"
 description = "This is a library that enables monitoring of multiple blockchains (BTC, BCH, BSV)."
-# repository = "https://github.com/brentongunning/rust-sv"
-authors = ["Arthur Gordon <a.gordon@nchain.com>"]
+repository = "https://github.com/nchain-innovation/chain-gang"
+homepage = "https://github.com/nchain-innovation/chain-gang"
+documentation = "https://docs.rs/chain-gang"
+authors = ["Arthur Gordon <a.gordon@teranode.group>"]
 keywords = ["bitcoin", "sv", "cash", "crypto"]
 license = "MIT"
 edition = "2021"

@@ -1,4 +1,7 @@
-// This module provides the blockchain interface
+//! Blockchain interface for querying live chain state (balances, UTXOs, broadcast)
+//! via backends such as WhatsOnChain and UaaS.
+//!
+//! Enabled by the `interface` feature flag.
 
 pub mod blockchain_interface;
 pub mod uaas_interface;

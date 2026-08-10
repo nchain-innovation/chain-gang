@@ -1,7 +1,7 @@
 //! Chronicle (Bitcoin SV) helpers for transaction and script validation.
 //!
 //! By default this library gates Chronicle on **`tx.version > 1`** only. Pass block height
-//! and network to [`effective_chronicle_tx_version`] or [`Tx::validate_at_height`] for
+//! and network to [`effective_chronicle_tx_version`] or [`Tx::validate_at_height`](crate::messages::Tx::validate_at_height) for
 //! consensus-faithful activation at documented BSV block heights.
 //!
 //! See [docs/Chronicle.md](https://github.com/nchain-innovation/chain-gang/blob/main/docs/Chronicle.md)
