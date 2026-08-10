@@ -1,6 +1,8 @@
 //! A foundation for building applications on Bitcoin SV using Rust.
 #![doc = include_str!("../docs/README-chain-gang.md")]
 
+#![warn(missing_docs)]
+
 #[macro_use]
 extern crate log;
 
