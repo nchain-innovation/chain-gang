@@ -1,4 +1,10 @@
-""" What's on Chain interface
+""" What's On Chain (WoC) low-level request helpers (pure Python).
+
+A parallel Rust implementation of the WoC client lives in
+`src/interface/woc_interface.rs`. The two are deliberately independent so the
+Python package can reach WhatsOnChain without the Rust `interface` feature.
+Keep the endpoint paths and the network -> main/test/stn mapping in sync across
+both when either changes.
 """
 import logging
 import time
