@@ -102,19 +102,25 @@ For background information see:
 https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment
 
 
-# Github & PyPi
+# Github, PyPi & crates.io
 
 To force a release the git version needs to be tagged.
-1) Update `cargo.toml` version
+1) Update `Cargo.toml` version
 2) Update `Releases.md` file
 3) push code up to repo. Otherwise GitHub won't figure out that the software has been updated.
 4) Update git `tag` and push. Otherwise the GitHub action `release` will not be triggered.
 
 ```bash
 git push
-git tag -a v0.5.5 -m "Interface, RPCInterface, verify script and flags, TxIn & TxOut - script in constructor"
+git tag -a v0.10.1 -m "crates.io publication and full API documentation"
 git push --tags
 ```
+
+Pushing the tag triggers the `CI` workflow, which on a tagged release publishes both:
+* **PyPI** — Python wheels + sdist (needs the `PYPI_API_TOKEN` repository secret).
+* **crates.io** — the Rust crate via `cargo publish` (needs the `CARGO_REGISTRY_TOKEN` repository secret).
+
+The crates.io job checks that the git tag (`vX.Y.Z`) matches the `Cargo.toml` version and fails the release if they differ, so keep step 1 and the tag in sync. It also skips publishing (rather than failing) if that version is already on crates.io, since crates.io versions are immutable.
 
 # Jupyter Notebooks and Development
 This is the build process for tx-engine for use with Jupyter Notebooks
