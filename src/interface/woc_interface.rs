@@ -5,7 +5,7 @@ use crate::util::Serializable;
 use serde::Serialize;
 
 use crate::{
-    interface::blockchain_interface::{Balance, BlockchainInterface, Utxo},
+    interface::blockchain_interface::{check_status, Balance, BlockchainInterface, Utxo},
     messages::{BlockHeader, Tx},
     network::Network,
     util::ChainGangError,
@@ -61,13 +61,7 @@ impl BlockchainInterface for WocInterface {
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/woc");
         let response = reqwest::get(&url).await?;
-        if response.status() != 200 {
-            log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!(
-                "response.status() = {}",
-                response.status()
-            )));
-        };
+        let response = check_status(response, &url)?;
         match response.text().await {
             Ok(txt) if txt == "Whats On Chain" => Ok(()),
             Ok(txt) => Err(ChainGangError::ResponseError(format!(
@@ -89,13 +83,7 @@ impl BlockchainInterface for WocInterface {
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/balance");
         let response = reqwest::get(&url).await?;
-        if response.status() != 200 {
-            warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!(
-                "response.status() = {}",
-                response.status()
-            )));
-        };
+        let response = check_status(response, &url)?;
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
@@ -128,13 +116,7 @@ impl BlockchainInterface for WocInterface {
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/unspent");
         let response = reqwest::get(&url).await?;
-        if response.status() != 200 {
-            log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!(
-                "response.status() = {}",
-                response.status()
-            )));
-        };
+        let response = check_status(response, &url)?;
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
@@ -195,13 +177,7 @@ impl BlockchainInterface for WocInterface {
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/{txid}/hex");
         let response = reqwest::get(&url).await?;
-        if response.status() != 200 {
-            log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!(
-                "response.status() = {}",
-                response.status()
-            )));
-        };
+        let response = check_status(response, &url)?;
         match response.text().await {
             Ok(txt) => {
                 let bytes = hex::decode(txt)?;
@@ -222,13 +198,7 @@ impl BlockchainInterface for WocInterface {
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers/latest?count=1");
         let response = reqwest::get(&url).await?;
-        if response.status() != 200 {
-            log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!(
-                "response.status() = {}",
-                response.status()
-            )));
-        };
+        let response = check_status(response, &url)?;
         match response.text().await {
             Ok(txt) => {
                 let bytes = hex::decode(txt)?;
@@ -248,13 +218,7 @@ impl BlockchainInterface for WocInterface {
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers");
         let response = reqwest::get(&url).await?;
-        if response.status() != 200 {
-            log::warn!("url = {}", &url);
-            return Err(ChainGangError::ResponseError(format!(
-                "response.status() = {}",
-                response.status()
-            )));
-        };
+        let response = check_status(response, &url)?;
         match response.text().await {
             Ok(headers) => Ok(headers),
             Err(x) => Err(ChainGangError::ResponseError(format!(

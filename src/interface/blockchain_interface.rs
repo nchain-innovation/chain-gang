@@ -34,6 +34,25 @@ pub struct UtxoEntry {
 /// Type to represent UTXO set
 pub type Utxo = Vec<UtxoEntry>;
 
+/// Returns `response` unchanged if its HTTP status is 200, otherwise logs the
+/// request URL and returns a [`ChainGangError::ResponseError`].
+///
+/// Shared by the HTTP-backed blockchain interfaces so the status check lives in
+/// one place.
+pub(crate) fn check_status(
+    response: reqwest::Response,
+    url: impl std::fmt::Display,
+) -> Result<reqwest::Response, ChainGangError> {
+    if response.status() != 200 {
+        log::warn!("url = {}", url);
+        return Err(ChainGangError::ResponseError(format!(
+            "response.status() = {}",
+            response.status()
+        )));
+    }
+    Ok(response)
+}
+
 /// Trait of the blockchain interface
 ///
 #[async_trait]
