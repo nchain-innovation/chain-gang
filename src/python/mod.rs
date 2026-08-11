@@ -1,7 +1,6 @@
 use pyo3::Bound;
 use pyo3::{prelude::*, types::PyBytes};
 
-mod op_code_names;
 mod py_script;
 mod py_stack;
 mod py_tx;
