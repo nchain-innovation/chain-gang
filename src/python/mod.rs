@@ -497,5 +497,20 @@ fn chain_gang(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyHdWatchWallet>()?;
     // stack class
     m.add_class::<PyStack>()?;
+
+    // Script-number-length limits — defined once here in the Rust core; the
+    // pure-Python engine imports these (see engine/util.py) so they can't drift.
+    m.add(
+        "MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS",
+        crate::script::MAX_SCRIPT_NUM_LENGTH_PREGENESIS,
+    )?;
+    m.add(
+        "MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS",
+        crate::script::MAX_SCRIPT_NUM_LENGTH_GENESIS,
+    )?;
+    m.add(
+        "MAX_SCRIPT_NUM_LENGTH_CHRONICLE",
+        crate::script::MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
+    )?;
     Ok(())
 }
