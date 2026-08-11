@@ -71,12 +71,9 @@ pub fn generate_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_util::flip_to_high_s;
     use crate::transaction::sighash::{SIGHASH_ALL, SIGHASH_CHRONICLE, SIGHASH_FORKID};
     use k256::ecdsa::SigningKey;
-    use num_bigint::BigUint;
-
-    const SECP256K1_N: &str =
-        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141";
 
     fn signature_has_high_s(der: &[u8]) -> bool {
         let sig = Signature::from_der(der).unwrap();
@@ -90,17 +87,7 @@ mod tests {
             !signature_has_high_s(low_s.to_der().as_bytes()),
             "expected low-S input for flip helper"
         );
-
-        let compact = low_s.to_bytes();
-        let n = BigUint::parse_bytes(SECP256K1_N.as_bytes(), 16).unwrap();
-        let s = BigUint::from_bytes_be(&compact[32..]);
-        let high_s = &n - &s;
-        assert!(high_s > n >> 1);
-
-        let mut high_compact = compact;
-        let high_s_bytes = high_s.to_bytes_be();
-        high_compact[64 - high_s_bytes.len()..].copy_from_slice(&high_s_bytes);
-        let high_sig = Signature::try_from(high_compact.as_ref()).unwrap();
+        let high_sig = flip_to_high_s(&low_s);
         assert!(signature_has_high_s(high_sig.to_der().as_bytes()));
         high_sig.to_der().to_vec()
     }

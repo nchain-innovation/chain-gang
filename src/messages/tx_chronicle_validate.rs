@@ -5,16 +5,15 @@ use crate::chronicle::CHRONICLE_ACTIVATION_MAINNET;
 use crate::network::Network;
 use crate::script::op_codes::*;
 use crate::script::Script;
+use crate::test_util::flip_to_high_s;
+use crate::transaction::p2pkh::create_lock_script;
 use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_ALL, SIGHASH_CHRONICLE, SIGHASH_FORKID};
 use crate::util::hash160;
 use k256::ecdsa::signature::hazmat::PrehashSigner;
 use k256::ecdsa::signature::SignatureEncoding;
-use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
+use k256::ecdsa::{SigningKey, VerifyingKey};
 use linked_hash_map::LinkedHashMap;
-use num_bigint::BigUint;
 use std::collections::HashSet;
-
-const SECP256K1_N: &str = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141";
 
 fn utxos_for_funding(funding: &Tx) -> LinkedHashMap<OutPoint, TxOut> {
     let mut utxos = LinkedHashMap::new();
@@ -26,28 +25,6 @@ fn utxos_for_funding(funding: &Tx) -> LinkedHashMap<OutPoint, TxOut> {
         funding.outputs[0].clone(),
     );
     utxos
-}
-
-fn p2pkh_lock_script(public_key: &[u8; 33]) -> Script {
-    let pkh = hash160(public_key);
-    let mut lock_script = Script::new();
-    lock_script.append(OP_DUP);
-    lock_script.append(OP_HASH160);
-    lock_script.append_data(&pkh.0);
-    lock_script.append(OP_EQUALVERIFY);
-    lock_script.append(OP_CHECKSIG);
-    lock_script
-}
-
-fn flip_to_high_s(low_sig: &Signature) -> Signature {
-    let compact = low_sig.to_bytes();
-    let n = BigUint::parse_bytes(SECP256K1_N.as_bytes(), 16).unwrap();
-    let s = BigUint::from_bytes_be(&compact[32..]);
-    let high_s = &n - &s;
-    let mut high_compact = compact;
-    let high_s_bytes = high_s.to_bytes_be();
-    high_compact[64 - high_s_bytes.len()..].copy_from_slice(&high_s_bytes);
-    Signature::try_from(high_compact.as_ref()).unwrap()
 }
 
 fn verifying_key_as_bytes(verifying_key: &VerifyingKey) -> [u8; 33] {
@@ -187,7 +164,7 @@ fn chronicle_validate_high_s_p2pkh() {
         inputs: vec![],
         outputs: vec![TxOut {
             satoshis: 10,
-            lock_script: p2pkh_lock_script(&public_key),
+            lock_script: create_lock_script(&hash160(&public_key)),
         }],
         lock_time: 0,
     };

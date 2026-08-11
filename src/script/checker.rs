@@ -354,23 +354,13 @@ mod tests {
     fn chronicle_high_s_signature_verifies() {
         use crate::transaction::sighash::SIGHASH_CHRONICLE;
         use k256::ecdsa::Signature;
-        use num_bigint::BigUint;
-
-        const SECP256K1_N: &str =
-            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141";
 
         let private_key = [2; 32];
         let secret_key = SigningKey::from_slice(&private_key).unwrap();
         let verifying_key = secret_key.verifying_key();
         let pk = verifying_key_as_bytes(verifying_key);
         let pkh = hash160(&pk);
-
-        let mut lock_script = Script::new();
-        lock_script.append(OP_DUP);
-        lock_script.append(OP_HASH160);
-        lock_script.append_data(&pkh.0);
-        lock_script.append(OP_EQUALVERIFY);
-        lock_script.append(OP_CHECKSIG);
+        let lock_script = crate::transaction::p2pkh::create_lock_script(&pkh);
 
         let tx_1 = Tx {
             version: 2,
@@ -402,14 +392,7 @@ mod tests {
         let sig_hash = sighash(&tx_2, 0, lock_script, 10, sighash_type, &mut cache).unwrap();
 
         let low_sig: Signature = secret_key.sign_prehash(&sig_hash.0).unwrap();
-        let compact = low_sig.to_bytes();
-        let n = BigUint::parse_bytes(SECP256K1_N.as_bytes(), 16).unwrap();
-        let s = BigUint::from_bytes_be(&compact[32..]);
-        let high_s = &n - &s;
-        let mut high_compact = compact;
-        let high_s_bytes = high_s.to_bytes_be();
-        high_compact[64 - high_s_bytes.len()..].copy_from_slice(&high_s_bytes);
-        let high_sig = Signature::try_from(high_compact.as_ref()).unwrap();
+        let high_sig = crate::test_util::flip_to_high_s(&low_sig);
 
         let mut sig = high_sig.to_der().to_vec();
         sig.push(sighash_type);
@@ -450,13 +433,7 @@ mod tests {
         let pk = verifying_key_as_bytes(verifying_key);
 
         let pkh = hash160(&pk);
-
-        let mut lock_script = Script::new();
-        lock_script.append(OP_DUP);
-        lock_script.append(OP_HASH160);
-        lock_script.append_data(&pkh.0);
-        lock_script.append(OP_EQUALVERIFY);
-        lock_script.append(OP_CHECKSIG);
+        let lock_script = crate::transaction::p2pkh::create_lock_script(&pkh);
 
         let tx_1 = Tx {
             version: 1,
