@@ -106,16 +106,7 @@ pub fn p2pkh_pyscript(h160: &[u8]) -> PyScript {
 }
 
 pub fn str_to_network(network: &str) -> Option<Network> {
-    match network {
-        "BSV_Mainnet" => Some(Network::BSV_Mainnet),
-        "BSV_Testnet" => Some(Network::BSV_Testnet),
-        "BSV_STN" => Some(Network::BSV_STN),
-        "BTC_Mainnet" => Some(Network::BTC_Mainnet),
-        "BTC_Testnet" => Some(Network::BTC_Testnet),
-        "BCH_Mainnet" => Some(Network::BCH_Mainnet),
-        "BCH_Testnet" => Some(Network::BCH_Testnet),
-        _ => None,
-    }
+    network.parse().ok()
 }
 
 pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet, ChainGangError> {
