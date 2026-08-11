@@ -1,6 +1,6 @@
 [package]
 name = "chain-gang"
-version = "0.10.0"
+version = "0.10.1"
 description = "This is a library that enables monitoring of multiple blockchains (BTC, BCH, BSV)."
 repository = "https://github.com/nchain-innovation/chain-gang"
 homepage = "https://github.com/nchain-innovation/chain-gang"
