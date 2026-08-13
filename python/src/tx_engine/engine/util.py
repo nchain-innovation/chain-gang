@@ -4,12 +4,14 @@ from typing import List, Final
 
 from .engine_types import StackElement
 
-# Maximum script number length before Genesis (equal to CScriptNum::MAXIMUM_ELEMENT_SIZE)
-MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS: Final = 4
-# Maximum script number length after Genesis (750 KB)
-MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS: Final = 750 * 1000
-# Maximum script number length after Chronicle (32 MB)
-MAX_SCRIPT_NUM_LENGTH_CHRONICLE: Final = 32 * 1024 * 1024
+# Script-number-length limits are defined once in the Rust core and re-exported
+# here, so the Rust and Python implementations cannot drift out of sync.
+from tx_engine.tx_engine import (  # type: ignore[attr-defined]
+    MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS,
+    MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS,
+    MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
+)
+
 # Maximum size that we are using for legacy callers
 MAXIMUM_ELEMENT_SIZE: Final = MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS
 
