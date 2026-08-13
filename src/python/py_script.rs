@@ -9,7 +9,6 @@ use std::{
 };
 
 use crate::{
-    python::op_code_names::OP_CODE_NAMES,
     script::{op_codes, stack::encode_bigint, stack::encode_num, Script},
     util::{var_int, ChainGangError},
 };
@@ -63,8 +62,8 @@ fn handle_pushdata(cmd: &Command, is_pushdata: usize) -> usize {
 
 fn decode_op(op: &str, is_pushdata: usize) -> Command {
     let op = op.trim();
-    if let Some(val) = OP_CODE_NAMES.get(op) {
-        return Command::Int(*val);
+    if let Some(val) = op_codes::name_to_byte(op) {
+        return Command::Int(val);
     }
     // Is an int
     if let Ok(val) = op.parse::<i64>() {
