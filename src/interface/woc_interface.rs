@@ -1,3 +1,12 @@
+//! WhatsOnChain blockchain interface (Rust implementation).
+//!
+//! A parallel, independent pure-Python client lives in
+//! `python/src/tx_engine/interface/woc.py` and `woc_interface.py`. The
+//! duplication is deliberate: it lets the Python package talk to WhatsOnChain
+//! without depending on this crate's `interface` feature. When changing
+//! endpoint paths or the network -> `main`/`test`/`stn` mapping, update both
+//! implementations so they stay in sync.
+
 use async_trait::async_trait;
 use reqwest::StatusCode;
 

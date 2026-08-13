@@ -1,4 +1,9 @@
-""" The Whats On Chain (WoC) interface to the BSV network
+""" The Whats On Chain (WoC) interface to the BSV network (pure Python).
+
+This is a deliberate parallel of the Rust `WocInterface` in
+`src/interface/woc_interface.rs`, kept independent so the Python package does
+not depend on the Rust `interface` feature. Keep endpoint paths and the
+network -> main/test/stn mapping in sync across both when either changes.
 """
 
 import logging
