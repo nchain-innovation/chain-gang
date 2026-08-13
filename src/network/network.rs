@@ -44,6 +44,26 @@ impl fmt::Display for Network {
     }
 }
 
+/// Parse a network from its canonical name (the inverse of [`Display`]).
+impl std::str::FromStr for Network {
+    type Err = crate::util::ChainGangError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "BSV_Mainnet" => Ok(Network::BSV_Mainnet),
+            "BSV_Testnet" => Ok(Network::BSV_Testnet),
+            "BSV_STN" => Ok(Network::BSV_STN),
+            "BTC_Mainnet" => Ok(Network::BTC_Mainnet),
+            "BTC_Testnet" => Ok(Network::BTC_Testnet),
+            "BCH_Mainnet" => Ok(Network::BCH_Mainnet),
+            "BCH_Testnet" => Ok(Network::BCH_Testnet),
+            _ => Err(crate::util::ChainGangError::BadData(format!(
+                "Unknown network: {s}"
+            ))),
+        }
+    }
+}
+
 impl Network {
     /// Converts an integer to a network type
     /// `pub fn from_u8(x: u8) -> Result<Network> {`
@@ -258,5 +278,38 @@ impl Network {
     /// Creates a new DNS seed iterator for this network
     pub fn seed_iter(&self) -> SeedIter {
         SeedIter::new(&self.seeds(), self.port())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_str_round_trips_display_for_all_networks() {
+        for net in [
+            Network::BSV_Mainnet,
+            Network::BSV_Testnet,
+            Network::BSV_STN,
+            Network::BTC_Mainnet,
+            Network::BTC_Testnet,
+            Network::BCH_Mainnet,
+            Network::BCH_Testnet,
+        ] {
+            let parsed: Network = net.to_string().parse().unwrap();
+            assert_eq!(parsed, net);
+        }
+    }
+
+    #[test]
+    fn from_str_accepts_non_bsv_networks() {
+        // Regression: these used to be rejected on some code paths (e.g. tx parsing).
+        assert_eq!("BTC_Mainnet".parse::<Network>().unwrap(), Network::BTC_Mainnet);
+        assert_eq!("BCH_Testnet".parse::<Network>().unwrap(), Network::BCH_Testnet);
+    }
+
+    #[test]
+    fn from_str_rejects_unknown_network() {
+        assert!("nope".parse::<Network>().is_err());
     }
 }

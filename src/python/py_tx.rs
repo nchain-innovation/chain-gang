@@ -17,14 +17,7 @@ use std::{
 };
 
 fn parse_network(network: &str) -> Result<Network, ChainGangError> {
-    match network {
-        "BSV_Mainnet" => Ok(Network::BSV_Mainnet),
-        "BSV_Testnet" => Ok(Network::BSV_Testnet),
-        "BSV_STN" => Ok(Network::BSV_STN),
-        _ => Err(ChainGangError::BadData(format!(
-            "Unknown network: {network}"
-        ))),
-    }
+    network.parse()
 }
 
 fn build_processed_utxos(
