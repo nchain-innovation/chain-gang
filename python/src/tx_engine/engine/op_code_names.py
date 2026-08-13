@@ -30,7 +30,7 @@ OP_CODE_NAMES: Dict[int, str] = {
     99: "OP_IF",
     100: "OP_NOTIF",
     101: "OP_VERIF",
-    102: "OP_NOTVERIF",
+    102: "OP_VERNOTIF",
     103: "OP_ELSE",
     104: "OP_ENDIF",
     105: "OP_VERIFY",

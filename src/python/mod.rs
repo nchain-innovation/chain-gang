@@ -152,14 +152,7 @@ pub fn py_address_to_public_key_hash(py: Python, address: &str) -> PyResult<Py<P
 #[pyfunction(name = "public_key_to_address")]
 pub fn py_public_key_to_address(public_key: &[u8], network: &str) -> PyResult<String> {
     // network conversion
-    let network_type = match network {
-        "BSV_Mainnet" => Network::BSV_Mainnet,
-        "BSV_Testnet" => Network::BSV_Testnet,
-        _ => {
-            let msg = format!("Unknown network: {}", network);
-            return Err(ChainGangError::BadData(msg).into());
-        }
-    };
+    let network_type: Network = network.parse()?;
     Ok(public_key_to_address(public_key, network_type)?)
 }
 
