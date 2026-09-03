@@ -41,6 +41,24 @@ jobs:
       - name: Rust Tests
         run: cargo test --all-features
 
+  rust-clippy:
+    name: Rust Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch code
+        uses: actions/checkout@v4
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          cache: true
+      # A lint allowed by name in RUSTFLAGS, such as the deprecated above, keeps
+      # that level: rustc gives a specific lint precedence over a group like
+      # `warnings`, whichever order the flags arrive in.
+      - name: Clippy
+        run: cargo clippy --all-features --all-targets -- -D warnings
+
   python-test:
     name: Python Tests (${{ matrix.python-version }})
     runs-on: ubuntu-latest
