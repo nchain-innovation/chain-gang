@@ -19,6 +19,20 @@ pub struct TestData {
     broadcast: Vec<String>,
 }
 
+/// Number of confirmations required before a UTXO is treated as confirmed
+const REQUIRED_CONFIRMATIONS: u32 = 6;
+
+/// Highest block height that is still deemed confirmed at the given chain height.
+///
+/// The result is signed so that a chain shorter than `REQUIRED_CONFIRMATIONS`
+/// yields a negative threshold — no UTXO can be confirmed yet — rather than
+/// underflowing. Heights beyond `i32::MAX` saturate instead of wrapping.
+fn confirmation_height(height: u32) -> i32 {
+    i32::try_from(height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(REQUIRED_CONFIRMATIONS as i32)
+}
+
 /// Mock `BlockchainInterface` implementation backed by in-memory `TestData`
 #[derive(Debug, Clone)]
 pub struct TestInterface {
@@ -84,7 +98,7 @@ impl BlockchainInterface for TestInterface {
         let utxo: Utxo = self.get_utxo(address).await?;
         let test_data = self.test_data.lock().await;
 
-        let confirmation_height: i32 = (test_data.height - 6).try_into().unwrap();
+        let confirmation_height: i32 = confirmation_height(test_data.height);
 
         let confirmed: i64 = utxo
             .iter()
@@ -107,7 +121,7 @@ impl BlockchainInterface for TestInterface {
 
     /// Get UXTO associated with address
     async fn get_utxo(&self, address: &str) -> Result<Utxo, ChainGangError> {
-        debug!("broadcast_tx");
+        debug!("get_utxo");
 
         let test_data = self.test_data.lock().await;
 
@@ -143,5 +157,49 @@ impl BlockchainInterface for TestInterface {
     async fn get_block_headers(&self) -> Result<String, ChainGangError> {
         debug!("get_block_headers");
         std::unimplemented!();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn confirmation_height_below_required_confirmations_is_negative() {
+        // A chain shorter than six blocks has nothing confirmed yet. The
+        // threshold must go negative rather than underflow (issue #139).
+        assert_eq!(confirmation_height(0), -6);
+        assert_eq!(confirmation_height(1), -5);
+        assert_eq!(confirmation_height(5), -1);
+    }
+
+    #[test]
+    fn confirmation_height_at_and_above_required_confirmations() {
+        assert_eq!(confirmation_height(6), 0);
+        assert_eq!(confirmation_height(7), 1);
+        assert_eq!(confirmation_height(100), 94);
+    }
+
+    #[test]
+    fn confirmation_height_saturates_instead_of_wrapping() {
+        assert_eq!(confirmation_height(i32::MAX as u32), i32::MAX - 6);
+        assert_eq!(confirmation_height(u32::MAX), i32::MAX - 6);
+    }
+
+    #[test]
+    fn nothing_is_confirmed_on_a_shallow_chain() {
+        // At height 0 the filters in get_balance must treat every UTXO as
+        // unconfirmed, including one mined in the genesis block.
+        let threshold = confirmation_height(0);
+        for height in [-1_i32, 0, 1] {
+            assert!(
+                !(height >= 0 && height <= threshold),
+                "height {height} confirmed"
+            );
+            assert!(
+                height < 0 || height > threshold,
+                "height {height} not unconfirmed"
+            );
+        }
     }
 }
