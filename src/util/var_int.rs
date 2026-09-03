@@ -53,18 +53,18 @@ mod tests {
     fn size() {
         assert!(super::size(0) == 1);
         assert!(super::size(253) == 3);
-        assert!(super::size(u16::max_value() as u64) == 3);
-        assert!(super::size(u32::max_value() as u64) == 5);
-        assert!(super::size(u64::max_value()) == 9);
+        assert!(super::size(u16::MAX as u64) == 3);
+        assert!(super::size(u32::MAX as u64) == 5);
+        assert!(super::size(u64::MAX) == 9);
     }
 
     #[test]
     fn write_read() {
         write_read_value(0);
         write_read_value(253);
-        write_read_value(u16::max_value() as u64);
-        write_read_value(u32::max_value() as u64);
-        write_read_value(u64::max_value());
+        write_read_value(u16::MAX as u64);
+        write_read_value(u32::MAX as u64);
+        write_read_value(u64::MAX);
     }
 
     fn write_read_value(n: u64) {

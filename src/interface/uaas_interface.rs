@@ -281,7 +281,7 @@ impl BlockchainInterface for UaaSInterface {
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                log::debug!("address = {}", &address);
+                log::debug!("address = {}", address);
                 return Err(ChainGangError::ResponseError(format!(
                     "response.text() = {}",
                     x
@@ -291,8 +291,8 @@ impl BlockchainInterface for UaaSInterface {
         let data: Balance = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                log::debug!("address = {}", &address);
-                log::warn!("txt = {}", &txt);
+                log::debug!("address = {}", address);
+                log::warn!("txt = {}", txt);
                 return Err(ChainGangError::JSONParseError(format!(
                     "json parse error = {}",
                     x
@@ -325,7 +325,7 @@ impl BlockchainInterface for UaaSInterface {
         let data: GetUtxoResponse = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                log::warn!("txt = {}", &txt);
+                log::warn!("txt = {}", txt);
                 return Err(ChainGangError::JSONParseError(format!(
                     "json parse error = {}",
                     x
@@ -361,7 +361,7 @@ impl BlockchainInterface for UaaSInterface {
                 Ok(txid.to_string())
             }
             _ => {
-                log::debug!("url = {}", &url);
+                log::debug!("url = {}", url);
                 Err(ChainGangError::ResponseError(format!(
                     "response.status() = {}",
                     status
@@ -391,7 +391,7 @@ impl BlockchainInterface for UaaSInterface {
         let data: TxResponse = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                log::warn!("txt = {}", &txt);
+                log::warn!("txt = {}", txt);
                 return Err(ChainGangError::JSONParseError(format!(
                     "json parse error = {}",
                     x
@@ -425,7 +425,7 @@ impl BlockchainInterface for UaaSInterface {
         let data: BlockHeaderHexResponse = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                log::warn!("txt = {}", &txt);
+                log::warn!("txt = {}", txt);
                 return Err(ChainGangError::JSONParseError(format!(
                     "json parse error = {}",
                     x
