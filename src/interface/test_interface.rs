@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use async_mutex::Mutex;
+use async_lock::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
 
