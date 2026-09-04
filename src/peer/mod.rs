@@ -87,5 +87,6 @@ pub(crate) mod atomic_reader;
 mod peer;
 
 pub use self::peer::{
-    Peer, PeerConnected, PeerDisconnected, PeerFilter, PeerMessage, PeerNodeFilter, SVPeerFilter,
+    Peer, PeerConnected, PeerDisconnected, PeerFilter, PeerId, PeerMessage, PeerNodeFilter,
+    SVPeerFilter,
 };

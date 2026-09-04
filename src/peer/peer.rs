@@ -3,13 +3,12 @@ use crate::network::Network;
 use crate::peer::atomic_reader::AtomicReader;
 use crate::util::rx::{Observable, Observer, Single, Subject};
 use crate::util::{secs_since, ChainGangError};
-use snowflake::ProcessUniqueId;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::io::Write;
 use std::net::{IpAddr, Shutdown, SocketAddr, TcpStream};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::time::{Duration, UNIX_EPOCH};
@@ -114,6 +113,34 @@ impl PeerFilter for PeerNodeFilter {
     }
 }
 
+/// Identifier unique to one `Peer` for the lifetime of this process.
+///
+/// Ids are handed out in creation order and are never reused, so two live peers
+/// never compare equal. They carry no meaning beyond identity and are not stable
+/// across runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PeerId(u64);
+
+impl PeerId {
+    /// Returns an id distinct from every other `PeerId` created in this process.
+    pub fn new() -> Self {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        PeerId(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+impl Default for PeerId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl fmt::Display for PeerId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Node on the network to send and receive messages
 ///
 /// It will setup a connection, respond to pings, and store basic properties about the connection,
@@ -122,7 +149,7 @@ impl PeerFilter for PeerNodeFilter {
 /// from any thread. Once shutdown, the Peer may no longer be used.
 pub struct Peer {
     /// Unique id for this connection
-    pub id: ProcessUniqueId,
+    pub id: PeerId,
     /// IP address
     pub ip: IpAddr,
     /// Port
@@ -158,7 +185,7 @@ impl Peer {
         filter: Arc<dyn PeerFilter>,
     ) -> Arc<Peer> {
         let peer = Arc::new(Peer {
-            id: ProcessUniqueId::new(),
+            id: PeerId::new(),
             ip,
             port,
             network,
@@ -485,5 +512,24 @@ impl fmt::Debug for Peer {
 impl Drop for Peer {
     fn drop(&mut self) {
         self.disconnect();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn peer_ids_are_unique_and_ordered() {
+        let ids: Vec<PeerId> = (0..1000).map(|_| PeerId::new()).collect();
+        assert_eq!(ids.iter().copied().collect::<HashSet<_>>().len(), ids.len());
+        assert!(ids.windows(2).all(|w| w[0] < w[1]));
+    }
+
+    #[test]
+    fn peer_id_displays_as_a_number() {
+        let id = PeerId::new();
+        assert_eq!(id.to_string(), format!("{}", id.0));
     }
 }
