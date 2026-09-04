@@ -1,4 +1,12 @@
 """This is an RPC (Regtest, etc) interface to the BSV network
+
+This is a deliberate parallel of the Rust `RpcInterface` in
+`src/interface/rpc_interface.rs`, kept independent so the Python package does
+not depend on the Rust `interface` feature. Keep the RPC method names and the
+network -> main/test mapping in sync across both when either changes.
+
+That includes the unconfirmed-UTXO height, reported as UNCONFIRMED_HEIGHT on
+both sides.
 """
 from typing import Dict, List, Any
 import logging
@@ -11,6 +19,15 @@ from .blockchain_interface import BlockchainInterface
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+#: Highest maxconf accepted by listunspent, used to mean "no upper bound"
+MAX_CONFIRMATIONS = 9999999
+
+#: Height reported for a UTXO that has not been confirmed in a block. Any
+#: negative height means unconfirmed; this matches UNCONFIRMED_HEIGHT in the
+#: Rust crate's blockchain_interface.
+UNCONFIRMED_HEIGHT = -1
 
 
 class RPCReturnInfo:
@@ -57,19 +74,22 @@ class RPCInterface(BlockchainInterface):
 
     def set_config(self, config):
         """Configure the client based on the provided config"""
-        if config["network_type"] == "testnet":
-            self.network_type = "test"
-        elif config["network_type"] == "mainnet":
+        network_type = config["network_type"]
+        if network_type == "mainnet":
             self.network_type = "main"
+        elif network_type in ("testnet", "regtest"):
+            # regtest shares testnet's address prefixes and key versions
+            self.network_type = "test"
         else:
-            LOGGER.warning("No address type specified Setting the network type to test")
+            LOGGER.warning(
+                "Unrecognised network_type '%s', using test", network_type
+            )
             self.network_type = "test"
 
         self.user = config["user"]
         self.password = config["password"]
         # Address in the format 127.0.0.1:8080
         self.address = config["address"]
-        self.network_type = config["network_type"]
 
         self.rpc_connection = AuthServiceProxy(
             f"http://{self.user}:{self.password}@{self.address}"
@@ -80,20 +100,38 @@ class RPCInterface(BlockchainInterface):
         return self.network_type == "test"
 
     def _calc_block_height(self, block_height, confs):
-        if confs == 0:
-            return confs
-        return block_height - confs - 1
+        """Return the height at which a UTXO with confs confirmations was mined
+
+        An output in the tip block has one confirmation and sits at
+        block_height, so the count runs back from there. Unconfirmed outputs
+        report UNCONFIRMED_HEIGHT.
+        """
+        if confs <= 0:
+            return UNCONFIRMED_HEIGHT
+        return block_height - confs + 1
 
     def _as_satoshis(self, value):
-        """Return the bitcoin amount in satoshis"""
+        """Return the bitcoin amount in satoshis
+
+        Rounds rather than truncating: the node reports amounts as floats, and
+        common values have no exact binary representation, so int() would lose
+        a satoshi on amounts such as 0.29 or 0.57.
+        """
         satoshis = 100000000
-        return int(value * satoshis)
+        return round(value * satoshis)
 
     def get_unspent(self, address=None):
         """Private function to return unspent"""
         while True:
             try:
-                unspent = self.rpc_connection.listunspent(0)
+                if address is None:
+                    unspent = self.rpc_connection.listunspent(0)
+                else:
+                    # Ask the node for this address only, rather than pulling
+                    # the whole wallet's UTXO set and discarding most of it
+                    unspent = self.rpc_connection.listunspent(
+                        0, MAX_CONFIRMATIONS, [address]
+                    )
             except (
                 ConnectionError,
                 ConnectionRefusedError,
@@ -104,9 +142,7 @@ class RPCInterface(BlockchainInterface):
                 LOGGER.error(f"Connection failed {e}")
                 time.sleep(2)
             else:
-                if address is None:
-                    return unspent
-                return list(filter(lambda x: x["address"] == address, unspent))
+                return unspent
 
     def _get_chain_info(self) -> Dict:
         return self.rpc_connection.getblockchaininfo()
@@ -138,21 +174,21 @@ class RPCInterface(BlockchainInterface):
     def get_balance(self, address, confirmations=6):
         """Return the confirmed and unconfirmed balance associated with this address"""
         unspent_address = self.get_unspent(address)
+        # Convert each amount before summing, so the total does not accumulate
+        # the float error of the individual amounts
         confirmed = sum(
-            [
-                x["amount"] if x["confirmations"] >= confirmations else 0
-                for x in unspent_address
-            ]
+            self._as_satoshis(x["amount"])
+            for x in unspent_address
+            if x["confirmations"] >= confirmations
         )
         unconfirmed = sum(
-            [
-                x["amount"] if x["confirmations"] < confirmations else 0
-                for x in unspent_address
-            ]
+            self._as_satoshis(x["amount"])
+            for x in unspent_address
+            if x["confirmations"] < confirmations
         )
         return {
-            "confirmed": self._as_satoshis(confirmed),
-            "unconfirmed": self._as_satoshis(unconfirmed),
+            "confirmed": confirmed,
+            "unconfirmed": unconfirmed,
         }
 
     @retry_call

@@ -51,19 +51,26 @@ pub use crate::script::{
     MAX_SCRIPT_NUM_LENGTH_CHRONICLE, MAX_SCRIPT_NUM_LENGTH_GENESIS,
     MAX_SCRIPT_NUM_LENGTH_PREGENESIS,
 };
-pub use crate::transaction::uses_low_s_signing;
 pub use crate::transaction::sighash::SIGHASH_CHRONICLE;
+pub use crate::transaction::uses_low_s_signing;
 
 /// Chronicle activation height on BSV mainnet.
 pub const CHRONICLE_ACTIVATION_MAINNET: u64 = 943_835;
 /// Chronicle activation height on BSV testnet (and STN).
 pub const CHRONICLE_ACTIVATION_TESTNET: u64 = 1_713_022;
+/// Chronicle activation height on BSV regtest: active from the first block.
+pub const CHRONICLE_ACTIVATION_REGTEST: u64 = 0;
 
 /// Returns the Chronicle activation height for a BSV network, if defined.
 pub fn activation_height(network: Network) -> Option<u64> {
     match network {
         Network::BSV_Mainnet => Some(CHRONICLE_ACTIVATION_MAINNET),
         Network::BSV_Testnet | Network::BSV_STN => Some(CHRONICLE_ACTIVATION_TESTNET),
+        // A private chain runs the rules from its first block, as it does for
+        // the fork and Genesis rules in `Block::validate`. Without this,
+        // supplying a height would switch Chronicle off on regtest while
+        // omitting one leaves it on, which is the wrong way round.
+        Network::BSV_Regtest => Some(CHRONICLE_ACTIVATION_REGTEST),
         _ => None,
     }
 }
@@ -113,7 +120,10 @@ mod tests {
 
     #[test]
     fn chronicle_reexports_match_underlying_modules() {
-        assert_eq!(SIGHASH_CHRONICLE, crate::transaction::sighash::SIGHASH_CHRONICLE);
+        assert_eq!(
+            SIGHASH_CHRONICLE,
+            crate::transaction::sighash::SIGHASH_CHRONICLE
+        );
         assert!(uses_two_phase_eval(2));
         assert!(uses_relaxed_malleability(2));
         assert!(!uses_low_s_signing(
@@ -135,7 +145,44 @@ mod tests {
             activation_height(Network::BSV_Testnet),
             Some(CHRONICLE_ACTIVATION_TESTNET)
         );
+        assert_eq!(
+            activation_height(Network::BSV_Regtest),
+            Some(CHRONICLE_ACTIVATION_REGTEST)
+        );
         assert!(activation_height(Network::BTC_Mainnet).is_none());
+    }
+
+    #[test]
+    fn chronicle_is_active_from_the_first_block_on_regtest() {
+        // Supplying a height must not switch Chronicle off on a private chain.
+        // Before this, regtest fell into the catch-all and returned None, so
+        // passing a height disabled Chronicle at every height while omitting
+        // one left it enabled.
+        for height in [0, 1, 1_000_000] {
+            assert!(
+                chronicle_rules_active(2, Some(height), Some(Network::BSV_Regtest)),
+                "version 2 should use Chronicle rules at regtest height {height}"
+            );
+        }
+        // and the version gate still applies
+        assert!(!chronicle_rules_active(
+            1,
+            Some(0),
+            Some(Network::BSV_Regtest)
+        ));
+    }
+
+    #[test]
+    fn regtest_agrees_with_the_version_only_default() {
+        // With no context the library enables Chronicle for version > 1. On a
+        // private chain, adding the context should not change the answer.
+        for version in [1, 2, 3] {
+            assert_eq!(
+                chronicle_rules_active(version, None, None),
+                chronicle_rules_active(version, Some(0), Some(Network::BSV_Regtest)),
+                "regtest disagrees with the default for version {version}"
+            );
+        }
     }
 
     #[test]

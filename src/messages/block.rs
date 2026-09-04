@@ -77,13 +77,17 @@ impl Block {
             Network::BSV_Testnet | Network::BCH_Testnet => {
                 height >= BITCOIN_CASH_FORK_HEIGHT_TESTNET
             }
-            Network::BSV_STN => true,
+            // A private chain runs the fork rules from its first block
+            Network::BSV_STN | Network::BSV_Regtest => true,
             Network::BTC_Mainnet | Network::BTC_Testnet => false,
         };
         let use_genesis_rules = match network {
             Network::BSV_Mainnet => height >= GENESIS_UPGRADE_HEIGHT_MAINNET,
             Network::BSV_Testnet => height >= GENESIS_UPGRADE_HEIGHT_TESTNET,
-            Network::BSV_STN => true,
+            // As for STN, assume Genesis rules from the first block. Note that
+            // bitcoin-sv makes the regtest activation height configurable, so a
+            // node started with a non-default height will disagree below it.
+            Network::BSV_STN | Network::BSV_Regtest => true,
             Network::BTC_Mainnet
             | Network::BTC_Testnet
             | Network::BCH_Mainnet

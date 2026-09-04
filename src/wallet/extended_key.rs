@@ -83,6 +83,7 @@ impl ExtendedKey {
                     .unwrap(),
                 Network::BSV_Testnet
                 | Network::BSV_STN
+                | Network::BSV_Regtest
                 | Network::BCH_Testnet
                 | Network::BTC_Testnet => c
                     .write_u32::<BigEndian>(TESTNET_PUBLIC_EXTENDED_KEY)
@@ -130,6 +131,7 @@ impl ExtendedKey {
                     .unwrap(),
                 Network::BSV_Testnet
                 | Network::BSV_STN
+                | Network::BSV_Regtest
                 | Network::BTC_Testnet
                 | Network::BCH_Testnet => c
                     .write_u32::<BigEndian>(TESTNET_PRIVATE_EXTENDED_KEY)

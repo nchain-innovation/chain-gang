@@ -5,6 +5,34 @@ use crate::util::Hash256;
 use hex;
 use std::fmt;
 
+/// The coinbase transaction shared by every genesis block in the Bitcoin family.
+///
+/// All of these chains inherit Bitcoin's original genesis coinbase verbatim, so
+/// the transaction is identical and only the header differs between networks.
+fn genesis_coinbase() -> Tx {
+    Tx {
+        version: 1,
+        inputs: vec![TxIn {
+            prev_output: OutPoint {
+                hash: Hash256([0; 32]),
+                index: 0xffffffff,
+            },
+            unlock_script: Script(hex::decode("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73").unwrap()),
+            sequence: 0xffffffff,
+        }],
+        outputs: vec![TxOut {
+            satoshis: 5000000000,
+            lock_script: Script(hex::decode("4104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac").unwrap()),
+        }],
+        lock_time: 0,
+    }
+}
+
+/// Merkle root of every genesis block in the Bitcoin family, being the txid of
+/// [`genesis_coinbase`].
+const GENESIS_MERKLE_ROOT: &str =
+    "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b";
+
 #[allow(non_camel_case_types)]
 /// Network type
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -16,6 +44,8 @@ pub enum Network {
     BSV_Testnet,
     /// Bitcoin SV scaling test network (STN)
     BSV_STN,
+    /// Bitcoin SV regression test network (regtest), a private local chain
+    BSV_Regtest,
     // BTC
     /// Bitcoin (BTC) mainnet
     BTC_Mainnet,
@@ -35,6 +65,7 @@ impl fmt::Display for Network {
             Network::BSV_Mainnet => "BSV_Mainnet",
             Network::BSV_Testnet => "BSV_Testnet",
             Network::BSV_STN => "BSV_STN",
+            Network::BSV_Regtest => "BSV_Regtest",
             Network::BTC_Mainnet => "BTC_Mainnet",
             Network::BTC_Testnet => "BTC_Testnet",
             Network::BCH_Mainnet => "BCH_Mainnet",
@@ -53,6 +84,7 @@ impl std::str::FromStr for Network {
             "BSV_Mainnet" => Ok(Network::BSV_Mainnet),
             "BSV_Testnet" => Ok(Network::BSV_Testnet),
             "BSV_STN" => Ok(Network::BSV_STN),
+            "BSV_Regtest" => Ok(Network::BSV_Regtest),
             "BTC_Mainnet" => Ok(Network::BTC_Mainnet),
             "BTC_Testnet" => Ok(Network::BTC_Testnet),
             "BCH_Mainnet" => Ok(Network::BCH_Mainnet),
@@ -76,6 +108,8 @@ impl Network {
             Network::BSV_Mainnet => 8333,
             Network::BSV_Testnet => 18333,
             Network::BSV_STN => 9333,
+            // regtest listens on 18444, as it does on BTC
+            Network::BSV_Regtest => 18444,
 
             Network::BTC_Mainnet => 8333,
             Network::BTC_Testnet => 18333,
@@ -92,7 +126,10 @@ impl Network {
     /// Return a user_agent string for the network
     pub fn user_agent(&self) -> &str {
         match self {
-            Network::BSV_Mainnet | Network::BSV_Testnet | Network::BSV_STN => "/Bitcoin SV:1.0.10/",
+            Network::BSV_Mainnet
+            | Network::BSV_Testnet
+            | Network::BSV_STN
+            | Network::BSV_Regtest => "/Bitcoin SV:1.0.10/",
             Network::BTC_Mainnet | Network::BTC_Testnet => "/Satoshi:23.0.0/",
             Network::BCH_Mainnet | Network::BCH_Testnet => "/Bitcoin Cash Node:24.1.0(EB32.0)/",
         }
@@ -104,6 +141,10 @@ impl Network {
             Network::BSV_Mainnet | Network::BCH_Mainnet => [0xe3, 0xe1, 0xf3, 0xe8],
             Network::BSV_Testnet | Network::BCH_Testnet => [0xf4, 0xe5, 0xf3, 0xf4],
             Network::BSV_STN => [0xfb, 0xce, 0xc4, 0xf9],
+            // Inherited from Bitcoin Cash, not Bitcoin Core's 0xfabfb5da.
+            // Verified against a bitcoin-sv 1.2.2 regtest node: 0xfabfb5da is
+            // rejected as INVALID MESSAGESTART, and the node bans on the spot.
+            Network::BSV_Regtest => [0xda, 0xb5, 0xbf, 0xfa],
 
             Network::BTC_Mainnet => [0xf9, 0xbe, 0xb4, 0xd9],
             Network::BTC_Testnet => [0x0b, 0x11, 0x09, 0x07],
@@ -112,80 +153,30 @@ impl Network {
 
     /// Returns the genesis block
     pub fn genesis_block(&self) -> Block {
-        match self {
+        // Only timestamp, bits and nonce differ between these chains
+        let (timestamp, bits, nonce) = match self {
             Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => {
-                let header = BlockHeader {
-                    version: 1,
-                    prev_hash: Hash256([0; 32]),
-                    merkle_root: Hash256::decode(
-                        "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
-                    )
-                    .unwrap(),
-                    timestamp: 1231006505,
-                    bits: 0x1d00ffff,
-                    nonce: 2083236893,
-                };
-
-                let tx = Tx {
-                    version: 1,
-                    inputs: vec![TxIn {
-                        prev_output: OutPoint {
-                            hash: Hash256([0; 32]),
-                            index: 0xffffffff,
-                        },
-                        unlock_script: Script(hex::decode("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73").unwrap()),
-                        sequence: 0xffffffff,
-                    }],
-                    outputs: vec![TxOut {
-                        satoshis: 5000000000,
-                        lock_script: Script(hex::decode("4104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac").unwrap()),
-                    }],
-                    lock_time: 0,
-                };
-
-                Block {
-                    header,
-                    txns: vec![tx],
-                }
+                (1231006505, 0x1d00ffff, 2083236893)
             }
             Network::BSV_Testnet
             | Network::BSV_STN
             | Network::BTC_Testnet
-            | Network::BCH_Testnet => {
-                let header = BlockHeader {
-                    version: 1,
-                    prev_hash: Hash256([0; 32]),
-                    merkle_root: Hash256::decode(
-                        "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
-                    )
-                    .unwrap(),
-                    timestamp: 1296688602,
-                    bits: 0x1d00ffff,
-                    nonce: 414098458,
-                };
+            | Network::BCH_Testnet => (1296688602, 0x1d00ffff, 414098458),
+            // Regtest keeps the testnet timestamp but mines at minimum
+            // difficulty, so it reaches a valid hash at nonce 2
+            Network::BSV_Regtest => (1296688602, 0x207fffff, 2),
+        };
 
-                let tx = Tx {
-                    version: 1,
-                    inputs: vec![TxIn {
-                        prev_output: OutPoint {
-                            hash: Hash256([0; 32]),
-                            index: 0xffffffff,
-                        },
-                        unlock_script: Script(hex::decode("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73").unwrap()),
-                        sequence: 0xffffffff,
-                    }],
-                    outputs: vec![TxOut {
-                        satoshis: 5000000000,
-                        lock_script: Script(hex::decode("4104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac").unwrap()),
-                    }],
-                    lock_time: 0,
-                };
-
-                Block {
-                    header,
-                    txns: vec![tx],
-                }
-            }
+        Block {
+            header: BlockHeader {
+                version: 1,
+                prev_hash: Hash256([0; 32]),
+                merkle_root: Hash256::decode(GENESIS_MERKLE_ROOT).unwrap(),
+                timestamp,
+                bits,
+                nonce,
+            },
+            txns: vec![genesis_coinbase()],
         }
     }
 
@@ -203,6 +194,10 @@ impl Network {
                 Hash256::decode("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943")
                     .unwrap()
             }
+            Network::BSV_Regtest => {
+                Hash256::decode("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")
+                    .unwrap()
+            }
         }
     }
 
@@ -211,7 +206,7 @@ impl Network {
         match self {
             Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => 0x00,
             Network::BSV_Testnet | Network::BTC_Testnet | Network::BCH_Testnet => 0x6f,
-            Network::BSV_STN => 0x6f,
+            Network::BSV_STN | Network::BSV_Regtest => 0x6f,
         }
     }
 
@@ -220,7 +215,7 @@ impl Network {
         match self {
             Network::BSV_Mainnet | Network::BTC_Mainnet | Network::BCH_Mainnet => 0x05,
             Network::BSV_Testnet | Network::BTC_Testnet | Network::BCH_Testnet => 0xc4,
-            Network::BSV_STN => 0xc4,
+            Network::BSV_STN | Network::BSV_Regtest => 0xc4,
         }
     }
 
@@ -238,6 +233,8 @@ impl Network {
                 "testnet-seed.bitcoincloud.net".to_string(),
             ],
             Network::BSV_STN => vec!["stn-seed.bitcoinsv.io".to_string()],
+            // A regtest chain is private, so there is nothing to discover
+            Network::BSV_Regtest => Vec::new(),
 
             Network::BTC_Mainnet => vec![
                 "seed.bitcoin.sipa.be".to_string(),
@@ -285,12 +282,59 @@ impl Network {
 mod tests {
     use super::*;
 
+    /// Every network the enum knows about, so the tests below cannot silently
+    /// skip a variant added later.
+    const ALL: [Network; 8] = [
+        Network::BSV_Mainnet,
+        Network::BSV_Testnet,
+        Network::BSV_STN,
+        Network::BSV_Regtest,
+        Network::BTC_Mainnet,
+        Network::BTC_Testnet,
+        Network::BCH_Mainnet,
+        Network::BCH_Testnet,
+    ];
+
+    #[test]
+    fn genesis_header_hashes_to_the_declared_genesis_hash() {
+        // Derives the hash from version, prev_hash, merkle_root, timestamp,
+        // bits and nonce, so a wrong constant anywhere fails here rather than
+        // silently shipping a chain that disagrees with its node.
+        for net in ALL {
+            assert_eq!(
+                net.genesis_block().header.hash(),
+                net.genesis_hash(),
+                "{net} genesis header does not hash to its declared genesis hash"
+            );
+        }
+    }
+
+    #[test]
+    fn genesis_coinbase_matches_the_declared_merkle_root() {
+        // A single-transaction block has its coinbase txid as the merkle root,
+        // which checks the coinbase bytes the header hash cannot cover.
+        for net in ALL {
+            let block = net.genesis_block();
+            assert_eq!(
+                block.txns[0].hash(),
+                block.header.merkle_root,
+                "{net} genesis coinbase does not match the declared merkle root"
+            );
+        }
+    }
+
+    #[test]
+    fn regtest_has_no_dns_seeds() {
+        assert!(Network::BSV_Regtest.seeds().is_empty());
+    }
+
     #[test]
     fn from_str_round_trips_display_for_all_networks() {
         for net in [
             Network::BSV_Mainnet,
             Network::BSV_Testnet,
             Network::BSV_STN,
+            Network::BSV_Regtest,
             Network::BTC_Mainnet,
             Network::BTC_Testnet,
             Network::BCH_Mainnet,

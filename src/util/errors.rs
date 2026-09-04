@@ -76,15 +76,15 @@ pub enum ChainGangError {
     Timeout,
 
     /// The operation is not valid on this object
-    #[error("The operation is not valid on this object")]
+    #[error("The operation is not valid on this object: {0}")]
     InvalidOperation(String),
 
     /// A received response was invalid
-    #[error("Invalid reponse")]
+    #[error("Invalid response: {0}")]
     ResponseError(String),
 
     /// Parsing JSON failed
-    #[error("JSON Parse error")]
+    #[error("JSON Parse error: {0}")]
     JSONParseError(String),
 }
 
