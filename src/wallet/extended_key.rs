@@ -1,5 +1,6 @@
 use crate::network::Network;
 use crate::util::{hash160, sha256d, ChainGangError, Serializable};
+use crate::wallet::base58_checksum::CHECKSUM_LEN;
 use byteorder::{BigEndian, WriteBytesExt};
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
@@ -41,9 +42,12 @@ pub enum ExtendedKeyType {
     Private,
 }
 
+/// Number of bytes in a serialised extended key, before its Base58Check checksum
+pub const EXTENDED_KEY_LEN: usize = 78;
+
 /// A private or public key in an hierarchial deterministic wallet
 #[derive(Clone, Copy)]
-pub struct ExtendedKey(pub [u8; 78]);
+pub struct ExtendedKey(pub [u8; EXTENDED_KEY_LEN]);
 
 impl ExtendedKey {
     /// Creates a new extended public key
@@ -443,12 +447,22 @@ impl ExtendedKey {
         let v = bs58::decode(s)
             .into_vec()
             .map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
-        let checksum = sha256d(&v[..78]);
-        if checksum.0[..4] != v[78..] {
+        // A serialised extended key is exactly the key plus its checksum. Check
+        // the length before splitting rather than slicing past the end.
+        if v.len() != EXTENDED_KEY_LEN + CHECKSUM_LEN {
+            return Err(ChainGangError::BadArgument(format!(
+                "Extended key must decode to {} bytes, got {}",
+                EXTENDED_KEY_LEN + CHECKSUM_LEN,
+                v.len()
+            )));
+        }
+        let (key, decoded_checksum) = v.split_at(EXTENDED_KEY_LEN);
+        let checksum = sha256d(key);
+        if checksum.0[..CHECKSUM_LEN] != *decoded_checksum {
             return Err(ChainGangError::BadArgument("Invalid checksum".to_string()));
         }
-        let mut extended_key = ExtendedKey([0; 78]);
-        extended_key.0.clone_from_slice(&v[..78]);
+        let mut extended_key = ExtendedKey([0; EXTENDED_KEY_LEN]);
+        extended_key.0.clone_from_slice(key);
         Ok(extended_key)
     }
 }
@@ -586,6 +600,30 @@ pub fn is_private_key_valid(key: &[u8]) -> bool {
 mod tests {
     use super::*;
     use hex;
+
+    #[test]
+    fn decode_rejects_wrong_length() {
+        // Valid base58 that decodes to too few bytes used to slice past the end
+        // of the buffer. "1" is a single zero byte.
+        for input in ["", "1", "111"] {
+            assert!(
+                ExtendedKey::decode(input).is_err(),
+                "expected an error for {input:?}"
+            );
+        }
+        // One byte too many is rejected on length rather than on checksum
+        let long = bs58::encode(vec![0u8; EXTENDED_KEY_LEN + CHECKSUM_LEN + 1]).into_string();
+        assert!(ExtendedKey::decode(&long).is_err());
+    }
+
+    #[test]
+    fn decode_round_trips_an_encoded_key() {
+        let key = master_private_key(
+            "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542",
+        );
+        let encoded = key.encode();
+        assert_eq!(ExtendedKey::decode(&encoded).unwrap().0, key.0);
+    }
 
     #[test]
     fn private_key_range() {
