@@ -19,6 +19,10 @@ use super::rules::{
 use super::script_code::{checksig_script_code, multisig_script_code, TwoPhaseEvalContext};
 use super::{ALT_STACK_CAPACITY, PREGENESIS_RULES, STACK_CAPACITY};
 
+// The interpreter entry point genuinely needs all of these: script, checker,
+// consensus flags, resume/break offsets, both stacks, and the two-phase context.
+// Grouping them into a struct would change a public signature for no gain here.
+#[allow(clippy::too_many_arguments)]
 pub fn core_eval<T: Checker>(
     script: &[u8],
     checker: &mut T,

@@ -133,7 +133,6 @@ impl fmt::Debug for BloomFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std;
 
     #[test]
     fn write_read() {
@@ -160,8 +159,8 @@ mod tests {
         assert!(BloomFilter::new(1., 0.).is_err());
         assert!(BloomFilter::new(-1., 0.5).is_err());
         assert!(BloomFilter::new(1., -1.).is_err());
-        assert!(BloomFilter::new(1., std::f64::NAN).is_err());
-        assert!(BloomFilter::new(std::f64::NAN, 0.5).is_err());
+        assert!(BloomFilter::new(1., f64::NAN).is_err());
+        assert!(BloomFilter::new(f64::NAN, 0.5).is_err());
     }
 
     #[test]

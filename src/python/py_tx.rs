@@ -228,7 +228,7 @@ impl PyTx {
 
 impl fmt::Display for PyTx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let ret = format!("{:?}", &self);
+        let ret = format!("{:?}", self);
         f.write_str(&ret)
     }
 }
@@ -397,7 +397,7 @@ impl PyTx {
                 Ok(pytx)
             }
             Err(e) => {
-                let msg = format!("Error decoding hexstr {}", &e);
+                let msg = format!("Error decoding hexstr {}", e);
                 Err(ChainGangError::BadData(msg).into())
             }
         }

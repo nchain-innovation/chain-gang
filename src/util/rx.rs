@@ -173,7 +173,7 @@ mod tests {
             observed: AtomicBool,
         }
 
-        impl<'a> Observer<u32> for MyObserver {
+        impl Observer<u32> for MyObserver {
             fn next(&self, _event: &u32) {
                 self.observed.store(true, Ordering::Relaxed);
             }
@@ -196,7 +196,7 @@ mod tests {
         struct MyObserver {
             subject: Arc<Subject<u32>>,
         }
-        impl<'a> Observer<u32> for MyObserver {
+        impl Observer<u32> for MyObserver {
             fn next(&self, _event: &u32) {
                 self.subject.subscribe(&Arc::new(MyObserver {
                     subject: self.subject.clone(),
@@ -215,7 +215,7 @@ mod tests {
             observed: AtomicBool,
         }
 
-        impl<'a> Observer<u32> for MyObserver {
+        impl Observer<u32> for MyObserver {
             fn next(&self, event: &u32) {
                 assert!(event == &5);
                 assert!(!self.observed.swap(true, Ordering::Relaxed));
