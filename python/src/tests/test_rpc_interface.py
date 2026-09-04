@@ -6,7 +6,8 @@ calculation and the satoshi conversion.
 import unittest
 
 from tx_engine import interface_factory
-from tx_engine.interface.rpc_interface import RPCInterface, UNCONFIRMED_HEIGHT
+from tx_engine.interface.blockchain_interface import UNCONFIRMED_HEIGHT
+from tx_engine.interface.rpc_interface import RPCInterface
 
 
 def _configured(network_type):
