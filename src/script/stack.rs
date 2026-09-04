@@ -47,10 +47,8 @@ pub fn is_minimally_encoded(s: &[u8]) -> bool {
     if size == 0 {
         return true;
     }
-    if s[size - 1] & 0x7f == 0 {
-        if size <= 1 || s[size - 2] & 0x80 == 0 {
-            return false;
-        }
+    if s[size - 1] & 0x7f == 0 && (size <= 1 || s[size - 2] & 0x80 == 0) {
+        return false;
     }
     true
 }

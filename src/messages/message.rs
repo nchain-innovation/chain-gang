@@ -1015,7 +1015,7 @@ mod tests {
         if let Message::Other(_) = m {
             // Success
         } else {
-            assert!(false);
+            panic!("expected Message::Other for an unknown command");
         }
     }
 }

@@ -65,7 +65,7 @@ pub fn public_key_to_address(
         _ => {
             return Err(ChainGangError::BadArgument(format!(
                 "{} unknnown network.",
-                &network
+                network
             )));
         }
     };
@@ -233,7 +233,7 @@ impl Wallet {
         if prev_hash != tx_in.hash() {
             return Err(ChainGangError::BadArgument(format!(
                 "Unable to find input tx {:?}",
-                &prev_hash
+                prev_hash
             )));
         }
         // Gather data for sighash
@@ -268,7 +268,7 @@ impl Wallet {
         if prev_hash != tx_in.hash() {
             return Err(ChainGangError::BadArgument(format!(
                 "Unable to find input tx {:?}",
-                &prev_hash
+                prev_hash
             )));
         }
         // Gather data for sighash

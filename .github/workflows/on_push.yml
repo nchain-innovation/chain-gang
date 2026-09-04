@@ -3,7 +3,6 @@ on: [push]
 permissions:
   contents: read
 env:
-  RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
   # Disable cargo's HTTP/2 multiplexing to avoid intermittent
   # "[16] Error in the HTTP2 framing layer" failures when fetching from crates.io.
   CARGO_HTTP_MULTIPLEXING: false
@@ -40,6 +39,49 @@ jobs:
           cache: true
       - name: Rust Tests
         run: cargo test --all-features
+
+  rust-clippy:
+    name: Rust Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch code
+        uses: actions/checkout@v4
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          cache: true
+      - name: Clippy
+        run: cargo clippy --all-features --all-targets -- -D warnings
+
+  # The test and clippy jobs above both build --all-features, so a module or
+  # item gated on the wrong feature compiles there and still breaks a dependent
+  # that enables only some of them. This checks each set a dependent might pick.
+  # --no-default-features is deliberately absent: it does not currently compile.
+  rust-features:
+    name: Rust Features (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: default
+            args: ""
+          - name: interface
+            args: "--features interface"
+          - name: python
+            args: "--features python"
+    steps:
+      - name: Checkout branch code
+        uses: actions/checkout@v4
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+      - name: Check
+        run: cargo check --all-targets ${{ matrix.args }}
 
   python-test:
     name: Python Tests (${{ matrix.python-version }})

@@ -54,7 +54,7 @@ impl WocInterface {
             Network::BSV_Mainnet => "main",
             Network::BSV_Testnet => "test",
             Network::BSV_STN => "stn",
-            _ => panic!("unknown network {}", &self.network_type),
+            _ => panic!("unknown network {}", self.network_type),
         }
     }
 }
@@ -113,7 +113,7 @@ impl BlockchainInterface for WocInterface {
         let txt = match response.text().await {
             Ok(txt) => txt,
             Err(x) => {
-                log::debug!("address = {}", &address);
+                log::debug!("address = {}", address);
                 return Err(ChainGangError::ResponseError(format!(
                     "response.text() = {}",
                     x
@@ -123,8 +123,8 @@ impl BlockchainInterface for WocInterface {
         let data: Balance = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                log::debug!("address = {}", &address);
-                log::warn!("txt = {}", &txt);
+                log::debug!("address = {}", address);
+                log::warn!("txt = {}", txt);
                 return Err(ChainGangError::JSONParseError(format!(
                     "json parse error = {}",
                     x
@@ -155,7 +155,7 @@ impl BlockchainInterface for WocInterface {
         let mut data: Utxo = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
-                log::warn!("txt = {}", &txt);
+                log::warn!("txt = {}", txt);
                 return Err(ChainGangError::JSONParseError(format!(
                     "json parse error = {}",
                     x
@@ -172,7 +172,7 @@ impl BlockchainInterface for WocInterface {
         log::debug!("broadcast_tx");
         let network = self.get_network_str();
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
-        log::debug!("url = {}", &url);
+        log::debug!("url = {}", url);
         let data_for_broadcast = BroadcastTxType {
             txhex: tx.as_hexstr(),
         };
@@ -189,7 +189,7 @@ impl BlockchainInterface for WocInterface {
                 Ok(txid.to_string())
             }
             _ => {
-                log::debug!("url = {}", &url);
+                log::debug!("url = {}", url);
                 Err(ChainGangError::ResponseError(format!(
                     "response.status() = {}",
                     status
