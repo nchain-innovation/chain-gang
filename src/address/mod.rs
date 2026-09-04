@@ -25,7 +25,6 @@
 //!
 use crate::network::Network;
 use crate::util::{sha256d, ChainGangError, Hash160};
-use base58::{FromBase58, ToBase58};
 
 /// Address type which is either P2PKH or P2SH
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,7 +49,7 @@ pub fn addr_encode(hash160: &Hash160, addr_type: AddressType, network: Network) 
     v.push(checksum[2]);
     v.push(checksum[3]);
     let b: &[u8] = v.as_ref();
-    b.to_base58()
+    bs58::encode(b).into_string()
 }
 
 /// Decodes a base-58 address to a public key hash
@@ -60,8 +59,8 @@ pub fn addr_decode(
 ) -> Result<(Hash160, AddressType), ChainGangError> {
     // Make sure addr is at least some minimum to verify checksum and addr type
     // We will check the private key size later.
-    let v = input
-        .from_base58()
+    let v = bs58::decode(input)
+        .into_vec()
         .map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
     if v.len() < 6 {
         let msg = format!("Base58 address not long enough: {}", v.len());

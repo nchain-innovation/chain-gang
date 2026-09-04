@@ -4,7 +4,6 @@ use byteorder::{BigEndian, WriteBytesExt};
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
 
-use base58::{FromBase58, ToBase58};
 use k256::{elliptic_curve::PublicKey, Secp256k1, SecretKey};
 use std::fmt;
 use std::io;
@@ -436,13 +435,13 @@ impl ExtendedKey {
         let mut v = Vec::with_capacity(82);
         v.extend_from_slice(&self.0);
         v.extend_from_slice(&checksum.0[..4]);
-        v.to_base58()
+        bs58::encode(&v).into_string()
     }
 
     /// Decodes an extended key from a string
     pub fn decode(s: &str) -> Result<ExtendedKey, ChainGangError> {
-        let v = s
-            .from_base58()
+        let v = bs58::decode(s)
+            .into_vec()
             .map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
         let checksum = sha256d(&v[..78]);
         if checksum.0[..4] != v[78..] {
