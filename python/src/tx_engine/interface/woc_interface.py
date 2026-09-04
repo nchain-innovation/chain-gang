@@ -3,16 +3,33 @@
 This is a deliberate parallel of the Rust `WocInterface` in
 `src/interface/woc_interface.rs`, kept independent so the Python package does
 not depend on the Rust `interface` feature. Keep endpoint paths and the
-network -> main/test/stn mapping in sync across both when either changes.
+network -> main/test/stn mapping in sync across both when either changes. That
+includes rewriting WhatsOnChain's `height: 0` for an unconfirmed UTXO to
+UNCONFIRMED_HEIGHT, which both sides do.
 """
 
 import logging
 from typing import Dict, Optional, List, Any
 
 from . import woc
-from .blockchain_interface import BlockchainInterface
+from .blockchain_interface import BlockchainInterface, UNCONFIRMED_HEIGHT
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _normalise_unconfirmed(utxo):
+    """Rewrite WhatsOnChain's unconfirmed marker to this package's
+
+    WhatsOnChain reports a mempool UTXO as `height: 0`, while a negative height
+    is what means unconfirmed here and in the Rust crate, so the value is
+    translated on the way in rather than left for every caller to special-case.
+    A height of 0 cannot mean the genesis block: the genesis coinbase is
+    unspendable, so it never appears in an unspent set.
+    """
+    for entry in utxo:
+        if entry.get("height") == 0:
+            entry["height"] = UNCONFIRMED_HEIGHT
+    return utxo
 
 
 class WoCInterface(BlockchainInterface):
@@ -47,7 +64,9 @@ class WoCInterface(BlockchainInterface):
 
     def get_utxo(self, address):
         """Return the utxo associated with this address"""
-        return woc.get_unspent_transactions(address, testnet=self.is_testnet())
+        return _normalise_unconfirmed(
+            woc.get_unspent_transactions(address, testnet=self.is_testnet())
+        )
 
     def get_balance(self, address):
         return woc.get_balance(address, testnet=self.is_testnet())

@@ -15,7 +15,7 @@ import time
 from http.client import CannotSendRequest
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 
-from .blockchain_interface import BlockchainInterface
+from .blockchain_interface import BlockchainInterface, UNCONFIRMED_HEIGHT
 
 
 LOGGER = logging.getLogger(__name__)
@@ -23,11 +23,6 @@ LOGGER = logging.getLogger(__name__)
 
 #: Highest maxconf accepted by listunspent, used to mean "no upper bound"
 MAX_CONFIRMATIONS = 9999999
-
-#: Height reported for a UTXO that has not been confirmed in a block. Any
-#: negative height means unconfirmed; this matches UNCONFIRMED_HEIGHT in the
-#: Rust crate's blockchain_interface.
-UNCONFIRMED_HEIGHT = -1
 
 
 class RPCReturnInfo:

@@ -14,7 +14,9 @@ use crate::util::Serializable;
 use serde::Serialize;
 
 use crate::{
-    interface::blockchain_interface::{check_status, Balance, BlockchainInterface, Utxo},
+    interface::blockchain_interface::{
+        check_status, Balance, BlockchainInterface, Utxo, UNCONFIRMED_HEIGHT,
+    },
     messages::{BlockHeader, Tx},
     network::Network,
     util::ChainGangError,
@@ -53,6 +55,21 @@ impl WocInterface {
             Network::BSV_Testnet => "test",
             Network::BSV_STN => "stn",
             _ => panic!("unknown network {}", &self.network_type),
+        }
+    }
+}
+
+/// Rewrites WhatsOnChain's unconfirmed marker to this crate's.
+///
+/// WhatsOnChain reports a mempool UTXO as `height: 0`, while
+/// [`UtxoEntry::height`] defines a negative height as meaning unconfirmed, so
+/// the value is translated on the way in rather than left for every caller to
+/// special-case. A height of 0 cannot mean the genesis block here: the genesis
+/// coinbase is unspendable, so it never appears in an unspent set.
+fn normalise_unconfirmed(utxo: &mut Utxo) {
+    for entry in utxo.iter_mut() {
+        if entry.height == 0 {
+            entry.height = UNCONFIRMED_HEIGHT;
         }
     }
 }
@@ -135,7 +152,7 @@ impl BlockchainInterface for WocInterface {
                 )));
             }
         };
-        let data: Utxo = match serde_json::from_str(&txt) {
+        let mut data: Utxo = match serde_json::from_str(&txt) {
             Ok(data) => data,
             Err(x) => {
                 log::warn!("txt = {}", &txt);
@@ -145,6 +162,7 @@ impl BlockchainInterface for WocInterface {
                 )));
             }
         };
+        normalise_unconfirmed(&mut data);
         Ok(data)
     }
 
@@ -235,5 +253,55 @@ impl BlockchainInterface for WocInterface {
                 x
             ))),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interface::blockchain_interface::UtxoEntry;
+
+    /// A trimmed response from `/address/{addr}/unspent`, with the mempool
+    /// entry WhatsOnChain reports as height 0. Taken from a real response:
+    /// tx fa7f15f8..d860 was in WhatsOnChain's own mempool/raw list, with no
+    /// blockhash, blockheight or confirmations.
+    fn woc_response() -> &'static str {
+        r#"[
+            {"height": 964754, "tx_pos": 1, "tx_hash": "aa", "value": 1},
+            {"height": 0,      "tx_pos": 1, "tx_hash": "fa7f15f8", "value": 2954693}
+        ]"#
+    }
+
+    #[test]
+    fn woc_height_zero_becomes_the_unconfirmed_sentinel() {
+        let mut utxo: Utxo = serde_json::from_str(woc_response()).unwrap();
+        assert_eq!(utxo[1].height, 0, "as WhatsOnChain sends it");
+
+        normalise_unconfirmed(&mut utxo);
+
+        assert_eq!(utxo[1].height, UNCONFIRMED_HEIGHT);
+        assert!(utxo[1].height < 0, "the balance filters test for negative");
+        // and the confirmed entry is untouched
+        assert_eq!(utxo[0].height, 964754);
+        assert_eq!(utxo[1].value, 2954693, "only the height is rewritten");
+    }
+
+    #[test]
+    fn normalising_is_idempotent() {
+        let mut utxo = vec![UtxoEntry {
+            height: UNCONFIRMED_HEIGHT,
+            tx_pos: 0,
+            tx_hash: "aa".to_string(),
+            value: 1,
+        }];
+        normalise_unconfirmed(&mut utxo);
+        assert_eq!(utxo[0].height, UNCONFIRMED_HEIGHT);
+    }
+
+    #[test]
+    fn an_empty_utxo_set_is_fine() {
+        let mut utxo: Utxo = Vec::new();
+        normalise_unconfirmed(&mut utxo);
+        assert!(utxo.is_empty());
     }
 }

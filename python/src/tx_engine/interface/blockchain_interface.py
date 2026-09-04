@@ -6,6 +6,12 @@ from typing import Dict, Optional, MutableMapping, Any, List
 
 ConfigType = MutableMapping[str, Any]
 
+#: Height reported for a UTXO that has not been confirmed in a block. Any
+#: negative height means unconfirmed. Matches UNCONFIRMED_HEIGHT in the Rust
+#: crate's blockchain_interface, and WhatsOnChain's `height: 0` is translated
+#: to this on the way in so every interface agrees.
+UNCONFIRMED_HEIGHT = -1
+
 
 class BlockchainInterface(ABC):
     """ This is a BlockchainInterface abstract base class
