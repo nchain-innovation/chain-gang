@@ -223,7 +223,7 @@ impl PyScript {
 
     /// Return a string presentation of the script
     fn __repr__(&self) -> String {
-        format!("{}", &self)
+        format!("{}", self)
     }
 
     fn __getitem__(&self, index: usize) -> PyResult<u8> {

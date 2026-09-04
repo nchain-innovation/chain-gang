@@ -186,7 +186,7 @@ mod tests {
         let a0 = watch.address_at(true, 0).unwrap();
         let a2 = watch.address_at(true, 2).unwrap();
         let used = watch
-            .scan_addresses(true, 2, |addr| addr == &a0 || addr == &a2)
+            .scan_addresses(true, 2, |addr| addr == a0 || addr == a2)
             .unwrap();
         assert_eq!(used, vec![a0, a2]);
     }

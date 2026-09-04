@@ -355,7 +355,7 @@ mod tests {
 
     fn bytes_to_hexstr(bytes: &[u8]) -> String {
         bytes
-            .into_iter()
+            .iter()
             .map(|x| format!("{:02x}", x))
             .collect::<Vec<_>>()
             .join("")

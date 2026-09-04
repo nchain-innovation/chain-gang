@@ -328,8 +328,8 @@ mod tests {
 
     fn hash(a: &Hash256, b: &Hash256) -> Hash256 {
         let mut v = Vec::with_capacity(64);
-        v.write(&a.0).unwrap();
-        v.write(&b.0).unwrap();
+        v.write_all(&a.0).unwrap();
+        v.write_all(&b.0).unwrap();
         sha256d(&v)
     }
 }
