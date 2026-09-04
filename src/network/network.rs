@@ -141,7 +141,10 @@ impl Network {
             Network::BSV_Mainnet | Network::BCH_Mainnet => [0xe3, 0xe1, 0xf3, 0xe8],
             Network::BSV_Testnet | Network::BCH_Testnet => [0xf4, 0xe5, 0xf3, 0xf4],
             Network::BSV_STN => [0xfb, 0xce, 0xc4, 0xf9],
-            Network::BSV_Regtest => [0xfa, 0xbf, 0xb5, 0xda],
+            // Inherited from Bitcoin Cash, not Bitcoin Core's 0xfabfb5da.
+            // Verified against a bitcoin-sv 1.2.2 regtest node: 0xfabfb5da is
+            // rejected as INVALID MESSAGESTART, and the node bans on the spot.
+            Network::BSV_Regtest => [0xda, 0xb5, 0xbf, 0xfa],
 
             Network::BTC_Mainnet => [0xf9, 0xbe, 0xb4, 0xd9],
             Network::BTC_Testnet => [0x0b, 0x11, 0x09, 0x07],
