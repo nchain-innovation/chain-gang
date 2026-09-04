@@ -6,9 +6,6 @@
 #[macro_use]
 extern crate log;
 
-#[cfg(feature = "python")]
-extern crate lazy_static;
-
 pub mod address;
 pub mod chronicle;
 pub mod messages;
