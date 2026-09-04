@@ -32,7 +32,7 @@ k256 = { version = "0.14.0", features = ["alloc", "arithmetic", "digest", "ecdsa
     "sha2", "sha256", "signature", "std"]}
 
 hmac = "0.13.0"
-base58 = "0.2.0"
+bs58 = "0.5.1"
 pbkdf2 = { version = "0.13.0", features = ["hmac", "sha2"] }
 
 # Used by the interface feature

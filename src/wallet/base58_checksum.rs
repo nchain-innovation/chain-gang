@@ -1,7 +1,5 @@
 use crate::util::{sha256d, ChainGangError};
 
-use base58::{FromBase58, ToBase58};
-
 /// Returns the first 4 bytes of the double SHA-256 of `data` (Base58Check checksum).
 pub fn short_double_sha256_checksum(data: &[u8]) -> Vec<u8> {
     sha256d(data).0[..4].to_vec()
@@ -9,8 +7,8 @@ pub fn short_double_sha256_checksum(data: &[u8]) -> Vec<u8> {
 
 /// Given the string return the checked base58 value
 pub fn decode_base58_checksum(input: &str) -> Result<Vec<u8>, ChainGangError> {
-    let decoded: Vec<u8> = input
-        .from_base58()
+    let decoded: Vec<u8> = bs58::decode(input)
+        .into_vec()
         .map_err(|e| ChainGangError::Base58Error(format!("{e:?}")))?;
     // Return all but the last 4
     let shortened: Vec<u8> = decoded.as_slice()[..decoded.len() - 4].to_vec();
@@ -33,7 +31,7 @@ pub fn encode_base58_checksum(input: &[u8]) -> String {
     let hash = short_double_sha256_checksum(input);
     let mut data: Vec<u8> = input.to_vec();
     data.extend(hash);
-    data.to_base58()
+    bs58::encode(data).into_string()
 }
 
 #[cfg(test)]
