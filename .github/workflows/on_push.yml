@@ -3,7 +3,6 @@ on: [push]
 permissions:
   contents: read
 env:
-  RUSTFLAGS: -A deprecated # Allow deprecated warnings, we are awaiting an updated k256 crate
   # Disable cargo's HTTP/2 multiplexing to avoid intermittent
   # "[16] Error in the HTTP2 framing layer" failures when fetching from crates.io.
   CARGO_HTTP_MULTIPLEXING: false
@@ -53,9 +52,6 @@ jobs:
           toolchain: stable
           components: clippy
           cache: true
-      # A lint allowed by name in RUSTFLAGS, such as the deprecated above, keeps
-      # that level: rustc gives a specific lint precedence over a group like
-      # `warnings`, whichever order the flags arrive in.
       - name: Clippy
         run: cargo clippy --all-features --all-targets -- -D warnings
 
