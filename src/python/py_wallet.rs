@@ -46,53 +46,56 @@ pub fn bytes_to_wif(key_as_bytes: &[u8], prefix_as_bytes: u8) -> String {
     encode_base58_checksum(&wif_bytes)
 }
 
-pub fn generate_wif(password: &str, nonce: &str, network: &str) -> String {
-    let pw_bytes = password.as_bytes();
-    let salt_bytes = nonce.as_bytes();
+/// Derives a WIF private key from `password` and `nonce` for `network`.
+///
+/// Takes a [`Network`] rather than its name: the network used to arrive as a
+/// string, and anything the match did not recognise fell back to the mainnet
+/// prefix, so a mistyped or unsupported name silently produced a mainnet key.
+pub fn generate_wif(
+    password: &str,
+    nonce: &str,
+    network: Network,
+) -> Result<String, ChainGangError> {
+    let prefix = wif_prefix(network)?;
+
     let iterations = NonZeroU32::new(100_000).unwrap();
     let mut dk = [0u8; 32]; // 256-bit key
-    pbkdf2::<Hmac<Sha256>>(pw_bytes, salt_bytes, iterations.get(), &mut dk)
-        .expect("HMAC can be initialized with any key length");
+    pbkdf2::<Hmac<Sha256>>(
+        password.as_bytes(),
+        nonce.as_bytes(),
+        iterations.get(),
+        &mut dk,
+    )
+    .expect("HMAC can be initialized with any key length");
 
-    // Choose prefix bytes based on network (mainnet or testnet)
-    let prefix_as_bytes = match network {
-        "BSV_Testnet" => TEST_PRIVATE_KEY,
-        _ => MAIN_PRIVATE_KEY,
-    };
+    Ok(bytes_to_wif(&dk, prefix))
+}
 
-    let mut wif_bytes = Vec::new();
-    wif_bytes.push(prefix_as_bytes);
-    wif_bytes.extend_from_slice(&dk);
-    wif_bytes.push(0x01);
-
-    // Encode in Base58 with checksum
-    encode_base58_checksum(&wif_bytes)
+/// WIF version byte for `network`, or an error where the crate defines none.
+///
+/// The single place the mapping lives, so the two WIF constructors cannot drift
+/// apart on what a network means.
+fn wif_prefix(network: Network) -> Result<u8, ChainGangError> {
+    match network {
+        Network::BSV_Mainnet => Ok(MAIN_PRIVATE_KEY),
+        // Regtest uses testnet's WIF version byte, as it does for addresses
+        Network::BSV_Testnet | Network::BSV_Regtest => Ok(TEST_PRIVATE_KEY),
+        Network::BSV_STN
+        | Network::BTC_Mainnet
+        | Network::BTC_Testnet
+        | Network::BCH_Mainnet
+        | Network::BCH_Testnet => Err(ChainGangError::BadData(format!(
+            "{network} does not correspond to a known network."
+        ))),
+    }
 }
 
 pub fn network_and_private_key_to_wif(
     network: Network,
     private_key: SigningKey,
 ) -> Result<String, ChainGangError> {
-    let prefix: u8 = match network {
-        Network::BSV_Mainnet => MAIN_PRIVATE_KEY,
-        // Regtest uses testnet's WIF version byte, as it does for addresses
-        Network::BSV_Testnet | Network::BSV_Regtest => TEST_PRIVATE_KEY,
-        Network::BSV_STN
-        | Network::BTC_Mainnet
-        | Network::BTC_Testnet
-        | Network::BCH_Mainnet
-        | Network::BCH_Testnet => {
-            let err_msg = format!("{} does not correspond to a known network.", network);
-            return Err(ChainGangError::BadData(err_msg));
-        }
-    };
-
-    let pk_data = private_key.to_bytes();
-    let mut data = Vec::new();
-    data.push(prefix);
-    data.extend_from_slice(&pk_data);
-    data.push(0x01);
-    Ok(encode_base58_checksum(data.as_slice()))
+    let prefix = wif_prefix(network)?;
+    Ok(bytes_to_wif(&private_key.to_bytes(), prefix))
 }
 
 pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>, ChainGangError> {
@@ -357,6 +360,68 @@ mod tests {
     use super::*;
     use crate::util::hash160;
     use k256::SecretKey;
+
+    #[test]
+    fn generate_wif_uses_the_networks_own_prefix() {
+        // The network used to arrive as a string, where anything but the exact
+        // "BSV_Testnet" produced a mainnet key. A Network cannot be mistyped.
+        let main = generate_wif("pw", "nonce", Network::BSV_Mainnet).unwrap();
+        let test = generate_wif("pw", "nonce", Network::BSV_Testnet).unwrap();
+        let regtest = generate_wif("pw", "nonce", Network::BSV_Regtest).unwrap();
+
+        assert_ne!(main, test, "mainnet and testnet must not encode alike");
+        assert_eq!(regtest, test, "regtest shares testnet's WIF prefix");
+        // The key material is the same; only the version byte differs
+        assert_eq!(wif_to_bytes(&main).unwrap(), wif_to_bytes(&test).unwrap());
+    }
+
+    #[test]
+    fn generate_wif_is_deterministic() {
+        assert_eq!(
+            generate_wif("pw", "nonce", Network::BSV_Testnet).unwrap(),
+            generate_wif("pw", "nonce", Network::BSV_Testnet).unwrap()
+        );
+        assert_ne!(
+            generate_wif("pw", "nonce", Network::BSV_Testnet).unwrap(),
+            generate_wif("pw", "other", Network::BSV_Testnet).unwrap()
+        );
+    }
+
+    #[test]
+    fn generate_wif_rejects_networks_with_no_prefix() {
+        // Previously these produced a mainnet key without complaint
+        for net in [
+            Network::BSV_STN,
+            Network::BTC_Mainnet,
+            Network::BTC_Testnet,
+            Network::BCH_Mainnet,
+            Network::BCH_Testnet,
+        ] {
+            assert!(
+                generate_wif("pw", "nonce", net).is_err(),
+                "{net} should be rejected rather than defaulted"
+            );
+        }
+    }
+
+    #[test]
+    fn the_two_wif_constructors_agree() {
+        // Both go through wif_prefix, so they cannot drift on what a network means
+        for net in [
+            Network::BSV_Mainnet,
+            Network::BSV_Testnet,
+            Network::BSV_Regtest,
+        ] {
+            let from_password = generate_wif("pw", "nonce", net).unwrap();
+            let key_bytes = wif_to_bytes(&from_password).unwrap();
+            let signing = SigningKey::from_slice(&key_bytes).unwrap();
+            assert_eq!(
+                network_and_private_key_to_wif(net, signing).unwrap(),
+                from_password,
+                "{net} encodes differently through the two constructors"
+            );
+        }
+    }
 
     #[test]
     fn regtest_wif_matches_testnet() {

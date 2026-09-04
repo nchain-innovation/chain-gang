@@ -1,24 +1,24 @@
 use pyo3::Bound;
 use pyo3::{prelude::*, types::PyBytes};
 
+mod py_hd_wallet;
 mod py_script;
 mod py_stack;
 mod py_tx;
-mod py_hd_wallet;
 mod py_wallet;
 
 use crate::{
     messages::Tx,
     network::Network,
     python::{
-        py_script::PyScript,
-        py_stack::{decode_num_stack, PyStack},
-        py_tx::{PyTx, PyTxIn, PyTxOut},
         py_hd_wallet::{
             py_bip32_path, py_bip44_path, py_bsv_coin_type, py_derive_extended_key,
             py_mnemonic_to_seed, py_watch_bip32_path, py_watch_bip44_path, PyHdWallet,
             PyHdWatchWallet,
         },
+        py_script::PyScript,
+        py_stack::{decode_num_stack, PyStack},
+        py_tx::{PyTx, PyTxIn, PyTxOut},
         py_wallet::{
             address_to_public_key_hash, bytes_to_wif, generate_wif, p2pkh_pyscript, wif_to_bytes,
             PyWallet,
@@ -175,16 +175,8 @@ fn py_script_eval(
         Some(sig_hash) => Some(parse_z_bytes(sig_hash)?),
         None => None,
     };
-    eval_script_with_stack(
-        &script,
-        z_hash,
-        tx_version,
-        None,
-        break_at,
-        None,
-        None,
-    )
-    .map_err(Into::into)
+    eval_script_with_stack(&script, z_hash, tx_version, None, break_at, None, None)
+        .map_err(Into::into)
 }
 
 #[pyfunction]
@@ -255,8 +247,7 @@ fn py_script_eval_two_phase_pystack(
         Some(sig_hash) => Some(parse_z_bytes(sig_hash)?),
         None => None,
     };
-    let (main_stack, alt_stack) =
-        eval_two_phase_with_checker(unlock, lock, z_hash, tx_version)?;
+    let (main_stack, alt_stack) = eval_two_phase_with_checker(unlock, lock, z_hash, tx_version)?;
     Ok((
         PyStack::from_stack(main_stack),
         PyStack::from_stack(alt_stack),
@@ -438,15 +429,13 @@ pub fn py_generate_wif_from_pw_nonce(
     password: &str,
     nonce: &str,
     network: Option<&str>,
-) -> String {
-    // Provide default value if `network` is None
+) -> PyResult<String> {
+    // Absent means testnet, as before. A name that is present but unrecognised
+    // is an error rather than a guess: it used to fall back to testnet here and
+    // to mainnet inside generate_wif, so the answer depended on the caller.
     let network = network.unwrap_or("BSV_Testnet");
-
-    // Example logic: derive WIF based on password, nonce, and network
-    match network {
-        "BSV_Mainnet" => generate_wif(password, nonce, "BSV_Mainnet"),
-        _ => generate_wif(password, nonce, "BSV_Testnet"), // Default to "testnet"
-    }
+    let network: Network = network.parse()?;
+    Ok(generate_wif(password, nonce, network)?)
 }
 
 /// A Python module for interacting with the Rust chain-gang BSV script interpreter
