@@ -49,20 +49,26 @@ impl WocInterface {
     }
 
     /// Return the current network as a string
-    fn get_network_str(&self) -> &'static str {
+    /// The path segment WhatsOnChain uses for the configured network.
+    ///
+    /// Returns an error rather than panicking for a network the service does
+    /// not serve: `set_network` accepts any [`Network`] and cannot reject one,
+    /// so the mismatch is only detectable here, at the first call.
+    fn get_network_str(&self) -> Result<&'static str, ChainGangError> {
         match self.network_type {
-            Network::BSV_Mainnet => "main",
-            Network::BSV_Testnet => "test",
-            Network::BSV_STN => "stn",
-            // WhatsOnChain serves no other chain. Listed rather than caught so
-            // a new network has to choose; the panic itself is #148.
+            Network::BSV_Mainnet => Ok("main"),
+            Network::BSV_Testnet => Ok("test"),
+            Network::BSV_STN => Ok("stn"),
+            // WhatsOnChain serves no other chain. Listed rather than caught, so
+            // a new network has to choose.
             Network::BSV_Regtest
             | Network::BTC_Mainnet
             | Network::BTC_Testnet
             | Network::BCH_Mainnet
-            | Network::BCH_Testnet => {
-                panic!("unknown network {}", self.network_type)
-            }
+            | Network::BCH_Testnet => Err(ChainGangError::BadArgument(format!(
+                "WhatsOnChain does not serve {}",
+                self.network_type
+            ))),
         }
     }
 }
@@ -92,7 +98,7 @@ impl BlockchainInterface for WocInterface {
     async fn status(&self) -> Result<(), ChainGangError> {
         log::debug!("status");
 
-        let network = self.get_network_str();
+        let network = self.get_network_str()?;
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/woc");
         let response = reqwest::get(&url).await?;
         let response = check_status(response, &url)?;
@@ -113,7 +119,7 @@ impl BlockchainInterface for WocInterface {
     async fn get_balance(&self, address: &str) -> Result<Balance, ChainGangError> {
         log::debug!("get_balance");
 
-        let network = self.get_network_str();
+        let network = self.get_network_str()?;
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/balance");
         let response = reqwest::get(&url).await?;
@@ -145,7 +151,7 @@ impl BlockchainInterface for WocInterface {
     /// Get UXTO associated with address
     async fn get_utxo(&self, address: &str) -> Result<Utxo, ChainGangError> {
         log::debug!("get_utxo");
-        let network = self.get_network_str();
+        let network = self.get_network_str()?;
 
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/unspent");
@@ -178,7 +184,7 @@ impl BlockchainInterface for WocInterface {
     ///
     async fn broadcast_tx(&self, tx: &Tx) -> Result<String, ChainGangError> {
         log::debug!("broadcast_tx");
-        let network = self.get_network_str();
+        let network = self.get_network_str()?;
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/raw");
         log::debug!("url = {}", url);
         let data_for_broadcast = BroadcastTxType {
@@ -209,7 +215,7 @@ impl BlockchainInterface for WocInterface {
     async fn get_tx(&self, txid: &str) -> Result<Tx, ChainGangError> {
         log::debug!("get_tx");
 
-        let network = self.get_network_str();
+        let network = self.get_network_str()?;
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/{txid}/hex");
         let response = reqwest::get(&url).await?;
         let response = check_status(response, &url)?;
@@ -229,7 +235,7 @@ impl BlockchainInterface for WocInterface {
 
     async fn get_latest_block_header(&self) -> Result<BlockHeader, ChainGangError> {
         log::debug!("get_latest_block_header");
-        let network = self.get_network_str();
+        let network = self.get_network_str()?;
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers/latest?count=1");
         let response = reqwest::get(&url).await?;
@@ -250,7 +256,7 @@ impl BlockchainInterface for WocInterface {
 
     async fn get_block_headers(&self) -> Result<String, ChainGangError> {
         log::debug!("get_block_headers");
-        let network = self.get_network_str();
+        let network = self.get_network_str()?;
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers");
         let response = reqwest::get(&url).await?;
         let response = check_status(response, &url)?;
@@ -278,6 +284,46 @@ mod tests {
             {"height": 964754, "tx_pos": 1, "tx_hash": "aa", "value": 1},
             {"height": 0,      "tx_pos": 1, "tx_hash": "fa7f15f8", "value": 2954693}
         ]"#
+    }
+
+    fn woc_on(network: Network) -> WocInterface {
+        let mut woc = WocInterface::new();
+        woc.set_network(&network);
+        woc
+    }
+
+    #[test]
+    fn served_networks_map_to_their_path_segment() {
+        assert_eq!(
+            woc_on(Network::BSV_Mainnet).get_network_str().unwrap(),
+            "main"
+        );
+        assert_eq!(
+            woc_on(Network::BSV_Testnet).get_network_str().unwrap(),
+            "test"
+        );
+        assert_eq!(woc_on(Network::BSV_STN).get_network_str().unwrap(), "stn");
+    }
+
+    #[test]
+    fn unserved_networks_return_an_error_rather_than_panicking() {
+        // set_network takes any Network and cannot reject one, so a mismatch is
+        // a configuration mistake that used to bring the process down here
+        for network in [
+            Network::BSV_Regtest,
+            Network::BTC_Mainnet,
+            Network::BTC_Testnet,
+            Network::BCH_Mainnet,
+            Network::BCH_Testnet,
+        ] {
+            let err = woc_on(network)
+                .get_network_str()
+                .expect_err("WhatsOnChain does not serve this network");
+            assert!(
+                err.to_string().contains(&network.to_string()),
+                "the error should name the network, got: {err}"
+            );
+        }
     }
 
     #[test]
