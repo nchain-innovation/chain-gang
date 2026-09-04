@@ -54,7 +54,15 @@ impl WocInterface {
             Network::BSV_Mainnet => "main",
             Network::BSV_Testnet => "test",
             Network::BSV_STN => "stn",
-            _ => panic!("unknown network {}", self.network_type),
+            // WhatsOnChain serves no other chain. Listed rather than caught so
+            // a new network has to choose; the panic itself is #148.
+            Network::BSV_Regtest
+            | Network::BTC_Mainnet
+            | Network::BTC_Testnet
+            | Network::BCH_Mainnet
+            | Network::BCH_Testnet => {
+                panic!("unknown network {}", self.network_type)
+            }
         }
     }
 }
