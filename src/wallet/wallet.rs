@@ -61,8 +61,13 @@ pub fn public_key_to_address(
 ) -> Result<String, ChainGangError> {
     let prefix_as_bytes: u8 = match network {
         Network::BSV_Mainnet => MAIN_PUBKEY_HASH,
-        Network::BSV_Testnet => TEST_PUBKEY_HASH,
-        _ => {
+        // Regtest uses testnet's address version byte, per Network::addr_pubkeyhash_flag
+        Network::BSV_Testnet | Network::BSV_Regtest => TEST_PUBKEY_HASH,
+        Network::BSV_STN
+        | Network::BTC_Mainnet
+        | Network::BTC_Testnet
+        | Network::BCH_Mainnet
+        | Network::BCH_Testnet => {
             return Err(ChainGangError::BadArgument(format!(
                 "{} unknnown network.",
                 network
@@ -168,7 +173,9 @@ impl Wallet {
     }
 
     /// Builds a signing wallet from an extended **private** key (leaf or intermediate).
-    pub fn from_extended_key(key: &crate::wallet::extended_key::ExtendedKey) -> Result<Self, ChainGangError> {
+    pub fn from_extended_key(
+        key: &crate::wallet::extended_key::ExtendedKey,
+    ) -> Result<Self, ChainGangError> {
         if key.key_type()? != crate::wallet::extended_key::ExtendedKeyType::Private {
             return Err(ChainGangError::BadArgument(
                 "Cannot build Wallet from an extended public key".to_string(),
@@ -327,5 +334,47 @@ impl Wallet {
             checksig_index,
         )?;
         Ok(new_tx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A valid compressed public key, so the function reaches the prefix choice
+    const PUBKEY: [u8; 33] = [
+        0x02, 0x50, 0x86, 0x3a, 0xd6, 0x4a, 0x87, 0xae, 0x8a, 0x2f, 0xe8, 0x3c, 0x1a, 0xf1, 0xa8,
+        0x40, 0x3c, 0xb5, 0x3f, 0x53, 0xe4, 0x86, 0xd8, 0x51, 0x1d, 0xad, 0x8a, 0x04, 0x88, 0x7e,
+        0x5b, 0x23, 0x52,
+    ];
+
+    #[test]
+    fn regtest_addresses_match_testnet() {
+        // Regtest shares testnet's version byte, which Network::addr_pubkeyhash_flag
+        // already says. Before the match arms were made explicit, regtest fell into
+        // the catch-all and this returned an error instead.
+        let testnet = public_key_to_address(&PUBKEY, Network::BSV_Testnet).unwrap();
+        let regtest = public_key_to_address(&PUBKEY, Network::BSV_Regtest).unwrap();
+        assert_eq!(regtest, testnet);
+        assert_ne!(
+            regtest,
+            public_key_to_address(&PUBKEY, Network::BSV_Mainnet).unwrap()
+        );
+    }
+
+    #[test]
+    fn networks_without_an_address_prefix_are_rejected() {
+        for net in [
+            Network::BSV_STN,
+            Network::BTC_Mainnet,
+            Network::BTC_Testnet,
+            Network::BCH_Mainnet,
+            Network::BCH_Testnet,
+        ] {
+            assert!(
+                public_key_to_address(&PUBKEY, net).is_err(),
+                "{net} should be rejected"
+            );
+        }
     }
 }

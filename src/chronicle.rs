@@ -71,7 +71,12 @@ pub fn activation_height(network: Network) -> Option<u64> {
         // supplying a height would switch Chronicle off on regtest while
         // omitting one leaves it on, which is the wrong way round.
         Network::BSV_Regtest => Some(CHRONICLE_ACTIVATION_REGTEST),
-        _ => None,
+        // Chronicle is a BSV upgrade, so it has no height on the other chains.
+        // Listed rather than caught, so a new network has to choose.
+        Network::BTC_Mainnet
+        | Network::BTC_Testnet
+        | Network::BCH_Mainnet
+        | Network::BCH_Testnet => None,
     }
 }
 

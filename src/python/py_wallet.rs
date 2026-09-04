@@ -75,8 +75,13 @@ pub fn network_and_private_key_to_wif(
 ) -> Result<String, ChainGangError> {
     let prefix: u8 = match network {
         Network::BSV_Mainnet => MAIN_PRIVATE_KEY,
-        Network::BSV_Testnet => TEST_PRIVATE_KEY,
-        _ => {
+        // Regtest uses testnet's WIF version byte, as it does for addresses
+        Network::BSV_Testnet | Network::BSV_Regtest => TEST_PRIVATE_KEY,
+        Network::BSV_STN
+        | Network::BTC_Mainnet
+        | Network::BTC_Testnet
+        | Network::BCH_Mainnet
+        | Network::BCH_Testnet => {
             let err_msg = format!("{} does not correspond to a known network.", network);
             return Err(ChainGangError::BadData(err_msg));
         }
@@ -326,7 +331,6 @@ impl PyWallet {
         network: &str,
         int_rep: &Bound<'_, PyAny>,
     ) -> PyResult<Self> {
-
         // get a reference to the Python interpreter
         Python::attach(|_py| {
             // Use the bound reference to access the PyAny
@@ -352,6 +356,36 @@ impl PyWallet {
 mod tests {
     use super::*;
     use crate::util::hash160;
+    use k256::SecretKey;
+
+    #[test]
+    fn regtest_wif_matches_testnet() {
+        // Regtest shares testnet's WIF version byte, as it does for addresses.
+        // Before the match arms were made explicit, regtest fell into the
+        // catch-all and this returned an error instead.
+        let key = SecretKey::from_slice(&[7u8; 32]).unwrap();
+        let signing = SigningKey::from(key);
+        let testnet =
+            network_and_private_key_to_wif(Network::BSV_Testnet, signing.clone()).unwrap();
+        let regtest =
+            network_and_private_key_to_wif(Network::BSV_Regtest, signing.clone()).unwrap();
+        assert_eq!(regtest, testnet);
+        assert_ne!(
+            regtest,
+            network_and_private_key_to_wif(Network::BSV_Mainnet, signing).unwrap()
+        );
+    }
+
+    #[test]
+    fn networks_without_a_wif_prefix_are_rejected() {
+        let signing = SigningKey::from(SecretKey::from_slice(&[7u8; 32]).unwrap());
+        for net in [Network::BSV_STN, Network::BTC_Mainnet, Network::BCH_Testnet] {
+            assert!(
+                network_and_private_key_to_wif(net, signing.clone()).is_err(),
+                "{net} should be rejected"
+            );
+        }
+    }
 
     fn bytes_to_hexstr(bytes: &[u8]) -> String {
         bytes
