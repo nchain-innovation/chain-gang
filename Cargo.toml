@@ -13,7 +13,7 @@ readme = "docs/README-chain-gang.md"
 
 [dependencies]
 byteorder = "1.5"
-dns-lookup = "3.0.1"
+dns-lookup = "4.0.1"
 hex = "0.4.3"
 linked-hash-map = "0.5"
 log = { version = "0.4.33", features = ["max_level_trace", "release_max_level_warn"] }
