@@ -5,9 +5,8 @@ This is a deliberate parallel of the Rust `RpcInterface` in
 not depend on the Rust `interface` feature. Keep the RPC method names and the
 network -> main/test mapping in sync across both when either changes.
 
-One divergence is intentional: an unconfirmed UTXO reports height 0 here and
--1 in Rust, where `UtxoEntry` documents a negative height as meaning
-unconfirmed. Changing this side would alter what existing Python callers see.
+That includes the unconfirmed-UTXO height, reported as UNCONFIRMED_HEIGHT on
+both sides.
 """
 from typing import Dict, List, Any
 import logging
@@ -24,6 +23,11 @@ LOGGER = logging.getLogger(__name__)
 
 #: Highest maxconf accepted by listunspent, used to mean "no upper bound"
 MAX_CONFIRMATIONS = 9999999
+
+#: Height reported for a UTXO that has not been confirmed in a block. Any
+#: negative height means unconfirmed; this matches UNCONFIRMED_HEIGHT in the
+#: Rust crate's blockchain_interface.
+UNCONFIRMED_HEIGHT = -1
 
 
 class RPCReturnInfo:
@@ -100,10 +104,10 @@ class RPCInterface(BlockchainInterface):
 
         An output in the tip block has one confirmation and sits at
         block_height, so the count runs back from there. Unconfirmed outputs
-        report 0.
+        report UNCONFIRMED_HEIGHT.
         """
         if confs <= 0:
-            return 0
+            return UNCONFIRMED_HEIGHT
         return block_height - confs + 1
 
     def _as_satoshis(self, value):

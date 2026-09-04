@@ -6,7 +6,7 @@ calculation and the satoshi conversion.
 import unittest
 
 from tx_engine import interface_factory
-from tx_engine.interface.rpc_interface import RPCInterface
+from tx_engine.interface.rpc_interface import RPCInterface, UNCONFIRMED_HEIGHT
 
 
 def _configured(network_type):
@@ -54,8 +54,10 @@ class RPCInterfaceTest(unittest.TestCase):
         self.assertEqual(interface._calc_block_height(100, 101), 0)
 
     def test_calc_block_height_unconfirmed(self):
+        # Aligned with the Rust crate: a negative height means unconfirmed
         interface = _configured("regtest")
-        self.assertEqual(interface._calc_block_height(100, 0), 0)
+        self.assertEqual(interface._calc_block_height(100, 0), UNCONFIRMED_HEIGHT)
+        self.assertLess(UNCONFIRMED_HEIGHT, 0)
 
     def test_as_satoshis(self):
         interface = _configured("regtest")

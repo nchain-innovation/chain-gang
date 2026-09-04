@@ -18,11 +18,22 @@ pub struct Balance {
     pub unconfirmed: i64,
 }
 
+/// Height reported for a UTXO that has not been confirmed in a block.
+///
+/// Any negative height means unconfirmed; this is the value the interfaces in
+/// this crate emit, and the one the parallel Python clients emit too.
+pub const UNCONFIRMED_HEIGHT: i32 = -1;
+
+// The balance filters distinguish unconfirmed outputs by testing for a negative
+// height, so the sentinel has to stay negative
+const _: () = assert!(UNCONFIRMED_HEIGHT < 0);
+
 /// Type to represent UTXO Entry
 #[allow(dead_code)]
 #[derive(Debug, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct UtxoEntry {
-    /// Block height at which the UTXO was confirmed (negative if unconfirmed)
+    /// Block height at which the UTXO was confirmed, or a negative height if it
+    /// is unconfirmed. See [`UNCONFIRMED_HEIGHT`].
     pub height: i32,
     /// Output index within the transaction
     pub tx_pos: u32,

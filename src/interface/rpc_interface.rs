@@ -7,11 +7,9 @@
 //! `python/src/tx_engine/interface/rpc_interface.py`. The duplication is
 //! deliberate: it lets the Python package reach a node without depending on
 //! this crate's `interface` feature. When changing RPC method names or the
-//! network mapping, update both implementations so they stay in sync.
-//!
-//! One divergence is intentional: an unconfirmed UTXO reports height -1 here,
-//! per the [`UtxoEntry::height`] contract, and 0 in the Python client, which
-//! predates it.
+//! network mapping, update both implementations so they stay in sync. That
+//! includes the unconfirmed-UTXO height, which both report as
+//! [`UNCONFIRMED_HEIGHT`].
 
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
@@ -19,7 +17,9 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::{
-    interface::blockchain_interface::{Balance, BlockchainInterface, Utxo, UtxoEntry},
+    interface::blockchain_interface::{
+        Balance, BlockchainInterface, Utxo, UtxoEntry, UNCONFIRMED_HEIGHT,
+    },
     messages::{BlockHeader, Tx},
     network::Network,
     util::{ChainGangError, Serializable},
@@ -170,11 +170,11 @@ impl RpcInterface {
     /// Height at which a UTXO with `confirmations` was mined, given the current
     /// `block_count`.
     ///
-    /// An unconfirmed output gets -1, matching the [`UtxoEntry::height`] contract
-    /// that a negative height means unconfirmed.
+    /// An unconfirmed output gets [`UNCONFIRMED_HEIGHT`], per the
+    /// [`UtxoEntry::height`] contract that a negative height means unconfirmed.
     fn utxo_height(block_count: u32, confirmations: i64) -> i32 {
         if confirmations <= 0 {
-            return -1;
+            return UNCONFIRMED_HEIGHT;
         }
         // A UTXO in the tip block has one confirmation, so it sits at block_count
         (i64::from(block_count) - confirmations + 1) as i32
@@ -340,8 +340,8 @@ mod tests {
     fn unconfirmed_utxo_height_is_negative() {
         // UtxoEntry documents a negative height as meaning unconfirmed, and the
         // in-memory interface's balance filters rely on it
-        assert_eq!(RpcInterface::utxo_height(100, 0), -1);
-        assert_eq!(RpcInterface::utxo_height(0, 0), -1);
+        assert_eq!(RpcInterface::utxo_height(100, 0), UNCONFIRMED_HEIGHT);
+        assert_eq!(RpcInterface::utxo_height(0, 0), UNCONFIRMED_HEIGHT);
     }
 
     #[test]
