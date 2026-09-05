@@ -35,9 +35,12 @@ hmac = "0.13.0"
 bs58 = "0.5.1"
 pbkdf2 = { version = "0.13.0", features = ["hmac", "sha2"] }
 
+# Required, not optional: serde derives appear on public types across the crate,
+# and ChainGangError carries a serde_json::Error variant that is not gated.
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.151" }
+
 # Used by the interface feature
-serde = { version = "1.0.229", features = ["derive"], optional = true }
-serde_json = { version = "1.0.151", optional = true }
 reqwest = { version = "0.13.4", features = ["json"], optional = true }
 async-lock = { version = "3.4.2", optional = true }
 async-trait = { version = "0.1.91", optional = true }
@@ -58,6 +61,8 @@ opt-level = "s"     # Optimize for size over speed
 lto = true          # Enable link-time optimizations to shrink binary
 
 [features]
-default = ["dep:serde", "dep:serde_json"]
-interface = ["dep:serde", "dep:serde_json", "dep:reqwest", "dep:async-lock", "dep:async-trait"]
-python = ["dep:serde", "dep:serde_json", "dep:pyo3"]
+# serde and serde_json are unconditional dependencies, so there is nothing
+# left for the default feature to switch on
+default = []
+interface = ["dep:reqwest", "dep:async-lock", "dep:async-trait"]
+python = ["dep:pyo3"]

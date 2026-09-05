@@ -58,7 +58,6 @@ jobs:
   # The test and clippy jobs above both build --all-features, so a module or
   # item gated on the wrong feature compiles there and still breaks a dependent
   # that enables only some of them. This checks each set a dependent might pick.
-  # --no-default-features is deliberately absent: it does not currently compile.
   rust-features:
     name: Rust Features (${{ matrix.name }})
     runs-on: ubuntu-latest
@@ -72,6 +71,8 @@ jobs:
             args: "--features interface"
           - name: python
             args: "--features python"
+          - name: no-default
+            args: "--no-default-features"
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v4
