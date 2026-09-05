@@ -93,13 +93,21 @@ impl Block {
             | Network::BCH_Mainnet
             | Network::BCH_Testnet => false,
         };
+        // Chronicle is gated on the same height this function already uses for
+        // the fork and Genesis rules. Without it, block validation applied
+        // Chronicle rules to any version > 1 transaction whatever the height.
+        // A negative height has no meaning on a chain, so treat it as 0, which
+        // is pre-activation everywhere except regtest.
+        let block_height = u64::try_from(height).unwrap_or(0);
         for txn in self.txns.iter() {
             if !txn.coinbase() {
-                txn.validate(
+                txn.validate_at_height(
                     require_sighash_forkid,
                     use_genesis_rules,
                     utxos,
                     pregenesis_outputs,
+                    block_height,
+                    network,
                 )?;
             } else if has_coinbase {
                 return Err(ChainGangError::BadData("Multiple coinbases".to_string()));
@@ -205,6 +213,111 @@ impl fmt::Debug for Block {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::chronicle::CHRONICLE_ACTIVATION_MAINNET;
+    use crate::messages::{COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
+    use crate::script::op_codes::{OP_2, OP_3, OP_5, OP_ADD, OP_EQUAL};
+
+    /// A coinbase, so the block passes the has-a-coinbase check
+    fn coinbase() -> Tx {
+        Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: COINBASE_OUTPOINT_HASH,
+                    index: COINBASE_OUTPOINT_INDEX,
+                },
+                unlock_script: Script(vec![OP_2, OP_3]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 5_000_000_000,
+                lock_script: Script(vec![]),
+            }],
+            lock_time: 0,
+        }
+    }
+
+    /// A block containing `spend`, with the merkle root its contents imply
+    fn block_containing(spend: Tx) -> Block {
+        let mut block = Block {
+            header: BlockHeader {
+                version: 1,
+                prev_hash: Hash256([0; 32]),
+                merkle_root: Hash256([0; 32]),
+                timestamp: 0,
+                bits: 0x207fffff,
+                nonce: 0,
+            },
+            txns: vec![coinbase(), spend],
+        };
+        block.header.merkle_root = block.merkle_root();
+        block
+    }
+
+    #[test]
+    fn validate_gates_chronicle_on_the_block_height() {
+        // The same version 2 spend the Tx-level test uses: its unlock script is
+        // not push-only, which Chronicle permits and the earlier rules do not.
+        let funding = Tx {
+            version: 1,
+            inputs: vec![],
+            outputs: vec![TxOut {
+                satoshis: 1_000,
+                lock_script: Script(vec![OP_5, OP_EQUAL]),
+            }],
+            lock_time: 0,
+        };
+        let mut utxos = LinkedHashMap::new();
+        utxos.insert(
+            OutPoint {
+                hash: funding.hash(),
+                index: 0,
+            },
+            funding.outputs[0].clone(),
+        );
+
+        let spend = Tx {
+            version: 2,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: funding.hash(),
+                    index: 0,
+                },
+                unlock_script: Script(vec![OP_2, OP_3, OP_ADD]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 900,
+                lock_script: Script(vec![]),
+            }],
+            lock_time: 0,
+        };
+        let block = block_containing(spend);
+
+        assert!(
+            block
+                .validate(
+                    CHRONICLE_ACTIVATION_MAINNET as i32,
+                    Network::BSV_Mainnet,
+                    &utxos,
+                    &HashSet::new()
+                )
+                .is_ok(),
+            "Chronicle rules should apply at the activation height"
+        );
+        assert!(
+            block
+                .validate(
+                    CHRONICLE_ACTIVATION_MAINNET as i32 - 1,
+                    Network::BSV_Mainnet,
+                    &utxos,
+                    &HashSet::new()
+                )
+                .is_err(),
+            "the block below activation used to pass, because the height never \
+             reached the Chronicle gate"
+        );
+    }
     use crate::messages::{OutPoint, TxIn, TxOut};
     use crate::script::Script;
     use crate::util::Hash256;
