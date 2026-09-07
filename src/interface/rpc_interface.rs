@@ -3,13 +3,30 @@
 //! This is the natural backend for regtest, where there is no public explorer
 //! API to point [`crate::interface::WocInterface`] at.
 //!
+//! # The node must be watching the addresses you ask about
+//!
+//! Balance and UTXO queries go through `listunspent`, which reports only what
+//! the node's own wallet tracks. An address the node knows nothing about reads
+//! as zero, with no error, because the node answers truthfully about a wallet
+//! that has never heard of it. On a fresh node, import each address once:
+//!
+//! ```text
+//! bitcoin-cli -regtest importaddress "<address>" "" false
+//! ```
+//!
+//! The `false` skips the rescan, which is what you want on a chain with no
+//! history. This interface does not import for you: that would mean managing
+//! the node's wallet and deciding when to rescan, which belongs to whoever runs
+//! the node. Worth knowing because the symptom — an empty balance from a
+//! reachable node — looks like a bug in the caller.
+//!
 //! A parallel, independent client lives in
 //! `python/src/tx_engine/interface/rpc_interface.py`. The duplication is
 //! deliberate: it lets the Python package reach a node without depending on
 //! this crate's `interface` feature. When changing RPC method names or the
 //! network mapping, update both implementations so they stay in sync. That
 //! includes the unconfirmed-UTXO height, which both report as
-//! [`UNCONFIRMED_HEIGHT`].
+//! [`crate::interface::blockchain_interface::UNCONFIRMED_HEIGHT`].
 
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
@@ -196,8 +213,11 @@ impl BlockchainInterface for RpcInterface {
 
     /// Get balance associated with address
     ///
-    /// An output counts as confirmed once it has [`CONFIRMATIONS`]
-    /// confirmations. Amounts are converted to satoshis individually and summed
+    /// Reads zero for an address the node's wallet does not track; see the
+    /// module documentation.
+    ///
+    /// An output counts as confirmed once it has six confirmations. Amounts
+    /// are converted to satoshis individually and summed
     /// as integers, so the totals do not accumulate floating point error.
     async fn get_balance(&self, address: &str) -> Result<Balance, ChainGangError> {
         log::debug!("get_balance");
@@ -216,6 +236,9 @@ impl BlockchainInterface for RpcInterface {
     }
 
     /// Get UXTO associated with address, ordered by height
+    ///
+    /// Empty for an address the node's wallet does not track; see the module
+    /// documentation.
     async fn get_utxo(&self, address: &str) -> Result<Utxo, ChainGangError> {
         log::debug!("get_utxo");
 
@@ -266,8 +289,8 @@ impl BlockchainInterface for RpcInterface {
         Ok(BlockHeader::read(&mut byte_slice)?)
     }
 
-    /// Get the block headers, as a JSON array of the most recent
-    /// [`RECENT_HEADER_COUNT`] headers, tip last.
+    /// Get the block headers, as a JSON array of the ten most recent headers,
+    /// tip last.
     ///
     /// There is no single RPC call for this, so it walks back from the tip. The
     /// WhatsOnChain backend returns whatever that service considers recent; the
