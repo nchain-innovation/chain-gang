@@ -75,7 +75,7 @@ impl fmt::Display for Network {
     }
 }
 
-/// Parse a network from its canonical name (the inverse of [`Display`]).
+/// Parse a network from its canonical name (the inverse of [`std::fmt::Display`]).
 impl std::str::FromStr for Network {
     type Err = crate::util::ChainGangError;
 

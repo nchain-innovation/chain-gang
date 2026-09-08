@@ -7,6 +7,17 @@ network -> main/test mapping in sync across both when either changes.
 
 That includes the unconfirmed-UTXO height, reported as UNCONFIRMED_HEIGHT on
 both sides.
+
+The node must be watching the addresses you ask about. Balance and UTXO queries
+go through listunspent, which reports only what the node's own wallet tracks, so
+an address the node knows nothing about reads as zero with no error. On a fresh
+node, import each address once:
+
+    bitcoin-cli -regtest importaddress "<address>" "" false
+
+The false skips the rescan, which is what you want on a chain with no history.
+This client does not import for you: that would mean managing the node's wallet
+and deciding when to rescan, which belongs to whoever runs the node.
 """
 from typing import Dict, List, Any
 import logging
@@ -150,7 +161,11 @@ class RPCInterface(BlockchainInterface):
         return self._get_history(address)
 
     def get_utxo(self, address):
-        """Return ordered list of UTXOs for this address"""
+        """Return ordered list of UTXOs for this address
+
+        Empty for an address the node's wallet does not track; see the module
+        docstring.
+        """
         unspent_address = self.get_unspent(address)
         block_count = self.get_block_count()
 
@@ -167,7 +182,11 @@ class RPCInterface(BlockchainInterface):
         return response
 
     def get_balance(self, address, confirmations=6):
-        """Return the confirmed and unconfirmed balance associated with this address"""
+        """Return the confirmed and unconfirmed balance associated with this address
+
+        Reads zero for an address the node's wallet does not track; see the
+        module docstring.
+        """
         unspent_address = self.get_unspent(address)
         # Convert each amount before summing, so the total does not accumulate
         # the float error of the individual amounts
