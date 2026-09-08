@@ -36,6 +36,7 @@ Index for **chain-gang** (Rust library) and **tx-engine** (Python bindings).
 | [README-chain-gang.md](README-chain-gang.md) | Crate overview, feature flags, installation |
 | [BIP-32.md](BIP-32.md) | HD wallets — BIP-32/39/44, `HdWallet`, watch-only `xpub`, Rust + Python |
 | [Chronicle.md](Chronicle.md) | Same Chronicle spec; Rust examples use `chain_gang::chronicle` |
+| [Regtest.md](Regtest.md) | **Regtest guide** — running a node, `RpcInterface`, P2P, and the constants |
 | [docs.rs](https://docs.rs/chain-gang) | Generated Rust API (`chain_gang::chronicle`, `Tx::validate_at_height`, etc.) |
 
 ## Development and releases

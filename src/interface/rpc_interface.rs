@@ -71,10 +71,16 @@ struct RpcError {
     message: String,
 }
 
-/// The envelope a JSON-RPC response arrives in
+/// The envelope a JSON-RPC response arrives in.
+///
+/// `result` stays a [`Value`] rather than the caller's type, because a method
+/// that succeeds with nothing to say answers `"result": null` — and an
+/// `Option<T>` cannot tell that apart from the field being absent. Methods like
+/// `importaddress` do exactly that.
 #[derive(Debug, Deserialize)]
-struct RpcResponse<T> {
-    result: Option<T>,
+struct RpcResponse {
+    #[serde(default)]
+    result: Value,
     error: Option<RpcError>,
 }
 
@@ -146,7 +152,7 @@ impl RpcInterface {
         let status = response.status();
         let text = response.text().await?;
 
-        let parsed: RpcResponse<T> = serde_json::from_str(&text).map_err(|e| {
+        let parsed: RpcResponse = serde_json::from_str(&text).map_err(|e| {
             ChainGangError::JSONParseError(format!(
                 "{method} returned status {status} and a body that is not a JSON-RPC response: {e}"
             ))
@@ -159,11 +165,27 @@ impl RpcInterface {
             )));
         }
 
-        parsed.result.ok_or_else(|| {
-            ChainGangError::ResponseError(format!(
-                "{method} returned neither a result nor an error"
-            ))
+        serde_json::from_value(parsed.result).map_err(|e| {
+            ChainGangError::JSONParseError(format!("{method} returned an unexpected result: {e}"))
         })
+    }
+
+    /// Asks the node to watch `address`, so balance and UTXO queries can see it.
+    ///
+    /// Wraps `importaddress`. Nothing in this interface calls it: whether to
+    /// touch the node's wallet is the caller's decision, not the library's. See
+    /// the module documentation for why an unwatched address reads as zero.
+    ///
+    /// `rescan` asks the node to walk the chain for the address's history, which
+    /// blocks the RPC connection for as long as it takes. Pass `false` on a
+    /// fresh chain, where there is no history to find.
+    pub async fn import_address(&self, address: &str, rescan: bool) -> Result<(), ChainGangError> {
+        log::debug!("import_address {address} rescan={rescan}");
+        // The empty string is the label, which this crate has no use for
+        let _: Value = self
+            .call("importaddress", json!([address, "", rescan]))
+            .await?;
+        Ok(())
     }
 
     /// Returns the unspent outputs the node holds for `address`
@@ -371,10 +393,32 @@ mod tests {
     fn rpc_error_response_is_reported_as_an_error() {
         // The shape a node returns for an unknown method
         let body = r#"{"result":null,"error":{"code":-32601,"message":"Method not found"},"id":"chain-gang"}"#;
-        let parsed: RpcResponse<Value> = serde_json::from_str(body).unwrap();
+        let parsed: RpcResponse = serde_json::from_str(body).unwrap();
         let err = parsed.error.expect("error field should be populated");
         assert_eq!(err.code, -32601);
         assert_eq!(err.message, "Method not found");
+    }
+
+    #[test]
+    fn a_null_result_is_success_not_a_missing_result() {
+        // importaddress answers `"result": null` on success. Holding result as
+        // an Option<T> mapped that to None, indistinguishable from the field
+        // being absent, so the call failed on a response that had worked.
+        let body = r#"{"result":null,"error":null,"id":"chain-gang"}"#;
+        let parsed: RpcResponse = serde_json::from_str(body).unwrap();
+        assert!(parsed.error.is_none());
+        assert!(parsed.result.is_null());
+        // and it deserialises into the unit-ish type import_address asks for
+        let value: Value = serde_json::from_value(parsed.result).unwrap();
+        assert!(value.is_null());
+    }
+
+    #[test]
+    fn a_typed_result_still_deserialises() {
+        let body = r#"{"result":"main","error":null,"id":"chain-gang"}"#;
+        let parsed: RpcResponse = serde_json::from_str(body).unwrap();
+        let s: String = serde_json::from_value(parsed.result).unwrap();
+        assert_eq!(s, "main");
     }
 
     #[test]
