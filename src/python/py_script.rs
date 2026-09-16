@@ -15,6 +15,7 @@ use crate::{
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use crate::util::read_exact_vec;
 
 #[derive(FromPyObject, Debug, Clone)]
 pub enum Command {
