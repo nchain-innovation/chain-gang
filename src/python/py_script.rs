@@ -15,6 +15,7 @@ use crate::{
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use crate::util::read_exact_vec;
 
 #[derive(FromPyObject, Debug, Clone)]
 pub enum Command {
@@ -162,8 +163,7 @@ impl PyScript {
 
     fn read(reader: &mut dyn Read) -> Result<Self, ChainGangError> {
         let script_len = var_int::read(reader)?;
-        let mut script: Vec<u8> = vec![0; script_len as usize];
-        reader.read_exact(&mut script)?;
+        let script: Vec<u8> = read_exact_vec(reader, script_len, "script")?;
         Ok(PyScript { cmds: script })
     }
 }

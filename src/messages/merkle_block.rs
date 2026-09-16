@@ -1,6 +1,8 @@
 use crate::messages::block_header::BlockHeader;
 use crate::messages::message::Payload;
-use crate::util::{sha256d, var_int, ChainGangError, Hash256, Serializable};
+use crate::util::{
+    bounded_capacity, read_exact_vec, sha256d, var_int, ChainGangError, Hash256, Serializable,
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use hex;
 use std::fmt;
@@ -162,13 +164,12 @@ impl Serializable<MerkleBlock> for MerkleBlock {
         let header = BlockHeader::read(reader)?;
         let total_transactions = reader.read_u32::<LittleEndian>()?;
         let num_hashes = var_int::read(reader)?;
-        let mut hashes = Vec::with_capacity(num_hashes as usize);
+        let mut hashes = Vec::with_capacity(bounded_capacity(num_hashes));
         for _i in 0..num_hashes {
             hashes.push(Hash256::read(reader)?);
         }
         let flags_len = var_int::read(reader)?;
-        let mut flags = vec![0; flags_len as usize];
-        reader.read_exact(&mut flags)?;
+        let flags = read_exact_vec(reader, flags_len, "merkle block flags")?;
         Ok(MerkleBlock {
             header,
             total_transactions,

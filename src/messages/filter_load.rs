@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{var_int, BloomFilter, ChainGangError, Serializable};
+use crate::util::{read_exact_vec, var_int, BloomFilter, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -30,8 +30,7 @@ impl FilterLoad {
 impl Serializable<FilterLoad> for FilterLoad {
     fn read(reader: &mut dyn Read) -> Result<FilterLoad, ChainGangError> {
         let num_filters = var_int::read(reader)?;
-        let mut filter = vec![0; num_filters as usize];
-        reader.read_exact(&mut filter)?;
+        let filter = read_exact_vec(reader, num_filters, "bloom filter")?;
         let num_hash_funcs = reader.read_u32::<LittleEndian>()? as usize;
         let tweak = reader.read_u32::<LittleEndian>()?;
         let flags = reader.read_u8()?;

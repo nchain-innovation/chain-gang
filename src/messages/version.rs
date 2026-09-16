@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::messages::message::Payload;
 use crate::messages::node_addr::NodeAddr;
-use crate::util::{var_int, ChainGangError, Serializable};
+use crate::util::{read_exact_vec, var_int, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -75,9 +75,8 @@ impl Serializable<Version> for Version {
         ret.recv_addr = NodeAddr::read(reader)?;
         ret.tx_addr = NodeAddr::read(reader)?;
         ret.nonce = reader.read_u64::<LittleEndian>()?;
-        let user_agent_size = var_int::read(reader)? as usize;
-        let mut user_agent_bytes = vec![0; user_agent_size];
-        reader.read_exact(&mut user_agent_bytes)?;
+        let user_agent_size = var_int::read(reader)?;
+        let user_agent_bytes = read_exact_vec(reader, user_agent_size, "version user agent")?;
         ret.user_agent = String::from_utf8(user_agent_bytes)?;
         ret.start_height = reader.read_i32::<LittleEndian>()?;
         ret.relay = reader.read_u8()? == 0x01;

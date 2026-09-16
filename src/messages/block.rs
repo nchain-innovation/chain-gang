@@ -1,9 +1,9 @@
 use crate::messages::{BlockHeader, OutPoint, Payload, Tx, TxOut};
 use crate::network::Network;
 use crate::util::{
-    sha256d, var_int, ChainGangError, Hash256, Serializable, BITCOIN_CASH_FORK_HEIGHT_MAINNET,
-    BITCOIN_CASH_FORK_HEIGHT_TESTNET, GENESIS_UPGRADE_HEIGHT_MAINNET,
-    GENESIS_UPGRADE_HEIGHT_TESTNET,
+    bounded_capacity, sha256d, var_int, ChainGangError, Hash256, Serializable,
+    BITCOIN_CASH_FORK_HEIGHT_MAINNET, BITCOIN_CASH_FORK_HEIGHT_TESTNET,
+    GENESIS_UPGRADE_HEIGHT_MAINNET, GENESIS_UPGRADE_HEIGHT_TESTNET,
 };
 use linked_hash_map::LinkedHashMap;
 use std::collections::{HashSet, VecDeque};
@@ -153,7 +153,7 @@ impl Serializable<Block> for Block {
     fn read(reader: &mut dyn Read) -> Result<Block, ChainGangError> {
         let header = BlockHeader::read(reader)?;
         let txn_count = var_int::read(reader)?;
-        let mut txns = Vec::with_capacity(txn_count as usize);
+        let mut txns = Vec::with_capacity(bounded_capacity(txn_count));
         for _i in 0..txn_count {
             txns.push(Tx::read(reader)?);
         }

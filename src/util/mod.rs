@@ -5,6 +5,8 @@ use std::time::SystemTime;
 #[allow(dead_code)]
 mod bits;
 mod bloom_filter;
+/// Reading length-prefixed data without trusting the length
+pub mod bounded_read;
 #[allow(dead_code)]
 mod future;
 #[allow(dead_code)]
@@ -28,12 +30,13 @@ pub(crate) use self::bits::{lshift, rshift, Bits};
 pub use self::bloom_filter::{
     BloomFilter, BLOOM_FILTER_MAX_FILTER_SIZE, BLOOM_FILTER_MAX_HASH_FUNCS,
 };
+pub use self::bounded_read::{bounded_capacity, read_exact_vec, MAX_PREALLOC_ELEMENTS};
 pub use self::errors::ChainGangError;
 pub use self::hash160::{hash160, Hash160};
 pub use self::hash256::{sha256d, Hash256};
+pub use self::serdes::serde_bytes;
 #[allow(unused_imports)]
 pub use self::serdes::Serializable;
-pub use self::serdes::serde_bytes;
 
 /// Gets the time in seconds since a time in the past
 pub fn secs_since(time: SystemTime) -> u32 {

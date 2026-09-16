@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::messages::message::Payload;
-use crate::util::{var_int, ChainGangError, Serializable};
+use crate::util::{read_exact_vec, var_int, ChainGangError, Serializable};
 
 /// Protoconf version 1
 pub const VERSION_1: u64 = 1;
@@ -56,9 +56,9 @@ impl Serializable<Protoconf> for Protoconf {
         ret.max_recv_payload_length = reader.read_u32::<LittleEndian>()?;
 
         if ret.version > VERSION_1 {
-            let stream_policy_size = var_int::read(reader)? as usize;
-            let mut stream_policy_bytes = vec![0; stream_policy_size];
-            reader.read_exact(&mut stream_policy_bytes)?;
+            let stream_policy_size = var_int::read(reader)?;
+            let stream_policy_bytes =
+                read_exact_vec(reader, stream_policy_size, "protoconf stream policy")?;
             let stream_policies = String::from_utf8(stream_policy_bytes)?;
             ret.stream_policies = Some(stream_policies)
         }

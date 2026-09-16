@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{var_int, ChainGangError, Serializable};
+use crate::util::{read_exact_vec, var_int, ChainGangError, Serializable};
 use hex;
 use std::fmt;
 use std::io;
@@ -28,8 +28,7 @@ impl FilterAdd {
 impl Serializable<FilterAdd> for FilterAdd {
     fn read(reader: &mut dyn Read) -> Result<FilterAdd, ChainGangError> {
         let data_len = var_int::read(reader)?;
-        let mut data = vec![0; data_len as usize];
-        reader.read_exact(&mut data)?;
+        let data = read_exact_vec(reader, data_len, "filter add data")?;
         Ok(FilterAdd { data })
     }
 

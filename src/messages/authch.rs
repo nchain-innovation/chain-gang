@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::messages::message::Payload;
-use crate::util::{ChainGangError, Serializable};
+use crate::util::{read_exact_vec, ChainGangError, Serializable};
 
 /// The message version, should be 0x01
 pub const SUPPORTED_VERSION: i32 = 0x01;
@@ -35,10 +35,7 @@ impl Serializable<Authch> for Authch {
     fn read(reader: &mut dyn Read) -> Result<Authch, ChainGangError> {
         let version = reader.read_i32::<LittleEndian>()?;
         let message_length = reader.read_u32::<LittleEndian>()?;
-        let message_size: usize = message_length.try_into().unwrap();
-
-        let mut message_buf: Vec<u8> = vec![0; message_size];
-        reader.read_exact(&mut message_buf)?;
+        let message_buf = read_exact_vec(reader, u64::from(message_length), "authch message")?;
 
         let ret = Authch {
             version,
