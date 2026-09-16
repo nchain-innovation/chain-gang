@@ -96,10 +96,7 @@ pub fn pop_num(stack: &mut Stack) -> Result<i32, ChainGangError> {
 
 /// Pops a pre-genesis number, optionally enforcing minimal encoding.
 #[inline]
-pub fn pop_num_minimal(
-    stack: &mut Stack,
-    require_minimal: bool,
-) -> Result<i32, ChainGangError> {
+pub fn pop_num_minimal(stack: &mut Stack, require_minimal: bool) -> Result<i32, ChainGangError> {
     if stack.is_empty() {
         let msg = "Cannot pop num, empty stack".to_string();
         return Err(ChainGangError::ScriptError(msg));
@@ -131,12 +128,28 @@ pub fn pop_bigint(stack: &mut Stack) -> Result<BigInt, ChainGangError> {
 /// Pops a bigint number, enforcing a maximum encoded byte length.
 #[inline]
 pub fn pop_bigint_checked(stack: &mut Stack, max_len: usize) -> Result<BigInt, ChainGangError> {
+    pop_bigint_checked_minimal(stack, max_len, false)
+}
+
+/// Pops a bigint number, enforcing a maximum encoded byte length and
+/// optionally that the operand uses the minimal number encoding.
+#[inline]
+pub fn pop_bigint_checked_minimal(
+    stack: &mut Stack,
+    max_len: usize,
+    require_minimal: bool,
+) -> Result<BigInt, ChainGangError> {
     if stack.is_empty() {
         let msg = "Cannot pop bigint, empty stack".to_string();
         return Err(ChainGangError::ScriptError(msg));
     }
     let mut top = stack.pop().unwrap();
     check_script_num_length(top.len(), max_len)?;
+    if require_minimal && !is_minimally_encoded(&top) {
+        return Err(ChainGangError::ScriptError(
+            "Number is not minimally encoded".to_string(),
+        ));
+    }
     Ok(decode_bigint(&mut top))
 }
 

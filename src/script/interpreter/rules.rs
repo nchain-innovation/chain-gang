@@ -1,6 +1,7 @@
 use crate::script::stack::{
-    decode_bool, pop_bool_minimal, pop_num_minimal, Stack, MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
-    MAX_SCRIPT_NUM_LENGTH_GENESIS, MAX_SCRIPT_NUM_LENGTH_PREGENESIS,
+    decode_bool, pop_bigint_checked_minimal, pop_bool_minimal, pop_num_minimal, Stack,
+    MAX_SCRIPT_NUM_LENGTH_CHRONICLE, MAX_SCRIPT_NUM_LENGTH_GENESIS,
+    MAX_SCRIPT_NUM_LENGTH_PREGENESIS,
 };
 use crate::script::Checker;
 use crate::util::ChainGangError;
@@ -46,6 +47,16 @@ pub(crate) fn pop_num_for_eval<T: Checker>(
     pop_num_minimal(stack, tx_enforces_malleability_rules(checker))
 }
 
+/// Pops a bigint operand, enforcing minimal number encoding where the tx
+/// version still requires the malleability rules.
+pub(crate) fn pop_bigint_for_eval<T: Checker>(
+    stack: &mut Stack,
+    max_len: usize,
+    checker: &T,
+) -> Result<BigInt, ChainGangError> {
+    pop_bigint_checked_minimal(stack, max_len, tx_enforces_malleability_rules(checker))
+}
+
 pub(crate) fn pop_bool_for_if<T: Checker>(
     stack: &mut Stack,
     checker: &T,
@@ -58,9 +69,7 @@ pub(crate) fn validate_final_stack<T: Checker>(
     checker: &T,
 ) -> Result<(), ChainGangError> {
     if stack.is_empty() {
-        return Err(ChainGangError::ScriptError(
-            "Stack empty".to_string(),
-        ));
+        return Err(ChainGangError::ScriptError("Stack empty".to_string()));
     }
     if !decode_bool(&stack[stack.len() - 1]) {
         return Err(ChainGangError::ScriptError(
