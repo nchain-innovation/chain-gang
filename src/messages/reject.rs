@@ -1,5 +1,5 @@
 use crate::messages::message::Payload;
-use crate::util::{var_int, ChainGangError, Hash256, Serializable};
+use crate::util::{read_exact_vec, var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::fmt;
 use std::io;
@@ -59,14 +59,12 @@ impl Serializable<Reject> for Reject {
     // so clippy thinks that we are reading into a zero byte buffer.
     #[allow(clippy::read_zero_byte_vec)]
     fn read(reader: &mut dyn Read) -> Result<Reject, ChainGangError> {
-        let message_size = var_int::read(reader)? as usize;
-        let mut message_bytes = vec![0; message_size];
-        reader.read_exact(&mut message_bytes)?;
+        let message_size = var_int::read(reader)?;
+        let message_bytes = read_exact_vec(reader, message_size, "reject message")?;
         let message = String::from_utf8(message_bytes)?;
         let code = reader.read_u8()?;
-        let reason_size = var_int::read(reader)? as usize;
-        let mut reason_bytes = vec![0; reason_size];
-        reader.read_exact(&mut reason_bytes)?;
+        let reason_size = var_int::read(reader)?;
+        let reason_bytes = read_exact_vec(reader, reason_size, "reject reason")?;
         let reason = String::from_utf8(reason_bytes)?;
         let mut data = vec![];
         if message == *"block" || message == *"tx" {

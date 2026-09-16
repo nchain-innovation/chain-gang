@@ -3,11 +3,11 @@ use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
 use crate::network::Network;
 use crate::script::{
-    eval_two_phase, is_push_only, op_codes, Script, TransactionChecker, uses_relaxed_malleability,
-    uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES,
+    eval_two_phase, is_push_only, op_codes, uses_relaxed_malleability, uses_two_phase_eval, Script,
+    TransactionChecker, NO_FLAGS, PREGENESIS_RULES,
 };
 use crate::transaction::sighash::SigHashCache;
-use crate::util::{sha256d, var_int, ChainGangError, Hash256, Serializable};
+use crate::util::{bounded_capacity, sha256d, var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use linked_hash_map::LinkedHashMap;
 use op_codes::{OP_EQUAL, OP_HASH160};
@@ -156,15 +156,12 @@ impl Tx {
             Some((height, net)) => (Some(height), Some(net)),
             None => (None, None),
         };
-        let script_version =
-            effective_chronicle_tx_version(self.version, block_height, network);
+        let script_version = effective_chronicle_tx_version(self.version, block_height, network);
         for input in 0..self.inputs.len() {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
 
-            if !uses_relaxed_malleability(script_version)
-                && !is_push_only(&tx_in.unlock_script.0)
-            {
+            if !uses_relaxed_malleability(script_version) && !is_push_only(&tx_in.unlock_script.0) {
                 return Err(ChainGangError::BadData(
                     "Unlock script must be push-only".to_string(),
                 ));
@@ -236,12 +233,12 @@ impl Serializable<Tx> for Tx {
         let version = reader.read_i32::<LittleEndian>()?;
         let version = version as u32;
         let n_inputs = var_int::read(reader)?;
-        let mut inputs = Vec::with_capacity(n_inputs as usize);
+        let mut inputs = Vec::with_capacity(bounded_capacity(n_inputs));
         for _i in 0..n_inputs {
             inputs.push(TxIn::read(reader)?);
         }
         let n_outputs = var_int::read(reader)?;
-        let mut outputs = Vec::with_capacity(n_outputs as usize);
+        let mut outputs = Vec::with_capacity(bounded_capacity(n_outputs));
         for _i in 0..n_outputs {
             outputs.push(TxOut::read(reader)?);
         }

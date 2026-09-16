@@ -1,6 +1,6 @@
 use crate::messages::message::Payload;
 
-use crate::util::{var_int, ChainGangError, Serializable};
+use crate::util::{read_exact_vec, var_int, ChainGangError, Serializable};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -58,8 +58,8 @@ impl Serializable<Createstrm> for Createstrm {
         ret.stream_type = reader.read_u8()?;
         // Read stream_policy
         if let Ok(stream_policy_size) = var_int::read(reader) {
-            let mut stream_policy_bytes = vec![0; stream_policy_size.try_into().unwrap()];
-            reader.read_exact(&mut stream_policy_bytes)?;
+            let stream_policy_bytes =
+                read_exact_vec(reader, stream_policy_size, "createstream stream policy")?;
             ret.stream_policy = String::from_utf8(stream_policy_bytes)?;
         }
         Ok(ret)

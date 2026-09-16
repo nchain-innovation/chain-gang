@@ -4,7 +4,7 @@ use std::io::{Cursor, Read, Write};
 use std::str;
 
 use crate::messages;
-use crate::util::{ChainGangError, Serializable};
+use crate::util::{read_exact_vec, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use sha2::{Digest, Sha256};
 
@@ -54,8 +54,10 @@ impl MessageHeader {
 
     /// Reads the payload and verifies its checksum
     pub fn payload(&self, reader: &mut dyn Read) -> Result<Vec<u8>, ChainGangError> {
-        let mut p: Vec<u8> = vec![0; self.payload_size as usize];
-        reader.read_exact(p.as_mut())?;
+        // payload_size is unbounded for BLOCK — validate() exempts that
+        // command from max_size — so this must not be trusted to size an
+        // allocation before the bytes arrive.
+        let p = read_exact_vec(reader, u64::from(self.payload_size), "message payload")?;
 
         // Double hash of payload
         let hash = Sha256::digest(&p);

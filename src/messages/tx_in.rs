@@ -1,6 +1,6 @@
 use crate::messages::OutPoint;
 use crate::script::Script;
-use crate::util::{var_int, ChainGangError, Serializable};
+use crate::util::{read_exact_vec, var_int, ChainGangError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 use std::io::{Read, Write};
@@ -30,8 +30,7 @@ impl Serializable<TxIn> for TxIn {
     fn read(reader: &mut dyn Read) -> Result<TxIn, ChainGangError> {
         let prev_output = OutPoint::read(reader)?;
         let script_len = var_int::read(reader)?;
-        let mut unlock_script = Script(vec![0; script_len as usize]);
-        reader.read_exact(&mut unlock_script.0)?;
+        let unlock_script = Script(read_exact_vec(reader, script_len, "unlocking script")?);
         let sequence = reader.read_u32::<LittleEndian>()?;
         Ok(TxIn {
             prev_output,
