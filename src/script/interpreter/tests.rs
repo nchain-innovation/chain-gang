@@ -1,6 +1,6 @@
-use super::*;
 use super::multisig::remove_sig;
 use super::script_code::strip_code_separators;
+use super::*;
 use crate::script::op_codes::*;
 use crate::script::stack::{
     encode_num, MAX_SCRIPT_NUM_LENGTH_CHRONICLE, MAX_SCRIPT_NUM_LENGTH_GENESIS,
@@ -1053,4 +1053,90 @@ fn chronicle_script_num_limit_accepts_genesis_max_bin2num() {
     script.append(OP_1);
     let mut c = MockChecker::with_tx_version(2);
     assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+/// Regression: minimal encoding is a script *number* rule, so it must not be
+/// applied to arbitrary data pushes. A 33-byte pubkey or a 20-byte hash hits
+/// the non-minimal byte pattern by chance, which rejected roughly one in 128
+/// otherwise standard P2PKH spends. See issue #166.
+#[test]
+fn data_push_is_not_subject_to_minimal_number_encoding() {
+    for last in [0x01u8, 0x80, 0x00] {
+        let mut script = Script::new();
+        script.append_data(&{
+            let mut data = [0x11u8; 33];
+            data[32] = last;
+            data
+        });
+        script.append(OP_DROP);
+        script.append(OP_1);
+        let mut c = MockChecker::with_tx_version(1);
+        assert!(
+            eval(&script.0, &mut c, NO_FLAGS).is_ok(),
+            "33-byte push ending {last:02x} should be accepted"
+        );
+    }
+}
+
+/// The real-world case from issue #166: a public key ending `09 80`.
+#[test]
+fn pubkey_ending_in_0x80_is_pushable() {
+    let pubkey =
+        hex::decode("02662669564a4f4e579f92fe785cc66d60761c0b8a1cb28d0c23241ea244090980").unwrap();
+    let mut script = Script::new();
+    script.append_data(&pubkey);
+    script.append(OP_HASH160);
+    script.append(OP_DROP);
+    script.append(OP_1);
+    let mut c = MockChecker::with_tx_version(1);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+/// Dropping the push-time check must not lose minimal-number enforcement: it
+/// still applies wherever a stack item is consumed as a number.
+#[test]
+fn numeric_operands_still_require_minimal_encoding() {
+    // Bigint arithmetic operand.
+    let mut script = Script::new();
+    script.append_data(&[0x00u8, 0x00]);
+    script.append(OP_1ADD);
+    let mut c = MockChecker::with_tx_version(1);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+
+    // Two non-minimal operands to a binary op.
+    let mut script = Script::new();
+    script.append_data(&[0x01u8, 0x00]);
+    script.append_data(&[0x01u8, 0x00]);
+    script.append(OP_ADD);
+    let mut c = MockChecker::with_tx_version(1);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+
+    // The minimally encoded equivalent is fine.
+    let mut script = Script::new();
+    script.append_data(&[0x11u8]);
+    script.append(OP_1ADD);
+    let mut c = MockChecker::with_tx_version(1);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+/// Chronicle (tx version > 1) relaxes the malleability rules, so non-minimal
+/// numeric operands are accepted there as before.
+#[test]
+fn chronicle_does_not_require_minimal_numeric_operands() {
+    let mut script = Script::new();
+    script.append_data(&[0x01u8, 0x00]);
+    script.append(OP_1ADD);
+    let mut c = MockChecker::with_tx_version(2);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+/// BIP-62 minimal *push* enforcement is unchanged.
+#[test]
+fn minimal_push_rule_still_enforced() {
+    // OP_PUSHDATA1 used for a length that a direct push encodes.
+    let mut c = MockChecker::with_tx_version(1);
+    assert!(eval(&[OP_PUSHDATA1, 1, 0x11, OP_DROP, OP_1], &mut c, NO_FLAGS).is_err());
+    // A 1-byte push of 0x01 must use OP_1.
+    let mut c = MockChecker::with_tx_version(1);
+    assert!(eval(&[OP_PUSH + 1, 0x01, OP_DROP, OP_1], &mut c, NO_FLAGS).is_err());
 }
