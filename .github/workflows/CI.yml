@@ -4,6 +4,10 @@
 #    maturin generate-ci github
 #
 name: CI
+# CI runner image is pinned, not `ubuntu-latest`. That label migrates to Ubuntu 26
+# from 19 October 2026 (actions/runner-images#14748), which would move the OS under
+# every build on a date nobody chose. Pinning decouples the upgrade from that date
+# so it happens deliberately, with someone watching. Tracked as CS-442.
 
 on:
   push:
@@ -34,17 +38,17 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: ubuntu-latest
+          - runner: ubuntu-24.04
             target: x86_64
-          #- runner: ubuntu-latest
+          #- runner: ubuntu-24.04
           #  target: x86
-          #- runner: ubuntu-latest
+          #- runner: ubuntu-24.04
           #  target: aarch64
-          # - runner: ubuntu-latest
+          # - runner: ubuntu-24.04
           #  target: armv7
-          #- runner: ubuntu-latest
+          #- runner: ubuntu-24.04
           #  target: s390x
-          #- runner: ubuntu-latest
+          #- runner: ubuntu-24.04
           #  target: ppc64le
     steps:
       - uses: actions/checkout@v7
@@ -120,7 +124,7 @@ jobs:
           path: dist
 
   sdist:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
       - uses: actions/checkout@v7
@@ -137,7 +141,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: "startsWith(github.ref, 'refs/tags/')"
     needs: [linux, windows, macos, sdist]
     steps:
@@ -152,7 +156,7 @@ jobs:
 
   crates-io:
     name: Publish to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
       - uses: actions/checkout@v7

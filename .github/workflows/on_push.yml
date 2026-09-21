@@ -1,4 +1,8 @@
 name: On Push
+# CI runner image is pinned, not `ubuntu-latest`. That label migrates to Ubuntu 26
+# from 19 October 2026 (actions/runner-images#14748), which would move the OS under
+# every build on a date nobody chose. Pinning decouples the upgrade from that date
+# so it happens deliberately, with someone watching. Tracked as CS-442.
 on: [push]
 permissions:
   contents: read
@@ -10,7 +14,7 @@ env:
 jobs:
   python-lint:
     name: Lint Python
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v7
@@ -28,7 +32,7 @@ jobs:
 
   rust-test:
     name: Rust Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v7
@@ -42,7 +46,7 @@ jobs:
 
   rust-clippy:
     name: Rust Clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v7
@@ -60,7 +64,7 @@ jobs:
   # that enables only some of them. This checks each set a dependent might pick.
   rust-features:
     name: Rust Features (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -86,7 +90,7 @@ jobs:
 
   python-test:
     name: Python Tests (${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
