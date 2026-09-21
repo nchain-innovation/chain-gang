@@ -139,8 +139,36 @@ def get_history(address: str, testnet: bool = True):
 
 
 def get_balance(address: str, testnet: bool = True):
-    """Return the balance associated with this address"""
-    return get_response(f"{get_url(testnet)}/address/{address}/balance")
+    """Return the balance associated with this address
+
+    Reads /confirmed/balance and /unconfirmed/balance, the endpoints that
+    replaced the combined /balance. That costs two requests where there was
+    one, so the two halves are read a moment apart; an address being spent to
+    between them could report a confirmed figure from just before a block and
+    an unconfirmed one from just after. The combined endpoint is undocumented,
+    which is the trade being made.
+
+    Returns {"confirmed": int, "unconfirmed": int} as before, or None if
+    either request fails.
+    """
+    base = f"{get_url(testnet)}/address/{address}"
+
+    confirmed = get_response(f"{base}/confirmed/balance")
+    if confirmed is None or confirmed.get("error"):
+        if confirmed is not None:
+            LOGGER.warning(f"WhatsOnChain error = {confirmed['error']}")
+        return None
+
+    unconfirmed = get_response(f"{base}/unconfirmed/balance")
+    if unconfirmed is None or unconfirmed.get("error"):
+        if unconfirmed is not None:
+            LOGGER.warning(f"WhatsOnChain error = {unconfirmed['error']}")
+        return None
+
+    return {
+        "confirmed": confirmed.get("confirmed", 0),
+        "unconfirmed": unconfirmed.get("unconfirmed", 0),
+    }
 
 
 def get_chain_info(testnet: bool = True):
