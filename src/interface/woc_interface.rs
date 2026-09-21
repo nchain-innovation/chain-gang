@@ -116,6 +116,28 @@ async fn get_text_with_retry(url: &str) -> Result<String, ChainGangError> {
     )))
 }
 
+/// A `/confirmed/balance` response.
+///
+/// The figure is the same one the superseded combined `/balance` reported: it
+/// aggregates the address's associated scripts, so for an address with both a
+/// P2PKH and a P2PK script it counts both.
+#[derive(Debug, Deserialize)]
+struct ConfirmedBalance {
+    #[serde(default)]
+    confirmed: i64,
+    #[serde(default)]
+    error: String,
+}
+
+/// An `/unconfirmed/balance` response.
+#[derive(Debug, Deserialize)]
+struct UnconfirmedBalance {
+    #[serde(default)]
+    unconfirmed: i64,
+    #[serde(default)]
+    error: String,
+}
+
 /// Upper bound on pages fetched by [`WocInterface::get_utxo`].
 ///
 /// Each page is up to 1000 entries, so this allows 1M UTXOs for one address.
@@ -182,6 +204,20 @@ impl From<UnspentAllEntry> for UtxoEntry {
     }
 }
 
+impl WocInterface {
+    /// GETs `url` and deserialises the body, with the shared retry policy.
+    async fn get_json<T: serde::de::DeserializeOwned>(
+        &self,
+        url: &str,
+    ) -> Result<T, ChainGangError> {
+        let txt = get_text_with_retry(url).await?;
+        serde_json::from_str(&txt).map_err(|x| {
+            log::warn!("txt = {}", txt);
+            ChainGangError::JSONParseError(format!("json parse error = {}", x))
+        })
+    }
+}
+
 #[async_trait]
 impl BlockchainInterface for WocInterface {
     fn set_network(&mut self, network: &Network) {
@@ -210,36 +246,48 @@ impl BlockchainInterface for WocInterface {
     }
 
     /// Get balance associated with address
+    /// Get balance associated with address
+    ///
+    /// Reads `/confirmed/balance` and `/unconfirmed/balance`, the endpoints
+    /// that replaced the combined `/balance`. That costs two requests where
+    /// there was one, so the two halves are read a moment apart; an address
+    /// being spent to between them could report a confirmed figure from just
+    /// before a block and an unconfirmed one from just after. The combined
+    /// endpoint is undocumented, which is the trade being made.
+    ///
+    /// [`Balance`] is unchanged, and both figures were verified to match what
+    /// the combined endpoint reported.
     async fn get_balance(&self, address: &str) -> Result<Balance, ChainGangError> {
         log::debug!("get_balance");
 
         let network = self.get_network_str()?;
-        let url =
-            format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}/balance");
-        let response = reqwest::get(&url).await?;
-        let response = check_status(response, &url)?;
-        let txt = match response.text().await {
-            Ok(txt) => txt,
-            Err(x) => {
-                log::debug!("address = {}", address);
-                return Err(ChainGangError::ResponseError(format!(
-                    "response.text() = {}",
-                    x
-                )));
-            }
-        };
-        let data: Balance = match serde_json::from_str(&txt) {
-            Ok(data) => data,
-            Err(x) => {
-                log::debug!("address = {}", address);
-                log::warn!("txt = {}", txt);
-                return Err(ChainGangError::JSONParseError(format!(
-                    "json parse error = {}",
-                    x
-                )));
-            }
-        };
-        Ok(data)
+        let base = format!("https://api.whatsonchain.com/v1/bsv/{network}/address/{address}");
+
+        let confirmed: ConfirmedBalance =
+            self.get_json(&format!("{base}/confirmed/balance")).await?;
+        if !confirmed.error.is_empty() {
+            log::debug!("address = {}", address);
+            return Err(ChainGangError::ResponseError(format!(
+                "WhatsOnChain error = {}",
+                confirmed.error
+            )));
+        }
+
+        let unconfirmed: UnconfirmedBalance = self
+            .get_json(&format!("{base}/unconfirmed/balance"))
+            .await?;
+        if !unconfirmed.error.is_empty() {
+            log::debug!("address = {}", address);
+            return Err(ChainGangError::ResponseError(format!(
+                "WhatsOnChain error = {}",
+                unconfirmed.error
+            )));
+        }
+
+        Ok(Balance {
+            confirmed: confirmed.confirmed,
+            unconfirmed: unconfirmed.unconfirmed,
+        })
     }
 
     /// Get UXTO associated with address
@@ -512,6 +560,49 @@ mod tests {
             ]}"#,
         );
         assert_eq!(utxo[0].height, 964754);
+    }
+
+    #[test]
+    fn the_two_balance_halves_combine_into_one_balance() {
+        // Shapes as observed against mainnet: each carries its own figure,
+        // plus address/script/error, and confirmed adds associatedScripts
+        let c: ConfirmedBalance = serde_json::from_str(
+            r#"{"address": "1A1z", "script": "8b01df4e", "confirmed": 7297358945,
+                "error": "", "associatedScripts": [{"script": "740485f3", "type": "pubkey"}]}"#,
+        )
+        .unwrap();
+        let u: UnconfirmedBalance = serde_json::from_str(
+            r#"{"address": "1A1z", "script": "8b01df4e", "unconfirmed": 42, "error": ""}"#,
+        )
+        .unwrap();
+
+        let balance = Balance {
+            confirmed: c.confirmed,
+            unconfirmed: u.unconfirmed,
+        };
+        assert_eq!(balance.confirmed, 7297358945);
+        assert_eq!(balance.unconfirmed, 42);
+    }
+
+    #[test]
+    fn a_balance_body_error_is_not_mistaken_for_a_zero_balance() {
+        // Reported with HTTP 200, so the body is the only signal
+        let c: ConfirmedBalance =
+            serde_json::from_str(r#"{"confirmed": 0, "error": "invalid address"}"#).unwrap();
+        assert_eq!(c.error, "invalid address");
+        assert_eq!(c.confirmed, 0, "which is why the error must be checked");
+
+        let u: UnconfirmedBalance =
+            serde_json::from_str(r#"{"unconfirmed": 0, "error": "invalid address"}"#).unwrap();
+        assert_eq!(u.error, "invalid address");
+    }
+
+    #[test]
+    fn a_negative_unconfirmed_balance_survives_the_round_trip() {
+        // Spending a confirmed UTXO from the mempool makes this negative
+        let u: UnconfirmedBalance =
+            serde_json::from_str(r#"{"unconfirmed": -5000, "error": ""}"#).unwrap();
+        assert_eq!(u.unconfirmed, -5000);
     }
 
     #[test]
