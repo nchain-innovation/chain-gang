@@ -20,14 +20,16 @@ LOGGER = logging.getLogger(__name__)
 def _normalise_unconfirmed(utxo):
     """Rewrite WhatsOnChain's unconfirmed marker to this package's
 
-    WhatsOnChain reports a mempool UTXO as `height: 0`, while a negative height
-    is what means unconfirmed here and in the Rust crate, so the value is
-    translated on the way in rather than left for every caller to special-case.
-    A height of 0 cannot mean the genesis block: the genesis coinbase is
-    unspendable, so it never appears in an unspent set.
+    A negative height is what means unconfirmed here and in the Rust crate.
+    WhatsOnChain signals it two ways: `status: "unconfirmed"` on /unspent/all,
+    and `height: 0`. Both are honoured, the status first, so the value is
+    translated on the way in rather than left for every caller to
+    special-case. A height of 0 cannot mean the genesis block: the genesis
+    coinbase is unspendable, so it never appears in an unspent set.
     """
     for entry in utxo:
-        if entry.get("height") == 0:
+        status = str(entry.get("status", "")).lower()
+        if status == "unconfirmed" or entry.get("height") == 0:
             entry["height"] = UNCONFIRMED_HEIGHT
     return utxo
 

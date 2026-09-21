@@ -23,15 +23,16 @@ def get_url(testnet: bool = True) -> str:
     return "https://api.whatsonchain.com/v1/bsv/main"
 
 
-def get_response(url: str, max_retries: int = 5):
+def get_response(url: str, max_retries: int = 5, params: Optional[Dict] = None):
     """This is the guts of all the WoC requests.
 
     Retries on connection errors and transient HTTP responses (429/502/503/504).
+    `params` are appended as a query string, encoded by requests.
     """
     transient_status = {429, 502, 503, 504}
     for attempt in range(max_retries):
         try:
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, timeout=30, params=params)
         except (ConnectionError, requests.Timeout) as e:
             LOGGER.warning(f"WoC request error for {url}: {e}")
             if attempt + 1 >= max_retries:
@@ -58,27 +59,56 @@ def get_response(url: str, max_retries: int = 5):
     return None
 
 
+#: Upper bound on pages fetched for one address. Each page is up to 1000
+#: entries, so this allows 1M UTXOs. It exists only so that a server that kept
+#: handing back a next-page token could not spin forever; reaching it raises
+#: rather than truncating, which is the whole point of moving off /unspent.
+MAX_UTXO_PAGES = 1000
+
+
 def get_unspent_transactions(address: str, testnet: bool = True):
-    """Return the unspent transations associated with this address"""
-    return get_response(f"{get_url(testnet)}/address/{address}/unspent")
+    """Return the unspent transactions associated with this address
+
+    Reads /unspent/all, which covers both confirmed and unconfirmed outputs and
+    paginates at 1000 entries. Every page is followed, so the returned list is
+    complete; the superseded /unspent stopped at 1000 with no way to ask for
+    the rest, so a busy address came back silently truncated.
+
+    Returns a list of entries, as before. None if a request fails.
+    """
+    base = f"{get_url(testnet)}/address/{address}/unspent/all"
+    entries: list = []
+    token = ""
+
+    for _ in range(MAX_UTXO_PAGES):
+        # The token is opaque and server-supplied, so it is passed as a
+        # parameter rather than interpolated into the path
+        page = get_response(base, params={"token": token} if token else None)
+        if page is None:
+            return None
+        error = page.get("error")
+        if error:
+            # Reported in the body with a 200, so it would otherwise read as an
+            # empty UTXO set
+            LOGGER.warning(f"WhatsOnChain error = {error}")
+            return None
+        entries.extend(page.get("result") or [])
+
+        next_token = page.get("nextPageToken") or ""
+        if not next_token or next_token == token:
+            return entries
+        token = next_token
+
+    raise ValueError(f"address has more than {MAX_UTXO_PAGES} pages of UTXOs")
 
 
 def get_last_unspent(address: str, testnet: bool = True):
-    """Return the unspent transations associated with this address"""
-    tx_hash = None
-    tx_pos = 0
-    value = 0
-    url = "{}/address/{}/unspent".format(get_url(testnet), address)
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        LOGGER.debug(f"data = {data}")
-        tx_hash = data[-1]["tx_hash"]
-        tx_pos = data[-1]["tx_pos"]
-        value = data[-1]["value"]
-    else:
-        LOGGER.info(f"response = {response}")
-    return (tx_hash, tx_pos, value)
+    """Return the last unspent transaction associated with this address"""
+    data = get_unspent_transactions(address, testnet=testnet)
+    if not data:
+        return (None, 0, 0)
+    LOGGER.debug(f"data = {data}")
+    return (data[-1]["tx_hash"], data[-1]["tx_pos"], data[-1]["value"])
 
 
 def get_transaction(tx_id: str, testnet: bool = True):

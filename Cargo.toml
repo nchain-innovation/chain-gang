@@ -44,6 +44,9 @@ serde_json = { version = "1.0.151" }
 reqwest = { version = "0.13.4", features = ["json"], optional = true }
 async-lock = { version = "3.4.2", optional = true }
 async-trait = { version = "0.1.91", optional = true }
+# Already in the tree via reqwest; the "time" feature is for the backoff
+# between paginated WhatsOnChain requests
+tokio = { version = "1", features = ["time"], optional = true }
 
 # For python feature
 # abi3-py311 builds against the stable ABI: one wheel (cp311-abi3) works on
@@ -64,5 +67,5 @@ lto = true          # Enable link-time optimizations to shrink binary
 # serde and serde_json are unconditional dependencies, so there is nothing
 # left for the default feature to switch on
 default = []
-interface = ["dep:reqwest", "dep:async-lock", "dep:async-trait"]
+interface = ["dep:reqwest", "dep:async-lock", "dep:async-trait", "dep:tokio"]
 python = ["dep:pyo3"]
