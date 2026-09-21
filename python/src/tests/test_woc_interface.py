@@ -14,7 +14,7 @@ class WoCHeightTest(unittest.TestCase):
     """ Test of the WoC unconfirmed height normalisation """
 
     def test_height_zero_becomes_the_unconfirmed_sentinel(self):
-        # Trimmed from a real /address/{addr}/unspent response. Transaction
+        # Trimmed from a real /address/{addr}/unspent/all response. Transaction
         # fa7f15f8..d860 was in WhatsOnChain's own mempool/raw list, with no
         # blockhash, blockheight or confirmations.
         utxo: List[Dict[str, Any]] = [
@@ -27,6 +27,23 @@ class WoCHeightTest(unittest.TestCase):
         # the confirmed entry and every other field are untouched
         self.assertEqual(utxo[0]["height"], 964754)
         self.assertEqual(utxo[1]["value"], 2954693)
+
+    def test_status_marks_an_unconfirmed_entry_even_at_a_real_height(self):
+        # status is the documented signal on /unspent/all; height is the fallback
+        utxo: List[Dict[str, Any]] = [
+            {"height": 964754, "tx_pos": 0, "tx_hash": "aa", "value": 1,
+             "isSpentInMempoolTx": False, "status": "unconfirmed"},
+        ]
+        _normalise_unconfirmed(utxo)
+        self.assertEqual(utxo[0]["height"], UNCONFIRMED_HEIGHT)
+
+    def test_a_confirmed_status_keeps_its_height(self):
+        utxo: List[Dict[str, Any]] = [
+            {"height": 964754, "tx_pos": 0, "tx_hash": "aa", "value": 1,
+             "isSpentInMempoolTx": False, "status": "confirmed"},
+        ]
+        _normalise_unconfirmed(utxo)
+        self.assertEqual(utxo[0]["height"], 964754)
 
     def test_is_idempotent(self):
         utxo: List[Dict[str, Any]] = [
