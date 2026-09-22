@@ -40,7 +40,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          cache: true
+          cache: false  # TRIAL (CS-444): is the failure the image, or a 24.04 cache?
       - name: Rust Tests
         run: cargo test --all-features
 
