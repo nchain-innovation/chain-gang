@@ -52,7 +52,6 @@ jobs:
         with:
           toolchain: stable
           cache: true
-          cache-key: ubuntu-24.04
           cache-key: ubuntu-24.04-py3.11
       - name: Rust Tests
         run: cargo test --all-features
