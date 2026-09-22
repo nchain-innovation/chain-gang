@@ -36,11 +36,24 @@ jobs:
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v7
+      # `cargo test --all-features` enables `python`, which pulls in pyo3, but
+      # NOT `pyo3/extension-module` -- so unlike the maturin builds, the test
+      # binary links libpython directly. Without this step it linked whatever
+      # the runner image happened to ship, which is the only reason this job
+      # was sensitive to the image at all. 3.11 is the abi3 floor the crate
+      # targets and the interpreter the wheels are built with, so this tests
+      # against the oldest Python we claim to support.
+      - name: Install Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
       - name: Install Rust 
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           cache: true
+          cache-key: ubuntu-24.04
+          cache-key: ubuntu-24.04-py3.11
       - name: Rust Tests
         run: cargo test --all-features
 
@@ -56,6 +69,7 @@ jobs:
           toolchain: stable
           components: clippy
           cache: true
+          cache-key: ubuntu-24.04
       - name: Clippy
         run: cargo clippy --all-features --all-targets -- -D warnings
 
@@ -85,6 +99,7 @@ jobs:
         with:
           toolchain: stable
           cache: true
+          cache-key: ubuntu-24.04
       - name: Check
         run: cargo check --all-targets ${{ matrix.args }}
 
@@ -108,6 +123,7 @@ jobs:
         with:
           toolchain: stable
           cache: true
+          cache-key: ubuntu-24.04
       - name: Clear wheel dir
         run: rm target/wheels/* | true
       - name: Maturin build
