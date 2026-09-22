@@ -8,6 +8,7 @@ Notes on the development of `chain-gang` and the `tx_engine` Python interface.
 ```
 ├── README.md              # GitHub repo home (Rust)
 ├── README-pypi.md         # PyPI readme (Python)
+├── .githooks              # Opt-in git hooks, see "Git hooks" below
 ├── docs
 │   ├── README.md
 │   ├── Python-API.md
@@ -54,6 +55,35 @@ To perform static code analysis on the Python source code run the following:
 $ cd python
 $ ./lint.sh
 ```
+
+# Git hooks
+
+`.githooks/pre-commit` checks staged `.github/workflows/*.yml` for YAML that
+GitHub Actions would refuse to run — in particular duplicate mapping keys.
+
+This is worth a hook rather than a CI job: most YAML loaders silently keep the
+last of a duplicated key, so a broken workflow looks fine locally, while GitHub
+rejects the file outright and the run ends in 0s with no jobs, no annotations
+and only "This run likely failed because of a workflow file issue". CI cannot
+warn you either, because the workflow that would have told you is the broken
+one.
+
+Hooks are not installed by cloning. Enable them once per checkout:
+
+```bash
+
+$ git config core.hooksPath .githooks
+```
+
+It needs `PyYAML`; without it the check prints a note and skips rather than
+blocking the commit. To check files outside a commit:
+
+```bash
+
+$ .githooks/pre-commit .github/workflows/on_push.yml
+```
+
+Use `git commit --no-verify` to bypass it.
 
 # Maturin
 `Maturin` is a tool for building and publishing Rust-based Python packages. 
