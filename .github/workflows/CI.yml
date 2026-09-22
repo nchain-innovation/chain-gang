@@ -34,11 +34,13 @@ permissions:
 jobs:
   linux:
     runs-on: ${{ matrix.platform.runner }}
-    if: "startsWith(github.ref, 'refs/tags/')"
+    # TRIAL (CS-444): tag gate lifted for THIS JOB ONLY so the manylinux wheel
+    # build runs on a PR. release and crates-io keep their gates, so nothing
+    # publishes.
     strategy:
       matrix:
         platform:
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04  # TRIAL (CS-444)
             target: x86_64
           #- runner: ubuntu-24.04
           #  target: x86
