@@ -1,8 +1,28 @@
 name: On Push
 # CI runner image is pinned, not `ubuntu-latest`. That label migrates to Ubuntu 26
-# from 19 October 2026 (actions/runner-images#14748), which would move the OS under
-# every build on a date nobody chose. Pinning decouples the upgrade from that date
-# so it happens deliberately, with someone watching. Tracked as CS-442.
+# between 19 October and 19 November 2026 (actions/runner-images#14748), which
+# would move the OS under every build on a date nobody chose. Pinning decouples
+# the upgrade from that date so it happens deliberately (CS-442).
+#
+# Now on 26.04, moved ahead of the migration on the evidence of a trial rather
+# than by the calendar (CS-444). This repo is where the trial actually found
+# something: the first Ubuntu 26 run failed with
+# `rust-lld: error: unable to find library -lpython3.12`, which looked exactly
+# like an image incompatibility -- 24.04 ships Python 3.12, 26.04 ships 3.13 --
+# and was not one. A 24.04 cache had been restored onto 26.04, carrying pyo3
+# build output already resolved against 3.12. A control run with the cache
+# disabled passed clean on 26.04.
+#
+# Hence `cache-key` below carries the image, and moving it is what busts the
+# old cache rather than restoring it across the boundary. Keep it in step with
+# `runs-on`: this is the repo that proves what happens when they disagree.
+#
+# NOT moved: CI.yml. Every job there is tag-gated and builds or publishes
+# artifacts -- maturin with `manylinux: auto` derives the wheel's glibc
+# baseline from the runner, so moving that image could raise the minimum glibc
+# of a published wheel and break downstream users on older systems. The trial
+# showed the wheel build *passes* on 26.04; it did not show the baseline is
+# unchanged, and that needs a tag to verify. Recorded as a known gap on CS-444.
 on: [push]
 permissions:
   contents: read
@@ -14,7 +34,7 @@ env:
 jobs:
   python-lint:
     name: Lint Python
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v7
@@ -32,7 +52,7 @@ jobs:
 
   rust-test:
     name: Rust Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v7
@@ -52,13 +72,13 @@ jobs:
         with:
           toolchain: stable
           cache: true
-          cache-key: ubuntu-24.04-py3.11
+          cache-key: ubuntu-26.04-py3.11
       - name: Rust Tests
         run: cargo test --all-features
 
   rust-clippy:
     name: Rust Clippy
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout branch code
         uses: actions/checkout@v7
@@ -68,7 +88,7 @@ jobs:
           toolchain: stable
           components: clippy
           cache: true
-          cache-key: ubuntu-24.04
+          cache-key: ubuntu-26.04
       - name: Clippy
         run: cargo clippy --all-features --all-targets -- -D warnings
 
@@ -77,7 +97,7 @@ jobs:
   # that enables only some of them. This checks each set a dependent might pick.
   rust-features:
     name: Rust Features (${{ matrix.name }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -98,13 +118,13 @@ jobs:
         with:
           toolchain: stable
           cache: true
-          cache-key: ubuntu-24.04
+          cache-key: ubuntu-26.04
       - name: Check
         run: cargo check --all-targets ${{ matrix.args }}
 
   python-test:
     name: Python Tests (${{ matrix.python-version }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -122,7 +142,7 @@ jobs:
         with:
           toolchain: stable
           cache: true
-          cache-key: ubuntu-24.04
+          cache-key: ubuntu-26.04
       - name: Clear wheel dir
         run: rm target/wheels/* | true
       - name: Maturin build
