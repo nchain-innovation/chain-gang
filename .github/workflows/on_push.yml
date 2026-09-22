@@ -17,12 +17,17 @@ name: On Push
 # old cache rather than restoring it across the boundary. Keep it in step with
 # `runs-on`: this is the repo that proves what happens when they disagree.
 #
-# NOT moved: CI.yml. Every job there is tag-gated and builds or publishes
-# artifacts -- maturin with `manylinux: auto` derives the wheel's glibc
-# baseline from the runner, so moving that image could raise the minimum glibc
-# of a published wheel and break downstream users on older systems. The trial
-# showed the wheel build *passes* on 26.04; it did not show the baseline is
-# unchanged, and that needs a tag to verify. Recorded as a known gap on CS-444.
+# CI.yml is now on 26.04 too (CS-459). It was held back while this file moved
+# (CS-444), on the worry that `manylinux: auto` derives the wheel's glibc
+# baseline from the runner, so a newer image could raise the minimum glibc of a
+# published wheel and break downstream installs without failing anything here.
+#
+# That worry turned out to be misplaced, and it took a measurement rather than
+# a tag to show it: the same build on both images produced identical wheel tags
+# (manylinux_2_17), because maturin-action builds inside
+# quay.io/pypa/manylinux2014_x86_64 either way. The baseline comes from that
+# container, not from the runner, so host glibc -- 2.39 on 24.04, 2.43 on
+# 26.04 -- never reaches the wheel.
 on: [push]
 permissions:
   contents: read
