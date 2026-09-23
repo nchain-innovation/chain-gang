@@ -36,11 +36,11 @@ pub use self::interpreter::{
     eval_two_phase, eval_two_phase_with_stack, is_push_only, max_script_num_length,
     uses_relaxed_malleability, uses_two_phase_eval, NO_FLAGS, PREGENESIS_RULES,
 };
+pub use self::stack::Stack;
 pub use self::stack::{
     check_script_num_length, MAX_SCRIPT_NUM_LENGTH_CHRONICLE, MAX_SCRIPT_NUM_LENGTH_GENESIS,
     MAX_SCRIPT_NUM_LENGTH_PREGENESIS,
 };
-pub use self::stack::Stack;
 
 use self::format::{format_script, ScriptFormatStyle};
 
@@ -147,12 +147,7 @@ impl Script {
 
 impl fmt::Debug for Script {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&format_script(
-            &self.0,
-            ScriptFormatStyle::Debug,
-            "[",
-            "]",
-        ))
+        f.write_str(&format_script(&self.0, ScriptFormatStyle::Debug, "[", "]"))
     }
 }
 

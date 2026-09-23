@@ -13,13 +13,13 @@ pub mod wallet;
 
 pub use self::extended_key::{
     derive_extended_key, master_extended_key_from_seed, ExtendedKey, ExtendedKeyType,
-    BIP32_MASTER_SEED_KEY, HARDENED_KEY, INVALID_CHILD_KEY_MSG, MIN_BIP32_SEED_LENGTH,
-    MAINNET_PRIVATE_EXTENDED_KEY, MAINNET_PUBLIC_EXTENDED_KEY, TESTNET_PRIVATE_EXTENDED_KEY,
+    BIP32_MASTER_SEED_KEY, HARDENED_KEY, INVALID_CHILD_KEY_MSG, MAINNET_PRIVATE_EXTENDED_KEY,
+    MAINNET_PUBLIC_EXTENDED_KEY, MIN_BIP32_SEED_LENGTH, TESTNET_PRIVATE_EXTENDED_KEY,
     TESTNET_PUBLIC_EXTENDED_KEY,
 };
-pub use self::hd_wallet::{bip32_path, bip44_path, BSV_COIN_TYPE, HdWallet};
+pub use self::hd_wallet::{bip32_path, bip44_path, HdWallet, BSV_COIN_TYPE};
 pub use self::hd_watch_wallet::{
-    scan_address_indices, watch_bip32_path, watch_bip44_path, DEFAULT_GAP_LIMIT, HdWatchWallet,
+    scan_address_indices, watch_bip32_path, watch_bip44_path, HdWatchWallet, DEFAULT_GAP_LIMIT,
 };
 pub use self::mnemonic::{
     load_wordlist, mnemonic_decode, mnemonic_encode, mnemonic_parse, mnemonic_to_seed,

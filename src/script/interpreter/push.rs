@@ -7,7 +7,12 @@ pub fn is_push_only(script: &[u8]) -> bool {
     let mut i = 0;
     while i < script.len() {
         match script[i] {
-            OP_0 | OP_1NEGATE | OP_1..=OP_16 | 1..=75 | OP_PUSHDATA1 | OP_PUSHDATA2
+            OP_0
+            | OP_1NEGATE
+            | OP_1..=OP_16
+            | 1..=75
+            | OP_PUSHDATA1
+            | OP_PUSHDATA2
             | OP_PUSHDATA4 => {}
             _ => return false,
         }
@@ -23,16 +28,12 @@ pub(crate) fn check_canonical_push(i: usize, script: &[u8]) -> Result<(), ChainG
         1..=75 => {
             let len = op as usize;
             if len == 0 {
-                return Err(ChainGangError::ScriptError(
-                    "Non-minimal push".to_string(),
-                ));
+                return Err(ChainGangError::ScriptError("Non-minimal push".to_string()));
             }
             if len == 1 {
                 match script[i + 1] {
                     0 | 1..=16 | OP_1NEGATE => {
-                        return Err(ChainGangError::ScriptError(
-                            "Non-minimal push".to_string(),
-                        ));
+                        return Err(ChainGangError::ScriptError("Non-minimal push".to_string()));
                     }
                     _ => {}
                 }
@@ -44,9 +45,7 @@ pub(crate) fn check_canonical_push(i: usize, script: &[u8]) -> Result<(), ChainG
                 return Ok(());
             }
             if (script[i + 1] as usize) < 76 {
-                Err(ChainGangError::ScriptError(
-                    "Non-minimal push".to_string(),
-                ))
+                Err(ChainGangError::ScriptError("Non-minimal push".to_string()))
             } else {
                 Ok(())
             }
@@ -57,9 +56,7 @@ pub(crate) fn check_canonical_push(i: usize, script: &[u8]) -> Result<(), ChainG
             }
             let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
             if len <= 255 {
-                Err(ChainGangError::ScriptError(
-                    "Non-minimal push".to_string(),
-                ))
+                Err(ChainGangError::ScriptError("Non-minimal push".to_string()))
             } else {
                 Ok(())
             }
@@ -73,9 +70,7 @@ pub(crate) fn check_canonical_push(i: usize, script: &[u8]) -> Result<(), ChainG
                 + ((script[i + 3] as usize) << 16)
                 + ((script[i + 4] as usize) << 24);
             if len <= 65535 {
-                Err(ChainGangError::ScriptError(
-                    "Non-minimal push".to_string(),
-                ))
+                Err(ChainGangError::ScriptError("Non-minimal push".to_string()))
             } else {
                 Ok(())
             }

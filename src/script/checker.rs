@@ -340,9 +340,9 @@ mod tests {
     use crate::transaction::generate_signature;
     use crate::transaction::sighash::{SIGHASH_ALL, SIGHASH_FORKID};
     use crate::util::hash160;
-    use k256::ecdsa::{SigningKey, VerifyingKey};
     use k256::ecdsa::signature::hazmat::PrehashSigner;
     use k256::ecdsa::signature::SignatureEncoding;
+    use k256::ecdsa::{SigningKey, VerifyingKey};
 
     #[test]
     fn standard_p2pkh() {

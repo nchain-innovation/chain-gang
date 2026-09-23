@@ -3,9 +3,7 @@
 use crate::network::Network;
 use crate::script::Script;
 use crate::util::ChainGangError;
-use crate::wallet::extended_key::{
-    derive_extended_key, ExtendedKey, ExtendedKeyType,
-};
+use crate::wallet::extended_key::{derive_extended_key, ExtendedKey, ExtendedKeyType};
 use crate::wallet::wallet::{p2pkh_script, public_key_to_address};
 
 /// Default BIP-44 gap limit for address discovery.

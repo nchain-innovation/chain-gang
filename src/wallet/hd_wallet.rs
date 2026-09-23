@@ -80,9 +80,15 @@ impl HdWallet {
     }
 
     /// P2PKH address at `m/{account}'/{change}/{index}`.
-    pub fn address_at(&self, account: u32, external: bool, index: u32) -> Result<String, ChainGangError> {
+    pub fn address_at(
+        &self,
+        account: u32,
+        external: bool,
+        index: u32,
+    ) -> Result<String, ChainGangError> {
         let change = if external { 0 } else { 1 };
-        self.wallet_at_path(&bip32_path(account, change, index))?.get_address()
+        self.wallet_at_path(&bip32_path(account, change, index))?
+            .get_address()
     }
 
     /// Locking script at `m/{account}'/{change}/{index}`.
@@ -106,7 +112,8 @@ impl HdWallet {
         external: bool,
         index: u32,
     ) -> Result<String, ChainGangError> {
-        self.wallet_at_path(&bip44_path(coin_type, account, external, index))?.get_address()
+        self.wallet_at_path(&bip44_path(coin_type, account, external, index))?
+            .get_address()
     }
 
     /// Scans external receive addresses for `account` until `gap_limit` consecutive unused indices.

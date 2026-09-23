@@ -97,6 +97,22 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-features --all-targets -- -D warnings
 
+  rust-fmt:
+    name: Rust Format
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout branch code
+        uses: actions/checkout@v7
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          cache: true
+          cache-key: ubuntu-26.04
+      - name: Format
+        run: cargo fmt --all -- --check
+
   # The test and clippy jobs above both build --all-features, so a module or
   # item gated on the wrong feature compiles there and still breaks a dependent
   # that enables only some of them. This checks each set a dependent might pick.

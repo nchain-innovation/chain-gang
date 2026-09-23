@@ -333,7 +333,9 @@ impl ExtendedKey {
         }
 
         if !is_private_key_valid(&hmac[..32]) {
-            return Err(ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string()));
+            return Err(ChainGangError::IllegalState(
+                INVALID_CHILD_KEY_MSG.to_string(),
+            ));
         }
 
         let secp_child_secret_key = SecretKey::from_slice(&hmac[..32])?;
@@ -405,7 +407,9 @@ impl ExtendedKey {
         }
 
         if !is_private_key_valid(&hmac[..32]) {
-            return Err(ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string()));
+            return Err(ChainGangError::IllegalState(
+                INVALID_CHILD_KEY_MSG.to_string(),
+            ));
         }
 
         let secret_key = SecretKey::from_slice(&hmac[..32])?;
@@ -414,9 +418,8 @@ impl ExtendedKey {
             .map_err(|_| ChainGangError::BadData("Invalid parent public key".to_string()))?;
         let offset_pk = secret_key.public_key();
         let child_point = parent_pk.to_projective() + offset_pk.to_projective();
-        let child_pk = PublicKey::<Secp256k1>::try_from(child_point).map_err(|_| {
-            ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string())
-        })?;
+        let child_pk = PublicKey::<Secp256k1>::try_from(child_point)
+            .map_err(|_| ChainGangError::IllegalState(INVALID_CHILD_KEY_MSG.to_string()))?;
         let child_bytes = child_pk.to_sec1_bytes();
         let pk_vec = child_bytes.to_vec();
         assert!(pk_vec.len() == 33);
@@ -877,10 +880,6 @@ mod tests {
     }
 
     fn master_private_key(seed: &str) -> ExtendedKey {
-        master_extended_key_from_seed(
-            Network::BSV_Mainnet,
-            &hex::decode(seed).unwrap(),
-        )
-        .unwrap()
+        master_extended_key_from_seed(Network::BSV_Mainnet, &hex::decode(seed).unwrap()).unwrap()
     }
 }

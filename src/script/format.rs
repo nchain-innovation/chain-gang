@@ -1,5 +1,5 @@
-use crate::script::op_codes::*;
 use crate::script::interpreter::next_op;
+use crate::script::op_codes::*;
 use hex;
 
 /// How to render push-data and unknown opcodes when formatting a script.
@@ -125,12 +125,7 @@ fn append_pushdata4(out: &mut String, script: &[u8], i: usize, style: ScriptForm
     true
 }
 
-fn append_script_op(
-    out: &mut String,
-    script: &[u8],
-    i: usize,
-    style: ScriptFormatStyle,
-) -> bool {
+fn append_script_op(out: &mut String, script: &[u8], i: usize, style: ScriptFormatStyle) -> bool {
     match script[i] {
         len @ 1..=75 => append_direct_push(out, script, i, len, style),
         OP_PUSHDATA1 => append_pushdata1(out, script, i, style),
@@ -147,7 +142,12 @@ fn append_script_op(
     }
 }
 
-pub(crate) fn format_script(script: &[u8], style: ScriptFormatStyle, prefix: &str, suffix: &str) -> String {
+pub(crate) fn format_script(
+    script: &[u8],
+    style: ScriptFormatStyle,
+    prefix: &str,
+    suffix: &str,
+) -> String {
     let mut ret = String::new();
     ret.push_str(prefix);
     let mut i = 0;
@@ -190,7 +190,14 @@ mod tests {
         script.append_slice(&[OP_10, OP_5, OP_DIV]);
         assert_eq!(
             script.string_representation(false),
-            format_script(&script.0, ScriptFormatStyle::StringRep { include_byte_offsets: false }, "", "")
+            format_script(
+                &script.0,
+                ScriptFormatStyle::StringRep {
+                    include_byte_offsets: false
+                },
+                "",
+                ""
+            )
         );
     }
 
