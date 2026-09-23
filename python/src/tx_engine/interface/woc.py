@@ -74,6 +74,11 @@ def get_unspent_transactions(address: str, testnet: bool = True):
     complete; the superseded /unspent stopped at 1000 with no way to ask for
     the rest, so a busy address came back silently truncated.
 
+    An output a mempool transaction has already spent is left out. The
+    endpoint goes on listing it, flagged `isSpentInMempoolTx`, and returning it
+    here would hand a caller something it cannot spend without a double spend
+    (CS-465). The Rust client drops the same entries.
+
     Returns a list of entries, as before. None if a request fails.
     """
     base = f"{get_url(testnet)}/address/{address}/unspent/all"
@@ -92,7 +97,10 @@ def get_unspent_transactions(address: str, testnet: bool = True):
             # empty UTXO set
             LOGGER.warning(f"WhatsOnChain error = {error}")
             return None
-        entries.extend(page.get("result") or [])
+        entries.extend(
+            entry for entry in (page.get("result") or [])
+            if not entry.get("isSpentInMempoolTx", False)
+        )
 
         next_token = page.get("nextPageToken") or ""
         if not next_token or next_token == token:
