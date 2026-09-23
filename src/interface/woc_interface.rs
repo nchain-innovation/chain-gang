@@ -744,7 +744,10 @@ mod tests {
             ]}"#,
         );
         assert_eq!(utxo.len(), 1, "the entry must parse at all");
-        assert_eq!(utxo[0].height, UNCONFIRMED_HEIGHT, "absent height is unconfirmed");
+        assert_eq!(
+            utxo[0].height, UNCONFIRMED_HEIGHT,
+            "absent height is unconfirmed"
+        );
         assert_eq!(utxo[0].value, 44);
         assert_eq!(utxo[0].tx_hash, "73c933af");
     }
