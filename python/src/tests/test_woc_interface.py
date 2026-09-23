@@ -28,6 +28,25 @@ class WoCHeightTest(unittest.TestCase):
         self.assertEqual(utxo[0]["height"], 964754)
         self.assertEqual(utxo[1]["value"], 2954693)
 
+    def test_a_mempool_entry_without_height_is_unconfirmed(self):
+        # CS-462: WhatsOnChain omits height entirely on a mempool entry, and
+        # sends an extra hex field. Payload copied from the report.
+        utxo: List[Dict[str, Any]] = [
+            {"tx_pos": 0, "tx_hash": "73c933af", "value": 44,
+             "isSpentInMempoolTx": False, "hex": "76a914", "status": "unconfirmed"},
+        ]
+        _normalise_unconfirmed(utxo)
+        self.assertEqual(utxo[0]["height"], UNCONFIRMED_HEIGHT)
+        self.assertEqual(utxo[0]["value"], 44)
+
+    def test_an_entry_with_neither_height_nor_status_still_gets_a_height(self):
+        # Every entry must come out with a height key, or callers KeyError
+        utxo: List[Dict[str, Any]] = [
+            {"tx_pos": 0, "tx_hash": "aa", "value": 1},
+        ]
+        _normalise_unconfirmed(utxo)
+        self.assertEqual(utxo[0]["height"], UNCONFIRMED_HEIGHT)
+
     def test_status_marks_an_unconfirmed_entry_even_at_a_real_height(self):
         # status is the documented signal on /unspent/all; height is the fallback
         utxo: List[Dict[str, Any]] = [
