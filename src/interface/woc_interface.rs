@@ -246,9 +246,9 @@ const MAX_UTXO_PAGES: usize = 1000;
 ///
 /// Separate from [`UtxoEntry`] because the wire format carries two fields the
 /// public type does not: `status`, which is how a caller is meant to tell a
-/// mempool UTXO from a confirmed one, and `isSpentInMempoolTx`, which is
-/// ignored here but is the documented way to filter outputs already spent by
-/// an unconfirmed transaction.
+/// mempool UTXO from a confirmed one, and `isSpentInMempoolTx`, which marks an
+/// output an unconfirmed transaction has already spent and is filtered on
+/// before an entry ever becomes a [`UtxoEntry`].
 #[derive(Debug, Deserialize)]
 struct UnspentAllEntry {
     /// Absent on a mempool entry: WhatsOnChain omits the field rather than
@@ -264,6 +264,28 @@ struct UnspentAllEntry {
     /// response that omits it still parses, falling back to the height test.
     #[serde(default)]
     status: String,
+    /// Whether a mempool transaction has already spent this output.
+    ///
+    /// `/unspent/all` goes on listing a confirmed output after something in
+    /// the mempool spends it, and says so only here. Until CS-465 this was
+    /// ignored, so `get_utxo` returned outputs already spent as if they were
+    /// not -- and a caller building on them made a transaction the network
+    /// can only treat as a double spend. Defaulted to `false`, so a response
+    /// that omits it is taken at its word.
+    #[serde(default, rename = "isSpentInMempoolTx")]
+    is_spent_in_mempool_tx: bool,
+}
+
+/// The entries of an `/unspent/all` page that are genuinely unspent.
+///
+/// An output a mempool transaction has already spent is dropped, which makes
+/// this interface agree with a node's own `listunspent`: both report what can
+/// still be spent, not what was unspent at the last block.
+fn unspent_entries(result: Vec<UnspentAllEntry>) -> impl Iterator<Item = UtxoEntry> {
+    result
+        .into_iter()
+        .filter(|entry| !entry.is_spent_in_mempool_tx)
+        .map(UtxoEntry::from)
 }
 
 /// An `/unspent/all` response page.
@@ -441,7 +463,7 @@ impl BlockchainInterface for WocInterface {
                     data.error
                 )));
             }
-            utxo.extend(data.result.into_iter().map(UtxoEntry::from));
+            utxo.extend(unspent_entries(data.result));
 
             if data.next_page_token.is_empty() {
                 return Ok(utxo);
@@ -558,7 +580,6 @@ impl BlockchainInterface for WocInterface {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::interface::blockchain_interface::UtxoEntry;
 
     // --- CS-457: pacing the requests, not the calls ---
 
@@ -674,9 +695,10 @@ mod tests {
         }"#
     }
 
+    /// A page as `get_utxo` reads it, filter included.
     fn entries(json: &str) -> Utxo {
         let page: UnspentAllPage = serde_json::from_str(json).unwrap();
-        page.result.into_iter().map(UtxoEntry::from).collect()
+        unspent_entries(page.result).collect()
     }
 
     fn woc_on(network: Network) -> WocInterface {
@@ -837,6 +859,60 @@ mod tests {
         .unwrap();
         assert!(page.result.is_empty());
         assert!(page.next_page_token.is_empty(), "so paging stops");
+    }
+
+    /// CS-465. An output a mempool transaction has already spent is still
+    /// listed by `/unspent/all`, flagged `isSpentInMempoolTx`. It is not
+    /// unspent, and handing it to a caller as if it were invites a double
+    /// spend -- so it is dropped, and the outputs around it are not.
+    #[test]
+    fn an_output_already_spent_in_the_mempool_is_not_unspent() {
+        let utxo = entries(
+            r#"{"result": [
+                {"height": 964754, "tx_pos": 0, "tx_hash": "spent", "value": 2000,
+                 "isSpentInMempoolTx": true, "status": "confirmed"},
+                {"height": 964754, "tx_pos": 1, "tx_hash": "kept", "value": 9904,
+                 "isSpentInMempoolTx": false, "status": "confirmed"},
+                {"tx_pos": 0, "tx_hash": "change", "value": 1904,
+                 "isSpentInMempoolTx": false, "status": "unconfirmed"}
+            ]}"#,
+        );
+        let hashes: Vec<&str> = utxo.iter().map(|entry| entry.tx_hash.as_str()).collect();
+        assert_eq!(
+            hashes,
+            ["kept", "change"],
+            "the spent output is gone, the rest are not"
+        );
+    }
+
+    /// Unconfirmed change a later mempool transaction has already spent is
+    /// dropped too: a chain of unconfirmed transactions leaves only its tip.
+    #[test]
+    fn a_chain_of_unconfirmed_spends_leaves_only_its_tip() {
+        let utxo = entries(
+            r#"{"result": [
+                {"tx_pos": 0, "tx_hash": "first", "value": 1968,
+                 "isSpentInMempoolTx": true, "status": "unconfirmed"},
+                {"tx_pos": 0, "tx_hash": "second", "value": 1936,
+                 "isSpentInMempoolTx": true, "status": "unconfirmed"},
+                {"tx_pos": 0, "tx_hash": "tip", "value": 1904,
+                 "isSpentInMempoolTx": false, "status": "unconfirmed"}
+            ]}"#,
+        );
+        assert_eq!(utxo.len(), 1);
+        assert_eq!(utxo[0].tx_hash, "tip");
+    }
+
+    /// A response that does not carry the flag is taken at its word, as it
+    /// was before: absent means not spent.
+    #[test]
+    fn an_absent_flag_means_not_spent() {
+        let utxo = entries(
+            r#"{"result": [
+                {"height": 964754, "tx_pos": 0, "tx_hash": "aa", "value": 1, "status": "confirmed"}
+            ]}"#,
+        );
+        assert_eq!(utxo.len(), 1);
     }
 
     #[test]
