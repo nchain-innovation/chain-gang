@@ -155,7 +155,12 @@ const MAX_UTXO_PAGES: usize = 1000;
 /// an unconfirmed transaction.
 #[derive(Debug, Deserialize)]
 struct UnspentAllEntry {
-    height: i32,
+    /// Absent on a mempool entry: WhatsOnChain omits the field rather than
+    /// sending 0, so this is an Option and `None` means unconfirmed. Requiring
+    /// it failed the whole page with `missing field \`height\`` the moment an
+    /// address had one unconfirmed output (CS-462).
+    #[serde(default)]
+    height: Option<i32>,
     tx_pos: u32,
     tx_hash: String,
     value: i64,
@@ -183,19 +188,22 @@ impl From<UnspentAllEntry> for UtxoEntry {
     /// Translates WhatsOnChain's unconfirmed marker to this crate's.
     ///
     /// [`UtxoEntry::height`] defines a negative height as meaning unconfirmed.
-    /// WhatsOnChain signals it two ways: `status: "unconfirmed"` on
-    /// `/unspent/all`, and `height: 0`. Both are honoured, the status first,
-    /// so the value is translated on the way in rather than left for every
-    /// caller to special-case. A height of 0 cannot mean the genesis block
-    /// here: the genesis coinbase is unspendable, so it never appears in an
-    /// unspent set.
+    /// WhatsOnChain signals it three ways: by omitting `height` altogether on
+    /// a mempool entry, by `status: "unconfirmed"` on `/unspent/all`, and by
+    /// `height: 0`. All are honoured, so the value is translated on the way in
+    /// rather than left for every caller to special-case. A height of 0 cannot
+    /// mean the genesis block here: the genesis coinbase is unspendable, so it
+    /// never appears in an unspent set.
     fn from(entry: UnspentAllEntry) -> Self {
-        let unconfirmed = entry.status.eq_ignore_ascii_case("unconfirmed") || entry.height == 0;
+        // Any of the three signals means unconfirmed: an absent height, an
+        // explicit status, or the height 0 older responses used
+        let unconfirmed = entry.height.is_none()
+            || entry.status.eq_ignore_ascii_case("unconfirmed")
+            || entry.height == Some(0);
         UtxoEntry {
-            height: if unconfirmed {
-                UNCONFIRMED_HEIGHT
-            } else {
-                entry.height
+            height: match entry.height {
+                Some(h) if !unconfirmed => h,
+                _ => UNCONFIRMED_HEIGHT,
             },
             tx_pos: entry.tx_pos,
             tx_hash: entry.tx_hash,
@@ -453,9 +461,12 @@ mod tests {
     use super::*;
     use crate::interface::blockchain_interface::UtxoEntry;
 
-    /// A trimmed `/unspent/all` page, in the shape observed against mainnet:
-    /// the entries carry `status` and `isSpentInMempoolTx`, and the array is
-    /// nested under `result` alongside `error` and `nextPageToken`.
+    /// A trimmed `/unspent/all` page, in the shape the live API actually
+    /// sends: the array is nested under `result` alongside `error` and
+    /// `nextPageToken`, entries carry `status` and `isSpentInMempoolTx`, and
+    /// the mempool entry has **no `height` field at all** plus an extra `hex`.
+    /// This fixture previously carried `"height": 0` there, which the API does
+    /// not send, and that is how CS-462 escaped.
     fn woc_response() -> &'static str {
         r#"{
             "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
@@ -463,8 +474,8 @@ mod tests {
             "result": [
                 {"height": 964754, "tx_pos": 1, "tx_hash": "aa", "value": 1,
                  "isSpentInMempoolTx": false, "status": "confirmed"},
-                {"height": 0, "tx_pos": 1, "tx_hash": "fa7f15f8", "value": 2954693,
-                 "isSpentInMempoolTx": false, "status": "unconfirmed"}
+                {"tx_pos": 1, "tx_hash": "fa7f15f8", "value": 2954693,
+                 "isSpentInMempoolTx": false, "hex": "76a914", "status": "unconfirmed"}
             ],
             "error": "",
             "nextPageToken": ""
@@ -526,6 +537,24 @@ mod tests {
         assert_eq!(utxo[0].height, 964754);
         assert_eq!(utxo[1].value, 2954693, "only the height is rewritten");
         assert_eq!(utxo[1].tx_hash, "fa7f15f8");
+    }
+
+    /// CS-462: WhatsOnChain omits `height` entirely on a mempool entry. Every
+    /// fixture here used `"height": 0` for unconfirmed, which the live API does
+    /// not send, so a required `height` parsed in tests and failed in the field
+    /// with `missing field \`height\``. Payload copied from the report.
+    #[test]
+    fn a_mempool_entry_without_height_parses() {
+        let utxo = entries(
+            r#"{"result": [
+                {"tx_pos": 0, "tx_hash": "73c933af", "value": 44,
+                 "isSpentInMempoolTx": false, "hex": "76a914", "status": "unconfirmed"}
+            ]}"#,
+        );
+        assert_eq!(utxo.len(), 1, "the entry must parse at all");
+        assert_eq!(utxo[0].height, UNCONFIRMED_HEIGHT, "absent height is unconfirmed");
+        assert_eq!(utxo[0].value, 44);
+        assert_eq!(utxo[0].tx_hash, "73c933af");
     }
 
     #[test]
