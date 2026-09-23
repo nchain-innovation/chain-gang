@@ -7,6 +7,10 @@
 //! endpoint paths or the network -> `main`/`test`/`stn` mapping, update both
 //! implementations so they stay in sync.
 
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use async_lock::Mutex;
 use async_trait::async_trait;
 use reqwest::StatusCode;
 
@@ -28,10 +32,57 @@ struct BroadcastTxType {
     pub txhex: String,
 }
 
+/// Spaces out the HTTP requests an interface issues.
+///
+/// Slots are reserved rather than taken: a caller claims the next free moment,
+/// releases the lock, and only then waits for it. Holding the lock across the
+/// wait would serialise callers behind whoever got there first, so two
+/// concurrent requests would be spaced by the sum of their waits rather than
+/// by one interval.
+#[derive(Debug, Clone)]
+struct RateLimit {
+    /// Minimum gap between two requests.
+    interval: Duration,
+    /// The moment the next request may go out, shared by every clone so that
+    /// concurrent callers queue behind one another.
+    next: Arc<Mutex<Instant>>,
+}
+
+impl RateLimit {
+    fn new(requests_per_second: u32) -> Self {
+        // A limit of zero would mean an infinite interval, which is a stopped
+        // interface rather than a rate limit. Treated as one per second, the
+        // slowest rate that still makes progress.
+        let per_second = requests_per_second.max(1);
+        RateLimit {
+            interval: Duration::from_secs(1) / per_second,
+            next: Arc::new(Mutex::new(Instant::now())),
+        }
+    }
+
+    /// Wait until this request's slot comes round.
+    async fn acquire(&self) {
+        let slot = {
+            let mut next = self.next.lock().await;
+            // Not `*next` alone: after an idle spell the stored moment is in
+            // the past, and a burst would then be issued all at once.
+            let slot = (*next).max(Instant::now());
+            *next = slot + self.interval;
+            slot
+        };
+        let now = Instant::now();
+        if slot > now {
+            tokio::time::sleep(slot - now).await;
+        }
+    }
+}
+
 /// Blockchain interface backed by the WhatsOnChain API.
 #[derive(Debug, Clone)]
 pub struct WocInterface {
     network_type: Network,
+    /// Applied to every HTTP request below, when the caller asked for one.
+    rate_limit: Option<RateLimit>,
 }
 
 impl Default for WocInterface {
@@ -45,7 +96,50 @@ impl WocInterface {
     pub fn new() -> Self {
         WocInterface {
             network_type: Network::BSV_Testnet,
+            rate_limit: None,
         }
+    }
+
+    /// Bound the HTTP requests this interface issues to `requests_per_second`.
+    ///
+    /// This has to be set here rather than by the caller, because one
+    /// interface call is not one request: [`Self::get_balance`] makes two, and
+    /// [`Self::get_utxo`] one per 1000 UTXOs -- 21 for a busy mainnet address.
+    /// A caller that spaces its own calls to this type cannot see the paging
+    /// and so cannot bound the request rate; this is the only place the whole
+    /// burst is visible.
+    ///
+    /// Off by default, which is the behaviour of every release before this
+    /// one. WhatsOnChain documents up to 3 requests per second as free.
+    ///
+    /// The limit is per `WocInterface`. Clones share it, so cloning to use the
+    /// interface from several tasks keeps one budget; separately constructed
+    /// interfaces each get their own.
+    pub fn set_max_requests_per_second(&mut self, requests_per_second: u32) {
+        self.rate_limit = Some(RateLimit::new(requests_per_second));
+    }
+
+    /// [`Self::set_max_requests_per_second`], for a value being built.
+    pub fn with_max_requests_per_second(mut self, requests_per_second: u32) -> Self {
+        self.set_max_requests_per_second(requests_per_second);
+        self
+    }
+
+    /// Wait for this request's slot, if a limit is set.
+    async fn slot(&self) {
+        if let Some(rate_limit) = &self.rate_limit {
+            rate_limit.acquire().await;
+        }
+    }
+
+    /// GET `url`, paced.
+    ///
+    /// Every request this interface makes goes through here or through
+    /// [`Self::slot`], so that adding an endpoint cannot quietly escape the
+    /// limit.
+    async fn get(&self, url: &str) -> Result<reqwest::Response, ChainGangError> {
+        self.slot().await;
+        Ok(reqwest::get(url).await?)
     }
 
     /// Return the current network as a string
@@ -87,9 +181,11 @@ const MAX_PAGE_RETRIES: usize = 5;
 /// Without this, the move to a paginated endpoint would trade silent
 /// truncation for an outright failure on exactly the addresses it is meant to
 /// fix.
-async fn get_text_with_retry(url: &str) -> Result<String, ChainGangError> {
+async fn get_text_with_retry(woc: &WocInterface, url: &str) -> Result<String, ChainGangError> {
     for attempt in 0..MAX_PAGE_RETRIES {
-        let response = reqwest::get(url).await?;
+        // Inside the loop: a retry is another request, and the point of the
+        // limit is the requests, not the calls.
+        let response = woc.get(url).await?;
         let status = response.status().as_u16();
         if TRANSIENT_STATUS.contains(&status) && attempt + 1 < MAX_PAGE_RETRIES {
             log::warn!(
@@ -218,7 +314,7 @@ impl WocInterface {
         &self,
         url: &str,
     ) -> Result<T, ChainGangError> {
-        let txt = get_text_with_retry(url).await?;
+        let txt = get_text_with_retry(self, url).await?;
         serde_json::from_str(&txt).map_err(|x| {
             log::warn!("txt = {}", txt);
             ChainGangError::JSONParseError(format!("json parse error = {}", x))
@@ -238,7 +334,7 @@ impl BlockchainInterface for WocInterface {
 
         let network = self.get_network_str()?;
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/woc");
-        let response = reqwest::get(&url).await?;
+        let response = self.get(&url).await?;
         let response = check_status(response, &url)?;
         match response.text().await {
             Ok(txt) if txt == "Whats On Chain" => Ok(()),
@@ -326,7 +422,7 @@ impl BlockchainInterface for WocInterface {
                     })?
                     .to_string()
             };
-            let txt = get_text_with_retry(&url).await?;
+            let txt = get_text_with_retry(self, &url).await?;
             let data: UnspentAllPage = match serde_json::from_str(&txt) {
                 Ok(data) => data,
                 Err(x) => {
@@ -377,6 +473,9 @@ impl BlockchainInterface for WocInterface {
             txhex: tx.as_hexstr(),
         };
         //let data = serde_json::to_string(&data_for_broadcast).unwrap();
+        // Paced like the GETs: a broadcast is a request to the same host
+        // against the same budget.
+        self.slot().await;
         let client = reqwest::Client::new();
         let response = client.post(&url).json(&data_for_broadcast).send().await?;
         let status = response.status();
@@ -403,7 +502,7 @@ impl BlockchainInterface for WocInterface {
 
         let network = self.get_network_str()?;
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/tx/{txid}/hex");
-        let response = reqwest::get(&url).await?;
+        let response = self.get(&url).await?;
         let response = check_status(response, &url)?;
         match response.text().await {
             Ok(txt) => {
@@ -424,7 +523,7 @@ impl BlockchainInterface for WocInterface {
         let network = self.get_network_str()?;
         let url =
             format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers/latest?count=1");
-        let response = reqwest::get(&url).await?;
+        let response = self.get(&url).await?;
         let response = check_status(response, &url)?;
         match response.text().await {
             Ok(txt) => {
@@ -444,7 +543,7 @@ impl BlockchainInterface for WocInterface {
         log::debug!("get_block_headers");
         let network = self.get_network_str()?;
         let url = format!("https://api.whatsonchain.com/v1/bsv/{network}/block/headers");
-        let response = reqwest::get(&url).await?;
+        let response = self.get(&url).await?;
         let response = check_status(response, &url)?;
         match response.text().await {
             Ok(headers) => Ok(headers),
@@ -460,6 +559,99 @@ impl BlockchainInterface for WocInterface {
 mod tests {
     use super::*;
     use crate::interface::blockchain_interface::UtxoEntry;
+
+    // --- CS-457: pacing the requests, not the calls ---
+
+    /// The limit is off unless asked for, which is how every release before
+    /// this one behaved.
+    #[test]
+    fn an_interface_is_unlimited_unless_a_limit_is_set() {
+        assert!(WocInterface::new().rate_limit.is_none());
+        assert!(WocInterface::default().rate_limit.is_none());
+        assert!(WocInterface::new()
+            .with_max_requests_per_second(3)
+            .rate_limit
+            .is_some());
+    }
+
+    /// Three per second is one every 333ms, which is what WhatsOnChain's
+    /// documented free tier allows.
+    #[test]
+    fn the_interval_is_the_reciprocal_of_the_rate() {
+        assert_eq!(
+            RateLimit::new(3).interval,
+            Duration::from_secs(1) / 3,
+            "3/s is one every 333ms"
+        );
+        assert_eq!(RateLimit::new(1).interval, Duration::from_secs(1));
+    }
+
+    /// Zero would be an infinite interval -- a stopped interface rather than a
+    /// slow one.
+    #[test]
+    fn a_rate_of_zero_is_treated_as_one_per_second() {
+        assert_eq!(RateLimit::new(0).interval, Duration::from_secs(1));
+    }
+
+    /// The point of the whole change: successive requests are spaced, so a
+    /// paginated `get_utxo` cannot issue its pages all at once.
+    #[tokio::test]
+    async fn requests_are_spaced_by_the_interval() {
+        // 20/s is 50ms apart, short enough to keep the test quick and long
+        // enough that scheduling noise cannot account for the total.
+        let limit = RateLimit::new(20);
+        let started = Instant::now();
+        for _ in 0..4 {
+            limit.acquire().await;
+        }
+        // The first goes immediately, so four requests cost three intervals.
+        assert!(
+            started.elapsed() >= Duration::from_millis(150),
+            "four requests at 20/s took {:?}, which is less than three intervals",
+            started.elapsed()
+        );
+    }
+
+    /// An idle spell does not bank credit for a burst.
+    ///
+    /// Without clamping the stored moment to the present, a limiter left alone
+    /// for a while holds a next-slot far in the past, and the next several
+    /// requests all find their slot already due -- so the burst this exists to
+    /// prevent goes out in one go.
+    #[tokio::test]
+    async fn an_idle_spell_does_not_earn_a_free_burst() {
+        let limit = RateLimit::new(20);
+        limit.acquire().await;
+        tokio::time::sleep(Duration::from_millis(250)).await; // five intervals
+
+        let started = Instant::now();
+        for _ in 0..4 {
+            limit.acquire().await;
+        }
+        assert!(
+            started.elapsed() >= Duration::from_millis(150),
+            "the idle spell bought a burst: four requests took {:?}",
+            started.elapsed()
+        );
+    }
+
+    /// Clones share one budget, so using the interface from several tasks does
+    /// not multiply the rate.
+    #[tokio::test]
+    async fn clones_share_one_budget() {
+        let limit = RateLimit::new(20);
+        let other = limit.clone();
+        let started = Instant::now();
+        limit.acquire().await;
+        other.acquire().await;
+        limit.acquire().await;
+        other.acquire().await;
+        assert!(
+            started.elapsed() >= Duration::from_millis(150),
+            "clones paced independently: {:?}",
+            started.elapsed()
+        );
+    }
 
     /// A trimmed `/unspent/all` page, in the shape the live API actually
     /// sends: the array is nested under `result` alongside `error` and
