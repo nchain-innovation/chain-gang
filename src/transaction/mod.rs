@@ -118,7 +118,8 @@ mod tests {
         let sighash = Hash256([3u8; 32]);
         let signing_key = SigningKey::from_slice(&key).unwrap();
         let raw: Signature = signing_key.sign_prehash(&sighash.0).unwrap();
-        let high_s = Signature::from_der(flip_der_to_high_s(raw.to_der().as_bytes()).as_slice()).unwrap();
+        let high_s =
+            Signature::from_der(flip_der_to_high_s(raw.to_der().as_bytes()).as_slice()).unwrap();
 
         let encoded = encode_signature(high_s, SIGHASH_ALL | SIGHASH_FORKID);
         assert!(!signature_has_high_s(&encoded[..encoded.len() - 1]));
@@ -130,7 +131,8 @@ mod tests {
         let sighash = Hash256([3u8; 32]);
         let signing_key = SigningKey::from_slice(&key).unwrap();
         let raw: Signature = signing_key.sign_prehash(&sighash.0).unwrap();
-        let high_s = Signature::from_der(flip_der_to_high_s(raw.to_der().as_bytes()).as_slice()).unwrap();
+        let high_s =
+            Signature::from_der(flip_der_to_high_s(raw.to_der().as_bytes()).as_slice()).unwrap();
 
         let encoded = encode_signature(high_s, SIGHASH_ALL | SIGHASH_FORKID | SIGHASH_CHRONICLE);
         assert!(signature_has_high_s(&encoded[..encoded.len() - 1]));
@@ -147,20 +149,16 @@ mod tests {
             Signature::from_der(flip_der_to_high_s(raw.to_der().as_bytes()).as_slice()).unwrap();
         let normalized = high_s.normalize_s();
         assert_eq!(normalized, raw);
-        assert!(
-            signing_key
-                .verifying_key()
-                .verify_prehash(&sighash.0, &normalized)
-                .is_ok()
-        );
+        assert!(signing_key
+            .verifying_key()
+            .verify_prehash(&sighash.0, &normalized)
+            .is_ok());
         // k256 rejects non-normalized S at verify time; Chronicle nodes accept high-S
         // by verifying the equivalent normalized signature.
-        assert!(
-            signing_key
-                .verifying_key()
-                .verify_prehash(&sighash.0, &high_s)
-                .is_err()
-        );
+        assert!(signing_key
+            .verifying_key()
+            .verify_prehash(&sighash.0, &high_s)
+            .is_err());
     }
 
     #[test]
@@ -180,4 +178,3 @@ mod tests {
         assert_eq!(chronicle, expected);
     }
 }
-

@@ -348,8 +348,14 @@ mod tests {
     #[test]
     fn from_str_accepts_non_bsv_networks() {
         // Regression: these used to be rejected on some code paths (e.g. tx parsing).
-        assert_eq!("BTC_Mainnet".parse::<Network>().unwrap(), Network::BTC_Mainnet);
-        assert_eq!("BCH_Testnet".parse::<Network>().unwrap(), Network::BCH_Testnet);
+        assert_eq!(
+            "BTC_Mainnet".parse::<Network>().unwrap(),
+            Network::BTC_Mainnet
+        );
+        assert_eq!(
+            "BCH_Testnet".parse::<Network>().unwrap(),
+            Network::BCH_Testnet
+        );
     }
 
     #[test]

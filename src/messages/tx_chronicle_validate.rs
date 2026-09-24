@@ -7,7 +7,9 @@ use crate::script::op_codes::*;
 use crate::script::Script;
 use crate::test_util::flip_to_high_s;
 use crate::transaction::p2pkh::create_lock_script;
-use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_ALL, SIGHASH_CHRONICLE, SIGHASH_FORKID};
+use crate::transaction::sighash::{
+    sighash, SigHashCache, SIGHASH_ALL, SIGHASH_CHRONICLE, SIGHASH_FORKID,
+};
 use crate::util::hash160;
 use k256::ecdsa::signature::hazmat::PrehashSigner;
 use k256::ecdsa::signature::SignatureEncoding;
@@ -28,7 +30,9 @@ fn utxos_for_funding(funding: &Tx) -> LinkedHashMap<OutPoint, TxOut> {
 }
 
 fn verifying_key_as_bytes(verifying_key: &VerifyingKey) -> [u8; 33] {
-    verifying_key.to_sec1_bytes().to_vec()[..].try_into().unwrap()
+    verifying_key.to_sec1_bytes().to_vec()[..]
+        .try_into()
+        .unwrap()
 }
 
 #[test]
@@ -127,11 +131,9 @@ fn chronicle_validate_relaxed_clean_stack() {
         }],
         lock_time: 0,
     };
-    assert!(
-        chronicle_spend
-            .validate(true, true, &utxos, &HashSet::new())
-            .is_ok()
-    );
+    assert!(chronicle_spend
+        .validate(true, true, &utxos, &HashSet::new())
+        .is_ok());
 
     let legacy_spend = Tx {
         version: 1,
@@ -146,11 +148,9 @@ fn chronicle_validate_relaxed_clean_stack() {
         }],
         lock_time: 0,
     };
-    assert!(
-        legacy_spend
-            .validate(true, true, &utxos, &HashSet::new())
-            .is_err()
-    );
+    assert!(legacy_spend
+        .validate(true, true, &utxos, &HashSet::new())
+        .is_err());
 }
 
 #[test]
@@ -195,9 +195,7 @@ fn chronicle_validate_high_s_p2pkh() {
     let high_sig = flip_to_high_s(&low_sig);
 
     let mut unlock_script = Script::new();
-    unlock_script.append_data(
-        &[high_sig.to_der().to_vec(), vec![sighash_type]].concat(),
-    );
+    unlock_script.append_data(&[high_sig.to_der().to_vec(), vec![sighash_type]].concat());
     unlock_script.append_data(&public_key);
     spend.inputs[0].unlock_script = unlock_script;
 

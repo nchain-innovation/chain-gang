@@ -584,11 +584,11 @@ mod tests {
         let bip143_type = SIGHASH_ALL | SIGHASH_FORKID;
         let chronicle_type = SIGHASH_ALL | SIGHASH_FORKID | SIGHASH_CHRONICLE;
 
-        let bip143_hash = sighash(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
+        let bip143_hash =
+            sighash(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
         let chronicle_hash =
             sighash(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
-        let expected_otda =
-            otda_sighash(&tx, 0, &lock_script, 0, chronicle_type).unwrap();
+        let expected_otda = otda_sighash(&tx, 0, &lock_script, 0, chronicle_type).unwrap();
 
         assert_ne!(bip143_hash, chronicle_hash);
         assert_eq!(chronicle_hash, expected_otda);
