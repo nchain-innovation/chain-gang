@@ -198,70 +198,72 @@ fn bip143_sighash(
     Ok(sha256d(&s))
 }
 
-// Given a script and operator return a Vec of positions of the operator
+// Positions at which `operation` appears **as an opcode** (at an opcode
+// boundary). Found by walking the script with `next_op` rather than scanning
+// raw bytes, so a data byte that equals the opcode inside a pushdata payload
+// (e.g. a 0xab/0xac byte in a P2PKH hash) is not counted. See CS-483.
 fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
-    let positions: Vec<usize> = script_code
-        .iter()
-        .enumerate()
-        .filter_map(|(index, &value)| {
-            if value == operation {
-                Some(index)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut positions: Vec<usize> = Vec::new();
+    let mut i = 0;
+    while i < script_code.len() {
+        if script_code[i] == operation {
+            positions.push(i);
+        }
+        i = next_op(i, script_code);
+    }
     positions
 }
 
 // Remove instances of OP_CODESEPARATOR from the script_code
 // extract_subscript is the function that takes the script and the index of OP_CHECKSIG, and extracts the subscript)
 fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
-    if !script_code.contains(&OP_CODESEPARATOR) {
+    // OP_CODESEPARATOR / OP_CHECKSIG positions are found opcode-aware
+    // (find_all_occurances_of walks opcodes), so pushed-data bytes equal to
+    // those opcodes are never mistaken for the opcodes themselves (CS-483).
+    let codeseparator_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CODESEPARATOR);
+    if codeseparator_positions.is_empty() {
         // if there is no OP_CODESEPARATOR there is nothing to do
-        Ok(script_code.to_vec())
-    } else {
-        // Look for all OP_CHECKSIG
-        let checksig_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CHECKSIG);
-        if checksig_index > (checksig_positions.len() - 1) {
-            let err_msg = format!(
-                "checksig_index {} exceeds the number of OP_CHECKSIGs ({}) found in code",
-                checksig_index,
-                checksig_positions.len()
-            );
-            return Err(ChainGangError::BadArgument(err_msg));
-        };
-
-        let checksig_pos = checksig_positions.get(checksig_index).unwrap_or(&0);
-
-        // Look for all OP_CODESEPARATOR
-        let codeseparator_positions: Vec<usize> =
-            find_all_occurances_of(script_code, OP_CODESEPARATOR);
-
-        // We need to find the first OP_CODESEPARATOR before the OP_CHECKSIG pos
-        let start_subscript: usize = if codeseparator_positions.len() < 2 {
-            0
-        } else {
-            let filtered_code_pos: Vec<usize> = codeseparator_positions
-                .iter()
-                .copied()
-                .filter(|pos| pos < checksig_pos)
-                .collect();
-            *filtered_code_pos.last().unwrap_or(&0)
-        };
-
-        let mut sub_script = Vec::with_capacity(script_code.len() - start_subscript);
-        let mut i = start_subscript;
-
-        while i < script_code.len() {
-            let next = next_op(i, script_code);
-            if script_code[i] != op_codes::OP_CODESEPARATOR {
-                sub_script.extend_from_slice(&script_code[i..next]);
-            }
-            i = next;
-        }
-        Ok(sub_script)
+        return Ok(script_code.to_vec());
     }
+
+    // Look for all OP_CHECKSIG
+    let checksig_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CHECKSIG);
+    // `>=` (not `> len - 1`) so an empty list — a code-separated script with no
+    // OP_CHECKSIG — returns an error instead of underflowing `len - 1`.
+    if checksig_index >= checksig_positions.len() {
+        let err_msg = format!(
+            "checksig_index {} exceeds the number of OP_CHECKSIGs ({}) found in code",
+            checksig_index,
+            checksig_positions.len()
+        );
+        return Err(ChainGangError::BadArgument(err_msg));
+    }
+
+    let checksig_pos = checksig_positions.get(checksig_index).unwrap_or(&0);
+
+    // We need to find the first OP_CODESEPARATOR before the OP_CHECKSIG pos
+    let start_subscript: usize = if codeseparator_positions.len() < 2 {
+        0
+    } else {
+        let filtered_code_pos: Vec<usize> = codeseparator_positions
+            .iter()
+            .copied()
+            .filter(|pos| pos < checksig_pos)
+            .collect();
+        *filtered_code_pos.last().unwrap_or(&0)
+    };
+
+    let mut sub_script = Vec::with_capacity(script_code.len() - start_subscript);
+    let mut i = start_subscript;
+
+    while i < script_code.len() {
+        let next = next_op(i, script_code);
+        if script_code[i] != op_codes::OP_CODESEPARATOR {
+            sub_script.extend_from_slice(&script_code[i..next]);
+        }
+        i = next;
+    }
+    Ok(sub_script)
 }
 
 /// Generates the transaction digest for signing using OTDA (Original Transaction Digest Algorithm).
@@ -647,6 +649,7 @@ mod tests {
         let mut script_code: Vec<u8> = Vec::new();
         script_code.extend_from_slice(&[OP_CODESEPARATOR, OP_DUP, OP_HASH160]);
         let decoded = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.push(0x14); // push the 20-byte hash (valid P2PKH encoding)
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
@@ -670,6 +673,54 @@ mod tests {
         assert_eq!(actual_subscript, script_code);
     }
 
+    // Regression for CS-483.
+    //
+    // A standard P2PKH lock script `76 a9 14 <20-byte hash> 88 ac` contains no
+    // real OP_CODESEPARATOR, so extract_subscript must return it unchanged.
+    // The bug: extract_subscript detects OP_CODESEPARATOR (0xab) by raw-byte
+    // scanning instead of walking opcodes, so when the pushed hash contains two
+    // or more 0xab bytes they are mistaken for OP_CODESEPARATOR opcodes and the
+    // subscript is cut mid-hash -> wrong BIP-143 digest -> NULLFAIL on chain.
+    //
+    // Failing script from the ticket (hash bytes fe ef [ab] c7 [ab] 60 ... 95):
+    #[test]
+    fn cs483_p2pkh_hash_with_two_0xab_bytes_is_not_truncated() {
+        let script_code =
+            hex::decode("76a914feefabc7ab60505d68587290168a512cb3b3349588ac").unwrap();
+        // Two 0xab bytes inside the pushed 20-byte hash; no real OP_CODESEPARATOR.
+        assert_eq!(
+            script_code
+                .iter()
+                .filter(|&&b| b == OP_CODESEPARATOR)
+                .count(),
+            2,
+            "test fixture should contain two 0xab bytes in the hash"
+        );
+
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        assert_eq!(
+            actual_subscript, script_code,
+            "pushed-data 0xab bytes must not be treated as OP_CODESEPARATOR"
+        );
+    }
+
+    // Control: a single 0xab in the hash is harmless today (start_subscript
+    // stays 0). Kept to pin the boundary the fix must preserve.
+    #[test]
+    fn cs483_p2pkh_hash_with_one_0xab_byte_is_not_truncated() {
+        let script_code =
+            hex::decode("76a914feefabc7cc60505d68587290168a512cb3b3349588ac").unwrap();
+        assert_eq!(
+            script_code
+                .iter()
+                .filter(|&&b| b == OP_CODESEPARATOR)
+                .count(),
+            1
+        );
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        assert_eq!(actual_subscript, script_code);
+    }
+
     #[test]
     fn op_codeseparator_test3() {
         let mut script_code: Vec<u8> = Vec::new();
@@ -682,6 +733,7 @@ mod tests {
             OP_HASH160,
         ]);
         let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.push(0x14); // push the 20-byte hash (valid P2PKH encoding)
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
@@ -699,6 +751,7 @@ mod tests {
         let mut script_code: Vec<u8> = Vec::new();
         script_code.extend_from_slice(&[OP_CODESEPARATOR, OP_1, OP_DROP, OP_DUP, OP_HASH160]);
         let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.push(0x14); // push the 20-byte hash (valid P2PKH encoding)
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG, OP_VERIFY, OP_1]);
 
@@ -709,58 +762,68 @@ mod tests {
         assert_eq!(actual_subscript, expected_subscript);
     }
 
+    // Multi-OP_CODESEPARATOR subscript extraction, checksig_index 0. Uses valid
+    // P2PKH encodings (the 20-byte hash is pushed with 0x14), so the opcode walk
+    // introduced for CS-483 can parse them.
+    //
+    // NOTE: the subscript currently removes ALL OP_CODESEPARATORs (FindAndDelete
+    // style, as legacy/OTDA sighash does). Whether a separator occurring *after*
+    // the executed one should be retained (BIP-143 "rule 2") is algorithm-
+    // specific and pre-existing; it is a separate concern from CS-483 and is not
+    // changed here. This test pins the current behaviour.
     #[test]
-
     fn op_codeseparator_test5_1() {
+        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
         let mut script_code: Vec<u8> = Vec::new();
         script_code.extend_from_slice(&[
-            OP_CODESEPARATOR, // deleted
+            OP_CODESEPARATOR,
             OP_2DUP,
             OP_1,
             OP_DROP,
-            OP_CODESEPARATOR, // deleted
+            OP_CODESEPARATOR, // last executed before the signed OP_CHECKSIG
             OP_DUP,
             OP_HASH160,
+            0x14, // push 20-byte hash
         ]);
-        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[
             OP_EQUALVERIFY,
             OP_CHECKSIG,
             OP_VERIFY,
-            OP_CODESEPARATOR, //Extra
+            OP_CODESEPARATOR, // later separator (see NOTE above)
             OP_DUP,
             OP_HASH160,
+            0x14,
         ]);
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
-        let mut expected_subscript_one = Vec::new();
-        expected_subscript_one.extend_from_slice(&[OP_DUP, OP_HASH160]);
-        expected_subscript_one.extend_from_slice(&decoded);
-        expected_subscript_one.extend_from_slice(&[
+        // Subscript from after the last executed OP_CODESEPARATOR, with all
+        // remaining OP_CODESEPARATORs removed.
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&[OP_DUP, OP_HASH160, 0x14]);
+        expected.extend_from_slice(&decoded);
+        expected.extend_from_slice(&[
             OP_EQUALVERIFY,
             OP_CHECKSIG,
             OP_VERIFY,
-            OP_CODESEPARATOR, // Should be Kept as per note 2 below
             OP_DUP,
             OP_HASH160,
+            0x14,
         ]);
-        expected_subscript_one.extend_from_slice(&decoded);
-        expected_subscript_one.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+        expected.extend_from_slice(&decoded);
+        expected.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
-        /*
-        1) Deleting its calling OP_CODESEPARATOR and any preceding parts of the script from the script
-        2) Any OP_CODESEPARATOR opcodes that appear later in script, than the most recently executed code separator, will be included in the script
-        https://bitcoinops.org/en/topics/op_codeseparator/
-        */
-
-        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
-        assert_eq!(actual_subscript, expected_subscript_one);
+        let actual = extract_subscript(&script_code, 0).unwrap();
+        assert_eq!(actual, expected);
     }
 
+    // Same script, checksig_index 1: the last executed OP_CODESEPARATOR before
+    // the second OP_CHECKSIG is the "later" one, so the subscript is the second
+    // P2PKH clause.
     #[test]
     fn op_codeseparator_test5_2() {
+        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
         let mut script_code: Vec<u8> = Vec::new();
         script_code.extend_from_slice(&[
             OP_CODESEPARATOR,
@@ -770,26 +833,27 @@ mod tests {
             OP_CODESEPARATOR,
             OP_DUP,
             OP_HASH160,
+            0x14,
         ]);
-        let decoded: Vec<u8> = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[
             OP_EQUALVERIFY,
             OP_CHECKSIG,
             OP_VERIFY,
-            OP_CODESEPARATOR, //Extra
+            OP_CODESEPARATOR, // last executed before the 2nd OP_CHECKSIG
             OP_DUP,
             OP_HASH160,
+            0x14,
         ]);
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
-        let mut expected_subscript_two = Vec::new();
-        expected_subscript_two.extend_from_slice(&[OP_DUP, OP_HASH160]);
-        expected_subscript_two.extend_from_slice(&decoded);
-        expected_subscript_two.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&[OP_DUP, OP_HASH160, 0x14]);
+        expected.extend_from_slice(&decoded);
+        expected.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
-        let actual_subscript = extract_subscript(&script_code, 1).unwrap();
-        assert_eq!(actual_subscript, expected_subscript_two);
+        let actual = extract_subscript(&script_code, 1).unwrap();
+        assert_eq!(actual, expected);
     }
 }
