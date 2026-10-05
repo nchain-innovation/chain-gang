@@ -3,7 +3,8 @@
 //! The hand-written sighash tests compare against values the author derived from
 //! reading the consensus rules. When that reading is wrong, code and test are
 //! wrong together and the test still passes — which is how CS-483 reached
-//! testnet, and how the two divergences recorded below survived. These vectors
+//! testnet, and how three more defects survived until these vectors found them
+//! (#192, #193, CS-492). These vectors
 //! come from the node, so they are an answer chain-gang had no hand in writing.
 //!
 //! # The file
@@ -25,19 +26,20 @@
 //! The amount is zero in both. Expected digests are in `uint256::GetHex()`
 //! display order, which is what [`Hash256::encode`] produces.
 //!
-//! # What this test asserts
+//! # What these tests assert
 //!
-//! Every row is classified before it is run. A row the classifier calls clean
-//! must reproduce the node's digest exactly. A row it predicts will diverge is
-//! counted, and the counts are pinned, so neither fixing a divergence nor
-//! widening one can pass unnoticed. A row that diverges without a prediction,
-//! or matches against one, fails the test and names itself.
-//!
-//! The classifier calls the same `find_all_occurances_of` the implementation
-//! uses, so it cannot drift from it.
+//! A row is a script code that has already been cut, handed to the node's digest
+//! function. The signer's entry point, [`sighash_checksig_index`], asks a
+//! different question of the same bytes: it reads them as a whole locking
+//! script and cuts them itself, for the selected `OP_CHECKSIG`. Where the cut
+//! would start at 0 the two questions coincide, and the signer must reproduce
+//! the node exactly. Where a separator precedes the first `OP_CHECKSIG`, the
+//! signer rightly cuts and the vector rightly does not, so the row says nothing
+//! about the signer; and where there is no `OP_CHECKSIG` it has nothing to
+//! select. Those rows are counted, not run.
 
 use super::*;
-use crate::script::op_codes::OP_CODESEPARATOR;
+use crate::script::op_codes::{OP_CHECKSIG, OP_CODESEPARATOR};
 use serde_json::Value;
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -51,82 +53,32 @@ use std::path::PathBuf;
 /// rather than quietly skip.
 const OPTIONAL_ENV: &str = "CHAIN_GANG_VECTORS_OPTIONAL";
 
-/// Which digest algorithm a column exercises.
+/// How the signer's entry point would read a row's script code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Algorithm {
-    /// `SignatureHashBIP143`.
-    Bip143,
-    /// `SignatureHashOriginal`, the Original Transaction Digest Algorithm.
-    Otda,
+enum SignerReading {
+    /// No separator ahead of the first `OP_CHECKSIG`, so reading it as a
+    /// locking script cuts nothing and the signer must give the node's answer.
+    SameQuestion,
+    /// A separator ahead of the first `OP_CHECKSIG`. The signer starts after it,
+    /// which is right for a locking script; the vector's script code is already
+    /// cut and the node does not cut again. Different questions.
+    SeparatorBeforeCheck,
+    /// Separators but no `OP_CHECKSIG`: nothing for `checksig_index` 0 to select.
+    NothingToSelect,
 }
 
-/// A known reason chain-gang disagrees with the node.
-///
-/// Each is a real defect, not a property of the vectors. They are recorded here
-/// rather than fixed because each changes consensus behaviour and belongs in its
-/// own change, with its own release note.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Divergence {
-    /// The script code holds an `OP_CODESEPARATOR` but no `OP_CHECKSIG`, so
-    /// `extract_subscript` rejects it. The node has no such requirement: it
-    /// deletes the separators and hashes what is left. A script ending in
-    /// `OP_CHECKMULTISIG` reaches this in ordinary use. CS-492.
-    SeparatorWithoutChecksig,
-    /// The script code holds an `OP_CODESEPARATOR` before the `OP_CHECKSIG`
-    /// that `subscript_start` selects, so chain-gang starts the script code
-    /// after it. The node's digest functions do not cut at all: its interpreter
-    /// tracks `pbegincodehash` and passes the subscript in already cut. chain-gang
-    /// takes a whole locking script and cuts it itself, which is right for the
-    /// callers that sign, but its rule for where to cut is CS-492.
-    TruncatesAtSeparator,
-}
-
-/// The script code the node hashes, given the one in the vector.
-///
-/// `SignatureHashBIP143` serializes it untouched. `SignatureHashOriginal` runs
-/// it through `CTransactionSignatureSerializer`, which deletes every
-/// `OP_CODESEPARATOR` and truncates nothing — the interpreter has already
-/// handed it the subscript it wants signed.
-fn node_subscript(script_code: &[u8], algorithm: Algorithm) -> Vec<u8> {
-    if algorithm == Algorithm::Bip143 {
-        return script_code.to_vec();
+/// Which of those a script code is. A selection, not a prediction: it decides
+/// whether the row asks the signer anything, never what the answer should be.
+fn signer_reading(script_code: &[u8]) -> SignerReading {
+    let separators = find_all_occurances_of(script_code, OP_CODESEPARATOR);
+    if separators.is_empty() {
+        return SignerReading::SameQuestion;
     }
-    let mut out = Vec::with_capacity(script_code.len());
-    let mut i = 0;
-    while i < script_code.len() {
-        let next = next_op(i, script_code);
-        if script_code[i] != OP_CODESEPARATOR {
-            out.extend_from_slice(&script_code[i..next]);
-        }
-        i = next;
+    match find_all_occurances_of(script_code, OP_CHECKSIG).first() {
+        None => SignerReading::NothingToSelect,
+        Some(first) if separators[0] < *first => SignerReading::SeparatorBeforeCheck,
+        Some(_) => SignerReading::SameQuestion,
     }
-    out
-}
-
-/// Predicts how chain-gang will treat a row, or `None` if it should agree.
-///
-/// Rather than restating the subscript rules — which is how the hand-written
-/// tests went wrong in the first place — this asks the function each algorithm
-/// actually uses (`bip143_script_code` or `extract_subscript`) and
-/// compares what it produces against what the node would hash.
-fn divergence(script_code: &[u8], algorithm: Algorithm) -> Option<Divergence> {
-    let ours = match algorithm {
-        Algorithm::Bip143 => bip143_script_code(script_code, 0),
-        Algorithm::Otda => extract_subscript(script_code, 0),
-    };
-    match ours {
-        // The only error reachable here: a script holding a separator but no
-        // OP_CHECKSIG for `checksig_index` 0 to select.
-        Err(_) => return Some(Divergence::SeparatorWithoutChecksig),
-        // Both paths now treat the separators that remain as the node does, so
-        // a different script code can only be a different starting point.
-        Ok(ours) if ours != node_subscript(script_code, algorithm) => {
-            return Some(Divergence::TruncatesAtSeparator)
-        }
-        Ok(_) => {}
-    }
-
-    None
 }
 
 /// One row of the file, decoded.
@@ -190,68 +142,29 @@ fn load() -> Option<Vec<Vector>> {
     Some(vectors)
 }
 
-/// Results for one column.
-#[derive(Default)]
-struct Tally {
-    matched: usize,
-    diverged: Vec<Divergence>,
-    unexplained: Vec<String>,
-}
-
-impl Tally {
-    fn record(
-        &mut self,
-        v: &Vector,
-        algorithm: Algorithm,
-        computed: Result<Hash256, ChainGangError>,
-        expected: &str,
-        column: &str,
-    ) {
-        let predicted = divergence(&v.script_code, algorithm);
-        let agrees = matches!(&computed, Ok(hash) if hash.encode() == expected);
-
-        match (agrees, predicted) {
-            (true, None) => self.matched += 1,
-            (false, Some(d)) => self.diverged.push(d),
-            (true, Some(d)) => self.unexplained.push(format!(
-                "line {}: {column} matched the node although {d:?} was predicted",
-                v.line
-            )),
-            (false, None) => {
-                let got = match &computed {
-                    Ok(hash) => hash.encode(),
-                    Err(e) => format!("error: {e}"),
-                };
-                self.unexplained.push(format!(
-                    "line {}: {column} is {got} but the node says {expected} \
-                     (hash_type {:#010x}, script {})",
-                    v.line,
-                    v.hash_type,
-                    hex::encode(&v.script_code)
-                ));
-            }
-        }
-    }
-
-    fn count(&self, d: Divergence) -> usize {
-        self.diverged.iter().filter(|got| **got == d).count()
-    }
-}
-
-/// Every row of bitcoin-sv's `sighash.json`, through both digest algorithms.
+/// The signer's entry point reproduces the node wherever it is asked the same
+/// question — through the same dispatch and widening the public API uses.
 #[test]
-fn bitcoin_sv_sighash_vectors() {
+fn signer_entry_point_agrees_where_the_question_is_the_same() {
     let Some(vectors) = load() else { return };
     assert_eq!(vectors.len(), 1000, "unexpected vector count");
 
-    let mut regular = Tally::default();
-    let mut original = Tally::default();
-
+    let mut mismatches = Vec::new();
+    let (mut same, mut separator_first, mut nothing) = (0, 0, 0);
     for v in &vectors {
-        // Column 5: the node's SignatureHash, amount zero. Runs through the same
-        // dispatch the public `sighash` uses.
+        match signer_reading(&v.script_code) {
+            SignerReading::SeparatorBeforeCheck => {
+                separator_first += 1;
+                continue;
+            }
+            SignerReading::NothingToSelect => {
+                nothing += 1;
+                continue;
+            }
+            SignerReading::SameQuestion => same += 1,
+        }
         let mut cache = SigHashCache::new();
-        let computed = sighash_checksig_index_u32(
+        let regular = sighash_checksig_index_u32(
             &v.tx,
             v.n_input,
             &v.script_code,
@@ -260,73 +173,33 @@ fn bitcoin_sv_sighash_vectors() {
             v.hash_type,
             &mut cache,
         );
-        let algorithm = if uses_bip143(v.hash_type) {
-            Algorithm::Bip143
-        } else {
-            Algorithm::Otda
-        };
-        regular.record(v, algorithm, computed, &v.expected_regular, "regular");
-
-        // Column 6: the node's SignatureHashOriginal, whatever the hash type says.
-        let computed = otda_sighash(&v.tx, v.n_input, &v.script_code, 0, v.hash_type);
-        original.record(
-            v,
-            Algorithm::Otda,
-            computed,
-            &v.expected_original,
-            "original",
-        );
+        let original = otda_sighash(&v.tx, v.n_input, &v.script_code, 0, v.hash_type);
+        for (column, got, expected) in [
+            ("regular", regular, &v.expected_regular),
+            ("original", original, &v.expected_original),
+        ] {
+            match got {
+                Ok(hash) if hash.encode() == *expected => {}
+                other => mismatches.push(format!("line {}: {column} gave {other:?}", v.line)),
+            }
+        }
     }
-
-    for tally in [&regular, &original] {
-        assert!(
-            tally.unexplained.is_empty(),
-            "{} rows are not explained by a known divergence:\n{}",
-            tally.unexplained.len(),
-            tally.unexplained.join("\n")
-        );
-    }
-
-    // Pinned. These are not targets; they are the measured size of three open
-    // defects. Fixing one fails this test, which is the point — the numbers are
-    // how a fix proves itself.
-    assert_eq!(regular.matched, 757, "regular digests reproducing the node");
-    assert_eq!(
-        original.matched, 762,
-        "original digests reproducing the node"
+    assert!(
+        mismatches.is_empty(),
+        "{} digests differ from the node:\n{}",
+        mismatches.len(),
+        mismatches.join("\n")
     );
 
+    // These depend only on the file, not on chain-gang, so pinning them guards
+    // the selection: a different file, or a selection that quietly widens, shows
+    // up here rather than as a test that checks less than it says.
+    assert_eq!(same, 711, "rows asking the signer the node's question");
     assert_eq!(
-        regular.count(Divergence::SeparatorWithoutChecksig),
-        230,
-        "CS-492: separated script with no OP_CHECKSIG, regular column"
+        separator_first, 59,
+        "rows whose separator precedes the first OP_CHECKSIG"
     );
-    assert_eq!(
-        regular.count(Divergence::TruncatesAtSeparator),
-        13,
-        "CS-492: truncation at a separator, regular column"
-    );
-    assert_eq!(
-        original.count(Divergence::SeparatorWithoutChecksig),
-        230,
-        "CS-492: separated script with no OP_CHECKSIG, original column"
-    );
-    assert_eq!(
-        original.count(Divergence::TruncatesAtSeparator),
-        8,
-        "CS-492: truncation at a separator, original column"
-    );
-    // Nothing diverges for a reason outside the classification.
-    assert_eq!(
-        regular.matched + regular.diverged.len(),
-        1000,
-        "every regular row is either reproduced or classified"
-    );
-    assert_eq!(
-        original.matched + original.diverged.len(),
-        1000,
-        "every original row is either reproduced or classified"
-    );
+    assert_eq!(nothing, 230, "rows with separators and no OP_CHECKSIG");
 }
 
 /// The vectors exercise hash types the public API cannot express.

@@ -255,9 +255,15 @@ fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
 ///
 /// Both digest algorithms start from this one rule; they differ only in what
 /// they do with the separators that remain (see [`extract_subscript`] and
-/// [`bip143_script_code`]). The rule is still wrong for a single non-leading
-/// separator, which it ignores. That is CS-492, kept here unchanged so it can be
-/// fixed in one place.
+/// [`bip143_script_code`]).
+///
+/// The number of separators does not matter. This used to return 0 whenever
+/// there was only one, which was right only when that one was the first
+/// opcode: anywhere else, the opcodes before it stayed in the script code, the
+/// digest differed from the node's, and the signature failed with NULLFAIL
+/// (CS-492). Even the first-opcode case was right only because the separator
+/// was then deleted; once BIP-143 keeps separators, starting at 0 would sign
+/// the separator itself.
 fn subscript_start(script_code: &[u8], checksig_index: usize) -> Result<usize, ChainGangError> {
     // OP_CODESEPARATOR / OP_CHECKSIG positions are found opcode-aware
     // (find_all_occurances_of walks opcodes), so pushed-data bytes equal to
@@ -282,13 +288,8 @@ fn subscript_start(script_code: &[u8], checksig_index: usize) -> Result<usize, C
     }
     let checksig_pos = checksig_positions[checksig_index];
 
-    // CS-492: a lone separator is ignored rather than cut at.
-    if codeseparator_positions.len() < 2 {
-        return Ok(0);
-    }
-
-    // The last OP_CODESEPARATOR before the selected OP_CHECKSIG; the script
-    // code starts just after it, as pbegincodehash does.
+    // The last OP_CODESEPARATOR before the selected OP_CHECKSIG, however many
+    // there are; the script code starts just after it, as pbegincodehash does.
     Ok(codeseparator_positions
         .iter()
         .rev()
@@ -1142,6 +1143,43 @@ mod tests {
         let without =
             sighash_checksig_index(&tx, 0, &stripped, 0, 0, SIGHASH_ALL, &mut cache).unwrap();
         assert_eq!(with_separators, without);
+    }
+
+    /// CS-492's reproduction, as the ticket gives it: one separator, not the
+    /// first opcode. The node starts the script code after it; this used to keep
+    /// `OP_1 OP_DROP`.
+    ///
+    /// No separator is left after the cut, so the two algorithms must agree and
+    /// the test pins nothing about what happens to later ones (CS-488).
+    #[test]
+    fn single_separator_not_first() {
+        let hash = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        let mut script = vec![OP_1, OP_DROP, OP_CODESEPARATOR, OP_DUP, OP_HASH160, 0x14];
+        script.extend_from_slice(&hash);
+        script.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        // node: script code starts after the executed OP_CODESEPARATOR
+        let mut node = vec![OP_DUP, OP_HASH160, 0x14];
+        node.extend_from_slice(&hash);
+        node.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
+        assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
+    }
+
+    /// One separator, as the first opcode. The old rule got this right only by
+    /// accident: it started at 0 and the separator was then deleted. BIP-143
+    /// keeps separators, so starting at 0 would sign `OP_CODESEPARATOR` itself
+    /// and the node, which starts after it, would reject the signature.
+    #[test]
+    fn single_leading_separator_is_not_signed() {
+        let mut script = vec![OP_CODESEPARATOR, 0x21, 0x02];
+        script.extend_from_slice(&[0x5a; 32]);
+        script.push(OP_CHECKSIG);
+        let node = script[1..].to_vec();
+
+        assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
+        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
     }
 }
 
