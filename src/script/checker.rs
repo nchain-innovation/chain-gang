@@ -102,10 +102,13 @@ impl Checker for ZChecker {
         pubkey: &[u8],
         _script: &[u8],
     ) -> Result<bool, ChainGangError> {
+        // An empty signature fails the check rather than the script, as in the
+        // node: "a compact way to provide an invalid signature for use with
+        // CHECK(MULTI)SIG", passed by its encoding checks and simply false. It
+        // is also the one failing signature NULLFAIL allows, which the
+        // interpreter already exempts (#210).
         if sig.is_empty() {
-            return Err(ChainGangError::ScriptError(
-                "Signature too short".to_string(),
-            ));
+            return Ok(false);
         }
         let sighash_type = sig[sig.len() - 1];
         if !is_defined_sighash_type(sighash_type) {
@@ -193,10 +196,13 @@ impl Checker for ZVersionChecker {
         pubkey: &[u8],
         _script: &[u8],
     ) -> Result<bool, ChainGangError> {
+        // An empty signature fails the check rather than the script, as in the
+        // node: "a compact way to provide an invalid signature for use with
+        // CHECK(MULTI)SIG", passed by its encoding checks and simply false. It
+        // is also the one failing signature NULLFAIL allows, which the
+        // interpreter already exempts (#210).
         if sig.is_empty() {
-            return Err(ChainGangError::ScriptError(
-                "Signature too short".to_string(),
-            ));
+            return Ok(false);
         }
         let sighash_type = sig[sig.len() - 1];
         if !is_defined_sighash_type(sighash_type) {
@@ -268,10 +274,13 @@ impl Checker for TransactionChecker<'_> {
         pubkey: &[u8],
         script: &[u8],
     ) -> Result<bool, ChainGangError> {
+        // An empty signature fails the check rather than the script, as in the
+        // node: "a compact way to provide an invalid signature for use with
+        // CHECK(MULTI)SIG", passed by its encoding checks and simply false. It
+        // is also the one failing signature NULLFAIL allows, which the
+        // interpreter already exempts (#210).
         if sig.is_empty() {
-            return Err(ChainGangError::ScriptError(
-                "Signature too short".to_string(),
-            ));
+            return Ok(false);
         }
         let sighash_type = sig[sig.len() - 1];
         // STRICTENC came with FORKID; before it, transactions with undefined
@@ -463,6 +472,145 @@ mod tests {
         assert!(vk_vec.len() == 33);
         vk_vec[..].try_into().unwrap()
     }
+    /// Spends `lock_script` with `unlock_script` through a TransactionChecker,
+    /// with FORKID required and malleability rules enforced (version 1).
+    fn eval_spend_with(lock_script: &Script, unlock_script: &[u8]) -> Result<(), ChainGangError> {
+        let tx_1 = Tx {
+            version: 1,
+            inputs: vec![],
+            outputs: vec![TxOut {
+                satoshis: 10,
+                lock_script: lock_script.clone(),
+            }],
+            lock_time: 0,
+        };
+        let tx_2 = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: tx_1.hash(),
+                    index: 0,
+                },
+                unlock_script: Script(unlock_script.to_vec()),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 9,
+                lock_script: Script(vec![OP_TRUE]),
+            }],
+            lock_time: 0,
+        };
+        let mut cache = SigHashCache::new();
+        let mut checker = TransactionChecker {
+            tx: &tx_2,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 10,
+            require_sighash_forkid: true,
+            script_tx_version: None,
+        };
+        let mut script = Script::new();
+        script.append_slice(unlock_script);
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(&lock_script.0);
+        script.eval(&mut checker, NO_FLAGS)
+    }
+
+    fn empty_sig_test_key() -> [u8; 33] {
+        verifying_key_as_bytes(SigningKey::from_slice(&[41; 32]).unwrap().verifying_key())
+    }
+
+    fn assert_fails_with(result: Result<(), ChainGangError>, reason: &str) {
+        match result {
+            Err(e) if e.to_string().contains(reason) => {}
+            other => panic!("expected {reason:?}, got {other:?}"),
+        }
+    }
+
+    /// An empty signature makes CHECKSIG push false; it does not abort the
+    /// script (#210). A bitcoin-sv node accepted and mined exactly this spend,
+    /// and its script_tests.json expects `0 | <pk> CHECKSIG NOT` to pass,
+    /// NULLFAIL included.
+    #[test]
+    fn empty_signature_fails_checksig_without_aborting() {
+        let mut lock = Script::new();
+        lock.append_data(&empty_sig_test_key());
+        lock.append(OP_CHECKSIG);
+        let mut negated = lock.clone();
+        negated.append(OP_NOT);
+
+        eval_spend_with(&negated, &[OP_0]).unwrap();
+        // Un-negated, the spend fails because the check was false, not
+        // because the signature was empty.
+        assert_fails_with(eval_spend_with(&lock, &[OP_0]), "Top of stack is false");
+    }
+
+    /// The same for CHECKMULTISIG: an empty signature matches no key.
+    #[test]
+    fn empty_signature_fails_checkmultisig_without_aborting() {
+        let mut lock = Script::new();
+        lock.append(OP_1);
+        lock.append_data(&empty_sig_test_key());
+        lock.append(OP_1);
+        lock.append(OP_CHECKMULTISIG);
+        lock.append(OP_NOT);
+        eval_spend_with(&lock, &[OP_0, OP_0]).unwrap();
+    }
+
+    /// CHECKSIGVERIFY with an empty signature fails as a failed check.
+    #[test]
+    fn empty_signature_fails_checksigverify() {
+        let mut lock = Script::new();
+        lock.append_data(&empty_sig_test_key());
+        lock.append(OP_CHECKSIGVERIFY);
+        lock.append(OP_1);
+        assert_fails_with(eval_spend_with(&lock, &[OP_0]), "OP_CHECKSIGVERIFY failed");
+    }
+
+    /// An empty signature can steer a script down its failed-check branch.
+    #[test]
+    fn empty_signature_takes_the_failed_check_branch() {
+        let mut lock = Script::new();
+        lock.append_data(&empty_sig_test_key());
+        lock.append(OP_CHECKSIG);
+        lock.append(OP_IF);
+        lock.append(OP_0);
+        lock.append(OP_ELSE);
+        lock.append(OP_1);
+        lock.append(OP_ENDIF);
+        eval_spend_with(&lock, &[OP_0]).unwrap();
+    }
+
+    /// Only the empty signature is exempt: a non-empty one that fails still
+    /// breaks NULLFAIL, as in the node.
+    #[test]
+    fn nullfail_still_rejects_a_non_empty_invalid_signature() {
+        let mut lock = Script::new();
+        lock.append_data(&empty_sig_test_key());
+        lock.append(OP_CHECKSIG);
+        lock.append(OP_NOT);
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let wrong = generate_signature(&[42; 32], &Hash256([9; 32]), sighash_type).unwrap();
+        let mut unlock = Script::new();
+        unlock.append_data(&wrong);
+        assert_fails_with(eval_spend_with(&lock, &unlock.0), "NULLFAIL");
+    }
+
+    /// The Z checkers treat an empty signature the same way.
+    #[test]
+    fn z_checkers_return_false_for_an_empty_signature() {
+        let pk = empty_sig_test_key();
+        let mut z = ZChecker {
+            z: Hash256([0; 32]),
+        };
+        assert!(!z.check_sig(&[], &pk, &[]).unwrap());
+        let mut zv = ZVersionChecker {
+            z: Hash256([0; 32]),
+            tx_version: 1,
+        };
+        assert!(!zv.check_sig(&[], &pk, &[]).unwrap());
+    }
+
     /// Spends a P2PKH output with a signature made under `sighash_type`, and
     /// returns the interpreter's verdict through a TransactionChecker.
     fn p2pkh_spend_with(
