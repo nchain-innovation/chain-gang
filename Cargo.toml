@@ -10,6 +10,12 @@ keywords = ["bitcoin", "sv", "cash", "crypto"]
 license = "MIT"
 edition = "2021"
 readme = "docs/README-chain-gang.md"
+# The consensus vectors in tests/data are bitcoin-sv's, under the Open BSV
+# License, not this crate's MIT. They stay in the repository, where the tests
+# that need them run, and out of the published artifact so everything on
+# crates.io is MIT. See tests/data/README.md. The tests skip when the directory
+# is absent; set CHAIN_GANG_VECTORS_OPTIONAL=1 to allow that.
+exclude = ["tests/data/**"]
 
 [dependencies]
 byteorder = "1.5"
