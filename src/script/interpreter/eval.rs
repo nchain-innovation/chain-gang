@@ -13,8 +13,8 @@ use ripemd::{Digest, Ripemd160};
 use super::multisig::check_multisig;
 use super::push::{check_canonical_push, check_stack_size, next_op, remains, skip_branch};
 use super::rules::{
-    max_script_num_length, pop_bigint_for_eval, pop_bool_for_if, pop_num_for_eval, substr_error,
-    tx_enforces_malleability_rules, verif_branch_exec,
+    enforces_policy_rules, max_script_num_length, pop_bigint_for_eval, pop_bool_for_if,
+    pop_num_for_eval, substr_error, tx_enforces_malleability_rules, verif_branch_exec,
 };
 use super::script_code::{checksig_script_code, multisig_script_code, TwoPhaseEvalContext};
 use super::{ALT_STACK_CAPACITY, PREGENESIS_RULES, STACK_CAPACITY};
@@ -36,6 +36,10 @@ pub fn core_eval<T: Checker>(
     let mut stack: Stack = stack_param.unwrap_or_else(|| Vec::with_capacity(STACK_CAPACITY));
     let mut alt_stack: Stack =
         alt_stack_param.unwrap_or_else(|| Vec::with_capacity(ALT_STACK_CAPACITY));
+
+    // The node's policy rules, decided once: the transaction version cannot
+    // change during evaluation.
+    let policy = enforces_policy_rules(checker, flags);
 
     // True if executing current if/else branch, false if next else
     let mut branch_exec: Vec<bool> = Vec::new();
@@ -77,7 +81,7 @@ pub fn core_eval<T: Checker>(
             OP_16 => stack.push(encode_num(16)?),
             len @ 1..=75 => {
                 remains(i + 1, len as usize, script)?;
-                if tx_enforces_malleability_rules(checker) {
+                if policy {
                     check_canonical_push(i, script)?;
                 }
                 let data = &script[i + 1..i + 1 + len as usize];
@@ -87,7 +91,7 @@ pub fn core_eval<T: Checker>(
                 remains(i + 1, 1, script)?;
                 let len = script[i + 1] as usize;
                 remains(i + 2, len, script)?;
-                if tx_enforces_malleability_rules(checker) {
+                if policy {
                     check_canonical_push(i, script)?;
                 }
                 let data = &script[i + 2..i + 2 + len];
@@ -97,7 +101,7 @@ pub fn core_eval<T: Checker>(
                 remains(i + 1, 2, script)?;
                 let len = (script[i + 1] as usize) + ((script[i + 2] as usize) << 8);
                 remains(i + 3, len, script)?;
-                if tx_enforces_malleability_rules(checker) {
+                if policy {
                     check_canonical_push(i, script)?;
                 }
                 let data = &script[i + 3..i + 3 + len];
@@ -110,7 +114,7 @@ pub fn core_eval<T: Checker>(
                     + ((script[i + 3] as usize) << 16)
                     + ((script[i + 4] as usize) << 24);
                 remains(i + 5, len, script)?;
-                if tx_enforces_malleability_rules(checker) {
+                if policy {
                     check_canonical_push(i, script)?;
                 }
                 let data = &script[i + 5..i + 5 + len];
@@ -120,14 +124,14 @@ pub fn core_eval<T: Checker>(
             OP_VER => {
                 stack.push(encode_num(checker.tx_version()? as i64)?);
             }
-            OP_IF => branch_exec.push(pop_bool_for_if(&mut stack, checker)?),
-            OP_NOTIF => branch_exec.push(!pop_bool_for_if(&mut stack, checker)?),
+            OP_IF => branch_exec.push(pop_bool_for_if(&mut stack)?),
+            OP_NOTIF => branch_exec.push(!pop_bool_for_if(&mut stack)?),
             OP_VERIF => {
-                let comparison = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let comparison = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 branch_exec.push(verif_branch_exec(checker, comparison, false)?);
             }
             OP_VERNOTIF => {
-                let comparison = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let comparison = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 branch_exec.push(verif_branch_exec(checker, comparison, true)?);
             }
             OP_ELSE => {
@@ -196,7 +200,7 @@ pub fn core_eval<T: Checker>(
                 stack.push(copy);
             }
             OP_PICK => {
-                let n = pop_num_for_eval(&mut stack, checker)?;
+                let n = pop_num_for_eval(&mut stack, policy)?;
                 if n < 0 {
                     let msg = "OP_PICK failed, n negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -206,7 +210,7 @@ pub fn core_eval<T: Checker>(
                 stack.push(copy);
             }
             OP_ROLL => {
-                let n = pop_num_for_eval(&mut stack, checker)?;
+                let n = pop_num_for_eval(&mut stack, policy)?;
                 if n < 0 {
                     let msg = "OP_ROLL failed, n negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -290,7 +294,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_SPLIT => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num_for_eval(&mut stack, checker)?;
+                let n = pop_num_for_eval(&mut stack, policy)?;
                 let x = stack.pop().unwrap();
                 if n < 0 {
                     let msg = "OP_SPLIT failed, n negative".to_string();
@@ -311,8 +315,8 @@ pub fn core_eval<T: Checker>(
             }
             OP_SUBSTR => {
                 check_stack_size(3, &stack)?;
-                let length = pop_num_for_eval(&mut stack, checker)?;
-                let start = pop_num_for_eval(&mut stack, checker)?;
+                let length = pop_num_for_eval(&mut stack, policy)?;
+                let start = pop_num_for_eval(&mut stack, policy)?;
                 let s = stack.pop().unwrap();
                 if s.is_empty() {
                     return Err(substr_error("OP_SUBSTR failed, zero-length source"));
@@ -329,7 +333,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_LEFT => {
                 check_stack_size(2, &stack)?;
-                let length = pop_num_for_eval(&mut stack, checker)?;
+                let length = pop_num_for_eval(&mut stack, policy)?;
                 let s = stack.pop().unwrap();
                 if length < 0 {
                     return Err(substr_error("OP_LEFT failed, negative length"));
@@ -342,7 +346,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_RIGHT => {
                 check_stack_size(2, &stack)?;
-                let length = pop_num_for_eval(&mut stack, checker)?;
+                let length = pop_num_for_eval(&mut stack, policy)?;
                 let s = stack.pop().unwrap();
                 if length < 0 {
                     return Err(substr_error("OP_RIGHT failed, negative length"));
@@ -410,7 +414,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_LSHIFT => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num_for_eval(&mut stack, checker)?;
+                let n = pop_num_for_eval(&mut stack, policy)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -420,7 +424,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_RSHIFT => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num_for_eval(&mut stack, checker)?;
+                let n = pop_num_for_eval(&mut stack, policy)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -448,29 +452,29 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_1ADD => {
-                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x += 1;
                 push_bigint_checked(&mut stack, x, max_num_len)?;
             }
             OP_1SUB => {
-                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x -= 1;
                 push_bigint_checked(&mut stack, x, max_num_len)?;
             }
             OP_NEGATE => {
-                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x = -x;
                 push_bigint_checked(&mut stack, x, max_num_len)?;
             }
             OP_ABS => {
-                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if x < BigInt::zero() {
                     x = -x;
                 }
                 push_bigint_checked(&mut stack, x, max_num_len)?;
             }
             OP_NOT => {
-                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if x == BigInt::zero() {
                     x = BigInt::one();
                 } else {
@@ -479,7 +483,7 @@ pub fn core_eval<T: Checker>(
                 push_bigint_checked(&mut stack, x, max_num_len)?;
             }
             OP_0NOTEQUAL => {
-                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if x == BigInt::zero() {
                     x = BigInt::zero();
                 } else {
@@ -488,32 +492,32 @@ pub fn core_eval<T: Checker>(
                 push_bigint_checked(&mut stack, x, max_num_len)?;
             }
             OP_ADD => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let sum = a + b;
                 push_bigint_checked(&mut stack, sum, max_num_len)?;
             }
             OP_SUB => {
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let difference = b - a;
                 push_bigint_checked(&mut stack, difference, max_num_len)?;
             }
             OP_MUL => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let product = a * b;
                 push_bigint_checked(&mut stack, product, max_num_len)?;
             }
             OP_2MUL => {
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let two = BigInt::from(2);
                 let product = a * two;
                 push_bigint_checked(&mut stack, product, max_num_len)?;
             }
             OP_DIV => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if b == BigInt::zero() {
                     let msg = "OP_DIV failed, divide by 0".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -522,15 +526,15 @@ pub fn core_eval<T: Checker>(
                 push_bigint_checked(&mut stack, quotient, max_num_len)?;
             }
             OP_2DIV => {
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let b = BigInt::from(2);
 
                 let quotient = a / b;
                 push_bigint_checked(&mut stack, quotient, max_num_len)?;
             }
             OP_MOD => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if b == BigInt::zero() {
                     let msg = "OP_MOD failed, divide by 0".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -539,8 +543,8 @@ pub fn core_eval<T: Checker>(
                 push_bigint_checked(&mut stack, remainder, max_num_len)?;
             }
             OP_BOOLAND => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a != BigInt::zero() && b != BigInt::zero() {
                     stack.push(encode_num(1)?);
                 } else {
@@ -548,8 +552,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_BOOLOR => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a != BigInt::zero() || b != BigInt::zero() {
                     stack.push(encode_num(1)?);
                 } else {
@@ -557,8 +561,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_NUMEQUAL => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a == b {
                     stack.push(encode_num(1)?);
                 } else {
@@ -566,16 +570,16 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_NUMEQUALVERIFY => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a != b {
                     let msg = "Numbers are not equal".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }
             }
             OP_NUMNOTEQUAL => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a != b {
                     stack.push(encode_num(1)?);
                 } else {
@@ -583,8 +587,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_LESSTHAN => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a < b {
                     stack.push(encode_num(1)?);
                 } else {
@@ -592,8 +596,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_GREATERTHAN => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a > b {
                     stack.push(encode_num(1)?);
                 } else {
@@ -601,8 +605,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_LESSTHANOREQUAL => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a <= b {
                     stack.push(encode_num(1)?);
                 } else {
@@ -610,8 +614,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_GREATERTHANOREQUAL => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a >= b {
                     stack.push(encode_num(1)?);
                 } else {
@@ -619,8 +623,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_MIN => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a < b {
                     push_bigint_checked(&mut stack, a, max_num_len)?;
                 } else {
@@ -628,8 +632,8 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_MAX => {
-                let b = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let a = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a > b {
                     push_bigint_checked(&mut stack, a, max_num_len)?;
                 } else {
@@ -637,9 +641,9 @@ pub fn core_eval<T: Checker>(
                 }
             }
             OP_WITHIN => {
-                let max = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let min = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
-                let x = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let max = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let min = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if x >= min && x < max {
                     stack.push(encode_num(1)?);
                 } else {
@@ -648,7 +652,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_NUM2BIN => {
                 check_stack_size(2, &stack)?;
-                let m = pop_bigint_for_eval(&mut stack, max_num_len, checker)?;
+                let m = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let mut n = stack.pop().unwrap();
                 if m < BigInt::one() {
                     let msg = format!("OP_NUM2BIN failed. m too small: {m}");
@@ -761,21 +765,21 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKMULTISIG => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                match check_multisig(&mut stack, checker, &cleaned_script)? {
+                match check_multisig(&mut stack, checker, &cleaned_script, policy)? {
                     true => stack.push(encode_num(1)?),
                     false => stack.push(encode_num(0)?),
                 }
             }
             OP_CHECKMULTISIGVERIFY => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                if !check_multisig(&mut stack, checker, &cleaned_script)? {
+                if !check_multisig(&mut stack, checker, &cleaned_script, policy)? {
                     let msg = "OP_CHECKMULTISIGVERIFY failed".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }
             }
             OP_CHECKLOCKTIMEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let locktime = pop_num_for_eval(&mut stack, checker)?;
+                    let locktime = pop_num_for_eval(&mut stack, policy)?;
                     if !checker.check_locktime(locktime)? {
                         let msg = "OP_CHECKLOCKTIMEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
@@ -784,7 +788,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKSEQUENCEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let sequence = pop_num_for_eval(&mut stack, checker)?;
+                    let sequence = pop_num_for_eval(&mut stack, policy)?;
                     if !checker.check_sequence(sequence)? {
                         let msg = "OP_CHECKSEQUENCEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
@@ -794,7 +798,7 @@ pub fn core_eval<T: Checker>(
             OP_NOP1 => {}
             OP_LSHIFTNUM => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num_for_eval(&mut stack, checker)?;
+                let n = pop_num_for_eval(&mut stack, policy)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));
@@ -804,7 +808,7 @@ pub fn core_eval<T: Checker>(
             }
             OP_RSHIFTNUM => {
                 check_stack_size(2, &stack)?;
-                let n = pop_num_for_eval(&mut stack, checker)?;
+                let n = pop_num_for_eval(&mut stack, policy)?;
                 if n < 0 {
                     let msg = "n must be non-negative".to_string();
                     return Err(ChainGangError::ScriptError(msg));

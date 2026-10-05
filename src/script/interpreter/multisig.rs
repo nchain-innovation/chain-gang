@@ -12,9 +12,10 @@ pub(crate) fn check_multisig<T: Checker>(
     stack: &mut Stack,
     checker: &mut T,
     script: &[u8],
+    policy: bool,
 ) -> Result<bool, ChainGangError> {
     // Pop the keys
-    let total = pop_num_for_eval(stack, checker)?;
+    let total = pop_num_for_eval(stack, policy)?;
     if total < 0 {
         return Err(ChainGangError::ScriptError(
             "total out of range".to_string(),
@@ -27,7 +28,7 @@ pub(crate) fn check_multisig<T: Checker>(
     }
 
     // Pop the sigs
-    let required = pop_num_for_eval(stack, checker)?;
+    let required = pop_num_for_eval(stack, policy)?;
     if required < 0 || required > total {
         return Err(ChainGangError::ScriptError(
             "required out of range".to_string(),
@@ -42,7 +43,8 @@ pub(crate) fn check_multisig<T: Checker>(
     // Pop one more off. This isn't used and can't be changed.
     check_stack_size(1, stack)?;
     let dummy = stack.pop().unwrap();
-    if tx_enforces_malleability_rules(checker) && !dummy.is_empty() {
+    // NULLDUMMY is policy; NULLFAIL, below, is consensus.
+    if policy && !dummy.is_empty() {
         return Err(ChainGangError::ScriptError(
             "OP_CHECKMULTISIG NULLDUMMY".to_string(),
         ));

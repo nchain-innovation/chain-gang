@@ -4,7 +4,8 @@ use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OU
 use crate::network::Network;
 use crate::script::{
     eval_p2sh, eval_two_phase, eval_unlock_then_lock, is_push_only, op_codes,
-    uses_relaxed_malleability, uses_two_phase_eval, TransactionChecker, NO_FLAGS, PREGENESIS_RULES,
+    uses_relaxed_malleability, uses_two_phase_eval, TransactionChecker, CONSENSUS_ONLY, NO_FLAGS,
+    PREGENESIS_RULES,
 };
 use crate::transaction::sighash::SigHashCache;
 use crate::util::{bounded_capacity, sha256d, var_int, ChainGangError, Hash256, Serializable};
@@ -41,6 +42,13 @@ impl Tx {
     }
 
     /// Validates a non-coinbase transaction using version-only Chronicle gating (`tx.version > 1`).
+    ///
+    /// Checks what the node's mempool checks: consensus, plus the node's policy
+    /// rules for non-malleable transactions (minimal pushes and numbers, an
+    /// empty multisig dummy, a clean stack). That is the right check before
+    /// broadcast, since the node rejects a policy failure there anyway. A
+    /// transaction in a block is held to consensus only; use
+    /// [`Tx::validate_consensus`] for that.
     pub fn validate(
         &self,
         require_sighash_forkid: bool,
@@ -54,10 +62,37 @@ impl Tx {
             utxos,
             pregenesis_outputs,
             None,
+            false,
+        )
+    }
+
+    /// As [`Tx::validate`], but consensus rules only: what a block containing
+    /// this transaction is held to.
+    ///
+    /// The node's policy rules (`MINIMALDATA`, `NULLDUMMY`, `CLEANSTACK`) are
+    /// in its standard flags and in neither mandatory set, so a valid block can
+    /// contain a transaction that breaks them (#205).
+    pub fn validate_consensus(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            None,
+            true,
         )
     }
 
     /// Validates a non-coinbase transaction with BSV Chronicle activation height enforcement.
+    ///
+    /// Policy rules included, as [`Tx::validate`]; see
+    /// [`Tx::validate_at_height_consensus`] for consensus only.
     pub fn validate_at_height(
         &self,
         require_sighash_forkid: bool,
@@ -73,6 +108,28 @@ impl Tx {
             utxos,
             pregenesis_outputs,
             Some((block_height, network)),
+            false,
+        )
+    }
+
+    /// As [`Tx::validate_at_height`], but consensus rules only. This is what
+    /// [`Block::validate`](crate::messages::Block::validate) uses.
+    pub fn validate_at_height_consensus(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        block_height: u64,
+        network: Network,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            Some((block_height, network)),
+            true,
         )
     }
 
@@ -83,6 +140,7 @@ impl Tx {
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
         chronicle_context: Option<(u64, Network)>,
+        consensus_only: bool,
     ) -> Result<(), ChainGangError> {
         // Make sure neither in or out lists are empty
         if self.inputs.is_empty() {
@@ -184,10 +242,15 @@ impl Tx {
                 script_tx_version: Some(script_version),
             };
 
-            let flags = if !use_genesis_rules || is_pregenesis_input {
+            let era_flags = if !use_genesis_rules || is_pregenesis_input {
                 PREGENESIS_RULES
             } else {
                 NO_FLAGS
+            };
+            let flags = if consensus_only {
+                era_flags | CONSENSUS_ONLY
+            } else {
+                era_flags
             };
 
             if pregenesis_utxo && is_p2sh(&tx_out.lock_script.0) {

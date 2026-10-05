@@ -101,7 +101,8 @@ impl Block {
         let block_height = u64::try_from(height).unwrap_or(0);
         for txn in self.txns.iter() {
             if !txn.coinbase() {
-                txn.validate_at_height(
+                // A block is held to consensus, not to the node's mempool policy.
+                txn.validate_at_height_consensus(
                     require_sighash_forkid,
                     use_genesis_rules,
                     utxos,
@@ -318,6 +319,66 @@ mod tests {
              reached the Chronicle gate"
         );
     }
+    /// A block can hold a transaction that breaks the node's policy rules;
+    /// only its mempool refuses one (#205).
+    ///
+    /// Each spend breaks a different rule: a clean stack, a minimal push, an
+    /// empty multisig dummy. `Tx::validate`, the pre-broadcast check, rejects
+    /// each for that rule, as the node's mempool would. Consensus accepts it,
+    /// and so does `Block::validate`, which used to reject the whole block.
+    #[test]
+    fn validate_holds_a_block_to_consensus_not_policy() {
+        use crate::script::op_codes::{OP_0, OP_1, OP_CHECKMULTISIG, OP_DROP};
+
+        let cases: [(&str, Vec<u8>, Vec<u8>); 3] = [
+            ("Clean stack violation", vec![OP_1], vec![OP_1]),
+            ("Non-minimal push", vec![OP_DROP, OP_1], vec![1, 0x05]),
+            ("NULLDUMMY", vec![OP_0, OP_0, OP_CHECKMULTISIG], vec![OP_1]),
+        ];
+        for (policy_reason, lock_script, unlock_script) in cases {
+            let funding = Tx {
+                version: 1,
+                inputs: vec![],
+                outputs: vec![TxOut {
+                    satoshis: 1_000,
+                    lock_script: Script(lock_script),
+                }],
+                lock_time: 0,
+            };
+            let outpoint = OutPoint {
+                hash: funding.hash(),
+                index: 0,
+            };
+            let mut utxos = LinkedHashMap::new();
+            utxos.insert(outpoint.clone(), funding.outputs[0].clone());
+            let spend = Tx {
+                version: 1,
+                inputs: vec![TxIn {
+                    prev_output: outpoint,
+                    unlock_script: Script(unlock_script),
+                    sequence: 0xffffffff,
+                }],
+                outputs: vec![TxOut {
+                    satoshis: 900,
+                    lock_script: Script(vec![]),
+                }],
+                lock_time: 0,
+            };
+            let none = HashSet::new();
+
+            match spend.validate(true, true, &utxos, &none) {
+                Err(e) if e.to_string().contains(policy_reason) => {}
+                other => panic!("Tx::validate should reject for {policy_reason:?}, got {other:?}"),
+            }
+            spend
+                .validate_consensus(true, true, &utxos, &none)
+                .unwrap_or_else(|e| panic!("{policy_reason}: consensus accepts it, got {e}"));
+            block_containing(spend)
+                .validate(1_000, Network::BSV_Regtest, &utxos, &none)
+                .unwrap_or_else(|e| panic!("{policy_reason}: the block is valid, got {e}"));
+        }
+    }
+
     use crate::messages::{OutPoint, TxIn, TxOut};
     use crate::script::Script;
     use crate::util::Hash256;
