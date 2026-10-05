@@ -27,9 +27,8 @@ fn build_processed_utxos(
     let outpoints: Vec<OutPoint> = tx.inputs.iter().map(|x| x.prev_output.clone()).collect();
     let utxo_as_tx: HashMap<Hash256, Tx> = utxos
         .iter()
-        .map(|x| x.as_tx())
-        .map(|tx| (tx.hash(), tx))
-        .collect();
+        .map(|x| x.as_tx().map(|tx| (tx.hash(), tx)))
+        .collect::<Result<_, _>>()?;
 
     let mut processed_utxo: LinkedHashMap<OutPoint, TxOut> = LinkedHashMap::new();
     for op in outpoints {
@@ -68,17 +67,22 @@ pub struct PyTxIn {
 }
 
 impl PyTxIn {
-    fn as_txin(&self) -> TxIn {
+    fn as_txin(&self) -> Result<TxIn, ChainGangError> {
         // convert hexstr to bytes and reverse
-        let hash = Hash256::decode(&self.prev_tx).expect("Error decoding hexstr prev outpoint");
-        TxIn {
+        let hash = Hash256::decode(&self.prev_tx).map_err(|e| {
+            ChainGangError::BadData(format!(
+                "TxIn prev_tx '{}' is not a valid txid: {e}",
+                self.prev_tx
+            ))
+        })?;
+        Ok(TxIn {
             prev_output: OutPoint {
                 hash,
                 index: self.prev_index,
             },
             sequence: self.sequence,
             unlock_script: self.script_sig.as_script(),
-        }
+        })
     }
 }
 
@@ -206,15 +210,14 @@ pub struct PyTx {
 }
 
 impl PyTx {
-    pub fn as_tx(&self) -> Tx {
-        Tx {
+    pub fn as_tx(&self) -> Result<Tx, ChainGangError> {
+        Ok(Tx {
             version: self.version,
             inputs: self
                 .tx_ins
-                .clone()
-                .into_iter()
-                .map(|x| x.as_txin())
-                .collect(),
+                .iter()
+                .map(PyTxIn::as_txin)
+                .collect::<Result<_, _>>()?,
             outputs: self
                 .tx_outs
                 .clone()
@@ -222,7 +225,7 @@ impl PyTx {
                 .map(|x| x.as_txout())
                 .collect(),
             lock_time: self.locktime,
-        }
+        })
     }
 }
 
@@ -253,7 +256,7 @@ impl PyTx {
     /// Human-readable hexadecimal of the transaction hash"""
     /// def id(self) -> str:
     fn id(&self) -> PyResult<String> {
-        let tx = self.as_tx();
+        let tx = self.as_tx()?;
         let hash = tx.hash();
         Ok(hash.encode())
     }
@@ -261,22 +264,22 @@ impl PyTx {
     /// Binary hash of the serialization
     /// def hash(self) -> bytes:
     fn hash(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let tx = self.as_tx();
+        let tx = self.as_tx()?;
         let hash = tx.hash();
         let bytes = PyBytes::new(py, &hash.0);
         Ok(bytes.into())
     }
 
     /// Returns true if it is a coinbase transaction
-    fn is_coinbase(&self) -> bool {
-        let tx = self.as_tx();
-        tx.coinbase()
+    fn is_coinbase(&self) -> PyResult<bool> {
+        let tx = self.as_tx()?;
+        Ok(tx.coinbase())
     }
 
     /// Note that we return PyResult<Py<PyAny>> and not PyResult<PyBytes>
     fn serialize(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let mut v = Vec::new();
-        let tx = self.as_tx();
+        let tx = self.as_tx()?;
         tx.write(&mut v)?;
         let bytes = PyBytes::new(py, &v);
         Ok(bytes.into())
@@ -285,7 +288,7 @@ impl PyTx {
     /// Return tx as hexstr
     fn as_hexstr(&self) -> PyResult<String> {
         let mut v = Vec::new();
-        let tx = self.as_tx();
+        let tx = self.as_tx()?;
         tx.write(&mut v)?;
         let hexstr = hex::encode(v);
         Ok(hexstr)
@@ -336,7 +339,7 @@ impl PyTx {
     // This will only work on post genesis txs
     // This will only work for non coinbase transactions
     fn validate(&self, utxos: Vec<PyTx>) -> PyResult<()> {
-        let tx = self.as_tx();
+        let tx = self.as_tx()?;
         if tx.coinbase() {
             let msg = "Validate can not check coinbase transactions.".to_string();
             return Err(ChainGangError::BadData(msg).into());
@@ -358,7 +361,7 @@ impl PyTx {
         block_height: u64,
         network: &str,
     ) -> PyResult<()> {
-        let tx = self.as_tx();
+        let tx = self.as_tx()?;
         if tx.coinbase() {
             let msg = "Validate can not check coinbase transactions.".to_string();
             return Err(ChainGangError::BadData(msg).into());

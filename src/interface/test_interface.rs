@@ -146,17 +146,23 @@ impl BlockchainInterface for TestInterface {
 
     async fn get_tx(&self, _txid: &str) -> Result<Tx, ChainGangError> {
         debug!("get_tx");
-        std::unimplemented!();
+        Err(ChainGangError::InvalidOperation(
+            "get_tx is not supported by TestInterface".to_string(),
+        ))
     }
 
     async fn get_latest_block_header(&self) -> Result<BlockHeader, ChainGangError> {
         debug!("get_latest_block_header");
-        std::unimplemented!();
+        Err(ChainGangError::InvalidOperation(
+            "get_latest_block_header is not supported by TestInterface".to_string(),
+        ))
     }
 
     async fn get_block_headers(&self) -> Result<String, ChainGangError> {
         debug!("get_block_headers");
-        std::unimplemented!();
+        Err(ChainGangError::InvalidOperation(
+            "get_block_headers is not supported by TestInterface".to_string(),
+        ))
     }
 }
 
@@ -201,5 +207,13 @@ mod tests {
                 "height {height} not unconfirmed"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn unsupported_methods_return_errors() {
+        let interface = TestInterface::new();
+        assert!(interface.get_tx("00").await.is_err());
+        assert!(interface.get_latest_block_header().await.is_err());
+        assert!(interface.get_block_headers().await.is_err());
     }
 }

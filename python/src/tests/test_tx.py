@@ -201,6 +201,21 @@ class TxTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     spend.validate([credit])
 
+    def test_invalid_prev_tx_raises(self):
+        # A prev_tx that is not a 32-byte hex txid is a ValueError when the tx is used,
+        # not a PanicException
+        for prev_tx in ["zz", "00"]:
+            tx = Tx(version=1, tx_ins=[TxIn(prev_tx=prev_tx, prev_index=0)], tx_outs=[])
+            for method in (tx.serialize, tx.as_hexstr, tx.id, tx.hash, tx.is_coinbase):
+                with self.subTest(prev_tx=prev_tx, method=method.__name__):
+                    with self.assertRaises(ValueError):
+                        method()
+
+    def test_address_with_empty_payload_raises(self):
+        # "3QJmnh" has a valid checksum over an empty payload, so there is no version byte
+        with self.assertRaises(ValueError):
+            address_to_public_key_hash("3QJmnh")
+
 
 if __name__ == "__main__":
     unittest.main()
