@@ -312,6 +312,11 @@ fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
 /// (CS-492). Even the first-opcode case was right only because the separator
 /// was then deleted; once BIP-143 keeps separators, starting at 0 would sign
 /// the separator itself.
+///
+/// "Would last have executed" assumes the script runs straight through to the
+/// selected check. A signer whose separators sit in branches that may not run
+/// knows the script code better than this can, and should build it and call
+/// [`sighash_from_script_code`].
 fn subscript_start(script_code: &[u8], checksig_index: usize) -> Result<usize, ChainGangError> {
     // OP_CODESEPARATOR / OP_CHECKSIG positions are found opcode-aware
     // (find_all_occurances_of walks opcodes), so pushed-data bytes equal to
@@ -1263,6 +1268,147 @@ mod tests {
 
         assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
         assert_eq!(extract_subscript(&script, 0).unwrap(), node);
+    }
+
+    /// Records the script code the interpreter hands each signature check, and
+    /// passes every check so the script runs to the end.
+    struct RecordingChecker {
+        script_codes: Vec<Vec<u8>>,
+    }
+
+    impl crate::script::Checker for RecordingChecker {
+        fn check_sig(
+            &mut self,
+            _sig: &[u8],
+            _pubkey: &[u8],
+            script: &[u8],
+        ) -> Result<bool, ChainGangError> {
+            self.script_codes.push(script.to_vec());
+            Ok(true)
+        }
+        fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+            Ok(true)
+        }
+        fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+            Ok(true)
+        }
+    }
+
+    /// The script codes chain-gang's interpreter builds for each OP_CHECKSIG in
+    /// `lock_script`, spending it the way `Tx::validate` does: unlocking
+    /// script, a separator, locking script.
+    fn interpreter_script_codes(lock_script: &[u8], checks: usize) -> Vec<Vec<u8>> {
+        let mut script = Script::new();
+        for _ in 0..checks {
+            // Any non-empty signature carrying FORKID, so nothing is removed
+            // from the script code as a pre-fork signature would be.
+            script.append_data(&[0x30, SIGHASH_ALL | SIGHASH_FORKID]);
+        }
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(lock_script);
+        let mut checker = RecordingChecker {
+            script_codes: Vec::new(),
+        };
+        script.eval(&mut checker, crate::script::NO_FLAGS).unwrap();
+        assert_eq!(checker.script_codes.len(), checks);
+        checker.script_codes
+    }
+
+    /// Where the signer cuts, checked against where the interpreter does.
+    ///
+    /// Every script of the shape
+    ///
+    /// ```text
+    /// [OP_1 OP_DROP] g0 <pk1> CHECKSIG VERIFY g1 <pk2> CHECKSIG VERIFY g2 ... <pkN> CHECKSIG gN
+    /// ```
+    ///
+    /// for one to three checks, with each gap `g` holding zero, one or two
+    /// separators and the prefix present or not: a single separator at the
+    /// start, in the middle and at the end, two in a row, and every mix, signed
+    /// at every `checksig_index`. That is 234 scripts and 612 signatures, under
+    /// both digest algorithms. The public keys are full of 0xab and 0xac bytes,
+    /// so a push misread as an opcode (CS-483) would show up as well.
+    ///
+    /// The oracle is the interpreter, not this file's rule. The interpreter
+    /// tracks the executed separator itself, the same way the node's
+    /// `pbegincodehash` does, and `sighash_from_script_code` hashes what it
+    /// builds exactly as the node does: 2000 of 2000 vectors, and a mined
+    /// transaction chain-gang now validates. So agreeing with it is agreeing with
+    /// the node, by a route that never calls `subscript_start`.
+    #[test]
+    fn signer_cuts_where_the_interpreter_does() {
+        let (tx, _) = sighash_single_test_tx();
+        let push_key = |i: u8| {
+            let mut push = vec![0x21, 0x02];
+            push.extend((0..32u8).map(|j| {
+                if (i + j).is_multiple_of(2) {
+                    0xab
+                } else {
+                    0xac
+                }
+            }));
+            push
+        };
+
+        let mut signatures = 0;
+        let mut scripts = 0;
+        for checks in 1..=3usize {
+            let gaps = checks + 1;
+            for layout in 0..3usize.pow(gaps as u32) {
+                for prefix in [false, true] {
+                    let separators_in = |gap: usize| (layout / 3usize.pow(gap as u32)) % 3;
+                    let mut lock = Vec::new();
+                    if prefix {
+                        lock.extend_from_slice(&[OP_1, OP_DROP]);
+                    }
+                    for check in 0..checks {
+                        lock.extend(std::iter::repeat_n(OP_CODESEPARATOR, separators_in(check)));
+                        lock.extend(push_key(check as u8));
+                        lock.push(OP_CHECKSIG);
+                        if check + 1 < checks {
+                            lock.push(OP_VERIFY);
+                        }
+                    }
+                    lock.extend(std::iter::repeat_n(OP_CODESEPARATOR, separators_in(checks)));
+                    scripts += 1;
+
+                    let codes = interpreter_script_codes(&lock, checks);
+                    for (checksig_index, code) in codes.iter().enumerate() {
+                        for sighash_type in [SIGHASH_ALL | SIGHASH_FORKID, SIGHASH_ALL] {
+                            let mut cache = SigHashCache::new();
+                            let signer = sighash_checksig_index(
+                                &tx,
+                                0,
+                                &lock,
+                                checksig_index,
+                                1000,
+                                sighash_type,
+                                &mut cache,
+                            )
+                            .unwrap();
+                            let mut cache = SigHashCache::new();
+                            let interpreter = sighash_from_script_code(
+                                &tx,
+                                0,
+                                code,
+                                1000,
+                                sighash_type,
+                                &mut cache,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                signer,
+                                interpreter,
+                                "lock {} checksig_index {checksig_index} sighash_type {sighash_type:#04x}",
+                                hex::encode(&lock)
+                            );
+                        }
+                        signatures += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!((scripts, signatures), (234, 612));
     }
 }
 
