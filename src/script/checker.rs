@@ -1,5 +1,7 @@
 use crate::messages::Tx;
-use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_FORKID};
+use crate::transaction::sighash::{
+    sighash, SigHashCache, SIGHASH_ANYONECANPAY, SIGHASH_CHRONICLE, SIGHASH_FORKID,
+};
 use crate::util::{ChainGangError, Hash256};
 
 use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
@@ -11,6 +13,25 @@ const LOCKTIME_THRESHOLD: i32 = 500000000;
 const SEQUENCE_LOCKTIME_DISABLE_FLAG: u32 = 1 << 31;
 /// When set, sequence uses time. When unset, it uses block height.
 const SEQUENCE_LOCKTIME_TYPE_FLAG: u32 = 1 << 22;
+
+/// Whether a signature's sighash type is one the node understands, its
+/// `SigHashType::isDefined`: with the CHRONICLE, FORKID and ANYONECANPAY bits
+/// cleared, what is left must be ALL, NONE or SINGLE (1, 2 or 3).
+///
+/// The node rejects anything else under `STRICTENC`, which has been mandatory,
+/// alongside `SIGHASH_FORKID`, since the 2017 fork, so it is checked wherever
+/// FORKID is required (#208). An undefined type still hashes, as if it were
+/// ALL, so without this a signature over it verified and chain-gang accepted
+/// a transaction the network rejects.
+fn is_defined_sighash_type(sighash_type: u8) -> bool {
+    matches!(
+        sighash_type & !(SIGHASH_CHRONICLE | SIGHASH_FORKID | SIGHASH_ANYONECANPAY),
+        1..=3
+    )
+}
+
+/// The node's message for an undefined sighash type (`SCRIPT_ERR_SIG_HASHTYPE`).
+const UNDEFINED_SIGHASH_TYPE: &str = "Signature hash type missing or not understood";
 
 /// Checks that external values are correct in the script
 pub trait Checker {
@@ -87,6 +108,11 @@ impl Checker for ZChecker {
             ));
         }
         let sighash_type = sig[sig.len() - 1];
+        if !is_defined_sighash_type(sighash_type) {
+            return Err(ChainGangError::ScriptError(
+                UNDEFINED_SIGHASH_TYPE.to_string(),
+            ));
+        }
         if sighash_type & SIGHASH_FORKID == 0 {
             return Err(ChainGangError::ScriptError(
                 "SIGHASH_FORKID not present".to_string(),
@@ -173,6 +199,11 @@ impl Checker for ZVersionChecker {
             ));
         }
         let sighash_type = sig[sig.len() - 1];
+        if !is_defined_sighash_type(sighash_type) {
+            return Err(ChainGangError::ScriptError(
+                UNDEFINED_SIGHASH_TYPE.to_string(),
+            ));
+        }
         if sighash_type & SIGHASH_FORKID == 0 {
             return Err(ChainGangError::ScriptError(
                 "SIGHASH_FORKID not present".to_string(),
@@ -243,6 +274,13 @@ impl Checker for TransactionChecker<'_> {
             ));
         }
         let sighash_type = sig[sig.len() - 1];
+        // STRICTENC came with FORKID; before it, transactions with undefined
+        // types were valid and old blocks still hold some.
+        if self.require_sighash_forkid && !is_defined_sighash_type(sighash_type) {
+            return Err(ChainGangError::ScriptError(
+                UNDEFINED_SIGHASH_TYPE.to_string(),
+            ));
+        }
         if self.require_sighash_forkid && sighash_type & SIGHASH_FORKID == 0 {
             return Err(ChainGangError::ScriptError(
                 "SIGHASH_FORKID not present".to_string(),
@@ -425,6 +463,131 @@ mod tests {
         assert!(vk_vec.len() == 33);
         vk_vec[..].try_into().unwrap()
     }
+    /// Spends a P2PKH output with a signature made under `sighash_type`, and
+    /// returns the interpreter's verdict through a TransactionChecker.
+    fn p2pkh_spend_with(
+        sighash_type: u8,
+        require_sighash_forkid: bool,
+    ) -> Result<(), ChainGangError> {
+        let private_key = [3; 32];
+        let pk = verifying_key_as_bytes(
+            SigningKey::from_slice(&private_key)
+                .unwrap()
+                .verifying_key(),
+        );
+        let lock_script = crate::transaction::p2pkh::create_lock_script(&hash160(&pk));
+        let tx_1 = Tx {
+            version: 1,
+            inputs: vec![],
+            outputs: vec![TxOut {
+                satoshis: 10,
+                lock_script: lock_script.clone(),
+            }],
+            lock_time: 0,
+        };
+        let mut tx_2 = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: tx_1.hash(),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 9,
+                lock_script: lock_script.clone(),
+            }],
+            lock_time: 0,
+        };
+        let hash = sighash(
+            &tx_2,
+            0,
+            &lock_script.0,
+            10,
+            sighash_type,
+            &mut SigHashCache::new(),
+        )
+        .unwrap();
+        let sig = generate_signature(&private_key, &hash, sighash_type).unwrap();
+        let mut unlock = Script::new();
+        unlock.append_data(&sig);
+        unlock.append_data(&pk);
+        tx_2.inputs[0].unlock_script = unlock.clone();
+
+        let mut cache = SigHashCache::new();
+        let mut checker = TransactionChecker {
+            tx: &tx_2,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 10,
+            require_sighash_forkid,
+            script_tx_version: None,
+        };
+        let mut script = Script::new();
+        script.append_slice(&unlock.0);
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(&lock_script.0);
+        script.eval(&mut checker, NO_FLAGS)
+    }
+
+    /// A signature must carry a defined sighash type wherever FORKID is
+    /// required: with the CHRONICLE, FORKID and ANYONECANPAY bits cleared, what
+    /// remains must be ALL, NONE or SINGLE (#208).
+    ///
+    /// A live bitcoin-sv node rejected 0x51 and 0x40 as mandatory failures
+    /// ("Signature hash type missing or not understood"), and chain-gang
+    /// accepted both. Every signature here is genuine: only the type is wrong.
+    #[test]
+    fn undefined_sighash_types_are_rejected() {
+        for sighash_type in [0x40, 0x44, 0x48, 0x50, 0x51, 0x5f, 0xc0, 0xc4] {
+            match p2pkh_spend_with(sighash_type, true) {
+                Err(e) if e.to_string().contains(UNDEFINED_SIGHASH_TYPE) => {}
+                other => panic!("{sighash_type:#04x} should be undefined, got {other:?}"),
+            }
+        }
+    }
+
+    /// Every combination the node defines still verifies: each base type, with
+    /// and without ANYONECANPAY, with FORKID, and with CHRONICLE on top.
+    #[test]
+    fn defined_sighash_types_still_verify() {
+        for base in [SIGHASH_ALL, 0x02, 0x03] {
+            for flags in [
+                SIGHASH_FORKID,
+                SIGHASH_FORKID | SIGHASH_ANYONECANPAY,
+                SIGHASH_FORKID | SIGHASH_CHRONICLE,
+                SIGHASH_FORKID | SIGHASH_CHRONICLE | SIGHASH_ANYONECANPAY,
+            ] {
+                let sighash_type = base | flags;
+                p2pkh_spend_with(sighash_type, true)
+                    .unwrap_or_else(|e| panic!("{sighash_type:#04x} is defined: {e}"));
+            }
+        }
+    }
+
+    /// Before the 2017 fork neither FORKID nor STRICTENC was a rule, and old
+    /// blocks hold signatures with undefined types; bitcoin-sv's own
+    /// script_tests.json expects "P2PKH with invalid sighashtype" (0x11) to
+    /// pass without STRICTENC. Where FORKID is not required, they still verify.
+    #[test]
+    fn undefined_sighash_types_verify_before_the_fork() {
+        p2pkh_spend_with(0x11, false).unwrap();
+    }
+
+    /// The Z checkers always require FORKID, so they always apply the rule.
+    #[test]
+    fn z_checker_rejects_undefined_sighash_types() {
+        let mut checker = ZChecker {
+            z: Hash256([0; 32]),
+        };
+        let mut sig = vec![0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01];
+        sig.push(0x51);
+        let err = checker.check_sig(&sig, &[2; 33], &[]).unwrap_err();
+        assert!(err.to_string().contains(UNDEFINED_SIGHASH_TYPE), "{err}");
+    }
+
     fn standard_p2pkh_test(sighash_type: u8) {
         //let secp = Secp256k1::new();
         let private_key = [1; 32];
