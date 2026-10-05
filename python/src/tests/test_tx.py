@@ -1,7 +1,7 @@
 """ Transaction tests
 """
 import unittest
-from tx_engine import Tx, p2pkh_script, address_to_public_key_hash, TxOut, TxIn
+from tx_engine import Tx, Script, p2pkh_script, address_to_public_key_hash, TxOut, TxIn
 
 
 class TxTest(unittest.TestCase):
@@ -177,6 +177,29 @@ class TxTest(unittest.TestCase):
         tx = Tx.parse_hexstr(tx_hexstr1)
         tx_hexstr2 = tx.as_hexstr()
         self.assertEqual(tx_hexstr1, tx_hexstr2)
+
+    def test_truncated_push_cannot_spend(self):
+        # An unlocking script made of one push opcode and no data used to take the
+        # locking script as its data, so Tx.validate accepted an unsigned spend
+        pk = bytes([2]) + bytes([0x22] * 32)
+        locks = [
+            bytes([0x76, 0xA9, 20]) + bytes([0x11] * 20) + bytes([0x88, 0xAC]),
+            bytes([33]) + pk + bytes([0xAC]),
+            bytes([0x61] * 299) + bytes([0xAC]),
+        ]
+        coinbase_in = TxIn(prev_tx="00" * 32, prev_index=0xFFFFFFFF, script=Script(bytes([0, 0])))
+        for lock in locks:
+            n = len(lock) + 1
+            unlock = bytes([n]) if n <= 75 else bytes([0x4D]) + n.to_bytes(2, "little")
+            credit = Tx(version=1, tx_ins=[coinbase_in], tx_outs=[TxOut(amount=100_000, script_pubkey=Script(lock))])
+            spend = Tx(
+                version=1,
+                tx_ins=[TxIn(prev_tx=credit.id(), prev_index=0, script=Script(unlock))],
+                tx_outs=[TxOut(amount=90_000, script_pubkey=Script(bytes([0x6A])))],
+            )
+            with self.subTest(lock_len=len(lock)):
+                with self.assertRaises(ValueError):
+                    spend.validate([credit])
 
 
 if __name__ == "__main__":

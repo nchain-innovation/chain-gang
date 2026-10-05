@@ -3,8 +3,8 @@ use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
 use crate::network::Network;
 use crate::script::{
-    eval_two_phase, is_push_only, op_codes, uses_relaxed_malleability, uses_two_phase_eval, Script,
-    TransactionChecker, NO_FLAGS, PREGENESIS_RULES,
+    eval_two_phase, eval_unlock_then_lock, is_push_only, op_codes, uses_relaxed_malleability,
+    uses_two_phase_eval, TransactionChecker, NO_FLAGS, PREGENESIS_RULES,
 };
 use crate::transaction::sighash::SigHashCache;
 use crate::util::{bounded_capacity, sha256d, var_int, ChainGangError, Hash256, Serializable};
@@ -191,11 +191,12 @@ impl Tx {
                     flags,
                 )?;
             } else {
-                let mut script = Script::new();
-                script.append_slice(&tx_in.unlock_script.0);
-                script.append(op_codes::OP_CODESEPARATOR);
-                script.append_slice(&tx_out.lock_script.0);
-                script.eval(&mut tx_checker, flags)?;
+                eval_unlock_then_lock(
+                    &tx_in.unlock_script.0,
+                    &tx_out.lock_script.0,
+                    &mut tx_checker,
+                    flags,
+                )?;
             }
         }
 
@@ -325,6 +326,7 @@ impl fmt::Debug for Tx {
 mod tests {
     use super::*;
     use crate::messages::OutPoint;
+    use crate::script::Script;
     use crate::util::Hash256;
     use std::io::Cursor;
 
@@ -395,6 +397,96 @@ mod tests {
         let h = "9b0fc92260312ce44e74ef369f5c66bbb85848f2eddd5a7a1cde251e54ccfdd5";
         assert!(tx.hash() == Hash256::decode(h).unwrap());
         assert!(tx.coinbase());
+    }
+
+    /// An unsigned spend: the unlocking script is a single push opcode with no
+    /// data after it. It used to take `OP_CODESEPARATOR` and the whole locking
+    /// script as its data and leave a true value, so any output could be spent
+    /// without a signature, whatever its locking script. The node rejects it.
+    #[test]
+    fn truncated_push_cannot_spend_any_output() {
+        use op_codes::*;
+        let pk: Vec<u8> = [vec![2], vec![0x22; 32]].concat();
+        let p2pkh = [
+            vec![OP_DUP, OP_HASH160, 20],
+            vec![0x11; 20],
+            vec![OP_EQUALVERIFY, OP_CHECKSIG],
+        ];
+        let p2pk = [vec![33], pk.clone(), vec![OP_CHECKSIG]];
+        let multisig = [
+            vec![OP_1, 33],
+            pk.clone(),
+            vec![33],
+            pk,
+            vec![OP_2, OP_CHECKMULTISIG],
+        ];
+        let long = [vec![OP_NOP; 299], vec![OP_CHECKSIG]];
+        let utxo = OutPoint {
+            hash: Hash256([5; 32]),
+            index: 0,
+        };
+        let mut pregenesis = HashSet::new();
+        pregenesis.insert(utxo.clone());
+
+        for lock in [
+            p2pkh.concat(),
+            p2pk.concat(),
+            multisig.concat(),
+            long.concat(),
+        ] {
+            // The data is OP_CODESEPARATOR and the lock: one byte more than the
+            // lock. Each push opcode that can carry that length is tried.
+            let n = lock.len() + 1;
+            let mut unlocks = vec![
+                vec![OP_PUSHDATA2, n as u8, (n >> 8) as u8],
+                vec![OP_PUSHDATA4, n as u8, (n >> 8) as u8, 0, 0],
+            ];
+            if n <= 255 {
+                unlocks.push(vec![OP_PUSHDATA1, n as u8]);
+            }
+            if n <= 75 {
+                unlocks.push(vec![n as u8]);
+            }
+            let mut utxos = LinkedHashMap::new();
+            utxos.insert(
+                utxo.clone(),
+                TxOut {
+                    satoshis: 100_000,
+                    lock_script: Script(lock.clone()),
+                },
+            );
+            for unlock in unlocks {
+                for version in [1, 2] {
+                    let tx = Tx {
+                        version,
+                        inputs: vec![TxIn {
+                            prev_output: utxo.clone(),
+                            unlock_script: Script(unlock.clone()),
+                            sequence: 0xffffffff,
+                        }],
+                        outputs: vec![TxOut {
+                            satoshis: 90_000,
+                            lock_script: Script(vec![]),
+                        }],
+                        lock_time: 0,
+                    };
+                    for (genesis, pregenesis_outputs) in [
+                        (true, &HashSet::new()),
+                        (true, &pregenesis),
+                        (false, &HashSet::new()),
+                    ] {
+                        for forkid in [true, false] {
+                            assert!(
+                                tx.validate(forkid, genesis, &utxos, pregenesis_outputs)
+                                    .is_err(),
+                                "unlock {unlock:02x?} spent a {}-byte lock (version {version}, genesis {genesis})",
+                                lock.len()
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]
