@@ -29,7 +29,77 @@ use crate::script::stack::Stack;
 use crate::script::Checker;
 use crate::util::ChainGangError;
 
+use crate::script::stack::decode_bool;
 use rules::validate_final_stack;
+
+/// Evaluates a spend of a pre-Genesis P2SH output, as the node's `VerifyScript`
+/// does it (BIP-16).
+///
+/// The unlocking script runs first, and the stack it leaves is kept. The
+/// locking script, `OP_HASH160 <h> OP_EQUAL`, then runs on it and must leave
+/// true, which only proves the last push hashes to `<h>`. That last push is the
+/// redeem script: the kept stack is restored, the redeem script popped from its
+/// top, and run against what remains, and it is that run which must leave true.
+/// The unlocking script must be push-only, so the stack it leaves is just its
+/// pushes.
+///
+/// Each script runs on its own, as the node runs each in its own `EvalScript`:
+/// its own `OP_CODESEPARATOR` position, its own alt stack, its own branch
+/// balance. A `CHECKSIG` in the redeem script therefore signs the redeem script.
+/// The final-stack checks apply once, after the redeem script, as the node's
+/// `CLEANSTACK` does; checked after the locking script they would see the
+/// redeem script's inputs still on the stack.
+///
+/// Before this, chain-gang ran only the unlocking and locking scripts, so a
+/// pre-Genesis P2SH spend passed as long as it pushed a script with the right
+/// hash, whatever that script did (#201).
+pub(crate) fn eval_p2sh<T: Checker>(
+    unlock_script: &[u8],
+    lock_script: &[u8],
+    checker: &mut T,
+    flags: u32,
+) -> Result<(), ChainGangError> {
+    if !is_push_only(unlock_script) {
+        return Err(ChainGangError::ScriptError(
+            "P2SH unlocking script must be push-only".to_string(),
+        ));
+    }
+    let (after_unlock, _, _) =
+        core_eval(unlock_script, checker, flags, None, None, None, None, None)?;
+
+    let (stack, _, _) = core_eval(
+        lock_script,
+        checker,
+        flags,
+        None,
+        None,
+        Some(after_unlock.clone()),
+        None,
+        None,
+    )?;
+    if !stack.last().is_some_and(|top| decode_bool(top)) {
+        return Err(ChainGangError::ScriptError(
+            "P2SH script hash does not match".to_string(),
+        ));
+    }
+
+    let mut stack = after_unlock;
+    // Non-empty: the locking script hashed its top item and matched.
+    let redeem_script = stack.pop().ok_or_else(|| {
+        ChainGangError::ScriptError("P2SH unlocking script pushes nothing".to_string())
+    })?;
+    let (stack, _, _) = core_eval(
+        &redeem_script,
+        checker,
+        flags,
+        None,
+        None,
+        Some(stack),
+        None,
+        None,
+    )?;
+    validate_final_stack(&stack, checker)
+}
 
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(), ChainGangError> {
