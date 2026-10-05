@@ -165,13 +165,25 @@ jobs:
           cache: true
           cache-key: ubuntu-26.04
       - name: Clear wheel dir
-        run: rm target/wheels/* | true
+        run: rm -f target/wheels/*.whl
       - name: Maturin build
         uses: PyO3/maturin-action@v1
         with:
           command: build --target-dir=target
+      # Install the wheel just built by its path. `--find-links` only adds
+      # target/wheels as a source alongside PyPI, and between releases the
+      # branch's version is the one already published, so pip is free to
+      # take PyPI's wheel and test released code instead of the branch. It
+      # took the local one here only because its manylinux_2_34 tag outranks
+      # PyPI's manylinux_2_17; on macOS, where the tags tie, it took PyPI's.
       - name: Install wheel
-        run: pip install --root-user-action=ignore --find-links=target/wheels tx-engine
+        run: |
+          wheels=(target/wheels/*.whl)
+          if [ "${#wheels[@]}" -ne 1 ] || [ ! -f "${wheels[0]}" ]; then
+            echo "expected exactly one wheel in target/wheels, found: ${wheels[*]}"
+            exit 1
+          fi
+          pip install --root-user-action=ignore "${wheels[0]}"
       - name: Python tests
         working-directory: python
         run: ./tests.sh
