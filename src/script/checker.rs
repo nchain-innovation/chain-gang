@@ -419,6 +419,109 @@ mod tests {
         assert!(script.eval(&mut c, NO_FLAGS).is_ok());
     }
 
+    /// Signing and verifying still agree on a script with OP_CODESEPARATORs.
+    ///
+    /// The lock script has three OP_CHECKSIGs with a separator between each
+    /// pair. Each is signed through `sighash_checksig_index` with the whole lock
+    /// script and its index, the way a wallet signs; the interpreter then
+    /// verifies them, handing `check_sig` the script it has already cut at the
+    /// executed separator. Those are two different routes to the BIP-143 script
+    /// code, and #193 changed what both produce, so this checks they still meet.
+    ///
+    /// This is a consistency check, not a correctness one: before #193 both
+    /// routes deleted the separators, so they agreed with each other while
+    /// disagreeing with the node. Correctness against the node is
+    /// `bip143_keeps_separators_after_the_executed_one` in `sighash.rs`.
+    #[test]
+    fn codeseparator_script_signs_and_verifies_under_bip143() {
+        use crate::transaction::sighash::sighash_checksig_index;
+
+        let keys: Vec<[u8; 32]> = vec![[11; 32], [12; 32], [13; 32]];
+        let pubkeys: Vec<[u8; 33]> = keys
+            .iter()
+            .map(|k| verifying_key_as_bytes(SigningKey::from_slice(k).unwrap().verifying_key()))
+            .collect();
+
+        let mut lock_script = Script::new();
+        for (i, pk) in pubkeys.iter().enumerate() {
+            lock_script.append_data(pk);
+            lock_script.append(OP_CHECKSIG);
+            if i < pubkeys.len() - 1 {
+                lock_script.append(OP_VERIFY);
+                lock_script.append(OP_CODESEPARATOR);
+            }
+        }
+
+        let tx_1 = Tx {
+            version: 1,
+            inputs: vec![],
+            outputs: vec![TxOut {
+                satoshis: 10,
+                lock_script: lock_script.clone(),
+            }],
+            lock_time: 0,
+        };
+        let mut tx_2 = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: tx_1.hash(),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 9,
+                lock_script: Script(vec![OP_TRUE]),
+            }],
+            lock_time: 0,
+        };
+
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let sigs: Vec<Vec<u8>> = keys
+            .iter()
+            .enumerate()
+            .map(|(checksig_index, key)| {
+                let mut cache = SigHashCache::new();
+                let hash = sighash_checksig_index(
+                    &tx_2,
+                    0,
+                    &lock_script.0,
+                    checksig_index,
+                    10,
+                    sighash_type,
+                    &mut cache,
+                )
+                .unwrap();
+                generate_signature(key, &hash, sighash_type).unwrap()
+            })
+            .collect();
+
+        // The first OP_CHECKSIG consumes the top of the stack, so its
+        // signature is pushed last.
+        let mut unlock_script = Script::new();
+        for sig in sigs.iter().rev() {
+            unlock_script.append_data(sig);
+        }
+        tx_2.inputs[0].unlock_script = unlock_script.clone();
+
+        let mut cache = SigHashCache::new();
+        let mut checker = TransactionChecker {
+            tx: &tx_2,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 10,
+            require_sighash_forkid: true,
+            script_tx_version: None,
+        };
+        let mut script = Script::new();
+        script.append_slice(&unlock_script.0);
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(&lock_script.0);
+        script.eval(&mut checker, NO_FLAGS).unwrap();
+    }
+
     fn verifying_key_as_bytes(verifying_key: &VerifyingKey) -> [u8; 33] {
         let vk_bytes = verifying_key.to_sec1_bytes();
         let vk_vec = vk_bytes.to_vec();

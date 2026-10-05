@@ -73,14 +73,12 @@ enum Divergence {
     /// `OP_CHECKMULTISIG` reaches this in ordinary use. CS-492.
     SeparatorWithoutChecksig,
     /// The script code holds an `OP_CODESEPARATOR` before the `OP_CHECKSIG`
-    /// that `extract_subscript` selects, so chain-gang truncates there. The
-    /// node does not truncate at all: its interpreter tracks `pbegincodehash`
-    /// and passes the subscript in already cut. CS-492.
+    /// that `subscript_start` selects, so chain-gang starts the script code
+    /// after it. The node's digest functions do not cut at all: its interpreter
+    /// tracks `pbegincodehash` and passes the subscript in already cut. chain-gang
+    /// takes a whole locking script and cuts it itself, which is right for the
+    /// callers that sign, but its rule for where to cut is CS-492.
     TruncatesAtSeparator,
-    /// `SignatureHashBIP143` serializes the script code as it is given, with no
-    /// `FindAndDelete`. chain-gang routes the BIP-143 path through
-    /// `extract_subscript`, which strips every `OP_CODESEPARATOR` first.
-    Bip143StripsSeparators,
 }
 
 /// The script code the node hashes, given the one in the vector.
@@ -107,22 +105,23 @@ fn node_subscript(script_code: &[u8], algorithm: Algorithm) -> Vec<u8> {
 
 /// Predicts how chain-gang will treat a row, or `None` if it should agree.
 ///
-/// Rather than restating `extract_subscript`'s rules — which is how the
-/// hand-written tests went wrong in the first place — this asks it directly and
-/// compares what it produces against what the node would hash. Precedence
-/// follows the order the implementation reaches each defect: the subscript is
-/// built first and can fail, so its cases come before the output-serialization
-/// one.
+/// Rather than restating the subscript rules — which is how the hand-written
+/// tests went wrong in the first place — this asks the function each algorithm
+/// actually uses (`bip143_script_code` or `extract_subscript`) and
+/// compares what it produces against what the node would hash.
 fn divergence(script_code: &[u8], algorithm: Algorithm) -> Option<Divergence> {
-    match extract_subscript(script_code, 0) {
+    let ours = match algorithm {
+        Algorithm::Bip143 => bip143_script_code(script_code, 0),
+        Algorithm::Otda => extract_subscript(script_code, 0),
+    };
+    match ours {
         // The only error reachable here: a script holding a separator but no
         // OP_CHECKSIG for `checksig_index` 0 to select.
         Err(_) => return Some(Divergence::SeparatorWithoutChecksig),
+        // Both paths now treat the separators that remain as the node does, so
+        // a different script code can only be a different starting point.
         Ok(ours) if ours != node_subscript(script_code, algorithm) => {
-            return Some(match algorithm {
-                Algorithm::Bip143 => Divergence::Bip143StripsSeparators,
-                Algorithm::Otda => Divergence::TruncatesAtSeparator,
-            })
+            return Some(Divergence::TruncatesAtSeparator)
         }
         Ok(_) => {}
     }
@@ -291,7 +290,7 @@ fn bitcoin_sv_sighash_vectors() {
     // Pinned. These are not targets; they are the measured size of three open
     // defects. Fixing one fails this test, which is the point — the numbers are
     // how a fix proves itself.
-    assert_eq!(regular.matched, 727, "regular digests reproducing the node");
+    assert_eq!(regular.matched, 757, "regular digests reproducing the node");
     assert_eq!(
         original.matched, 762,
         "original digests reproducing the node"
@@ -303,24 +302,14 @@ fn bitcoin_sv_sighash_vectors() {
         "CS-492: separated script with no OP_CHECKSIG, regular column"
     );
     assert_eq!(
-        regular.count(Divergence::Bip143StripsSeparators),
-        38,
-        "BIP-143 strips separators the node keeps"
-    );
-    assert_eq!(
         regular.count(Divergence::TruncatesAtSeparator),
-        5,
+        13,
         "CS-492: truncation at a separator, regular column"
     );
     assert_eq!(
         original.count(Divergence::SeparatorWithoutChecksig),
         230,
         "CS-492: separated script with no OP_CHECKSIG, original column"
-    );
-    assert_eq!(
-        original.count(Divergence::Bip143StripsSeparators),
-        0,
-        "the original column never takes the BIP-143 path"
     );
     assert_eq!(
         original.count(Divergence::TruncatesAtSeparator),
