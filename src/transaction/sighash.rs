@@ -83,15 +83,63 @@ pub fn sighash_checksig_index(
     // public API takes a `u8`. The node's digest functions take a 32-bit
     // `nHashType` and serialize all of it, so widen once here and let the
     // internals work in the node's width.
-    sighash_checksig_index_u32(
+    sighash_u32(
         tx,
         n_input,
         script_code,
-        checksig_index,
+        ScriptCode::FromLockScript { checksig_index },
         satoshis,
         u32::from(sighash_type),
         cache,
     )
+}
+
+/// Generates a transaction digest for a script code that has already been cut,
+/// which is what the node's `SignatureHash` receives.
+///
+/// [`sighash`] takes a whole locking script and works out the script code for
+/// the selected `OP_CHECKSIG` itself, which is what a signer has to hand. A
+/// verifier is in a different position: by the time an `OP_CHECKSIG` runs, the
+/// interpreter has taken the script from just past the last *executed*
+/// `OP_CODESEPARATOR` and removed the signature, and that is already exactly
+/// the script code to hash. Running it through [`sighash`] cuts it a second
+/// time, by a rule that has to guess which separators executed and needs an
+/// `OP_CHECKSIG` to count from. That fails `OP_CHECKMULTISIG` and
+/// `OP_CHECKSIGVERIFY` scripts outright and misplaces the start whenever an
+/// unexecuted separator precedes the check.
+///
+/// This is the function a [`Checker`](crate::script::Checker) should use. Like
+/// the node, it cuts nothing and requires no `OP_CHECKSIG`: BIP-143 hashes
+/// `script_code` byte for byte, and the original algorithm deletes its
+/// `OP_CODESEPARATOR`s as the node's serializer does.
+pub fn sighash_from_script_code(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    satoshis: i64,
+    sighash_type: u8,
+    cache: &mut SigHashCache,
+) -> Result<Hash256, ChainGangError> {
+    sighash_u32(
+        tx,
+        n_input,
+        script_code,
+        ScriptCode::AsGiven,
+        satoshis,
+        u32::from(sighash_type),
+        cache,
+    )
+}
+
+/// Where the script code a digest signs comes from.
+#[derive(Debug, Clone, Copy)]
+enum ScriptCode {
+    /// A whole locking script, cut for the `checksig_index`-th `OP_CHECKSIG`.
+    /// What a signer passes.
+    FromLockScript { checksig_index: usize },
+    /// Already cut by the interpreter, exactly as the node's digest functions
+    /// receive it. What a verifier passes.
+    AsGiven,
 }
 
 /// The node's `SignatureHash`: BIP-143 when FORKID is set and CHRONICLE is not,
@@ -100,11 +148,11 @@ pub fn sighash_checksig_index(
 /// Carries the full 32-bit `nHashType` so the consensus vectors, whose hash types
 /// are random 32-bit values, can be run against the same dispatch the public API
 /// uses. Not public: a signature only ever carries one byte.
-fn sighash_checksig_index_u32(
+fn sighash_u32(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
+    selection: ScriptCode,
     satoshis: i64,
     sighash_type: u32,
     cache: &mut SigHashCache,
@@ -114,13 +162,13 @@ fn sighash_checksig_index_u32(
             tx,
             n_input,
             script_code,
-            checksig_index,
+            selection,
             satoshis,
             sighash_type,
             cache,
         )
     } else {
-        otda_sighash(tx, n_input, script_code, checksig_index, sighash_type)
+        otda_sighash(tx, n_input, script_code, selection, sighash_type)
     }
 }
 
@@ -210,7 +258,7 @@ fn bip143_sighash(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
+    selection: ScriptCode,
     satoshis: i64,
     sighash_type: u32,
     cache: &mut SigHashCache,
@@ -221,7 +269,7 @@ fn bip143_sighash(
         tx,
         n_input,
         script_code,
-        checksig_index,
+        selection,
         satoshis,
         sighash_type,
         cache,
@@ -305,18 +353,22 @@ fn subscript_start(script_code: &[u8], checksig_index: usize) -> Result<usize, C
 /// only — BIP-143 keeps them.
 fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
     let start_subscript = subscript_start(script_code, checksig_index)?;
+    Ok(delete_separators(&script_code[start_subscript..]))
+}
 
-    let mut sub_script = Vec::with_capacity(script_code.len() - start_subscript);
-    let mut i = start_subscript;
-
+/// `script_code` with every `OP_CODESEPARATOR` removed, walking opcodes so a
+/// pushed byte equal to one is left alone. The node's `FindAndDelete`.
+fn delete_separators(script_code: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(script_code.len());
+    let mut i = 0;
     while i < script_code.len() {
         let next = next_op(i, script_code);
         if script_code[i] != op_codes::OP_CODESEPARATOR {
-            sub_script.extend_from_slice(&script_code[i..next]);
+            out.extend_from_slice(&script_code[i..next]);
         }
         i = next;
     }
-    Ok(sub_script)
+    out
 }
 
 /// The script code BIP-143 signs: from [`subscript_start`] to the end, byte for
@@ -343,14 +395,14 @@ fn otda_sighash(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
+    selection: ScriptCode,
     sighash_type: u32,
 ) -> Result<Hash256, ChainGangError> {
     Ok(sha256d(&otda_sighash_preimage(
         tx,
         n_input,
         script_code,
-        checksig_index,
+        selection,
         sighash_type,
     )?))
 }
@@ -359,7 +411,7 @@ fn otda_sighash_preimage(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
+    selection: ScriptCode,
     sighash_type: u32,
 ) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
@@ -372,8 +424,14 @@ fn otda_sighash_preimage(
     let base_type = (sighash_type & 31) as u8;
     let anyone_can_pay = sighash_type & u32::from(SIGHASH_ANYONECANPAY) != 0;
 
-    // Remove instances of OP_CODESEPARATOR from the script_code
-    let sub_script = extract_subscript(script_code, checksig_index)?;
+    // The node's serializer deletes every OP_CODESEPARATOR from the script code
+    // it is given; a signer's whole locking script is cut first.
+    let sub_script = match selection {
+        ScriptCode::FromLockScript { checksig_index } => {
+            extract_subscript(script_code, checksig_index)?
+        }
+        ScriptCode::AsGiven => delete_separators(script_code),
+    };
 
     // Serialize the version
     s.write_u32::<LittleEndian>(tx.version)?;
@@ -493,13 +551,19 @@ pub fn sig_hash_preimage_checksig_index(
             tx,
             n_input,
             script_code,
-            checksig_index,
+            ScriptCode::FromLockScript { checksig_index },
             satoshis,
             sighash_type,
             cache,
         )
     } else {
-        otda_sighash_preimage(tx, n_input, script_code, checksig_index, sighash_type)
+        otda_sighash_preimage(
+            tx,
+            n_input,
+            script_code,
+            ScriptCode::FromLockScript { checksig_index },
+            sighash_type,
+        )
     }
 }
 
@@ -507,7 +571,7 @@ fn bip143_sighash_preimage(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
+    selection: ScriptCode,
     satoshis: i64,
     sighash_type: u32,
     cache: &mut SigHashCache,
@@ -522,8 +586,14 @@ fn bip143_sighash_preimage(
     let base_type = (sighash_type & 31) as u8;
     let anyone_can_pay = sighash_type & u32::from(SIGHASH_ANYONECANPAY) != 0;
 
-    // The script code from the selected separator on, separators included.
-    let sub_script = bip143_script_code(script_code, checksig_index)?;
+    // Byte for byte, separators included; a signer's whole locking script is
+    // cut first.
+    let sub_script = match selection {
+        ScriptCode::FromLockScript { checksig_index } => {
+            bip143_script_code(script_code, checksig_index)?
+        }
+        ScriptCode::AsGiven => script_code.to_vec(),
+    };
 
     // Serialize the version
     s.write_u32::<LittleEndian>(tx.version)?;
@@ -650,7 +720,7 @@ mod tests {
             &tx,
             0,
             &lock_script,
-            0,
+            ScriptCode::FromLockScript { checksig_index: 0 },
             260000000,
             u32::from(sighash_type),
             &mut cache,
@@ -673,7 +743,7 @@ mod tests {
             &tx,
             0,
             &lock_script,
-            0,
+            ScriptCode::FromLockScript { checksig_index: 0 },
             260000000,
             u32::from(sighash_type),
             &mut cache,
@@ -693,8 +763,14 @@ mod tests {
             sighash(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
         let chronicle_hash =
             sighash(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
-        let expected_otda =
-            otda_sighash(&tx, 0, &lock_script, 0, u32::from(chronicle_type)).unwrap();
+        let expected_otda = otda_sighash(
+            &tx,
+            0,
+            &lock_script,
+            ScriptCode::FromLockScript { checksig_index: 0 },
+            u32::from(chronicle_type),
+        )
+        .unwrap();
 
         assert_ne!(bip143_hash, chronicle_hash);
         assert_eq!(chronicle_hash, expected_otda);
@@ -743,7 +819,14 @@ mod tests {
             }],
             lock_time: 0,
         };
-        let sighash = otda_sighash(&tx, 0, &lock_script, 0, u32::from(SIGHASH_ALL)).unwrap();
+        let sighash = otda_sighash(
+            &tx,
+            0,
+            &lock_script,
+            ScriptCode::FromLockScript { checksig_index: 0 },
+            u32::from(SIGHASH_ALL),
+        )
+        .unwrap();
         let expected = "ad16084eccf26464a84c5ee2f8b96b4daff9a3154ac3c1b320346aed042abe57";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
     }

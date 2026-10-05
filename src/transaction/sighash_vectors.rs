@@ -29,14 +29,18 @@
 //! # What these tests assert
 //!
 //! A row is a script code that has already been cut, handed to the node's digest
-//! function. The signer's entry point, [`sighash_checksig_index`], asks a
-//! different question of the same bytes: it reads them as a whole locking
-//! script and cuts them itself, for the selected `OP_CHECKSIG`. Where the cut
-//! would start at 0 the two questions coincide, and the signer must reproduce
-//! the node exactly. Where a separator precedes the first `OP_CHECKSIG`, the
-//! signer rightly cuts and the vector rightly does not, so the row says nothing
-//! about the signer; and where there is no `OP_CHECKSIG` it has nothing to
-//! select. Those rows are counted, not run.
+//! function. That is exactly what chain-gang's verifier does —
+//! [`sighash_from_script_code`] — so through that entry point every row must
+//! reproduce the node, in both columns, with nothing excused.
+//!
+//! The signer's entry point, [`sighash_checksig_index`], asks a different
+//! question of the same bytes: it reads them as a whole locking script and cuts
+//! them itself, for the selected `OP_CHECKSIG`. Where the cut would start at 0
+//! the two questions coincide, and the signer must reproduce the node too. Where
+//! a separator precedes the first `OP_CHECKSIG`, the signer rightly cuts and the
+//! vector rightly does not, so the row says nothing about the signer; and where
+//! there is no `OP_CHECKSIG` it has nothing to select. Those rows are counted,
+//! not run.
 
 use super::*;
 use crate::script::op_codes::{OP_CHECKSIG, OP_CODESEPARATOR};
@@ -149,6 +153,7 @@ fn signer_entry_point_agrees_where_the_question_is_the_same() {
     let Some(vectors) = load() else { return };
     assert_eq!(vectors.len(), 1000, "unexpected vector count");
 
+    let selection = ScriptCode::FromLockScript { checksig_index: 0 };
     let mut mismatches = Vec::new();
     let (mut same, mut separator_first, mut nothing) = (0, 0, 0);
     for v in &vectors {
@@ -164,16 +169,16 @@ fn signer_entry_point_agrees_where_the_question_is_the_same() {
             SignerReading::SameQuestion => same += 1,
         }
         let mut cache = SigHashCache::new();
-        let regular = sighash_checksig_index_u32(
+        let regular = sighash_u32(
             &v.tx,
             v.n_input,
             &v.script_code,
-            0,
+            selection,
             0,
             v.hash_type,
             &mut cache,
         );
-        let original = otda_sighash(&v.tx, v.n_input, &v.script_code, 0, v.hash_type);
+        let original = otda_sighash(&v.tx, v.n_input, &v.script_code, selection, v.hash_type);
         for (column, got, expected) in [
             ("regular", regular, &v.expected_regular),
             ("original", original, &v.expected_original),
@@ -200,6 +205,54 @@ fn signer_entry_point_agrees_where_the_question_is_the_same() {
         "rows whose separator precedes the first OP_CHECKSIG"
     );
     assert_eq!(nothing, 230, "rows with separators and no OP_CHECKSIG");
+}
+
+/// The verifier's entry point reproduces every row, in both columns.
+///
+/// The vectors give the node's digest functions a script code that has
+/// already been cut, which is exactly the contract of `sighash_from_script_code`
+/// and of what the interpreter hands `TransactionChecker`. So nothing here may
+/// diverge: no truncation to classify, no OP_CHECKSIG to count. The divergences
+/// pinned in `bitcoin_sv_sighash_vectors` belong to the signer's entry point,
+/// which reads its argument as a whole locking script and cuts it itself.
+#[test]
+fn verifier_entry_point_reproduces_every_vector() {
+    let Some(vectors) = load() else { return };
+    let mut mismatches = Vec::new();
+    for v in &vectors {
+        let mut cache = SigHashCache::new();
+        let regular = sighash_u32(
+            &v.tx,
+            v.n_input,
+            &v.script_code,
+            ScriptCode::AsGiven,
+            0,
+            v.hash_type,
+            &mut cache,
+        );
+        let original = otda_sighash(
+            &v.tx,
+            v.n_input,
+            &v.script_code,
+            ScriptCode::AsGiven,
+            v.hash_type,
+        );
+        for (column, got, expected) in [
+            ("regular", regular, &v.expected_regular),
+            ("original", original, &v.expected_original),
+        ] {
+            match got {
+                Ok(hash) if hash.encode() == *expected => {}
+                other => mismatches.push(format!("line {}: {column} gave {other:?}", v.line)),
+            }
+        }
+    }
+    assert!(
+        mismatches.is_empty(),
+        "{} of 2000 digests differ from the node:\n{}",
+        mismatches.len(),
+        mismatches.join("\n")
+    );
 }
 
 /// The vectors exercise hash types the public API cannot express.
@@ -237,11 +290,11 @@ fn widening_preserves_single_byte_hash_types() {
         let public =
             sighash_checksig_index(&v.tx, v.n_input, &v.script_code, 0, 0, low, &mut cache);
         let mut cache = SigHashCache::new();
-        let internal = sighash_checksig_index_u32(
+        let internal = sighash_u32(
             &v.tx,
             v.n_input,
             &v.script_code,
-            0,
+            ScriptCode::FromLockScript { checksig_index: 0 },
             0,
             u32::from(low),
             &mut cache,
