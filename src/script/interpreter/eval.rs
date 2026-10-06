@@ -689,7 +689,11 @@ pub fn core_eval<T: Checker>(
             OP_BIN2NUM => {
                 check_stack_size(1, &stack)?;
                 let mut v = stack.pop().unwrap();
-                check_script_num_length(v.len(), max_num_len)?;
+                // Minimally encode first, then check the result, as the node
+                // does (`MinimallyEncode` then `IsMinimallyEncoded`). The input
+                // is not a number yet: padding it carries is exactly what this
+                // opcode removes, so `0100000000` is 1 and within a 4-byte
+                // limit. Checking its length first rejected those (#36).
                 let n = decode_bigint(&mut v);
                 let e = encode_bigint(n);
                 check_script_num_length(e.len(), max_num_len)?;

@@ -206,8 +206,12 @@ class BSVTests(unittest.TestCase):
     def test_bin2num_example1(self):
         """ Simple check of bin2num
             Definition found in https://github.com/shadders/uahf-spec/blob/reenable-op-codes/reenable-op-codes.md
-            example 1
-                0x0000000002 OP_BIN2NUM -> 0x02
+            The spec gives example 1 as `0x0000000002 OP_BIN2NUM -> 0x02`, writing the
+            number most significant byte first. In script the bytes are little endian,
+            so pushing 00 00 00 00 02 in that order is 0x0200000000. That is already
+            minimal, and the node returns it unchanged, which is what this asserts.
+            The spec's example in script order is 02 00 00 00 00 -> 02: see
+            test_bin2num_part2. (#36)
         """
         script = Script([OP_PUSHDATA1, b'\x05', b"\x00\x00\x00\x00\x02", OP_BIN2NUM])
         context = Context(script=script)
@@ -217,10 +221,12 @@ class BSVTests(unittest.TestCase):
         self.assertEqual(context.stack, test_stack)
 
     def test_bin2num_example2(self):
-        """ example 2
-                0x800005 OP_BIN2NUM -> 0x85
+        """ The spec gives example 2 as `0x800005 OP_BIN2NUM -> 0x85`, most
+            significant byte first. Pushed in that order, 80 00 05 is 0x050080: the
+            top byte's sign bit is clear, so it is positive, already minimal, and the
+            node returns it unchanged, which is what this asserts. The spec's example
+            in script order is 05 00 80 -> 85 (-5): see test_bin2num_part8. (#36)
         """
-        # 0x80 00 05 OP_BIN2NUM -> 0x85
         script = Script([OP_PUSHDATA1, 0x03, b"\x80\x00\x05", OP_BIN2NUM])
         context = Context(script=script)
         self.assertTrue(context.evaluate())
@@ -239,11 +245,15 @@ class BSVTests(unittest.TestCase):
                 https://github.com/shadders/uahf-spec/blob/reenable-op-codes/reenable-op-codes.md
                 a OP_BIN2NUM -> failure
             When a is a binary array whose numeric value is too large to fit into the numeric type, for both positive and negative values.
-            Question is how big is too large to fit into a numeric type?
+            How large is too large depends on the rules. The spec predates Genesis, when
+            a script number was at most 4 bytes, so this 10-byte number failed. Context
+            evaluates under Genesis rules, where the limit is 750,000 bytes, so it
+            succeeds and the number comes back unchanged. The 4-byte limit is checked in
+            the Rust tests (bin2num_limits_the_result_not_the_input), which can select
+            pre-Genesis rules. (#36)
         """
         script = Script([OP_PUSHDATA1, b'\x0a', b"\x02\x00\x00\x00\x00\x00\x00\x00\x00\x02", OP_BIN2NUM])
         context = Context(script=script)
-        # self.assertFalse(context.evaluate_core())
         self.assertTrue(context.evaluate_core())
         self.assertEqual(context.get_stack(), Stack([[2, 0, 0, 0, 0, 0, 0, 0, 0, 2]]))
 
@@ -302,6 +312,18 @@ class BSVTests(unittest.TestCase):
         test_stack: Stack = Stack()
         test_stack.push_bytes_integer([-0x1010000000001])
         self.assertEqual(context.get_stack(), test_stack)
+
+    def test_bin2num_issue_36_examples(self):
+        """ The examples from #36, with what the node returns. Bytes are little endian
+            in script order: 00 02 is 512 and already minimal, 02 00 is 2 with a
+            padding byte, and 05 80 is -5 with the sign in a padding byte.
+        """
+        for given, node in [(b"\x00\x02", [0x00, 0x02]), (b"\x02\x00", [0x02]), (b"\x05\x80", [0x85])]:
+            with self.subTest(given=given.hex()):
+                script = Script([OP_PUSHDATA1, len(given), given, OP_BIN2NUM])
+                context = Context(script=script)
+                self.assertTrue(context.evaluate_core())
+                self.assertEqual(context.get_stack(), Stack([node]))
 
     def test_bin2num_part11(self):
         script = Script([OP_PUSHDATA1, 0x07, b"\x01\x00\x00\x00\x00\x00\x80", OP_BIN2NUM])
