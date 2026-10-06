@@ -206,15 +206,12 @@ impl Tx {
             }
         }
 
-        if use_genesis_rules {
-            for tx_out in self.outputs.iter() {
-                if tx_out.lock_script.0.len() == 22
-                    && tx_out.lock_script.0[0] == OP_HASH160
-                    && tx_out.lock_script.0[21] == OP_EQUAL
-                {
-                    return Err(ChainGangError::BadData("P2SH sunsetted".to_string()));
-                }
-            }
+        // Once Genesis is active, creating a P2SH output is invalid: the node
+        // rejects the transaction as "bad-txns-vout-p2sh" (REJECT_INVALID).
+        // This used to look for a 22-byte script with no push of 20, which no
+        // real P2SH output is, so it never fired (#202).
+        if use_genesis_rules && self.outputs.iter().any(|o| is_p2sh(&o.lock_script.0)) {
+            return Err(ChainGangError::BadData("P2SH sunsetted".to_string()));
         }
 
         Ok(())
@@ -647,16 +644,29 @@ mod tests {
             .validate(true, true, &utxos_clone, &HashSet::new())
             .is_err());
 
+        // A P2SH output: allowed before Genesis, rejected from it on.
+        let mut tx_test = tx.clone();
+        let mut p2sh = vec![OP_HASH160, 20];
+        p2sh.extend_from_slice(&[0x5a; 20]);
+        p2sh.push(OP_EQUAL);
+        tx_test.outputs[0].lock_script = Script(p2sh);
+        assert!(tx_test
+            .validate(true, false, &utxos, &HashSet::new())
+            .is_ok());
+        match tx_test.validate(true, true, &utxos, &HashSet::new()) {
+            Err(e) if e.to_string().contains("P2SH sunsetted") => {}
+            other => panic!("expected a P2SH-output rejection, got {other:?}"),
+        }
+
+        // The 22-byte shape this check used to look for has no push of 20, so
+        // it is not P2SH and is not rejected (#202).
         let mut tx_test = tx.clone();
         tx_test.outputs[0].lock_script = Script(vec![
             OP_HASH160, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, OP_EQUAL,
         ]);
         assert!(tx_test
-            .validate(true, false, &utxos, &HashSet::new())
-            .is_ok());
-        assert!(tx_test
             .validate(true, true, &utxos, &HashSet::new())
-            .is_err());
+            .is_ok());
     }
 
     /// Spends `lock_script` with `unlock_script` and validates the spend.
