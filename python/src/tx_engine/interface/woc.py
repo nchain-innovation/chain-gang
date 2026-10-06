@@ -33,7 +33,9 @@ def get_response(url: str, max_retries: int = 5, params: Optional[Dict] = None):
     for attempt in range(max_retries):
         try:
             response = requests.get(url, timeout=30, params=params)
-        except (ConnectionError, requests.Timeout) as e:
+        # requests' ConnectionError is not the builtin one, so naming the
+        # builtin here let a reset connection escape without a retry
+        except (requests.ConnectionError, requests.Timeout) as e:
             LOGGER.warning(f"WoC request error for {url}: {e}")
             if attempt + 1 >= max_retries:
                 return None
