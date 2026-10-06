@@ -79,6 +79,36 @@ pub fn sighash_checksig_index(
     sighash_type: u8,
     cache: &mut SigHashCache,
 ) -> Result<Hash256, ChainGangError> {
+    // A signature carries the sighash type in a single trailing byte, so the
+    // public API takes a `u8`. The node's digest functions take a 32-bit
+    // `nHashType` and serialize all of it, so widen once here and let the
+    // internals work in the node's width.
+    sighash_checksig_index_u32(
+        tx,
+        n_input,
+        script_code,
+        checksig_index,
+        satoshis,
+        u32::from(sighash_type),
+        cache,
+    )
+}
+
+/// The node's `SignatureHash`: BIP-143 when FORKID is set and CHRONICLE is not,
+/// otherwise the original algorithm.
+///
+/// Carries the full 32-bit `nHashType` so the consensus vectors, whose hash types
+/// are random 32-bit values, can be run against the same dispatch the public API
+/// uses. Not public: a signature only ever carries one byte.
+fn sighash_checksig_index_u32(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    checksig_index: usize,
+    satoshis: i64,
+    sighash_type: u32,
+    cache: &mut SigHashCache,
+) -> Result<Hash256, ChainGangError> {
     if uses_bip143(sighash_type) {
         bip143_sighash(
             tx,
@@ -95,8 +125,9 @@ pub fn sighash_checksig_index(
 }
 
 /// BIP-143 is used when FORKID is set and CHRONICLE is not, matching bitcoin-sv.
-fn uses_bip143(sighash_type: u8) -> bool {
-    sighash_type & SIGHASH_FORKID != 0 && sighash_type & SIGHASH_CHRONICLE == 0
+fn uses_bip143(sighash_type: u32) -> bool {
+    sighash_type & u32::from(SIGHASH_FORKID) != 0
+        && sighash_type & u32::from(SIGHASH_CHRONICLE) == 0
 }
 
 /// Cache for sighash intermediate values to avoid quadratic hashing
@@ -181,7 +212,7 @@ fn bip143_sighash(
     script_code: &[u8],
     checksig_index: usize,
     satoshis: i64,
-    sighash_type: u8,
+    sighash_type: u32,
     cache: &mut SigHashCache,
 ) -> Result<Hash256, ChainGangError> {
     // The intention is to return any error(s) without any extra processing & according to the
@@ -275,7 +306,7 @@ fn otda_sighash(
     n_input: usize,
     script_code: &[u8],
     checksig_index: usize,
-    sighash_type: u8,
+    sighash_type: u32,
 ) -> Result<Hash256, ChainGangError> {
     Ok(sha256d(&otda_sighash_preimage(
         tx,
@@ -291,7 +322,7 @@ fn otda_sighash_preimage(
     n_input: usize,
     script_code: &[u8],
     checksig_index: usize,
-    sighash_type: u8,
+    sighash_type: u32,
 ) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
         return Err(ChainGangError::BadArgument(
@@ -300,8 +331,8 @@ fn otda_sighash_preimage(
     }
 
     let mut s = Vec::with_capacity(tx.size());
-    let base_type = sighash_type & 31;
-    let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
+    let base_type = (sighash_type & 31) as u8;
+    let anyone_can_pay = sighash_type & u32::from(SIGHASH_ANYONECANPAY) != 0;
 
     // Remove instances of OP_CODESEPARATOR from the script_code
     let sub_script = extract_subscript(script_code, checksig_index)?;
@@ -361,8 +392,10 @@ fn otda_sighash_preimage(
     // Serialize the lock time
     s.write_u32::<LittleEndian>(tx.lock_time)?;
 
-    // Append the sighash_type and return the serialized preimage
-    s.write_u32::<LittleEndian>(sighash_type as u32)?;
+    // Append the sighash_type and return the serialized preimage. All 32 bits
+    // go out, matching the node's `ss << sigHashType`, which serializes the
+    // whole `uint32_t` rather than the low byte a signature carries.
+    s.write_u32::<LittleEndian>(sighash_type)?;
     Ok(s)
 }
 
@@ -401,6 +434,11 @@ pub fn sig_hash_preimage_checksig_index(
     sighash_type: u8,
     cache: &mut SigHashCache,
 ) -> Result<Vec<u8>, ChainGangError> {
+    // A signature carries the sighash type in a single trailing byte, so the
+    // public API takes a `u8`. The node's digest functions take a 32-bit
+    // `nHashType` and serialize all of it, so widen once here and let the
+    // internals work in the node's width.
+    let sighash_type = u32::from(sighash_type);
     if uses_bip143(sighash_type) {
         bip143_sighash_preimage(
             tx,
@@ -422,7 +460,7 @@ fn bip143_sighash_preimage(
     script_code: &[u8],
     checksig_index: usize,
     satoshis: i64,
-    sighash_type: u8,
+    sighash_type: u32,
     cache: &mut SigHashCache,
 ) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
@@ -432,8 +470,8 @@ fn bip143_sighash_preimage(
     }
 
     let mut s = Vec::with_capacity(tx.size());
-    let base_type = sighash_type & 31;
-    let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
+    let base_type = (sighash_type & 31) as u8;
+    let anyone_can_pay = sighash_type & u32::from(SIGHASH_ANYONECANPAY) != 0;
 
     // Remove instances of OP_CODESEPARATOR from the script_code
     let sub_script = extract_subscript(script_code, checksig_index)?;
@@ -507,7 +545,7 @@ fn bip143_sighash_preimage(
     s.write_u32::<LittleEndian>(tx.lock_time)?;
 
     // 10. Serialize hash type
-    s.write_u32::<LittleEndian>((FORK_ID << 8) | sighash_type as u32)?;
+    s.write_u32::<LittleEndian>((FORK_ID << 8) | sighash_type)?;
     Ok(s)
 }
 
@@ -559,8 +597,16 @@ mod tests {
         let (tx, lock_script) = bip143_sighash_test_tx();
         let mut cache = SigHashCache::new();
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
-        let sighash =
-            bip143_sighash(&tx, 0, &lock_script, 0, 260000000, sighash_type, &mut cache).unwrap();
+        let sighash = bip143_sighash(
+            &tx,
+            0,
+            &lock_script,
+            0,
+            260000000,
+            u32::from(sighash_type),
+            &mut cache,
+        )
+        .unwrap();
         let expected = "1e2121837829018daf3aeadab76f1a542c49a3600ded7bd74323ee74ce0d840c";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
         assert!(cache.hash_prevouts.is_some());
@@ -574,8 +620,16 @@ mod tests {
         let mut cache = SigHashCache::new();
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         let routed = sighash(&tx, 0, &lock_script, 260000000, sighash_type, &mut cache).unwrap();
-        let expected =
-            bip143_sighash(&tx, 0, &lock_script, 0, 260000000, sighash_type, &mut cache).unwrap();
+        let expected = bip143_sighash(
+            &tx,
+            0,
+            &lock_script,
+            0,
+            260000000,
+            u32::from(sighash_type),
+            &mut cache,
+        )
+        .unwrap();
         assert_eq!(routed, expected);
     }
 
@@ -590,7 +644,8 @@ mod tests {
             sighash(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
         let chronicle_hash =
             sighash(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
-        let expected_otda = otda_sighash(&tx, 0, &lock_script, 0, chronicle_type).unwrap();
+        let expected_otda =
+            otda_sighash(&tx, 0, &lock_script, 0, u32::from(chronicle_type)).unwrap();
 
         assert_ne!(bip143_hash, chronicle_hash);
         assert_eq!(chronicle_hash, expected_otda);
@@ -639,7 +694,7 @@ mod tests {
             }],
             lock_time: 0,
         };
-        let sighash = otda_sighash(&tx, 0, &lock_script, 0, SIGHASH_ALL).unwrap();
+        let sighash = otda_sighash(&tx, 0, &lock_script, 0, u32::from(SIGHASH_ALL)).unwrap();
         let expected = "ad16084eccf26464a84c5ee2f8b96b4daff9a3154ac3c1b320346aed042abe57";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
     }
@@ -857,3 +912,7 @@ mod tests {
         assert_eq!(actual, expected);
     }
 }
+
+#[cfg(test)]
+#[path = "sighash_vectors.rs"]
+mod sighash_vectors;
