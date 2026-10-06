@@ -40,7 +40,8 @@
 //! a separator precedes the first `OP_CHECKSIG`, the signer rightly cuts and the
 //! vector rightly does not, so the row says nothing about the signer; and where
 //! there is no `OP_CHECKSIG` it has nothing to select. Those rows are counted,
-//! not run.
+//! not run. Where the signer cuts is checked against the interpreter instead, in
+//! `sighash.rs`.
 
 use super::*;
 use crate::script::op_codes::{OP_CHECKSIG, OP_CODESEPARATOR};
