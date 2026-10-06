@@ -1308,3 +1308,76 @@ fn minimal_push_rule_still_enforced() {
     let mut c = MockChecker::with_tx_version(1);
     assert!(eval(&[OP_PUSH + 1, 0x01, OP_DROP, OP_1], &mut c, NO_FLAGS).is_err());
 }
+
+/// Evaluates `<push> OP_DROP OP_1` with malleability rules enforced (a version
+/// 1 transaction), so the only thing that can fail it is the push itself.
+fn eval_push(push: &[u8], tx_version: i32) -> Result<(), ChainGangError> {
+    let mut script = push.to_vec();
+    script.push(OP_DROP);
+    script.push(OP_1);
+    eval(
+        &script,
+        &mut MockChecker::with_tx_version(tx_version),
+        NO_FLAGS,
+    )
+}
+
+fn assert_non_minimal(push: &[u8]) {
+    match eval_push(push, 1) {
+        Err(e) if e.to_string().contains("Non-minimal push") => {}
+        other => panic!("{push:02x?} should be non-minimal, got {other:?}"),
+    }
+}
+
+/// Single-byte pushes, against the node's `CheckMinimalPush` (#203).
+///
+/// A byte an opcode can push by itself must use it: 1..=16 (OP_1..OP_16) and
+/// 0x81, which is what OP_1NEGATE pushes. Every other byte, 0x00 included,
+/// takes a one-byte push, because OP_0 pushes empty data rather than a zero
+/// byte. This used to reject 0x00 and 0x4f (OP_1NEGATE's opcode, not its value)
+/// and accept 0x81.
+///
+/// Checked against bitcoin-sv's `script_tests.json`: every one of its 21
+/// MINIMALDATA push rows agrees, including "0x01 0x81 DROP 1" -> MINIMALDATA,
+/// which this accepted before.
+#[test]
+fn single_byte_minimal_pushes_match_the_node() {
+    for byte in 1..=16u8 {
+        assert_non_minimal(&[1, byte]);
+    }
+    assert_non_minimal(&[1, 0x81]);
+
+    for byte in [0x00, 0x11, 0x4f, 0x80, 0x82, 0xff] {
+        eval_push(&[1, byte], 1).unwrap_or_else(|e| panic!("01 {byte:02x} is minimal: {e}"));
+    }
+}
+
+/// The PUSHDATA forms are minimal only above the size the next smaller form
+/// can carry, as in the node. Unchanged by #203; pinned here alongside it.
+#[test]
+fn pushdata_minimal_boundaries_match_the_node() {
+    let pushdata = |op: u8, len: usize| {
+        let mut push = vec![op];
+        match op {
+            OP_PUSHDATA1 => push.push(len as u8),
+            OP_PUSHDATA2 => push.extend_from_slice(&(len as u16).to_le_bytes()),
+            _ => push.extend_from_slice(&(len as u32).to_le_bytes()),
+        }
+        push.extend(std::iter::repeat_n(0x5a, len));
+        push
+    };
+    assert_non_minimal(&pushdata(OP_PUSHDATA1, 75));
+    eval_push(&pushdata(OP_PUSHDATA1, 76), 1).unwrap();
+    assert_non_minimal(&pushdata(OP_PUSHDATA2, 255));
+    eval_push(&pushdata(OP_PUSHDATA2, 256), 1).unwrap();
+    assert_non_minimal(&pushdata(OP_PUSHDATA4, 65_535));
+    eval_push(&pushdata(OP_PUSHDATA4, 65_536), 1).unwrap();
+}
+
+/// Malleable transactions (version > 1) are not held to minimal pushes, as the
+/// node's `EnforceNonMalleability` has it under Chronicle.
+#[test]
+fn malleable_transactions_skip_the_minimal_push_rule() {
+    eval_push(&[1, 0x05], 2).unwrap();
+    eval_push(&[1, 0x81], 2).unwrap();
+}

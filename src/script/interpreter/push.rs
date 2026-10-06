@@ -46,12 +46,15 @@ pub(crate) fn check_canonical_push(i: usize, script: &[u8]) -> Result<(), ChainG
             if len == 0 {
                 return Err(ChainGangError::ScriptError("Non-minimal push".to_string()));
             }
+            // The node's CheckMinimalPush: a single byte that an opcode can
+            // push on its own must use it. That is 1..=16 (OP_1..OP_16) and
+            // 0x81, the value OP_1NEGATE pushes. 0x00 has no such opcode, since
+            // OP_0 pushes empty data, not a zero byte. This used to list 0 and
+            // compare against OP_1NEGATE (0x4f) itself, so it rejected 0x00
+            // and 0x4f and let 0x81 through (#203).
             if len == 1 {
-                match script[i + 1] {
-                    0 | 1..=16 | OP_1NEGATE => {
-                        return Err(ChainGangError::ScriptError("Non-minimal push".to_string()));
-                    }
-                    _ => {}
+                if let 1..=16 | 0x81 = script[i + 1] {
+                    return Err(ChainGangError::ScriptError("Non-minimal push".to_string()));
                 }
             }
             Ok(())
