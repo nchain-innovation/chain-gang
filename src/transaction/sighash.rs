@@ -245,16 +245,33 @@ fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
     positions
 }
 
-// Remove instances of OP_CODESEPARATOR from the script_code
-// extract_subscript is the function that takes the script and the index of OP_CHECKSIG, and extracts the subscript)
-fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
+/// Where the script code a CHECKSIG signs begins in `script_code`.
+///
+/// The node's interpreter tracks `pbegincodehash`: each executed
+/// `OP_CODESEPARATOR` moves it to just past itself, and an `OP_CHECKSIG` signs
+/// from there to the end. Callers here pass a whole locking script and pick the
+/// `OP_CHECKSIG` by `checksig_index`, so this finds the separator that would
+/// last have executed before it and returns the position after it, or 0.
+///
+/// Both digest algorithms start from this one rule; they differ only in what
+/// they do with the separators that remain (see [`extract_subscript`] and
+/// [`bip143_script_code`]).
+///
+/// The number of separators does not matter. This used to return 0 whenever
+/// there was only one, which was right only when that one was the first
+/// opcode: anywhere else, the opcodes before it stayed in the script code, the
+/// digest differed from the node's, and the signature failed with NULLFAIL
+/// (CS-492). Even the first-opcode case was right only because the separator
+/// was then deleted; once BIP-143 keeps separators, starting at 0 would sign
+/// the separator itself.
+fn subscript_start(script_code: &[u8], checksig_index: usize) -> Result<usize, ChainGangError> {
     // OP_CODESEPARATOR / OP_CHECKSIG positions are found opcode-aware
     // (find_all_occurances_of walks opcodes), so pushed-data bytes equal to
     // those opcodes are never mistaken for the opcodes themselves (CS-483).
     let codeseparator_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CODESEPARATOR);
     if codeseparator_positions.is_empty() {
         // if there is no OP_CODESEPARATOR there is nothing to do
-        return Ok(script_code.to_vec());
+        return Ok(0);
     }
 
     // Look for all OP_CHECKSIG
@@ -269,20 +286,25 @@ fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8
         );
         return Err(ChainGangError::BadArgument(err_msg));
     }
+    let checksig_pos = checksig_positions[checksig_index];
 
-    let checksig_pos = checksig_positions.get(checksig_index).unwrap_or(&0);
+    // The last OP_CODESEPARATOR before the selected OP_CHECKSIG, however many
+    // there are; the script code starts just after it, as pbegincodehash does.
+    Ok(codeseparator_positions
+        .iter()
+        .rev()
+        .find(|pos| **pos < checksig_pos)
+        .map_or(0, |pos| pos + 1))
+}
 
-    // We need to find the first OP_CODESEPARATOR before the OP_CHECKSIG pos
-    let start_subscript: usize = if codeseparator_positions.len() < 2 {
-        0
-    } else {
-        let filtered_code_pos: Vec<usize> = codeseparator_positions
-            .iter()
-            .copied()
-            .filter(|pos| pos < checksig_pos)
-            .collect();
-        *filtered_code_pos.last().unwrap_or(&0)
-    };
+/// The script code the original algorithm signs: from [`subscript_start`] to
+/// the end, with every `OP_CODESEPARATOR` deleted.
+///
+/// The deletion is the node's: `CTransactionSignatureSerializer` skips
+/// separators while serializing the script code. It belongs to this algorithm
+/// only — BIP-143 keeps them.
+fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
+    let start_subscript = subscript_start(script_code, checksig_index)?;
 
     let mut sub_script = Vec::with_capacity(script_code.len() - start_subscript);
     let mut i = start_subscript;
@@ -295,6 +317,22 @@ fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8
         i = next;
     }
     Ok(sub_script)
+}
+
+/// The script code BIP-143 signs: from [`subscript_start`] to the end, byte for
+/// byte.
+///
+/// `SignatureHashBIP143` serializes the script code exactly as the interpreter
+/// hands it over (`ss << scriptCode`), with no `FindAndDelete`, so any
+/// `OP_CODESEPARATOR` after the one that executed is part of the preimage. This
+/// path used to share [`extract_subscript`] and delete them, which gave a
+/// different digest for every script that had one (#193).
+fn bip143_script_code(
+    script_code: &[u8],
+    checksig_index: usize,
+) -> Result<Vec<u8>, ChainGangError> {
+    let start = subscript_start(script_code, checksig_index)?;
+    Ok(script_code[start..].to_vec())
 }
 
 /// Generates the transaction digest for signing using OTDA (Original Transaction Digest Algorithm).
@@ -484,8 +522,8 @@ fn bip143_sighash_preimage(
     let base_type = (sighash_type & 31) as u8;
     let anyone_can_pay = sighash_type & u32::from(SIGHASH_ANYONECANPAY) != 0;
 
-    // Remove instances of OP_CODESEPARATOR from the script_code
-    let sub_script = extract_subscript(script_code, checksig_index)?;
+    // The script code from the selected separator on, separators included.
+    let sub_script = bip143_script_code(script_code, checksig_index)?;
 
     // Serialize the version
     s.write_u32::<LittleEndian>(tx.version)?;
@@ -1012,6 +1050,136 @@ mod tests {
             let got = sighash(&tx, 1, &script_code, 0, sighash_type, &mut cache).unwrap();
             assert_eq!(got.encode(), expected, "sighash_type {sighash_type:#04x}");
         }
+    }
+
+    /// Three OP_CHECKSIGs, with a separator between each pair:
+    ///
+    /// ```text
+    /// <pk1> CHECKSIG VERIFY CODESEPARATOR <pk2> CHECKSIG VERIFY CODESEPARATOR <pk3> CHECKSIG
+    /// ```
+    ///
+    /// `checksig_index` counts OP_CHECKSIG only, so the checks are CHECKSIG
+    /// VERIFY rather than CHECKSIGVERIFY.
+    fn three_checksig_script() -> Vec<u8> {
+        let push_key = |b: u8| {
+            let mut push = vec![0x21, 0x02];
+            push.extend_from_slice(&[b; 32]);
+            push
+        };
+        let mut script = push_key(0xa1);
+        script.extend_from_slice(&[OP_CHECKSIG, OP_VERIFY, OP_CODESEPARATOR]);
+        script.extend(push_key(0xa2));
+        script.extend_from_slice(&[OP_CHECKSIG, OP_VERIFY, OP_CODESEPARATOR]);
+        script.extend(push_key(0xa3));
+        script.push(OP_CHECKSIG);
+        script
+    }
+
+    /// BIP-143 signs the script code from the executed separator onwards with
+    /// every later separator still in it (#193).
+    ///
+    /// The node's interpreter hands `SignatureHashBIP143` the script from
+    /// `pbegincodehash` to the end, and that function serializes it untouched.
+    /// So signing the first OP_CHECKSIG covers the whole script, both
+    /// separators included, and signing the second covers everything after the
+    /// first separator, the second one included. chain-gang used to delete
+    /// them, which changed the first two digests. The third has no separator
+    /// left after its cut, so it was already right and is here as the control.
+    ///
+    /// The expected digests come from an independent implementation of the
+    /// node's `SignatureHash` that reproduces both columns of all 1000 rows of
+    /// bitcoin-sv's `sighash.json`, so they are the node's answer rather than
+    /// this code's.
+    #[test]
+    fn bip143_keeps_separators_after_the_executed_one() {
+        let (tx, _) = sighash_single_test_tx();
+        let script = three_checksig_script();
+        let expected = [
+            "f77b35d7bcb5b0231066d33fb305cf36f2bfb9ded436c3e66ffd042c30271ebd",
+            "0c6b9499857e601bad2f0192a69249a30c43e244204135163b6dba2cb197345e",
+            "001710e5453f51b4c88bac9d8926391c2347616e0c81505a149fde809f0fa268",
+        ];
+        for (checksig_index, expected) in expected.iter().enumerate() {
+            let mut cache = SigHashCache::new();
+            let got = sighash_checksig_index(
+                &tx,
+                0,
+                &script,
+                checksig_index,
+                50000,
+                SIGHASH_ALL | SIGHASH_FORKID,
+                &mut cache,
+            )
+            .unwrap();
+            assert_eq!(got.encode(), *expected, "checksig_index {checksig_index}");
+        }
+    }
+
+    /// The original algorithm still deletes every separator, as the node's
+    /// `CTransactionSignatureSerializer` does. Separating where the script code
+    /// starts from what happens to the separators left in it must not have
+    /// moved this path: the same script, any separators removed, gives the same
+    /// digest.
+    #[test]
+    fn original_algorithm_still_deletes_separators() {
+        let (tx, _) = sighash_single_test_tx();
+        let script = three_checksig_script();
+        let stripped: Vec<u8> = {
+            let mut out = Vec::new();
+            let mut i = 0;
+            while i < script.len() {
+                let next = next_op(i, &script);
+                if script[i] != OP_CODESEPARATOR {
+                    out.extend_from_slice(&script[i..next]);
+                }
+                i = next;
+            }
+            out
+        };
+        let mut cache = SigHashCache::new();
+        let with_separators =
+            sighash_checksig_index(&tx, 0, &script, 0, 0, SIGHASH_ALL, &mut cache).unwrap();
+        let mut cache = SigHashCache::new();
+        let without =
+            sighash_checksig_index(&tx, 0, &stripped, 0, 0, SIGHASH_ALL, &mut cache).unwrap();
+        assert_eq!(with_separators, without);
+    }
+
+    /// CS-492's reproduction, as the ticket gives it: one separator, not the
+    /// first opcode. The node starts the script code after it; this used to keep
+    /// `OP_1 OP_DROP`.
+    ///
+    /// No separator is left after the cut, so the two algorithms must agree and
+    /// the test pins nothing about what happens to later ones (CS-488).
+    #[test]
+    fn single_separator_not_first() {
+        let hash = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        let mut script = vec![OP_1, OP_DROP, OP_CODESEPARATOR, OP_DUP, OP_HASH160, 0x14];
+        script.extend_from_slice(&hash);
+        script.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        // node: script code starts after the executed OP_CODESEPARATOR
+        let mut node = vec![OP_DUP, OP_HASH160, 0x14];
+        node.extend_from_slice(&hash);
+        node.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
+        assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
+    }
+
+    /// One separator, as the first opcode. The old rule got this right only by
+    /// accident: it started at 0 and the separator was then deleted. BIP-143
+    /// keeps separators, so starting at 0 would sign `OP_CODESEPARATOR` itself
+    /// and the node, which starts after it, would reject the signature.
+    #[test]
+    fn single_leading_separator_is_not_signed() {
+        let mut script = vec![OP_CODESEPARATOR, 0x21, 0x02];
+        script.extend_from_slice(&[0x5a; 32]);
+        script.push(OP_CHECKSIG);
+        let node = script[1..].to_vec();
+
+        assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
+        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
     }
 }
 
