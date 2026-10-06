@@ -88,7 +88,7 @@ For transactions with `version > 1`, unlock and lock scripts are evaluated separ
 2. Keep the **main stack**; clear **conditional** and **alt** stacks.
 3. Evaluate the **lock script** with the inherited main stack.
 
-Legacy transactions (`version == 1`) continue to concatenate `unlock + OP_CODESEPARATOR + lock` into a single script.
+Legacy transactions (`version == 1`) are evaluated as the node's `VerifyScript` evaluates them: the unlock script runs on its own, then the lock script runs on the stack it leaves, each with its own alt stack and branch balance (`eval_unlock_then_lock()`). Before 0.11.6 they were concatenated as `unlock + OP_CODESEPARATOR + lock` into a single script, which let a truncated push in the unlock script take the lock script as data.
 
 CHECKSIG `scriptCode` in the unlock phase spans from the last `OP_CODESEPARATOR` in the unlock script through the end of the lock script (code separators stripped). CHECKSIG in the lock phase uses only the lock script from its last `OP_CODESEPARATOR`.
 

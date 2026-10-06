@@ -3,20 +3,36 @@ use crate::script::stack::Stack;
 use crate::util::ChainGangError;
 
 /// True when the script contains only push operations.
+///
+/// A push whose data runs past the end of the script is not a push: the node's
+/// `GetOp` fails on it, so its `IsPushOnly` is false and evaluating it is
+/// `BAD_OPCODE`. This used to step over the missing bytes and return true, so an
+/// unlocking script such as `0x1a`, a push of 26 bytes with none present,
+/// counted as push-only.
 pub fn is_push_only(script: &[u8]) -> bool {
     let mut i = 0;
     while i < script.len() {
-        match script[i] {
-            OP_0
-            | OP_1NEGATE
-            | OP_1..=OP_16
-            | 1..=75
-            | OP_PUSHDATA1
-            | OP_PUSHDATA2
-            | OP_PUSHDATA4 => {}
+        let end = match script[i] {
+            OP_0 | OP_1NEGATE | OP_1..=OP_16 => i + 1,
+            len @ 1..=75 => i + 1 + len as usize,
+            OP_PUSHDATA1 => match script.get(i + 1) {
+                Some(&len) => i + 2 + len as usize,
+                None => return false,
+            },
+            OP_PUSHDATA2 => match script.get(i + 1..i + 3) {
+                Some(len) => i + 3 + u16::from_le_bytes([len[0], len[1]]) as usize,
+                None => return false,
+            },
+            OP_PUSHDATA4 => match script.get(i + 1..i + 5) {
+                Some(len) => i + 5 + u32::from_le_bytes([len[0], len[1], len[2], len[3]]) as usize,
+                None => return false,
+            },
             _ => return false,
+        };
+        if end > script.len() {
+            return false;
         }
-        i = next_op(i, script);
+        i = end;
     }
     true
 }

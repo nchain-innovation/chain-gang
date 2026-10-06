@@ -657,6 +657,70 @@ fn pass(script: &[u8]) {
     assert!(eval(script, &mut c, NO_FLAGS).is_ok());
 }
 
+#[test]
+fn truncated_pushes_are_not_push_only() {
+    // The node's GetOp fails on a push whose data runs past the end, so its
+    // IsPushOnly is false. chain-gang used to step over the missing bytes.
+    for script in [
+        &[0x1a][..],
+        &[OP_1, 2, 0xaa],
+        &[OP_PUSHDATA1],
+        &[OP_PUSHDATA1, 2, 0xaa],
+        &[OP_PUSHDATA2, 1],
+        &[OP_PUSHDATA2, 2, 0, 0xaa],
+        &[OP_PUSHDATA4, 1, 0, 0],
+        &[OP_PUSHDATA4, 2, 0, 0, 0, 0xaa],
+    ] {
+        assert!(!is_push_only(script), "{script:02x?} counted as push-only");
+    }
+}
+
+#[test]
+fn complete_pushes_are_push_only() {
+    for script in [
+        &[][..],
+        &[OP_0, OP_1NEGATE, OP_1, OP_16],
+        &[2, 0xaa, 0xbb],
+        &[OP_PUSHDATA1, 0],
+        &[OP_PUSHDATA1, 1, 0xaa],
+        &[OP_PUSHDATA2, 1, 0, 0xaa],
+        &[OP_PUSHDATA4, 1, 0, 0, 0, 0xaa],
+    ] {
+        assert!(
+            is_push_only(script),
+            "{script:02x?} not counted as push-only"
+        );
+    }
+    assert!(!is_push_only(&[OP_1, OP_DUP]));
+}
+
+#[test]
+fn unlock_cannot_take_bytes_from_lock() {
+    // A push of 26 bytes with none present. Evaluated as one script with the
+    // lock it took OP_CODESEPARATOR and a 25-byte P2PKH lock as its data and
+    // left a true value; evaluated on its own, as the node does, it fails.
+    let mut lock = vec![OP_DUP, OP_HASH160, 20];
+    lock.extend([0x11; 20]);
+    lock.extend([OP_EQUALVERIFY, OP_CHECKSIG]);
+    for flags in [NO_FLAGS, PREGENESIS_RULES] {
+        let mut c = MockChecker::new();
+        assert!(eval_unlock_then_lock(&[0x1a], &lock, &mut c, flags).is_err());
+    }
+}
+
+#[test]
+fn unlock_and_lock_are_evaluated_separately() {
+    let mut c = MockChecker::new();
+    assert!(eval_unlock_then_lock(&[OP_1], &[OP_1, OP_EQUAL], &mut c, NO_FLAGS).is_ok());
+    // An IF cannot span the two scripts (node: UNBALANCED_CONDITIONAL)
+    let mut c = MockChecker::new();
+    assert!(eval_unlock_then_lock(&[OP_1, OP_IF], &[OP_1, OP_ENDIF], &mut c, NO_FLAGS).is_err());
+    // The alt stack is not shared (node: INVALID_ALTSTACK_OPERATION)
+    let mut c = MockChecker::new();
+    let (unlock, lock) = ([OP_1, OP_TOALTSTACK], [OP_FROMALTSTACK]);
+    assert!(eval_unlock_then_lock(&unlock, &lock, &mut c, NO_FLAGS).is_err());
+}
+
 /// A test run that doesn't do signature checks and expects failure
 fn fail(script: &[u8]) {
     let mut c = MockChecker::new();

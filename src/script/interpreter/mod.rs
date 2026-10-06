@@ -39,6 +39,35 @@ pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<()
     }
 }
 
+/// Evaluates a transaction input as the node's `VerifyScript` does: the
+/// unlocking script runs on its own, then the locking script runs on the stack
+/// it leaves.
+///
+/// Each script is evaluated separately, with its own alt stack and its own
+/// branch balance, so neither can reach into the other: a push that runs past
+/// the end of the unlocking script fails there rather than taking bytes from
+/// the locking script, and an `IF` opened in one cannot close in the other.
+///
+/// `Tx::validate` used to evaluate `unlock OP_CODESEPARATOR lock` as one
+/// script instead. Together with `is_push_only` accepting truncated pushes,
+/// that let an unlocking script made of one push opcode and no data take the
+/// separator and the whole locking script as its data and leave a true value,
+/// so any output could be spent without a signature (for a P2PKH output the
+/// unlocking script is the single byte `0x1a`). The node rejects that spend.
+///
+/// For `tx.version > 1` under Chronicle, use [`eval_two_phase`], whose
+/// unlocking-phase `CHECKSIG` signs through the locking script.
+pub fn eval_unlock_then_lock<T: Checker>(
+    unlock: &[u8],
+    lock: &[u8],
+    checker: &mut T,
+    flags: u32,
+) -> Result<(), ChainGangError> {
+    let (stack, _, _) = core_eval(unlock, checker, flags, None, None, None, None, None)?;
+    let (stack, _, _) = core_eval(lock, checker, flags, None, None, Some(stack), None, None)?;
+    validate_final_stack(&stack, checker)
+}
+
 /// Evaluates unlock and lock scripts in separate phases (Chronicle, `tx.version > 1`).
 ///
 /// The main stack is carried from unlock to lock; conditional and alt stacks are cleared
