@@ -3,8 +3,8 @@ use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
 use crate::network::Network;
 use crate::script::{
-    eval_two_phase, eval_unlock_then_lock, is_push_only, op_codes, uses_relaxed_malleability,
-    uses_two_phase_eval, TransactionChecker, NO_FLAGS, PREGENESIS_RULES,
+    eval_p2sh, eval_two_phase, eval_unlock_then_lock, is_push_only, op_codes,
+    uses_relaxed_malleability, uses_two_phase_eval, TransactionChecker, NO_FLAGS, PREGENESIS_RULES,
 };
 use crate::transaction::sighash::SigHashCache;
 use crate::util::{bounded_capacity, sha256d, var_int, ChainGangError, Hash256, Serializable};
@@ -161,10 +161,11 @@ impl Tx {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
             let is_pregenesis_input = pregenesis_outputs.contains(&tx_in.prev_output);
+            let pregenesis_utxo = !use_genesis_rules || is_pregenesis_input;
 
             if push_only_required(
                 use_genesis_rules,
-                !use_genesis_rules || is_pregenesis_input,
+                pregenesis_utxo,
                 script_version,
                 &tx_out.lock_script.0,
             ) && !is_push_only(&tx_in.unlock_script.0)
@@ -189,7 +190,18 @@ impl Tx {
                 NO_FLAGS
             };
 
-            if uses_two_phase_eval(script_version) {
+            if pregenesis_utxo && is_p2sh(&tx_out.lock_script.0) {
+                // BIP-16 gives a pre-Genesis P2SH output its meaning, in any
+                // era: the redeem script it commits to has to run too. The
+                // unlocking script is push-only, so two-phase evaluation has
+                // nothing to add here.
+                eval_p2sh(
+                    &tx_in.unlock_script.0,
+                    &tx_out.lock_script.0,
+                    &mut tx_checker,
+                    flags,
+                )?;
+            } else if uses_two_phase_eval(script_version) {
                 eval_two_phase(
                     &tx_in.unlock_script.0,
                     &tx_out.lock_script.0,
@@ -800,6 +812,174 @@ mod tests {
         let mut no_push = lock.clone();
         no_push.remove(1);
         assert!(!is_p2sh(&no_push), "the push of 20 is part of the template");
+    }
+
+    /// `OP_HASH160 <hash160(redeem)> OP_EQUAL`.
+    fn p2sh_lock(redeem: &[u8]) -> Vec<u8> {
+        let mut lock = vec![OP_HASH160, 20];
+        lock.extend_from_slice(&crate::util::hash160(redeem).0);
+        lock.push(OP_EQUAL);
+        lock
+    }
+
+    /// An unlocking script pushing `items` and then the redeem script.
+    fn p2sh_unlock(items: &[&[u8]], redeem: &[u8]) -> Vec<u8> {
+        let mut unlock = Script::new();
+        for item in items {
+            unlock.append_data(item);
+        }
+        unlock.append_data(redeem);
+        unlock.0
+    }
+
+    fn assert_rejected_for(result: Result<(), ChainGangError>, reason: &str) {
+        match result {
+            Err(e) if e.to_string().contains(reason) => {}
+            other => panic!("expected a rejection for {reason:?}, got {other:?}"),
+        }
+    }
+
+    /// The redeem script of a pre-Genesis P2SH output runs, and has to succeed
+    /// (#201). Before, only `OP_HASH160 <h> OP_EQUAL` ran, so any script with
+    /// the right hash passed, whatever it did.
+    #[test]
+    fn p2sh_redeem_script_is_run() {
+        let failing = [op_codes::OP_1, op_codes::OP_NOT];
+        assert_rejected_for(
+            validate_spend(
+                p2sh_lock(&failing),
+                p2sh_unlock(&[], &failing),
+                1,
+                false,
+                true,
+            ),
+            "Top of stack is false",
+        );
+
+        let returns = [op_codes::OP_RETURN];
+        assert_rejected_for(
+            validate_spend(
+                p2sh_lock(&returns),
+                p2sh_unlock(&[], &returns),
+                1,
+                false,
+                true,
+            ),
+            "Hit OP_RETURN",
+        );
+
+        let succeeds = [op_codes::OP_1];
+        validate_spend(
+            p2sh_lock(&succeeds),
+            p2sh_unlock(&[], &succeeds),
+            1,
+            false,
+            true,
+        )
+        .unwrap();
+    }
+
+    /// The redeem script runs against the stack the unlocking script left
+    /// below it.
+    #[test]
+    fn p2sh_redeem_script_consumes_the_items_below_it() {
+        let redeem = [op_codes::OP_ADD, op_codes::OP_5, op_codes::OP_EQUAL];
+        let lock = p2sh_lock(&redeem);
+        let mut unlock = vec![op_codes::OP_2, op_codes::OP_3];
+        unlock.extend(p2sh_unlock(&[], &redeem));
+        validate_spend(lock.clone(), unlock, 1, false, true).unwrap();
+
+        let mut unlock = vec![op_codes::OP_2, op_codes::OP_2];
+        unlock.extend(p2sh_unlock(&[], &redeem));
+        assert_rejected_for(
+            validate_spend(lock, unlock, 1, false, true),
+            "Top of stack is false",
+        );
+    }
+
+    /// A CHECKSIG in the redeem script verifies a signature over the redeem
+    /// script, the way a P2SH spend is signed.
+    ///
+    /// It also shows the final-stack checks wait for the redeem script: after
+    /// the locking script the stack still holds the signature under the
+    /// result, which a version 1 transaction's clean-stack rule would reject
+    /// if it were applied there.
+    #[test]
+    fn p2sh_checksig_redeem_script_verifies_its_signature() {
+        use crate::transaction::generate_signature;
+        use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_ALL, SIGHASH_FORKID};
+        use k256::ecdsa::SigningKey;
+
+        let key = [31; 32];
+        let other = [32; 32];
+        let pubkey: Vec<u8> = SigningKey::from_slice(&key)
+            .unwrap()
+            .verifying_key()
+            .to_sec1_bytes()
+            .to_vec();
+        let mut redeem = Script::new();
+        redeem.append_data(&pubkey);
+        redeem.append(op_codes::OP_CHECKSIG);
+        let lock = p2sh_lock(&redeem.0);
+
+        // The spending transaction validate_spend builds, to sign it here.
+        let tx = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: Hash256([7; 32]),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 90,
+                lock_script: Script(vec![]),
+            }],
+            lock_time: 0,
+        };
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let hash = sighash(
+            &tx,
+            0,
+            &redeem.0,
+            100,
+            sighash_type,
+            &mut SigHashCache::new(),
+        )
+        .unwrap();
+
+        let good = generate_signature(&key, &hash, sighash_type).unwrap();
+        validate_spend(
+            lock.clone(),
+            p2sh_unlock(&[&good], &redeem.0),
+            1,
+            false,
+            true,
+        )
+        .unwrap();
+
+        let wrong = generate_signature(&other, &hash, sighash_type).unwrap();
+        assert_rejected_for(
+            validate_spend(lock, p2sh_unlock(&[&wrong], &redeem.0), 1, false, true),
+            "NULLFAIL",
+        );
+    }
+
+    /// P2SH meaning belongs to the output, so a pre-Genesis P2SH output spent
+    /// after Genesis still runs its redeem script; an output created after
+    /// Genesis is just `OP_HASH160 <h> OP_EQUAL`, as the node treats it.
+    #[test]
+    fn p2sh_meaning_follows_the_output_not_the_era() {
+        let failing = [op_codes::OP_1, op_codes::OP_NOT];
+        let (lock, unlock) = (p2sh_lock(&failing), p2sh_unlock(&[], &failing));
+
+        assert_rejected_for(
+            validate_spend(lock.clone(), unlock.clone(), 1, true, true),
+            "Top of stack is false",
+        );
+        validate_spend(lock, unlock, 1, true, false).unwrap();
     }
 
     #[test]
