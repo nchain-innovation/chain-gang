@@ -25,12 +25,25 @@ pub const NO_FLAGS: u32 = 0x00;
 /// Flag to execute the script with pre-genesis rules
 pub const PREGENESIS_RULES: u32 = 0x01;
 
+/// Flag to apply consensus rules only, skipping the node's policy rules.
+///
+/// Without it, non-malleable transactions (version 1, or any version before
+/// Chronicle) are also held to three rules the node applies to its mempool
+/// but not to blocks: minimal pushes and minimal number encoding
+/// (`MINIMALDATA`), an empty `OP_CHECKMULTISIG` dummy (`NULLDUMMY`), and a clean
+/// stack (`CLEANSTACK`). They are in the node's `STANDARD_SCRIPT_VERIFY_FLAGS`
+/// and in neither mandatory set: "scripts violating these flags may still be
+/// present in valid blocks and we must accept those blocks". Checking a block
+/// needs this flag; checking a transaction before broadcast usually does not,
+/// since the node's mempool would reject a policy failure anyway (#205).
+pub const CONSENSUS_ONLY: u32 = 0x02;
+
 use crate::script::stack::Stack;
 use crate::script::Checker;
 use crate::util::ChainGangError;
 
 use crate::script::stack::decode_bool;
-use rules::validate_final_stack;
+use rules::{enforces_policy_rules, validate_final_stack};
 
 /// Evaluates a spend of a pre-Genesis P2SH output, as the node's `VerifyScript`
 /// does it (BIP-16).
@@ -98,13 +111,15 @@ pub(crate) fn eval_p2sh<T: Checker>(
         None,
         None,
     )?;
-    validate_final_stack(&stack, checker)
+    validate_final_stack(&stack, enforces_policy_rules(checker, flags))
 }
 
 /// Executes a script
 pub fn eval<T: Checker>(script: &[u8], checker: &mut T, flags: u32) -> Result<(), ChainGangError> {
     match core_eval(script, checker, flags, None, None, None, None, None) {
-        Ok((stack, _alt_stack, _script_counter)) => validate_final_stack(&stack, checker),
+        Ok((stack, _alt_stack, _script_counter)) => {
+            validate_final_stack(&stack, enforces_policy_rules(checker, flags))
+        }
         Err(x) => Err(x),
     }
 }
@@ -135,7 +150,7 @@ pub fn eval_unlock_then_lock<T: Checker>(
 ) -> Result<(), ChainGangError> {
     let (stack, _, _) = core_eval(unlock, checker, flags, None, None, None, None, None)?;
     let (stack, _, _) = core_eval(lock, checker, flags, None, None, Some(stack), None, None)?;
-    validate_final_stack(&stack, checker)
+    validate_final_stack(&stack, enforces_policy_rules(checker, flags))
 }
 
 /// Evaluates unlock and lock scripts in separate phases (Chronicle, `tx.version > 1`).
@@ -179,7 +194,7 @@ pub fn eval_two_phase<T: Checker>(
         Some(&ctx_lock),
     )?;
 
-    validate_final_stack(&stack, checker)
+    validate_final_stack(&stack, enforces_policy_rules(checker, flags))
 }
 
 /// Like [`eval_two_phase`], but returns the final main and alt stacks after validation.
@@ -219,6 +234,6 @@ pub fn eval_two_phase_with_stack<T: Checker>(
         Some(&ctx_lock),
     )?;
 
-    validate_final_stack(&stack, checker)?;
+    validate_final_stack(&stack, enforces_policy_rules(checker, flags))?;
     Ok((stack, alt_stack))
 }

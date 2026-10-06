@@ -34,8 +34,8 @@ pub use self::checker::{
 pub(crate) use self::interpreter::{eval_p2sh, next_op};
 pub use self::interpreter::{
     eval_two_phase, eval_two_phase_with_stack, eval_unlock_then_lock, is_push_only,
-    max_script_num_length, uses_relaxed_malleability, uses_two_phase_eval, NO_FLAGS,
-    PREGENESIS_RULES,
+    max_script_num_length, uses_relaxed_malleability, uses_two_phase_eval, CONSENSUS_ONLY,
+    NO_FLAGS, PREGENESIS_RULES,
 };
 pub use self::stack::Stack;
 pub use self::stack::{
