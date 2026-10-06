@@ -275,7 +275,7 @@ pub fn py_sig_hash_preimage(
     prev_amount: i64,
     sighash_flags: u8,
 ) -> PyResult<Py<PyAny>> {
-    let input_tx: Tx = tx.as_tx();
+    let input_tx: Tx = tx.as_tx()?;
     let prev_lock_script: Script = script_pubkey.as_script();
 
     let mut cache = SigHashCache::new();
@@ -287,7 +287,7 @@ pub fn py_sig_hash_preimage(
         sighash_flags,
         &mut cache,
     );
-    let bytes = PyBytes::new(_py, &sigh_hash.unwrap());
+    let bytes = PyBytes::new(_py, &sigh_hash?);
     Ok(bytes.into())
 }
 
@@ -311,7 +311,7 @@ pub fn py_sig_hash_preimage_checksig_index(
     prev_amount: i64,
     sighash_flags: u8,
 ) -> PyResult<Py<PyAny>> {
-    let input_tx: Tx = tx.as_tx();
+    let input_tx: Tx = tx.as_tx()?;
     let prev_lock_script: Script = script_pubkey.as_script();
 
     let mut cache = SigHashCache::new();
@@ -324,7 +324,7 @@ pub fn py_sig_hash_preimage_checksig_index(
         sighash_flags,
         &mut cache,
     );
-    let bytes = PyBytes::new(_py, &sigh_hash.unwrap());
+    let bytes = PyBytes::new(_py, &sigh_hash?);
     Ok(bytes.into())
 }
 
@@ -347,7 +347,7 @@ pub fn py_sig_hash(
     prev_amount: i64,
     sighash_flags: u8,
 ) -> PyResult<Py<PyAny>> {
-    let input_tx = tx.as_tx();
+    let input_tx = tx.as_tx()?;
     let prev_lock_script = script_pubkey.as_script();
 
     let full_sig_hash = create_sighash(
@@ -358,7 +358,7 @@ pub fn py_sig_hash(
         sighash_flags,
     );
 
-    let bytes = PyBytes::new(_py, &full_sig_hash.unwrap().0);
+    let bytes = PyBytes::new(_py, &full_sig_hash?.0);
     Ok(bytes.into())
 }
 
@@ -382,7 +382,7 @@ pub fn py_sig_hash_checksig_index(
     prev_amount: i64,
     sighash_flags: u8,
 ) -> PyResult<Py<PyAny>> {
-    let input_tx = tx.as_tx();
+    let input_tx = tx.as_tx()?;
     let prev_lock_script = script_pubkey.as_script();
 
     let full_sig_hash = create_sighash_checksig_index(
@@ -394,7 +394,7 @@ pub fn py_sig_hash_checksig_index(
         sighash_flags,
     );
 
-    let bytes = PyBytes::new(_py, &full_sig_hash.unwrap().0);
+    let bytes = PyBytes::new(_py, &full_sig_hash?.0);
     Ok(bytes.into())
 }
 

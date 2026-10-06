@@ -98,7 +98,13 @@ pub fn network_and_private_key_to_wif(
 
 pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>, ChainGangError> {
     let decoded = decode_base58_checksum(address)?;
-    Ok(decoded[1..].to_vec())
+    // Drop the version byte, which a well-formed checksum does not guarantee is there
+    match decoded.split_first() {
+        Some((_version, hash)) => Ok(hash.to_vec()),
+        None => Err(ChainGangError::BadData(format!(
+            "Address '{address}' decodes to an empty payload."
+        ))),
+    }
 }
 
 /// Takes a hash160 and returns the p2pkh script
@@ -169,8 +175,8 @@ impl PyWallet {
     /// Sign a transaction with the provided previous tx, Returns new signed tx
     fn sign_tx(&mut self, index: usize, input_pytx: PyTx, pytx: PyTx) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
-        let input_tx = input_pytx.as_tx();
-        let mut tx = pytx.as_tx();
+        let input_tx = input_pytx.as_tx()?;
+        let mut tx = pytx.as_tx()?;
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         self.wallet
             .sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
@@ -187,8 +193,8 @@ impl PyWallet {
         sighash_type: u8,
     ) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
-        let input_tx = input_pytx.as_tx();
-        let mut tx = pytx.as_tx();
+        let input_tx = input_pytx.as_tx()?;
+        let mut tx = pytx.as_tx()?;
         self.wallet
             .sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
         let updated_txpy = tx_as_pytx(&tx);
@@ -204,8 +210,8 @@ impl PyWallet {
         checksig_index: usize,
     ) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
-        let input_tx = input_pytx.as_tx();
-        let mut tx = pytx.as_tx();
+        let input_tx = input_pytx.as_tx()?;
+        let mut tx = pytx.as_tx()?;
         self.wallet.sign_tx_input_checksig_index(
             &input_tx,
             &mut tx,
@@ -315,6 +321,12 @@ impl PyWallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn address_with_empty_payload_is_an_error() {
+        // "3QJmnh" is the base58 checksum of an empty payload, so it has no version byte
+        assert!(address_to_public_key_hash("3QJmnh").is_err());
+    }
     use crate::util::hash160;
     use k256::SecretKey;
 

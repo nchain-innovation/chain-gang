@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    script::{op_codes, stack::encode_bigint, stack::encode_num, Script},
+    script::{op_codes, stack::encode_bigint, Script},
     util::{var_int, ChainGangError},
 };
 
@@ -61,87 +61,87 @@ fn handle_pushdata(cmd: &Command, is_pushdata: usize) -> usize {
     }
 }
 
-fn decode_op(op: &str, is_pushdata: usize) -> Command {
+/// Returns `data` preceded by the opcodes that push it onto the stack
+fn pushdata_bytes(data: &[u8]) -> Vec<u8> {
+    let len = data.len();
+    let mut retval: Vec<u8> = Vec::with_capacity(len + 5);
+    match len {
+        0 => retval.push(op_codes::OP_0),
+        1..=75 => retval.push(op_codes::OP_PUSH + len as u8),
+        76..=255 => {
+            retval.push(op_codes::OP_PUSHDATA1);
+            retval.push(len as u8);
+        }
+        256..=65535 => {
+            retval.push(op_codes::OP_PUSHDATA2);
+            retval.extend_from_slice(&(len as u16).to_le_bytes());
+        }
+        _ => {
+            retval.push(op_codes::OP_PUSHDATA4);
+            retval.extend_from_slice(&(len as u32).to_le_bytes());
+        }
+    }
+    retval.extend_from_slice(data);
+    retval
+}
+
+/// Drops `head` characters from the front of `op` and one from the back, the delimiters of
+/// 'text' or b'bytes'. None when `op` is too short to have them.
+fn strip_delimiters(op: &str, head: usize) -> Option<&str> {
+    let start = op.char_indices().nth(head)?.0;
+    let end = op.char_indices().last()?.0;
+    op.get(start..end)
+}
+
+fn decode_op(op: &str, is_pushdata: usize) -> Result<Command, ChainGangError> {
     let op = op.trim();
     if let Some(val) = op_codes::name_to_byte(op) {
-        return Command::Int(val);
+        return Ok(Command::Int(val));
     }
-    // Is an int
-    if let Ok(val) = op.parse::<i64>() {
-        match val {
-            -1 => return Command::Int(op_codes::OP_1NEGATE),
-            0 => return Command::Int(op_codes::OP_0),
-            1..=16 => return Command::Int((val + 0x50).try_into().unwrap()), // 1 => OP_1, => 0x81
-            17..=75 => {
+    // Is an int. Parsed as a BigInt so numbers outside i32 are encoded rather than rejected,
+    // as Script.append_big_integer does.
+    if let Ok(val) = op.parse::<BigInt>() {
+        match val.to_i64() {
+            Some(-1) => return Ok(Command::Int(op_codes::OP_1NEGATE)),
+            Some(0) => return Ok(Command::Int(op_codes::OP_0)),
+            Some(small @ 1..=16) => return Ok(Command::Int(small as u8 + 0x50)), // 1 => OP_1, => 0x81
+            Some(small @ 17..=75) => {
                 if is_pushdata > 0 {
-                    return Command::Int(val.try_into().unwrap());
+                    return Ok(Command::Int(small as u8));
                 } else {
-                    let retval: Vec<u8> = vec![1, val.try_into().unwrap()];
-                    return Command::Bytes(retval);
+                    return Ok(Command::Bytes(vec![1, small as u8]));
                 }
             }
             _ => {
+                let retval = encode_bigint(val);
                 if is_pushdata > 0 {
-                    let retval = encode_num(val).unwrap();
-                    return Command::Bytes(retval);
+                    return Ok(Command::Bytes(retval));
                 } else {
-                    let mut retval = encode_num(val).unwrap();
-                    let len: u8 = retval.len().try_into().unwrap();
-                    retval.insert(0, len);
-                    return Command::Bytes(retval);
+                    return Ok(Command::Bytes(pushdata_bytes(&retval)));
                 }
             }
         }
     }
     // Hex digit, digits
-    if op[..2] == *"0x" {
+    if let Some(hex_digits) = op.strip_prefix("0x") {
+        let data: Vec<u8> = hex::decode(hex_digits)
+            .map_err(|e| ChainGangError::BadData(format!("Unable to parse '{op}' as hex: {e}")))?;
         if is_pushdata > 0 {
-            let retval: Vec<u8> = hex::decode(&op[2..]).unwrap();
-            return Command::Bytes(retval);
+            return Ok(Command::Bytes(data));
         } else {
-            let len = op[2..].len() / 2;
-            let data: Vec<u8> = hex::decode(&op[2..]).unwrap();
-            let mut retval: Vec<u8> = Vec::new();
-            match len {
-                0 => {
-                    retval.push(op_codes::OP_0);
-                }
-                1..=75 => {
-                    retval.push(op_codes::OP_PUSH + len as u8);
-                    retval.extend(data);
-                }
-                76..=255 => {
-                    retval.push(op_codes::OP_PUSHDATA1);
-                    retval.push(len as u8);
-                    retval.extend(data);
-                }
-                256..=65535 => {
-                    retval.push(op_codes::OP_PUSHDATA2);
-                    retval.push(len as u8);
-                    retval.push((len >> 8) as u8);
-                    retval.extend(data);
-                }
-                _ => {
-                    retval.push(op_codes::OP_PUSHDATA4);
-                    retval.push(len as u8);
-                    retval.push((len >> 8) as u8);
-                    retval.push((len >> 16) as u8);
-                    retval.push((len >> 24) as u8);
-                    retval.extend(data);
-                }
-            }
-            return Command::Bytes(retval);
+            return Ok(Command::Bytes(pushdata_bytes(&data)));
         }
     }
-    // Byte array
-    if op[..1] == *"b" {
-        let bytes: Vec<u8> = op[2..op.len() - 1].chars().map(|c| c as u8).collect();
-        Command::Bytes(bytes)
+    // Byte array b'...' or string '...'
+    let (head, kind) = if op.starts_with('b') {
+        (2, "a byte array")
     } else {
-        // String
-        let bytes: Vec<u8> = op[1..op.len() - 1].chars().map(|c| c as u8).collect();
-        Command::Bytes(bytes)
-    }
+        (1, "a string")
+    };
+    let inner = strip_delimiters(op, head)
+        .ok_or_else(|| ChainGangError::BadData(format!("Unable to parse '{op}' as {kind}")))?;
+    let bytes: Vec<u8> = inner.chars().map(|c| c as u8).collect();
+    Ok(Command::Bytes(bytes))
 }
 
 #[pyclass(name = "Script", get_all, set_all, from_py_object)]
@@ -247,10 +247,8 @@ impl PyScript {
                 self.cmds.extend(&retval);
             }
             _ => {
-                let mut retval = encode_num(int_val).unwrap();
-                let len: u8 = retval.len().try_into().unwrap();
-                retval.insert(0, len);
-                self.cmds.extend(&retval);
+                let retval = encode_bigint(BigInt::from(int_val));
+                self.cmds.extend(pushdata_bytes(&retval));
             }
         }
     }
@@ -290,33 +288,7 @@ impl PyScript {
 
     /// Appends the opcodes and provided data that push it onto the stack
     fn append_pushdata(&mut self, data: &[u8]) {
-        let len = data.len();
-        match len {
-            0 => self.cmds.push(op_codes::OP_0),
-            1..=75 => {
-                self.cmds.push(op_codes::OP_PUSH + len as u8);
-                self.cmds.extend_from_slice(data);
-            }
-            76..=255 => {
-                self.cmds.push(op_codes::OP_PUSHDATA1);
-                self.cmds.push(len as u8);
-                self.cmds.extend_from_slice(data);
-            }
-            256..=65535 => {
-                self.cmds.push(op_codes::OP_PUSHDATA2);
-                self.cmds.push((len) as u8);
-                self.cmds.push((len >> 8) as u8);
-                self.cmds.extend_from_slice(data);
-            }
-            _ => {
-                self.cmds.push(op_codes::OP_PUSHDATA4);
-                self.cmds.push((len) as u8);
-                self.cmds.push((len >> 8) as u8);
-                self.cmds.push((len >> 16) as u8);
-                self.cmds.push((len >> 24) as u8);
-                self.cmds.extend_from_slice(data);
-            }
-        }
+        self.cmds.extend(pushdata_bytes(data));
     }
 
     /// Return true if p2pkh
@@ -358,10 +330,8 @@ impl PyScript {
                 self.cmds.extend(&retval);
             }
             _ => {
-                let mut retval = encode_bigint(big_int.clone());
-                let len: u8 = retval.len().try_into().unwrap();
-                retval.insert(0, len);
-                self.cmds.extend(&retval);
+                let retval = encode_bigint(big_int.clone());
+                self.cmds.extend(pushdata_bytes(&retval));
             }
         }
         Ok(true)
@@ -397,7 +367,7 @@ impl PyScript {
         let mut decoded: Vec<Command> = Vec::new();
         let mut is_pushdata: usize = 0;
         for s in splits {
-            let op = decode_op(s, is_pushdata);
+            let op = decode_op(s, is_pushdata)?;
             is_pushdata = handle_pushdata(&op, is_pushdata);
             decoded.push(op);
         }
@@ -411,5 +381,73 @@ impl PyScript {
     fn parse(_cls: &Bound<'_, PyType>, bytes: &[u8]) -> PyResult<Self> {
         let script = PyScript::read(&mut Cursor::new(&bytes))?;
         Ok(script)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn decode(op: &str) -> Result<Vec<u8>, ChainGangError> {
+        decode_op(op, 0).map(|cmd| commands_as_vec(vec![cmd]))
+    }
+
+    #[test]
+    fn small_numbers_are_unchanged() {
+        assert_eq!(decode("-1").unwrap(), vec![op_codes::OP_1NEGATE]);
+        assert_eq!(decode("0").unwrap(), vec![op_codes::OP_0]);
+        assert_eq!(decode("16").unwrap(), vec![op_codes::OP_16]);
+        assert_eq!(decode("17").unwrap(), vec![1, 17]);
+        assert_eq!(decode("76").unwrap(), vec![1, 76]);
+        assert_eq!(decode("-128").unwrap(), vec![2, 0x80, 0x80]);
+    }
+
+    #[test]
+    fn numbers_outside_i32_are_encoded() {
+        assert_eq!(decode("2147483648").unwrap(), vec![5, 0, 0, 0, 0x80, 0]);
+        assert_eq!(decode("-2147483648").unwrap(), vec![5, 0, 0, 0, 0x80, 0x80]);
+        // Past i64 these used to fall through to the string branch
+        let big = decode("18446744073709551616").unwrap();
+        assert_eq!(big, vec![9, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    }
+
+    #[test]
+    fn long_numbers_use_pushdata() {
+        // 2^700 encodes to 88 bytes, too many for a single length byte
+        let n: BigInt = BigInt::from(1) << 700usize;
+        let encoded = decode(&n.to_string()).unwrap();
+        assert_eq!(&encoded[..2], &[op_codes::OP_PUSHDATA1, 88]);
+        assert_eq!(encoded.len(), 90);
+    }
+
+    #[test]
+    fn bad_tokens_are_errors() {
+        for op in ["0xZZ", "0x123", "x", "'", "b'", "é"] {
+            assert!(decode(op).is_err(), "{op}");
+        }
+    }
+
+    #[test]
+    fn non_ascii_tokens_do_not_panic() {
+        assert_eq!(decode("éa").unwrap(), Vec::<u8>::new());
+        assert_eq!(decode("'é'").unwrap(), vec![0xe9]);
+    }
+
+    #[test]
+    fn pushdata_lengths() {
+        assert_eq!(pushdata_bytes(&[]), vec![op_codes::OP_0]);
+        assert_eq!(pushdata_bytes(&[7; 75])[0], 75);
+        assert_eq!(
+            &pushdata_bytes(&[7; 76])[..2],
+            &[op_codes::OP_PUSHDATA1, 76]
+        );
+        assert_eq!(
+            &pushdata_bytes(&[7; 256])[..3],
+            &[op_codes::OP_PUSHDATA2, 0, 1]
+        );
+        assert_eq!(
+            &pushdata_bytes(&[7; 65536])[..5],
+            &[op_codes::OP_PUSHDATA4, 0, 0, 1, 0]
+        );
     }
 }
