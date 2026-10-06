@@ -81,11 +81,6 @@ enum Divergence {
     /// `FindAndDelete`. chain-gang routes the BIP-143 path through
     /// `extract_subscript`, which strips every `OP_CODESEPARATOR` first.
     Bip143StripsSeparators,
-    /// Under `SIGHASH_SINGLE` the node blanks every output *except* the one at
-    /// `nIn` (`SerializeOutput` in the node's `interpreter.cpp`). chain-gang
-    /// blanks *only* the one at `nIn` — the condition is inverted — so every
-    /// `SIGHASH_SINGLE` digest on this path is wrong.
-    SingleBlanksWrongOutputs,
 }
 
 /// The script code the node hashes, given the one in the vector.
@@ -118,7 +113,7 @@ fn node_subscript(script_code: &[u8], algorithm: Algorithm) -> Vec<u8> {
 /// follows the order the implementation reaches each defect: the subscript is
 /// built first and can fail, so its cases come before the output-serialization
 /// one.
-fn divergence(script_code: &[u8], hash_type: u32, algorithm: Algorithm) -> Option<Divergence> {
+fn divergence(script_code: &[u8], algorithm: Algorithm) -> Option<Divergence> {
     match extract_subscript(script_code, 0) {
         // The only error reachable here: a script holding a separator but no
         // OP_CHECKSIG for `checksig_index` 0 to select.
@@ -130,12 +125,6 @@ fn divergence(script_code: &[u8], hash_type: u32, algorithm: Algorithm) -> Optio
             })
         }
         Ok(_) => {}
-    }
-
-    // BIP-143 hashes the single output correctly; only the original algorithm
-    // has the inverted condition.
-    if algorithm == Algorithm::Otda && (hash_type & 31) == u32::from(SIGHASH_SINGLE) {
-        return Some(Divergence::SingleBlanksWrongOutputs);
     }
 
     None
@@ -219,7 +208,7 @@ impl Tally {
         expected: &str,
         column: &str,
     ) {
-        let predicted = divergence(&v.script_code, v.hash_type, algorithm);
+        let predicted = divergence(&v.script_code, algorithm);
         let agrees = matches!(&computed, Ok(hash) if hash.encode() == expected);
 
         match (agrees, predicted) {
@@ -302,9 +291,9 @@ fn bitcoin_sv_sighash_vectors() {
     // Pinned. These are not targets; they are the measured size of three open
     // defects. Fixing one fails this test, which is the point — the numbers are
     // how a fix proves itself.
-    assert_eq!(regular.matched, 708, "regular digests reproducing the node");
+    assert_eq!(regular.matched, 727, "regular digests reproducing the node");
     assert_eq!(
-        original.matched, 731,
+        original.matched, 762,
         "original digests reproducing the node"
     );
 
@@ -324,12 +313,6 @@ fn bitcoin_sv_sighash_vectors() {
         "CS-492: truncation at a separator, regular column"
     );
     assert_eq!(
-        regular.count(Divergence::SingleBlanksWrongOutputs),
-        19,
-        "SIGHASH_SINGLE blanks the wrong outputs, regular column"
-    );
-
-    assert_eq!(
         original.count(Divergence::SeparatorWithoutChecksig),
         230,
         "CS-492: separated script with no OP_CHECKSIG, original column"
@@ -344,12 +327,6 @@ fn bitcoin_sv_sighash_vectors() {
         8,
         "CS-492: truncation at a separator, original column"
     );
-    assert_eq!(
-        original.count(Divergence::SingleBlanksWrongOutputs),
-        31,
-        "SIGHASH_SINGLE blanks the wrong outputs, original column"
-    );
-
     // Nothing diverges for a reason outside the classification.
     assert_eq!(
         regular.matched + regular.diverged.len(),

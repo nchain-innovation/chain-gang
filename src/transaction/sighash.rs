@@ -378,7 +378,18 @@ fn otda_sighash_preimage(
     };
     var_int::write(tx_out_list.len() as u64, &mut s)?;
     for (i, tx_out) in tx_out_list.iter().enumerate() {
-        if i == n_input && base_type == SIGHASH_SINGLE {
+        // SIGHASH_SINGLE signs the output paired with this input and leaves the
+        // others free to change, so every output *except* that one is blanked.
+        // The node does the same in `CTransactionSignatureSerializer`:
+        //
+        //     if (sigHashType.getBaseType() == BaseSigHashType::SINGLE &&
+        //         nOutput != nIn) { ::Serialize(s, CTxOut()); }
+        //     else { ::Serialize(s, txTo.vout[nOutput]); }
+        //
+        // This condition used to be inverted, which blanked the signed output
+        // and signed the free ones, so no SIGHASH_SINGLE digest on this path
+        // agreed with the node.
+        if base_type == SIGHASH_SINGLE && i != n_input {
             let empty = TxOut {
                 satoshis: -1,
                 lock_script: Script(vec![]),
@@ -910,6 +921,97 @@ mod tests {
 
         let actual = extract_subscript(&script_code, 1).unwrap();
         assert_eq!(actual, expected);
+    }
+
+    /// Two inputs, three outputs, so blanking the wrong ones is visible.
+    ///
+    /// Signing input 1 under SIGHASH_SINGLE pairs it with output 1. Output 0 is
+    /// blanked and output 2 is dropped by the `n_input + 1` truncation, so only
+    /// output 1 reaches the digest.
+    fn sighash_single_test_tx() -> (Tx, Vec<u8>) {
+        let raw = hex::decode(concat!(
+            "020000000211111111111111111111111111111111111111111111111111",
+            "111111111111110000000000feffffff2222222222222222222222222222",
+            "2222222222222222222222222222222222220700000000fdffffff03e803",
+            "0000000000001976a9143333333333333333333333333333333333333333",
+            "88acc4090000000000001976a91444444444444444444444444444444444",
+            "4444444488ac611e000000000000076a0548656c6c6f63000000",
+        ))
+        .unwrap();
+        let tx = Tx::read(&mut std::io::Cursor::new(&raw)).unwrap();
+        assert_eq!(tx.inputs.len(), 2);
+        assert_eq!(tx.outputs.len(), 3);
+        let script_code =
+            hex::decode("76a914555555555555555555555555555555555555555588ac").unwrap();
+        (tx, script_code)
+    }
+
+    /// SIGHASH_SINGLE commits to the output paired with the input, and to no
+    /// other.
+    ///
+    /// Stated as a property rather than a digest, so it says what the rule is
+    /// and catches the condition being inverted without anyone having to read a
+    /// hex constant. With the condition the wrong way round, output 1 is the one
+    /// that stops mattering and output 0 is the one that starts.
+    #[test]
+    fn sighash_single_signs_only_the_paired_output() {
+        let (tx, script_code) = sighash_single_test_tx();
+        let n_input = 1;
+
+        let digest = |tx: &Tx| {
+            let mut cache = SigHashCache::new();
+            sighash(tx, n_input, &script_code, 0, SIGHASH_SINGLE, &mut cache).unwrap()
+        };
+        let baseline = digest(&tx);
+
+        for (index, should_matter) in [(0, false), (1, true), (2, false)] {
+            let mut altered = tx.clone();
+            altered.outputs[index].satoshis += 1;
+            let changed = digest(&altered) != baseline;
+            let expectation = if should_matter {
+                "should"
+            } else {
+                "should not"
+            };
+            assert_eq!(
+                changed, should_matter,
+                "changing output {index} {expectation} change the digest"
+            );
+        }
+    }
+
+    /// The same transaction against digests the node would produce.
+    ///
+    /// The property above pins the shape; these pin the bytes. They were
+    /// produced by an independent implementation of `SignatureHashOriginal`
+    /// written from the node's source, which reproduces all 1000 rows of
+    /// bitcoin-sv's `sighash.json` exactly (see `sighash_vectors`), so they are
+    /// not this code's own answer written down.
+    ///
+    /// All three take the original algorithm: 0x03 has no FORKID, and 0x63 has
+    /// FORKID with CHRONICLE, which is the path in current use.
+    #[test]
+    fn sighash_single_matches_the_node() {
+        let (tx, script_code) = sighash_single_test_tx();
+        let cases = [
+            (
+                SIGHASH_SINGLE,
+                "03febcdf159c853553ecd381436e6d1f78a9eaf8724fc9d060722ddc4b993f91",
+            ),
+            (
+                SIGHASH_SINGLE | SIGHASH_FORKID | SIGHASH_CHRONICLE,
+                "367473babac69ec6dcf7a314df560b44fb7529dcffee5ab265b4af478f453b5c",
+            ),
+            (
+                SIGHASH_SINGLE | SIGHASH_ANYONECANPAY,
+                "f56deb451f2ba6f76f9322ad7c880a13e974d3da518a1c18ef77338a0f61dc0a",
+            ),
+        ];
+        for (sighash_type, expected) in cases {
+            let mut cache = SigHashCache::new();
+            let got = sighash(&tx, 1, &script_code, 0, sighash_type, &mut cache).unwrap();
+            assert_eq!(got.encode(), expected, "sighash_type {sighash_type:#04x}");
+        }
     }
 }
 
