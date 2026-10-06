@@ -160,8 +160,15 @@ impl Tx {
         for input in 0..self.inputs.len() {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
+            let is_pregenesis_input = pregenesis_outputs.contains(&tx_in.prev_output);
 
-            if !uses_relaxed_malleability(script_version) && !is_push_only(&tx_in.unlock_script.0) {
+            if push_only_required(
+                use_genesis_rules,
+                !use_genesis_rules || is_pregenesis_input,
+                script_version,
+                &tx_out.lock_script.0,
+            ) && !is_push_only(&tx_in.unlock_script.0)
+            {
                 return Err(ChainGangError::BadData(
                     "Unlock script must be push-only".to_string(),
                 ));
@@ -176,7 +183,6 @@ impl Tx {
                 script_tx_version: Some(script_version),
             };
 
-            let is_pregenesis_input = pregenesis_outputs.contains(&tx_in.prev_output);
             let flags = if !use_genesis_rules || is_pregenesis_input {
                 PREGENESIS_RULES
             } else {
@@ -320,6 +326,38 @@ impl fmt::Debug for Tx {
             .field("lock_time", &self.lock_time)
             .finish()
     }
+}
+
+/// Whether an input's unlocking script must be push-only, as the node's
+/// `VerifyScript` decides it (#199).
+///
+/// Two separate rules, keyed on different things:
+///
+/// - The general rule (`SIGPUSHONLY`) follows the era the transaction is
+///   validated in, not the age of what it spends. The node sets the flag per
+///   input when Genesis is active for the block (`InputScriptVerifyFlags`), and
+///   then requires push-only unless Chronicle is active and the transaction is
+///   malleable (version > 1). Before Genesis there is no general rule at all.
+/// - The P2SH rule (BIP-16) follows the age of the output: spending a P2SH
+///   output created before Genesis needs a push-only unlocking script, in any
+///   era and whatever the version.
+///
+/// This used to apply the general rule in every era, so it rejected pre-Genesis
+/// spends the node accepts and mines.
+fn push_only_required(
+    genesis_active: bool,
+    pregenesis_utxo: bool,
+    script_version: u32,
+    lock_script: &[u8],
+) -> bool {
+    (genesis_active && !uses_relaxed_malleability(script_version))
+        || (pregenesis_utxo && is_p2sh(lock_script))
+}
+
+/// `OP_HASH160 <20 bytes> OP_EQUAL`, the shape BIP-16 gives P2SH meaning. The
+/// node's `CScript::IsPayToScriptHash`.
+fn is_p2sh(script: &[u8]) -> bool {
+    script.len() == 23 && script[0] == OP_HASH160 && script[1] == 20 && script[22] == OP_EQUAL
 }
 
 #[cfg(test)]
@@ -619,6 +657,139 @@ mod tests {
         assert!(tx_test
             .validate(true, true, &utxos, &HashSet::new())
             .is_err());
+    }
+
+    /// Spends `lock_script` with `unlock_script` and validates the spend.
+    ///
+    /// `genesis_active` is the era the transaction is validated in;
+    /// `pregenesis_utxo` marks the output being spent as created before Genesis.
+    fn validate_spend(
+        lock_script: Vec<u8>,
+        unlock_script: Vec<u8>,
+        version: u32,
+        genesis_active: bool,
+        pregenesis_utxo: bool,
+    ) -> Result<(), ChainGangError> {
+        let outpoint = OutPoint {
+            hash: Hash256([7; 32]),
+            index: 0,
+        };
+        let mut utxos = LinkedHashMap::new();
+        utxos.insert(
+            outpoint.clone(),
+            TxOut {
+                satoshis: 100,
+                lock_script: Script(lock_script),
+            },
+        );
+        let mut pregenesis = HashSet::new();
+        if pregenesis_utxo {
+            pregenesis.insert(outpoint.clone());
+        }
+        let tx = Tx {
+            version,
+            inputs: vec![TxIn {
+                prev_output: outpoint,
+                unlock_script: Script(unlock_script),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 90,
+                lock_script: Script(vec![]),
+            }],
+            lock_time: 0,
+        };
+        tx.validate(true, genesis_active, &utxos, &pregenesis)
+    }
+
+    fn assert_push_only_rejected(result: Result<(), ChainGangError>) {
+        match result {
+            Err(e) if e.to_string().contains("push-only") => {}
+            other => panic!("expected a push-only rejection, got {other:?}"),
+        }
+    }
+
+    /// A non-push unlocking script, and a lock that is satisfied by it.
+    const NOT_PUSH_ONLY: [u8; 2] = [op_codes::OP_1, op_codes::OP_DROP];
+
+    /// `OP_HASH160 <hash160(OP_1)> OP_EQUAL`, with the redeem script it hashes.
+    fn p2sh_of_op_1() -> (Vec<u8>, Vec<u8>) {
+        let redeem = vec![op_codes::OP_1];
+        let mut lock = vec![OP_HASH160, 20];
+        lock.extend_from_slice(&crate::util::hash160(&redeem).0);
+        lock.push(OP_EQUAL);
+        (lock, redeem)
+    }
+
+    /// Before Genesis there is no general push-only rule. A bitcoin-sv regtest
+    /// node accepted and mined exactly this spend; chain-gang used to reject it
+    /// (#199).
+    #[test]
+    fn pregenesis_era_does_not_require_push_only() {
+        validate_spend(vec![op_codes::OP_1], NOT_PUSH_ONLY.to_vec(), 1, false, true).unwrap();
+    }
+
+    /// Spending a pre-Genesis P2SH output needs a push-only unlocking script
+    /// (BIP-16), even before Genesis, when nothing else does.
+    #[test]
+    fn pregenesis_p2sh_spend_requires_push_only() {
+        let (lock, redeem) = p2sh_of_op_1();
+        let mut unlock = vec![redeem.len() as u8];
+        unlock.extend_from_slice(&redeem);
+        // Pushing the redeem script satisfies the hash check.
+        validate_spend(lock.clone(), unlock.clone(), 1, false, true).unwrap();
+        // The same, plus a non-push opcode that leaves the stack alone.
+        unlock.push(op_codes::OP_NOP);
+        assert_push_only_rejected(validate_spend(lock, unlock, 1, false, true));
+    }
+
+    /// The general rule follows the era, not the output's age: once Genesis is
+    /// active, spending an output created before it still needs a push-only
+    /// unlocking script. (Keying the rule on the output's age, as #199 first
+    /// suggested, would have relaxed this.)
+    #[test]
+    fn genesis_era_requires_push_only_for_pregenesis_outputs_too() {
+        assert_push_only_rejected(validate_spend(
+            vec![op_codes::OP_1],
+            NOT_PUSH_ONLY.to_vec(),
+            1,
+            true,
+            true,
+        ));
+        assert_push_only_rejected(validate_spend(
+            vec![op_codes::OP_1],
+            NOT_PUSH_ONLY.to_vec(),
+            1,
+            true,
+            false,
+        ));
+    }
+
+    /// Under Chronicle a malleable (version > 1) transaction is exempt from the
+    /// general rule, but not from BIP-16's: the P2SH rule ignores the version.
+    #[test]
+    fn chronicle_malleability_does_not_exempt_pregenesis_p2sh() {
+        validate_spend(vec![op_codes::OP_1], NOT_PUSH_ONLY.to_vec(), 2, true, false).unwrap();
+
+        let (lock, redeem) = p2sh_of_op_1();
+        let mut unlock = vec![redeem.len() as u8];
+        unlock.extend_from_slice(&redeem);
+        unlock.push(op_codes::OP_NOP);
+        assert_push_only_rejected(validate_spend(lock, unlock, 2, true, true));
+    }
+
+    /// `is_p2sh` is the node's 23-byte template, and nothing shorter or longer.
+    #[test]
+    fn is_p2sh_matches_the_bip16_template() {
+        let (lock, _) = p2sh_of_op_1();
+        assert!(is_p2sh(&lock));
+        assert!(!is_p2sh(&lock[..22]));
+        let mut longer = lock.clone();
+        longer.push(op_codes::OP_NOP);
+        assert!(!is_p2sh(&longer));
+        let mut no_push = lock.clone();
+        no_push.remove(1);
+        assert!(!is_p2sh(&no_push), "the push of 20 is part of the template");
     }
 
     #[test]
