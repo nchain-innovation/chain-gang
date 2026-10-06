@@ -3,8 +3,9 @@ use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
 use crate::network::Network;
 use crate::script::{
-    eval_two_phase, eval_unlock_then_lock, is_push_only, op_codes, uses_relaxed_malleability,
-    uses_two_phase_eval, TransactionChecker, NO_FLAGS, PREGENESIS_RULES,
+    eval_p2sh, eval_two_phase, eval_unlock_then_lock, is_push_only, op_codes,
+    uses_relaxed_malleability, uses_two_phase_eval, TransactionChecker, CONSENSUS_ONLY, NO_FLAGS,
+    PREGENESIS_RULES,
 };
 use crate::transaction::sighash::SigHashCache;
 use crate::util::{bounded_capacity, sha256d, var_int, ChainGangError, Hash256, Serializable};
@@ -41,6 +42,13 @@ impl Tx {
     }
 
     /// Validates a non-coinbase transaction using version-only Chronicle gating (`tx.version > 1`).
+    ///
+    /// Checks what the node's mempool checks: consensus, plus the node's policy
+    /// rules for non-malleable transactions (minimal pushes and numbers, an
+    /// empty multisig dummy, a clean stack). That is the right check before
+    /// broadcast, since the node rejects a policy failure there anyway. A
+    /// transaction in a block is held to consensus only; use
+    /// [`Tx::validate_consensus`] for that.
     pub fn validate(
         &self,
         require_sighash_forkid: bool,
@@ -54,10 +62,37 @@ impl Tx {
             utxos,
             pregenesis_outputs,
             None,
+            false,
+        )
+    }
+
+    /// As [`Tx::validate`], but consensus rules only: what a block containing
+    /// this transaction is held to.
+    ///
+    /// The node's policy rules (`MINIMALDATA`, `NULLDUMMY`, `CLEANSTACK`) are
+    /// in its standard flags and in neither mandatory set, so a valid block can
+    /// contain a transaction that breaks them (#205).
+    pub fn validate_consensus(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            None,
+            true,
         )
     }
 
     /// Validates a non-coinbase transaction with BSV Chronicle activation height enforcement.
+    ///
+    /// Policy rules included, as [`Tx::validate`]; see
+    /// [`Tx::validate_at_height_consensus`] for consensus only.
     pub fn validate_at_height(
         &self,
         require_sighash_forkid: bool,
@@ -73,6 +108,28 @@ impl Tx {
             utxos,
             pregenesis_outputs,
             Some((block_height, network)),
+            false,
+        )
+    }
+
+    /// As [`Tx::validate_at_height`], but consensus rules only. This is what
+    /// [`Block::validate`](crate::messages::Block::validate) uses.
+    pub fn validate_at_height_consensus(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        block_height: u64,
+        network: Network,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            Some((block_height, network)),
+            true,
         )
     }
 
@@ -83,6 +140,7 @@ impl Tx {
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
         chronicle_context: Option<(u64, Network)>,
+        consensus_only: bool,
     ) -> Result<(), ChainGangError> {
         // Make sure neither in or out lists are empty
         if self.inputs.is_empty() {
@@ -160,8 +218,16 @@ impl Tx {
         for input in 0..self.inputs.len() {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
+            let is_pregenesis_input = pregenesis_outputs.contains(&tx_in.prev_output);
+            let pregenesis_utxo = !use_genesis_rules || is_pregenesis_input;
 
-            if !uses_relaxed_malleability(script_version) && !is_push_only(&tx_in.unlock_script.0) {
+            if push_only_required(
+                use_genesis_rules,
+                pregenesis_utxo,
+                script_version,
+                &tx_out.lock_script.0,
+            ) && !is_push_only(&tx_in.unlock_script.0)
+            {
                 return Err(ChainGangError::BadData(
                     "Unlock script must be push-only".to_string(),
                 ));
@@ -176,14 +242,29 @@ impl Tx {
                 script_tx_version: Some(script_version),
             };
 
-            let is_pregenesis_input = pregenesis_outputs.contains(&tx_in.prev_output);
-            let flags = if !use_genesis_rules || is_pregenesis_input {
+            let era_flags = if !use_genesis_rules || is_pregenesis_input {
                 PREGENESIS_RULES
             } else {
                 NO_FLAGS
             };
+            let flags = if consensus_only {
+                era_flags | CONSENSUS_ONLY
+            } else {
+                era_flags
+            };
 
-            if uses_two_phase_eval(script_version) {
+            if pregenesis_utxo && is_p2sh(&tx_out.lock_script.0) {
+                // BIP-16 gives a pre-Genesis P2SH output its meaning, in any
+                // era: the redeem script it commits to has to run too. The
+                // unlocking script is push-only, so two-phase evaluation has
+                // nothing to add here.
+                eval_p2sh(
+                    &tx_in.unlock_script.0,
+                    &tx_out.lock_script.0,
+                    &mut tx_checker,
+                    flags,
+                )?;
+            } else if uses_two_phase_eval(script_version) {
                 eval_two_phase(
                     &tx_in.unlock_script.0,
                     &tx_out.lock_script.0,
@@ -200,15 +281,12 @@ impl Tx {
             }
         }
 
-        if use_genesis_rules {
-            for tx_out in self.outputs.iter() {
-                if tx_out.lock_script.0.len() == 22
-                    && tx_out.lock_script.0[0] == OP_HASH160
-                    && tx_out.lock_script.0[21] == OP_EQUAL
-                {
-                    return Err(ChainGangError::BadData("P2SH sunsetted".to_string()));
-                }
-            }
+        // Once Genesis is active, creating a P2SH output is invalid: the node
+        // rejects the transaction as "bad-txns-vout-p2sh" (REJECT_INVALID).
+        // This used to look for a 22-byte script with no push of 20, which no
+        // real P2SH output is, so it never fired (#202).
+        if use_genesis_rules && self.outputs.iter().any(|o| is_p2sh(&o.lock_script.0)) {
+            return Err(ChainGangError::BadData("P2SH sunsetted".to_string()));
         }
 
         Ok(())
@@ -320,6 +398,38 @@ impl fmt::Debug for Tx {
             .field("lock_time", &self.lock_time)
             .finish()
     }
+}
+
+/// Whether an input's unlocking script must be push-only, as the node's
+/// `VerifyScript` decides it (#199).
+///
+/// Two separate rules, keyed on different things:
+///
+/// - The general rule (`SIGPUSHONLY`) follows the era the transaction is
+///   validated in, not the age of what it spends. The node sets the flag per
+///   input when Genesis is active for the block (`InputScriptVerifyFlags`), and
+///   then requires push-only unless Chronicle is active and the transaction is
+///   malleable (version > 1). Before Genesis there is no general rule at all.
+/// - The P2SH rule (BIP-16) follows the age of the output: spending a P2SH
+///   output created before Genesis needs a push-only unlocking script, in any
+///   era and whatever the version.
+///
+/// This used to apply the general rule in every era, so it rejected pre-Genesis
+/// spends the node accepts and mines.
+fn push_only_required(
+    genesis_active: bool,
+    pregenesis_utxo: bool,
+    script_version: u32,
+    lock_script: &[u8],
+) -> bool {
+    (genesis_active && !uses_relaxed_malleability(script_version))
+        || (pregenesis_utxo && is_p2sh(lock_script))
+}
+
+/// `OP_HASH160 <20 bytes> OP_EQUAL`, the shape BIP-16 gives P2SH meaning. The
+/// node's `CScript::IsPayToScriptHash`.
+fn is_p2sh(script: &[u8]) -> bool {
+    script.len() == 23 && script[0] == OP_HASH160 && script[1] == 20 && script[22] == OP_EQUAL
 }
 
 #[cfg(test)]
@@ -609,16 +719,330 @@ mod tests {
             .validate(true, true, &utxos_clone, &HashSet::new())
             .is_err());
 
+        // A P2SH output: allowed before Genesis, rejected from it on.
+        let mut tx_test = tx.clone();
+        let mut p2sh = vec![OP_HASH160, 20];
+        p2sh.extend_from_slice(&[0x5a; 20]);
+        p2sh.push(OP_EQUAL);
+        tx_test.outputs[0].lock_script = Script(p2sh);
+        assert!(tx_test
+            .validate(true, false, &utxos, &HashSet::new())
+            .is_ok());
+        match tx_test.validate(true, true, &utxos, &HashSet::new()) {
+            Err(e) if e.to_string().contains("P2SH sunsetted") => {}
+            other => panic!("expected a P2SH-output rejection, got {other:?}"),
+        }
+
+        // The 22-byte shape this check used to look for has no push of 20, so
+        // it is not P2SH and is not rejected (#202).
         let mut tx_test = tx.clone();
         tx_test.outputs[0].lock_script = Script(vec![
             OP_HASH160, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, OP_EQUAL,
         ]);
         assert!(tx_test
-            .validate(true, false, &utxos, &HashSet::new())
-            .is_ok());
-        assert!(tx_test
             .validate(true, true, &utxos, &HashSet::new())
-            .is_err());
+            .is_ok());
+    }
+
+    /// Spends `lock_script` with `unlock_script` and validates the spend.
+    ///
+    /// `genesis_active` is the era the transaction is validated in;
+    /// `pregenesis_utxo` marks the output being spent as created before Genesis.
+    fn validate_spend(
+        lock_script: Vec<u8>,
+        unlock_script: Vec<u8>,
+        version: u32,
+        genesis_active: bool,
+        pregenesis_utxo: bool,
+    ) -> Result<(), ChainGangError> {
+        let outpoint = OutPoint {
+            hash: Hash256([7; 32]),
+            index: 0,
+        };
+        let mut utxos = LinkedHashMap::new();
+        utxos.insert(
+            outpoint.clone(),
+            TxOut {
+                satoshis: 100,
+                lock_script: Script(lock_script),
+            },
+        );
+        let mut pregenesis = HashSet::new();
+        if pregenesis_utxo {
+            pregenesis.insert(outpoint.clone());
+        }
+        let tx = Tx {
+            version,
+            inputs: vec![TxIn {
+                prev_output: outpoint,
+                unlock_script: Script(unlock_script),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 90,
+                lock_script: Script(vec![]),
+            }],
+            lock_time: 0,
+        };
+        tx.validate(true, genesis_active, &utxos, &pregenesis)
+    }
+
+    fn assert_push_only_rejected(result: Result<(), ChainGangError>) {
+        match result {
+            Err(e) if e.to_string().contains("push-only") => {}
+            other => panic!("expected a push-only rejection, got {other:?}"),
+        }
+    }
+
+    /// A non-push unlocking script, and a lock that is satisfied by it.
+    const NOT_PUSH_ONLY: [u8; 2] = [op_codes::OP_1, op_codes::OP_DROP];
+
+    /// `OP_HASH160 <hash160(OP_1)> OP_EQUAL`, with the redeem script it hashes.
+    fn p2sh_of_op_1() -> (Vec<u8>, Vec<u8>) {
+        let redeem = vec![op_codes::OP_1];
+        let mut lock = vec![OP_HASH160, 20];
+        lock.extend_from_slice(&crate::util::hash160(&redeem).0);
+        lock.push(OP_EQUAL);
+        (lock, redeem)
+    }
+
+    /// Before Genesis there is no general push-only rule. A bitcoin-sv regtest
+    /// node accepted and mined exactly this spend; chain-gang used to reject it
+    /// (#199).
+    #[test]
+    fn pregenesis_era_does_not_require_push_only() {
+        validate_spend(vec![op_codes::OP_1], NOT_PUSH_ONLY.to_vec(), 1, false, true).unwrap();
+    }
+
+    /// Spending a pre-Genesis P2SH output needs a push-only unlocking script
+    /// (BIP-16), even before Genesis, when nothing else does.
+    #[test]
+    fn pregenesis_p2sh_spend_requires_push_only() {
+        let (lock, redeem) = p2sh_of_op_1();
+        let mut unlock = vec![redeem.len() as u8];
+        unlock.extend_from_slice(&redeem);
+        // Pushing the redeem script satisfies the hash check.
+        validate_spend(lock.clone(), unlock.clone(), 1, false, true).unwrap();
+        // The same, plus a non-push opcode that leaves the stack alone.
+        unlock.push(op_codes::OP_NOP);
+        assert_push_only_rejected(validate_spend(lock, unlock, 1, false, true));
+    }
+
+    /// The general rule follows the era, not the output's age: once Genesis is
+    /// active, spending an output created before it still needs a push-only
+    /// unlocking script. (Keying the rule on the output's age, as #199 first
+    /// suggested, would have relaxed this.)
+    #[test]
+    fn genesis_era_requires_push_only_for_pregenesis_outputs_too() {
+        assert_push_only_rejected(validate_spend(
+            vec![op_codes::OP_1],
+            NOT_PUSH_ONLY.to_vec(),
+            1,
+            true,
+            true,
+        ));
+        assert_push_only_rejected(validate_spend(
+            vec![op_codes::OP_1],
+            NOT_PUSH_ONLY.to_vec(),
+            1,
+            true,
+            false,
+        ));
+    }
+
+    /// Under Chronicle a malleable (version > 1) transaction is exempt from the
+    /// general rule, but not from BIP-16's: the P2SH rule ignores the version.
+    #[test]
+    fn chronicle_malleability_does_not_exempt_pregenesis_p2sh() {
+        validate_spend(vec![op_codes::OP_1], NOT_PUSH_ONLY.to_vec(), 2, true, false).unwrap();
+
+        let (lock, redeem) = p2sh_of_op_1();
+        let mut unlock = vec![redeem.len() as u8];
+        unlock.extend_from_slice(&redeem);
+        unlock.push(op_codes::OP_NOP);
+        assert_push_only_rejected(validate_spend(lock, unlock, 2, true, true));
+    }
+
+    /// `is_p2sh` is the node's 23-byte template, and nothing shorter or longer.
+    #[test]
+    fn is_p2sh_matches_the_bip16_template() {
+        let (lock, _) = p2sh_of_op_1();
+        assert!(is_p2sh(&lock));
+        assert!(!is_p2sh(&lock[..22]));
+        let mut longer = lock.clone();
+        longer.push(op_codes::OP_NOP);
+        assert!(!is_p2sh(&longer));
+        let mut no_push = lock.clone();
+        no_push.remove(1);
+        assert!(!is_p2sh(&no_push), "the push of 20 is part of the template");
+    }
+
+    /// `OP_HASH160 <hash160(redeem)> OP_EQUAL`.
+    fn p2sh_lock(redeem: &[u8]) -> Vec<u8> {
+        let mut lock = vec![OP_HASH160, 20];
+        lock.extend_from_slice(&crate::util::hash160(redeem).0);
+        lock.push(OP_EQUAL);
+        lock
+    }
+
+    /// An unlocking script pushing `items` and then the redeem script.
+    fn p2sh_unlock(items: &[&[u8]], redeem: &[u8]) -> Vec<u8> {
+        let mut unlock = Script::new();
+        for item in items {
+            unlock.append_data(item);
+        }
+        unlock.append_data(redeem);
+        unlock.0
+    }
+
+    fn assert_rejected_for(result: Result<(), ChainGangError>, reason: &str) {
+        match result {
+            Err(e) if e.to_string().contains(reason) => {}
+            other => panic!("expected a rejection for {reason:?}, got {other:?}"),
+        }
+    }
+
+    /// The redeem script of a pre-Genesis P2SH output runs, and has to succeed
+    /// (#201). Before, only `OP_HASH160 <h> OP_EQUAL` ran, so any script with
+    /// the right hash passed, whatever it did.
+    #[test]
+    fn p2sh_redeem_script_is_run() {
+        let failing = [op_codes::OP_1, op_codes::OP_NOT];
+        assert_rejected_for(
+            validate_spend(
+                p2sh_lock(&failing),
+                p2sh_unlock(&[], &failing),
+                1,
+                false,
+                true,
+            ),
+            "Top of stack is false",
+        );
+
+        let returns = [op_codes::OP_RETURN];
+        assert_rejected_for(
+            validate_spend(
+                p2sh_lock(&returns),
+                p2sh_unlock(&[], &returns),
+                1,
+                false,
+                true,
+            ),
+            "Hit OP_RETURN",
+        );
+
+        let succeeds = [op_codes::OP_1];
+        validate_spend(
+            p2sh_lock(&succeeds),
+            p2sh_unlock(&[], &succeeds),
+            1,
+            false,
+            true,
+        )
+        .unwrap();
+    }
+
+    /// The redeem script runs against the stack the unlocking script left
+    /// below it.
+    #[test]
+    fn p2sh_redeem_script_consumes_the_items_below_it() {
+        let redeem = [op_codes::OP_ADD, op_codes::OP_5, op_codes::OP_EQUAL];
+        let lock = p2sh_lock(&redeem);
+        let mut unlock = vec![op_codes::OP_2, op_codes::OP_3];
+        unlock.extend(p2sh_unlock(&[], &redeem));
+        validate_spend(lock.clone(), unlock, 1, false, true).unwrap();
+
+        let mut unlock = vec![op_codes::OP_2, op_codes::OP_2];
+        unlock.extend(p2sh_unlock(&[], &redeem));
+        assert_rejected_for(
+            validate_spend(lock, unlock, 1, false, true),
+            "Top of stack is false",
+        );
+    }
+
+    /// A CHECKSIG in the redeem script verifies a signature over the redeem
+    /// script, the way a P2SH spend is signed.
+    ///
+    /// It also shows the final-stack checks wait for the redeem script: after
+    /// the locking script the stack still holds the signature under the
+    /// result, which a version 1 transaction's clean-stack rule would reject
+    /// if it were applied there.
+    #[test]
+    fn p2sh_checksig_redeem_script_verifies_its_signature() {
+        use crate::transaction::generate_signature;
+        use crate::transaction::sighash::{sighash, SigHashCache, SIGHASH_ALL, SIGHASH_FORKID};
+        use k256::ecdsa::SigningKey;
+
+        let key = [31; 32];
+        let other = [32; 32];
+        let pubkey: Vec<u8> = SigningKey::from_slice(&key)
+            .unwrap()
+            .verifying_key()
+            .to_sec1_bytes()
+            .to_vec();
+        let mut redeem = Script::new();
+        redeem.append_data(&pubkey);
+        redeem.append(op_codes::OP_CHECKSIG);
+        let lock = p2sh_lock(&redeem.0);
+
+        // The spending transaction validate_spend builds, to sign it here.
+        let tx = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: Hash256([7; 32]),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 90,
+                lock_script: Script(vec![]),
+            }],
+            lock_time: 0,
+        };
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let hash = sighash(
+            &tx,
+            0,
+            &redeem.0,
+            100,
+            sighash_type,
+            &mut SigHashCache::new(),
+        )
+        .unwrap();
+
+        let good = generate_signature(&key, &hash, sighash_type).unwrap();
+        validate_spend(
+            lock.clone(),
+            p2sh_unlock(&[&good], &redeem.0),
+            1,
+            false,
+            true,
+        )
+        .unwrap();
+
+        let wrong = generate_signature(&other, &hash, sighash_type).unwrap();
+        assert_rejected_for(
+            validate_spend(lock, p2sh_unlock(&[&wrong], &redeem.0), 1, false, true),
+            "NULLFAIL",
+        );
+    }
+
+    /// P2SH meaning belongs to the output, so a pre-Genesis P2SH output spent
+    /// after Genesis still runs its redeem script; an output created after
+    /// Genesis is just `OP_HASH160 <h> OP_EQUAL`, as the node treats it.
+    #[test]
+    fn p2sh_meaning_follows_the_output_not_the_era() {
+        let failing = [op_codes::OP_1, op_codes::OP_NOT];
+        let (lock, unlock) = (p2sh_lock(&failing), p2sh_unlock(&[], &failing));
+
+        assert_rejected_for(
+            validate_spend(lock.clone(), unlock.clone(), 1, true, true),
+            "Top of stack is false",
+        );
+        validate_spend(lock, unlock, 1, true, false).unwrap();
     }
 
     #[test]

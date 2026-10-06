@@ -73,6 +73,20 @@ class SigHashTest(unittest.TestCase):
         self.assertNotEqual(bip143_hash, chronicle_hash)
         self.assertEqual(chronicle_hash, hash256d(chronicle_preimage))
 
+    def test_input_index_out_of_range_raises(self):
+        # An index past the last input is a ValueError, not a PanicException
+        own_tx = Tx.parse_hexstr(self.SAMPLE_TX_HEX)
+        script_pubkey = self.SAMPLE_SCRIPT_PUBKEY
+        calls = [
+            lambda: sig_hash(own_tx, 1, script_pubkey, 99904, SIGHASH.ALL_FORKID),
+            lambda: sig_hash_preimage(own_tx, 1, script_pubkey, 99904, SIGHASH.ALL_FORKID),
+            lambda: sig_hash_checksig_index(own_tx, 1, script_pubkey, 0, 99904, SIGHASH.ALL_FORKID),
+            lambda: sig_hash_preimage_checksig_index(own_tx, 1, script_pubkey, 0, 99904, SIGHASH.ALL_FORKID),
+        ]
+        for call in calls:
+            with self.assertRaises(ValueError):
+                call()
+
 
 if __name__ == "__main__":
     unittest.main()

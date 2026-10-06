@@ -1095,28 +1095,132 @@ fn max_script_num_length_by_context() {
     );
 }
 
-#[test]
-fn genesis_script_num_limit_rejects_oversized_bin2num() {
+/// A minimally encoded number of `len` bytes: zeros, then a 1 in the top byte,
+/// so BIN2NUM can strip nothing and the length is the number's own.
+fn minimal_number_push(len: usize) -> Script {
     let mut script = Script::new();
     script.append(OP_PUSHDATA4);
-    script.append_slice(&(750_001_u32).to_le_bytes());
-    script.0.extend(std::iter::repeat_n(0u8, 750_001));
-    script.append(OP_BIN2NUM);
-    script.append(OP_1);
-    let mut c = MockChecker::with_tx_version(1);
-    assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+    script.append_slice(&(len as u32).to_le_bytes());
+    script.0.extend(std::iter::repeat_n(0u8, len - 1));
+    script.0.push(1);
+    script
 }
 
+/// The Genesis limit applies to BIN2NUM's result. A 750,001-byte minimal
+/// number exceeds it; the script then drops the result and leaves a lone 1, so
+/// the only way it can fail is BIN2NUM itself. (The earlier version of this
+/// test pushed zeros and left two items on the stack. Once BIN2NUM checked its
+/// result, as the node does, the zeros became a valid zero and the test went on
+/// passing only through a clean-stack violation — #36.)
 #[test]
-fn chronicle_script_num_limit_accepts_genesis_max_bin2num() {
-    let mut script = Script::new();
-    script.append(OP_PUSHDATA4);
-    script.append_slice(&(750_000_u32).to_le_bytes());
-    script.0.extend(std::iter::repeat_n(0u8, 750_000));
+fn genesis_script_num_limit_rejects_oversized_bin2num() {
+    let mut script = minimal_number_push(750_001);
     script.append(OP_BIN2NUM);
+    script.append(OP_DROP);
+    script.append(OP_1);
+    let mut c = MockChecker::with_tx_version(1);
+    let err = eval(&script.0, &mut c, NO_FLAGS).unwrap_err();
+    assert!(
+        err.to_string().contains("exceeds maximum length of 750000"),
+        "failed for the wrong reason: {err}"
+    );
+}
+
+/// The same 750,001-byte number is within Chronicle's limit.
+#[test]
+fn chronicle_script_num_limit_accepts_bin2num_genesis_rejects() {
+    let mut script = minimal_number_push(750_001);
+    script.append(OP_BIN2NUM);
+    script.append(OP_DROP);
     script.append(OP_1);
     let mut c = MockChecker::with_tx_version(2);
-    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+    eval(&script.0, &mut c, NO_FLAGS).unwrap();
+}
+
+/// BIN2NUM checks the length of the number it produces, not of its input
+/// (#36). The node minimally encodes and then checks (`MinimallyEncode`, then
+/// `IsMinimallyEncoded` against the limit), because padding is exactly what the
+/// opcode removes. chain-gang checked the input first, so under the pre-Genesis
+/// 4-byte limit it rejected every 5-byte padded input — eight rows of
+/// bitcoin-sv's own `script_tests.json`, quoted here with the node's result.
+#[test]
+fn bin2num_limits_the_result_not_the_input() {
+    let pregenesis = |script: &[u8]| eval(script, &mut MockChecker::new(), PREGENESIS_RULES);
+    let push5 = |bytes: [u8; 5]| {
+        let mut s = vec![OP_PUSH + 5];
+        s.extend_from_slice(&bytes);
+        s.push(OP_BIN2NUM);
+        s
+    };
+    let equals = |mut s: Vec<u8>, expected: &[u8]| {
+        s.push(OP_PUSH + expected.len() as u8);
+        s.extend_from_slice(expected);
+        s.push(OP_EQUAL);
+        s
+    };
+
+    // "0x05 0x0100000000 BIN2NUM 1 EQUAL" -> OK
+    pregenesis(&equals(push5([0x01, 0, 0, 0, 0]), &[0x01])).unwrap();
+    // "0x05 0xFE00000000 BIN2NUM 254 EQUAL" -> OK; 0xfe needs a sign byte
+    pregenesis(&equals(push5([0xfe, 0, 0, 0, 0]), &[0xfe, 0x00])).unwrap();
+    // "0x05 0x0500000080 BIN2NUM 0x01 0x85 EQUAL" -> OK
+    pregenesis(&equals(push5([0x05, 0, 0, 0, 0x80]), &[0x85])).unwrap();
+    // "0x05 0xffffff7f80 BIN2NUM -2147483647 EQUAL" -> OK; exactly 4 bytes
+    pregenesis(&equals(
+        push5([0xff, 0xff, 0xff, 0x7f, 0x80]),
+        &[0xff, 0xff, 0xff, 0xff],
+    ))
+    .unwrap();
+    // "0x05 0x0100800000 BIN2NUM 8388609 EQUAL" -> OK; the significant zero stays
+    pregenesis(&equals(
+        push5([0x01, 0x00, 0x80, 0x00, 0x00]),
+        &[0x01, 0x00, 0x80, 0x00],
+    ))
+    .unwrap();
+    // "0x05 0xffffffff00 BIN2NUM 2147483647 EQUAL" -> INVALID_NUMBER_RANGE:
+    // already minimal at 5 bytes, so the result itself is over the limit
+    let err = pregenesis(&equals(
+        push5([0xff, 0xff, 0xff, 0xff, 0x00]),
+        &[0xff, 0xff, 0xff, 0x7f],
+    ))
+    .unwrap_err();
+    assert!(
+        err.to_string().contains("exceeds maximum length of 4"),
+        "{err}"
+    );
+
+    // At Genesis the same rule: 750,001 zero bytes are a valid zero.
+    let mut zeros = Script::new();
+    zeros.append(OP_PUSHDATA4);
+    zeros.append_slice(&(750_001_u32).to_le_bytes());
+    zeros.0.extend(std::iter::repeat_n(0u8, 750_001));
+    zeros.append(OP_BIN2NUM);
+    zeros.append(OP_0);
+    zeros.append(OP_EQUAL);
+    eval(&zeros.0, &mut MockChecker::with_tx_version(1), NO_FLAGS).unwrap();
+}
+
+/// The examples from #36, with what the node returns. The bytes are little
+/// endian in script order: `00 02` is 512 and already minimal, `02 00` is 2 with
+/// a padding byte, `05 80` is -5 with the sign in a padding byte. The uahf spec
+/// writes the same examples most significant byte first, which is how
+/// `0x0000000002 -> 0x02` reads there and why it looked wrong here.
+#[test]
+fn bin2num_issue_36_examples() {
+    for (input, node) in [
+        (&[0x00, 0x02][..], &[0x00, 0x02][..]),
+        (&[0x02, 0x00][..], &[0x02][..]),
+        (&[0x05, 0x80][..], &[0x85][..]),
+    ] {
+        let mut script = vec![OP_PUSH + input.len() as u8];
+        script.extend_from_slice(input);
+        script.push(OP_BIN2NUM);
+        script.push(OP_PUSH + node.len() as u8);
+        script.extend_from_slice(node);
+        script.push(OP_EQUAL);
+        eval(&script, &mut MockChecker::new(), NO_FLAGS)
+            .unwrap_or_else(|e| panic!("{input:02x?} BIN2NUM should be {node:02x?}: {e}"));
+    }
 }
 
 /// Regression: minimal encoding is a script *number* rule, so it must not be
@@ -1203,4 +1307,77 @@ fn minimal_push_rule_still_enforced() {
     // A 1-byte push of 0x01 must use OP_1.
     let mut c = MockChecker::with_tx_version(1);
     assert!(eval(&[OP_PUSH + 1, 0x01, OP_DROP, OP_1], &mut c, NO_FLAGS).is_err());
+}
+
+/// Evaluates `<push> OP_DROP OP_1` with malleability rules enforced (a version
+/// 1 transaction), so the only thing that can fail it is the push itself.
+fn eval_push(push: &[u8], tx_version: i32) -> Result<(), ChainGangError> {
+    let mut script = push.to_vec();
+    script.push(OP_DROP);
+    script.push(OP_1);
+    eval(
+        &script,
+        &mut MockChecker::with_tx_version(tx_version),
+        NO_FLAGS,
+    )
+}
+
+fn assert_non_minimal(push: &[u8]) {
+    match eval_push(push, 1) {
+        Err(e) if e.to_string().contains("Non-minimal push") => {}
+        other => panic!("{push:02x?} should be non-minimal, got {other:?}"),
+    }
+}
+
+/// Single-byte pushes, against the node's `CheckMinimalPush` (#203).
+///
+/// A byte an opcode can push by itself must use it: 1..=16 (OP_1..OP_16) and
+/// 0x81, which is what OP_1NEGATE pushes. Every other byte, 0x00 included,
+/// takes a one-byte push, because OP_0 pushes empty data rather than a zero
+/// byte. This used to reject 0x00 and 0x4f (OP_1NEGATE's opcode, not its value)
+/// and accept 0x81.
+///
+/// Checked against bitcoin-sv's `script_tests.json`: every one of its 21
+/// MINIMALDATA push rows agrees, including "0x01 0x81 DROP 1" -> MINIMALDATA,
+/// which this accepted before.
+#[test]
+fn single_byte_minimal_pushes_match_the_node() {
+    for byte in 1..=16u8 {
+        assert_non_minimal(&[1, byte]);
+    }
+    assert_non_minimal(&[1, 0x81]);
+
+    for byte in [0x00, 0x11, 0x4f, 0x80, 0x82, 0xff] {
+        eval_push(&[1, byte], 1).unwrap_or_else(|e| panic!("01 {byte:02x} is minimal: {e}"));
+    }
+}
+
+/// The PUSHDATA forms are minimal only above the size the next smaller form
+/// can carry, as in the node. Unchanged by #203; pinned here alongside it.
+#[test]
+fn pushdata_minimal_boundaries_match_the_node() {
+    let pushdata = |op: u8, len: usize| {
+        let mut push = vec![op];
+        match op {
+            OP_PUSHDATA1 => push.push(len as u8),
+            OP_PUSHDATA2 => push.extend_from_slice(&(len as u16).to_le_bytes()),
+            _ => push.extend_from_slice(&(len as u32).to_le_bytes()),
+        }
+        push.extend(std::iter::repeat_n(0x5a, len));
+        push
+    };
+    assert_non_minimal(&pushdata(OP_PUSHDATA1, 75));
+    eval_push(&pushdata(OP_PUSHDATA1, 76), 1).unwrap();
+    assert_non_minimal(&pushdata(OP_PUSHDATA2, 255));
+    eval_push(&pushdata(OP_PUSHDATA2, 256), 1).unwrap();
+    assert_non_minimal(&pushdata(OP_PUSHDATA4, 65_535));
+    eval_push(&pushdata(OP_PUSHDATA4, 65_536), 1).unwrap();
+}
+
+/// Malleable transactions (version > 1) are not held to minimal pushes, as the
+/// node's `EnforceNonMalleability` has it under Chronicle.
+#[test]
+fn malleable_transactions_skip_the_minimal_push_rule() {
+    eval_push(&[1, 0x05], 2).unwrap();
+    eval_push(&[1, 0x81], 2).unwrap();
 }

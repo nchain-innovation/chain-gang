@@ -166,6 +166,40 @@ class ScriptTest(unittest.TestCase):
         s = Script.parse_string("OP_RSHIFT OP_LSHIFT")
         self.assertEqual(str(s), "OP_RSHIFT OP_LSHIFT")
 
+    def test_parse_string_bad_tokens_raise(self):
+        # Malformed tokens are a ValueError, not a PanicException
+        for token in ["0xZZ", "0x123", "x", "'", "b'", "é"]:
+            with self.subTest(token=token):
+                with self.assertRaises(ValueError):
+                    Script.parse_string(token)
+
+    def test_parse_string_non_ascii_does_not_panic(self):
+        self.assertEqual(Script.parse_string("'é'").get_commands(), bytes([0xE9]))
+        self.assertEqual(Script.parse_string("éa").get_commands(), b"")
+
+    def test_parse_string_large_numbers(self):
+        # Numbers outside the 32-bit range used to panic, and past 64 bits were read as strings
+        self.assertEqual(Script.parse_string("2147483648").get_commands(), bytes.fromhex("050000008000"))
+        for n in [2**31, -(2**31), 2**63, 2**64 + 1, -(2**80), 2**700, 2**2100]:
+            with self.subTest(n=n):
+                expected = Script()
+                expected.append_big_integer(n)
+                self.assertEqual(Script.parse_string(str(n)), expected)
+
+    def test_append_integer_outside_32_bits(self):
+        s = Script()
+        s.append_integer(2**31)
+        self.assertEqual(s, Script.parse_string("2147483648"))
+
+    def test_append_big_integer_long_numbers_use_pushdata(self):
+        # 2^700 encodes to 88 bytes and 2^2100 to 263, too long for a single length byte
+        s = Script()
+        s.append_big_integer(2**700)
+        self.assertEqual(s.get_commands()[:2], bytes([0x4C, 88]))
+        s = Script()
+        s.append_big_integer(2**2100)
+        self.assertEqual(s.get_commands()[:3], bytes([0x4D, 7, 1]))
+
 
 if __name__ == "__main__":
     unittest.main()

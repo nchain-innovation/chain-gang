@@ -1,6 +1,6 @@
 use crate::messages::Tx;
 use crate::transaction::sighash::{
-    sighash, SigHashCache, SIGHASH_ANYONECANPAY, SIGHASH_CHRONICLE, SIGHASH_FORKID,
+    sighash_from_script_code, SigHashCache, SIGHASH_ANYONECANPAY, SIGHASH_CHRONICLE, SIGHASH_FORKID,
 };
 use crate::util::{ChainGangError, Hash256};
 
@@ -37,7 +37,12 @@ const UNDEFINED_SIGHASH_TYPE: &str = "Signature hash type missing or not underst
 pub trait Checker {
     /// Checks that a signature and public key validate within a script
     ///
-    /// Script should already have all signatures removed if they existed.
+    /// `script` is the script code the interpreter built for this check: from
+    /// just past the last executed `OP_CODESEPARATOR` to the end, with the
+    /// signature already removed where the rules require it. It is ready to
+    /// hash, so an implementation should pass it to
+    /// [`sighash_from_script_code`] as it is. [`sighash`](crate::transaction::sighash::sighash)
+    /// expects a whole locking script and would cut it again.
     fn check_sig(
         &mut self,
         sig: &[u8],
@@ -286,7 +291,10 @@ impl Checker for TransactionChecker<'_> {
                 "SIGHASH_FORKID not present".to_string(),
             ));
         }
-        let sig_hash = sighash(
+        // `script` is the script code the interpreter built for this check —
+        // cut at the last executed OP_CODESEPARATOR, signature removed — so it
+        // is hashed as given. `sighash` would cut it a second time.
+        let sig_hash = sighash_from_script_code(
             self.tx,
             self.input,
             script,
@@ -376,6 +384,7 @@ mod tests {
     use crate::script::op_codes::*;
     use crate::script::{Script, NO_FLAGS};
     use crate::transaction::generate_signature;
+    use crate::transaction::sighash::sighash;
     use crate::transaction::sighash::{SIGHASH_ALL, SIGHASH_FORKID};
     use crate::util::hash160;
     use k256::ecdsa::signature::hazmat::PrehashSigner;
@@ -455,6 +464,245 @@ mod tests {
         script.append(OP_CODESEPARATOR);
         script.append_slice(&tx_1.outputs[0].lock_script.0);
         assert!(script.eval(&mut c, NO_FLAGS).is_ok());
+    }
+
+    /// Signing and verifying still agree on a script with OP_CODESEPARATORs.
+    ///
+    /// The lock script has three OP_CHECKSIGs with a separator between each
+    /// pair. Each is signed through `sighash_checksig_index` with the whole lock
+    /// script and its index, the way a wallet signs; the interpreter then
+    /// verifies them, handing `check_sig` the script it has already cut at the
+    /// executed separator. Those are two different routes to the BIP-143 script
+    /// code, and #193 changed what both produce, so this checks they still meet.
+    ///
+    /// This is a consistency check, not a correctness one: before #193 both
+    /// routes deleted the separators, so they agreed with each other while
+    /// disagreeing with the node. Correctness against the node is
+    /// `bip143_keeps_separators_after_the_executed_one` in `sighash.rs`.
+    #[test]
+    fn codeseparator_script_signs_and_verifies_under_bip143() {
+        use crate::transaction::sighash::sighash_checksig_index;
+
+        let keys: Vec<[u8; 32]> = vec![[11; 32], [12; 32], [13; 32]];
+        let pubkeys: Vec<[u8; 33]> = keys
+            .iter()
+            .map(|k| verifying_key_as_bytes(SigningKey::from_slice(k).unwrap().verifying_key()))
+            .collect();
+
+        let mut lock_script = Script::new();
+        for (i, pk) in pubkeys.iter().enumerate() {
+            lock_script.append_data(pk);
+            lock_script.append(OP_CHECKSIG);
+            if i < pubkeys.len() - 1 {
+                lock_script.append(OP_VERIFY);
+                lock_script.append(OP_CODESEPARATOR);
+            }
+        }
+
+        let tx_1 = Tx {
+            version: 1,
+            inputs: vec![],
+            outputs: vec![TxOut {
+                satoshis: 10,
+                lock_script: lock_script.clone(),
+            }],
+            lock_time: 0,
+        };
+        let mut tx_2 = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: tx_1.hash(),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 9,
+                lock_script: Script(vec![OP_TRUE]),
+            }],
+            lock_time: 0,
+        };
+
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let sigs: Vec<Vec<u8>> = keys
+            .iter()
+            .enumerate()
+            .map(|(checksig_index, key)| {
+                let mut cache = SigHashCache::new();
+                let hash = sighash_checksig_index(
+                    &tx_2,
+                    0,
+                    &lock_script.0,
+                    checksig_index,
+                    10,
+                    sighash_type,
+                    &mut cache,
+                )
+                .unwrap();
+                generate_signature(key, &hash, sighash_type).unwrap()
+            })
+            .collect();
+
+        // The first OP_CHECKSIG consumes the top of the stack, so its
+        // signature is pushed last.
+        let mut unlock_script = Script::new();
+        for sig in sigs.iter().rev() {
+            unlock_script.append_data(sig);
+        }
+        tx_2.inputs[0].unlock_script = unlock_script.clone();
+
+        let mut cache = SigHashCache::new();
+        let mut checker = TransactionChecker {
+            tx: &tx_2,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 10,
+            require_sighash_forkid: true,
+            script_tx_version: None,
+        };
+        let mut script = Script::new();
+        script.append_slice(&unlock_script.0);
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(&lock_script.0);
+        script.eval(&mut checker, NO_FLAGS).unwrap();
+    }
+
+    /// Funds `lock_script`, spends it with `unlock(&spending_tx)` and runs the
+    /// spend through the interpreter the way `Tx::validate` does before
+    /// Chronicle: unlocking script, a separator, locking script.
+    fn eval_spend(
+        lock_script: &Script,
+        unlock: impl Fn(&Tx) -> Script,
+    ) -> Result<(), ChainGangError> {
+        let tx_1 = Tx {
+            version: 1,
+            inputs: vec![],
+            outputs: vec![TxOut {
+                satoshis: 10,
+                lock_script: lock_script.clone(),
+            }],
+            lock_time: 0,
+        };
+        let mut tx_2 = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: tx_1.hash(),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0xffffffff,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 9,
+                lock_script: Script(vec![OP_TRUE]),
+            }],
+            lock_time: 0,
+        };
+        tx_2.inputs[0].unlock_script = unlock(&tx_2);
+
+        let mut cache = SigHashCache::new();
+        let mut checker = TransactionChecker {
+            tx: &tx_2,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 10,
+            require_sighash_forkid: true,
+            script_tx_version: None,
+        };
+        let mut script = Script::new();
+        script.append_slice(&tx_2.inputs[0].unlock_script.0);
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(&lock_script.0);
+        script.eval(&mut checker, NO_FLAGS)
+    }
+
+    /// Signs `script_code` — the script code the node would hand its digest
+    /// function for this check — for input 0 of `tx`.
+    fn sign_script_code(tx: &Tx, key: &[u8; 32], script_code: &[u8]) -> Vec<u8> {
+        let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
+        let mut cache = SigHashCache::new();
+        let hash =
+            sighash_from_script_code(tx, 0, script_code, 10, sighash_type, &mut cache).unwrap();
+        generate_signature(key, &hash, sighash_type).unwrap()
+    }
+
+    /// A separator after an OP_CHECKSIGVERIFY, then an OP_CHECKMULTISIG:
+    ///
+    /// ```text
+    /// <pkA> CHECKSIGVERIFY CODESEPARATOR 1 <pkB> 1 CHECKMULTISIG
+    /// ```
+    ///
+    /// When CHECKSIGVERIFY runs the separator has not executed, so the node
+    /// signs the whole script, separator included. chain-gang's verifier used
+    /// to send that through `sighash`, which cuts at a separator by counting
+    /// OP_CHECKSIGs — and there are none, only CHECKSIGVERIFY and
+    /// CHECKMULTISIG — so verification failed with "checksig_index 0 exceeds
+    /// the number of OP_CHECKSIGs (0)" on a spend the node accepts.
+    #[test]
+    fn separator_with_checksigverify_and_multisig_verifies() {
+        let (key_a, key_b) = ([21; 32], [22; 32]);
+        let pk_a = verifying_key_as_bytes(SigningKey::from_slice(&key_a).unwrap().verifying_key());
+        let pk_b = verifying_key_as_bytes(SigningKey::from_slice(&key_b).unwrap().verifying_key());
+
+        let mut multisig = Script::new();
+        multisig.append(OP_1);
+        multisig.append_data(&pk_b);
+        multisig.append(OP_1);
+        multisig.append(OP_CHECKMULTISIG);
+
+        let mut lock_script = Script::new();
+        lock_script.append_data(&pk_a);
+        lock_script.append(OP_CHECKSIGVERIFY);
+        lock_script.append(OP_CODESEPARATOR);
+        lock_script.append_slice(&multisig.0);
+
+        eval_spend(&lock_script, |tx| {
+            // CHECKSIGVERIFY signs everything; CHECKMULTISIG signs what follows
+            // the separator, which by then has executed.
+            let sig_a = sign_script_code(tx, &key_a, &lock_script.0);
+            let sig_b = sign_script_code(tx, &key_b, &multisig.0);
+            let mut unlock = Script::new();
+            unlock.append(OP_0);
+            unlock.append_data(&sig_b);
+            unlock.append_data(&sig_a);
+            unlock
+        })
+        .unwrap();
+    }
+
+    /// Separators in a branch that does not execute do not move where the
+    /// script code starts:
+    ///
+    /// ```text
+    /// 0 IF CODESEPARATOR CODESEPARATOR ENDIF <pk> CHECKSIG
+    /// ```
+    ///
+    /// Neither separator runs, so the node signs the whole script. Cutting it
+    /// again by position, as the verifier used to, started after the second
+    /// separator — it cannot know which ones executed — and the check failed.
+    #[test]
+    fn unexecuted_separators_do_not_move_the_script_code() {
+        let key = [23; 32];
+        let pk = verifying_key_as_bytes(SigningKey::from_slice(&key).unwrap().verifying_key());
+
+        let mut lock_script = Script::new();
+        lock_script.append(OP_0);
+        lock_script.append(OP_IF);
+        lock_script.append(OP_CODESEPARATOR);
+        lock_script.append(OP_CODESEPARATOR);
+        lock_script.append(OP_ENDIF);
+        lock_script.append_data(&pk);
+        lock_script.append(OP_CHECKSIG);
+
+        eval_spend(&lock_script, |tx| {
+            let mut unlock = Script::new();
+            unlock.append_data(&sign_script_code(tx, &key, &lock_script.0));
+            unlock
+        })
+        .unwrap();
     }
 
     fn verifying_key_as_bytes(verifying_key: &VerifyingKey) -> [u8; 33] {

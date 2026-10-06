@@ -79,24 +79,103 @@ pub fn sighash_checksig_index(
     sighash_type: u8,
     cache: &mut SigHashCache,
 ) -> Result<Hash256, ChainGangError> {
+    // A signature carries the sighash type in a single trailing byte, so the
+    // public API takes a `u8`. The node's digest functions take a 32-bit
+    // `nHashType` and serialize all of it, so widen once here and let the
+    // internals work in the node's width.
+    sighash_u32(
+        tx,
+        n_input,
+        script_code,
+        ScriptCode::FromLockScript { checksig_index },
+        satoshis,
+        u32::from(sighash_type),
+        cache,
+    )
+}
+
+/// Generates a transaction digest for a script code that has already been cut,
+/// which is what the node's `SignatureHash` receives.
+///
+/// [`sighash`] takes a whole locking script and works out the script code for
+/// the selected `OP_CHECKSIG` itself, which is what a signer has to hand. A
+/// verifier is in a different position: by the time an `OP_CHECKSIG` runs, the
+/// interpreter has taken the script from just past the last *executed*
+/// `OP_CODESEPARATOR` and removed the signature, and that is already exactly
+/// the script code to hash. Running it through [`sighash`] cuts it a second
+/// time, by a rule that has to guess which separators executed and needs an
+/// `OP_CHECKSIG` to count from. That fails `OP_CHECKMULTISIG` and
+/// `OP_CHECKSIGVERIFY` scripts outright and misplaces the start whenever an
+/// unexecuted separator precedes the check.
+///
+/// This is the function a [`Checker`](crate::script::Checker) should use. Like
+/// the node, it cuts nothing and requires no `OP_CHECKSIG`: BIP-143 hashes
+/// `script_code` byte for byte, and the original algorithm deletes its
+/// `OP_CODESEPARATOR`s as the node's serializer does.
+pub fn sighash_from_script_code(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    satoshis: i64,
+    sighash_type: u8,
+    cache: &mut SigHashCache,
+) -> Result<Hash256, ChainGangError> {
+    sighash_u32(
+        tx,
+        n_input,
+        script_code,
+        ScriptCode::AsGiven,
+        satoshis,
+        u32::from(sighash_type),
+        cache,
+    )
+}
+
+/// Where the script code a digest signs comes from.
+#[derive(Debug, Clone, Copy)]
+enum ScriptCode {
+    /// A whole locking script, cut for the `checksig_index`-th `OP_CHECKSIG`.
+    /// What a signer passes.
+    FromLockScript { checksig_index: usize },
+    /// Already cut by the interpreter, exactly as the node's digest functions
+    /// receive it. What a verifier passes.
+    AsGiven,
+}
+
+/// The node's `SignatureHash`: BIP-143 when FORKID is set and CHRONICLE is not,
+/// otherwise the original algorithm.
+///
+/// Carries the full 32-bit `nHashType` so the consensus vectors, whose hash types
+/// are random 32-bit values, can be run against the same dispatch the public API
+/// uses. Not public: a signature only ever carries one byte.
+fn sighash_u32(
+    tx: &Tx,
+    n_input: usize,
+    script_code: &[u8],
+    selection: ScriptCode,
+    satoshis: i64,
+    sighash_type: u32,
+    cache: &mut SigHashCache,
+) -> Result<Hash256, ChainGangError> {
     if uses_bip143(sighash_type) {
         bip143_sighash(
             tx,
             n_input,
             script_code,
-            checksig_index,
+            selection,
             satoshis,
             sighash_type,
             cache,
         )
     } else {
-        otda_sighash(tx, n_input, script_code, checksig_index, sighash_type)
+        otda_sighash(tx, n_input, script_code, selection, sighash_type)
     }
 }
 
 /// BIP-143 is used when FORKID is set and CHRONICLE is not, matching bitcoin-sv.
-fn uses_bip143(sighash_type: u8) -> bool {
-    sighash_type & SIGHASH_FORKID != 0 && sighash_type & SIGHASH_CHRONICLE == 0
+fn uses_bip143(sighash_type: u32) -> bool {
+    sighash_type & u32::from(SIGHASH_FORKID) != 0
+        && sighash_type & u32::from(SIGHASH_CHRONICLE) == 0
 }
 
 /// Cache for sighash intermediate values to avoid quadratic hashing
@@ -179,9 +258,9 @@ fn bip143_sighash(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
+    selection: ScriptCode,
     satoshis: i64,
-    sighash_type: u8,
+    sighash_type: u32,
     cache: &mut SigHashCache,
 ) -> Result<Hash256, ChainGangError> {
     // The intention is to return any error(s) without any extra processing & according to the
@@ -190,7 +269,7 @@ fn bip143_sighash(
         tx,
         n_input,
         script_code,
-        checksig_index,
+        selection,
         satoshis,
         sighash_type,
         cache,
@@ -214,16 +293,38 @@ fn find_all_occurances_of(script_code: &[u8], operation: u8) -> Vec<usize> {
     positions
 }
 
-// Remove instances of OP_CODESEPARATOR from the script_code
-// extract_subscript is the function that takes the script and the index of OP_CHECKSIG, and extracts the subscript)
-fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
+/// Where the script code a CHECKSIG signs begins in `script_code`.
+///
+/// The node's interpreter tracks `pbegincodehash`: each executed
+/// `OP_CODESEPARATOR` moves it to just past itself, and an `OP_CHECKSIG` signs
+/// from there to the end. Callers here pass a whole locking script and pick the
+/// `OP_CHECKSIG` by `checksig_index`, so this finds the separator that would
+/// last have executed before it and returns the position after it, or 0.
+///
+/// Both digest algorithms start from this one rule; they differ only in what
+/// they do with the separators that remain (see [`extract_subscript`] and
+/// [`bip143_script_code`]).
+///
+/// The number of separators does not matter. This used to return 0 whenever
+/// there was only one, which was right only when that one was the first
+/// opcode: anywhere else, the opcodes before it stayed in the script code, the
+/// digest differed from the node's, and the signature failed with NULLFAIL
+/// (CS-492). Even the first-opcode case was right only because the separator
+/// was then deleted; once BIP-143 keeps separators, starting at 0 would sign
+/// the separator itself.
+///
+/// "Would last have executed" assumes the script runs straight through to the
+/// selected check. A signer whose separators sit in branches that may not run
+/// knows the script code better than this can, and should build it and call
+/// [`sighash_from_script_code`].
+fn subscript_start(script_code: &[u8], checksig_index: usize) -> Result<usize, ChainGangError> {
     // OP_CODESEPARATOR / OP_CHECKSIG positions are found opcode-aware
     // (find_all_occurances_of walks opcodes), so pushed-data bytes equal to
     // those opcodes are never mistaken for the opcodes themselves (CS-483).
     let codeseparator_positions: Vec<usize> = find_all_occurances_of(script_code, OP_CODESEPARATOR);
     if codeseparator_positions.is_empty() {
         // if there is no OP_CODESEPARATOR there is nothing to do
-        return Ok(script_code.to_vec());
+        return Ok(0);
     }
 
     // Look for all OP_CHECKSIG
@@ -238,32 +339,57 @@ fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8
         );
         return Err(ChainGangError::BadArgument(err_msg));
     }
+    let checksig_pos = checksig_positions[checksig_index];
 
-    let checksig_pos = checksig_positions.get(checksig_index).unwrap_or(&0);
+    // The last OP_CODESEPARATOR before the selected OP_CHECKSIG, however many
+    // there are; the script code starts just after it, as pbegincodehash does.
+    Ok(codeseparator_positions
+        .iter()
+        .rev()
+        .find(|pos| **pos < checksig_pos)
+        .map_or(0, |pos| pos + 1))
+}
 
-    // We need to find the first OP_CODESEPARATOR before the OP_CHECKSIG pos
-    let start_subscript: usize = if codeseparator_positions.len() < 2 {
-        0
-    } else {
-        let filtered_code_pos: Vec<usize> = codeseparator_positions
-            .iter()
-            .copied()
-            .filter(|pos| pos < checksig_pos)
-            .collect();
-        *filtered_code_pos.last().unwrap_or(&0)
-    };
+/// The script code the original algorithm signs: from [`subscript_start`] to
+/// the end, with every `OP_CODESEPARATOR` deleted.
+///
+/// The deletion is the node's: `CTransactionSignatureSerializer` skips
+/// separators while serializing the script code. It belongs to this algorithm
+/// only — BIP-143 keeps them.
+fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
+    let start_subscript = subscript_start(script_code, checksig_index)?;
+    Ok(delete_separators(&script_code[start_subscript..]))
+}
 
-    let mut sub_script = Vec::with_capacity(script_code.len() - start_subscript);
-    let mut i = start_subscript;
-
+/// `script_code` with every `OP_CODESEPARATOR` removed, walking opcodes so a
+/// pushed byte equal to one is left alone. The node's `FindAndDelete`.
+fn delete_separators(script_code: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(script_code.len());
+    let mut i = 0;
     while i < script_code.len() {
         let next = next_op(i, script_code);
         if script_code[i] != op_codes::OP_CODESEPARATOR {
-            sub_script.extend_from_slice(&script_code[i..next]);
+            out.extend_from_slice(&script_code[i..next]);
         }
         i = next;
     }
-    Ok(sub_script)
+    out
+}
+
+/// The script code BIP-143 signs: from [`subscript_start`] to the end, byte for
+/// byte.
+///
+/// `SignatureHashBIP143` serializes the script code exactly as the interpreter
+/// hands it over (`ss << scriptCode`), with no `FindAndDelete`, so any
+/// `OP_CODESEPARATOR` after the one that executed is part of the preimage. This
+/// path used to share [`extract_subscript`] and delete them, which gave a
+/// different digest for every script that had one (#193).
+fn bip143_script_code(
+    script_code: &[u8],
+    checksig_index: usize,
+) -> Result<Vec<u8>, ChainGangError> {
+    let start = subscript_start(script_code, checksig_index)?;
+    Ok(script_code[start..].to_vec())
 }
 
 /// Generates the transaction digest for signing using OTDA (Original Transaction Digest Algorithm).
@@ -274,14 +400,14 @@ fn otda_sighash(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
-    sighash_type: u8,
+    selection: ScriptCode,
+    sighash_type: u32,
 ) -> Result<Hash256, ChainGangError> {
     Ok(sha256d(&otda_sighash_preimage(
         tx,
         n_input,
         script_code,
-        checksig_index,
+        selection,
         sighash_type,
     )?))
 }
@@ -290,8 +416,8 @@ fn otda_sighash_preimage(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
-    sighash_type: u8,
+    selection: ScriptCode,
+    sighash_type: u32,
 ) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
         return Err(ChainGangError::BadArgument(
@@ -300,11 +426,17 @@ fn otda_sighash_preimage(
     }
 
     let mut s = Vec::with_capacity(tx.size());
-    let base_type = sighash_type & 31;
-    let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
+    let base_type = (sighash_type & 31) as u8;
+    let anyone_can_pay = sighash_type & u32::from(SIGHASH_ANYONECANPAY) != 0;
 
-    // Remove instances of OP_CODESEPARATOR from the script_code
-    let sub_script = extract_subscript(script_code, checksig_index)?;
+    // The node's serializer deletes every OP_CODESEPARATOR from the script code
+    // it is given; a signer's whole locking script is cut first.
+    let sub_script = match selection {
+        ScriptCode::FromLockScript { checksig_index } => {
+            extract_subscript(script_code, checksig_index)?
+        }
+        ScriptCode::AsGiven => delete_separators(script_code),
+    };
 
     // Serialize the version
     s.write_u32::<LittleEndian>(tx.version)?;
@@ -347,7 +479,18 @@ fn otda_sighash_preimage(
     };
     var_int::write(tx_out_list.len() as u64, &mut s)?;
     for (i, tx_out) in tx_out_list.iter().enumerate() {
-        if i == n_input && base_type == SIGHASH_SINGLE {
+        // SIGHASH_SINGLE signs the output paired with this input and leaves the
+        // others free to change, so every output *except* that one is blanked.
+        // The node does the same in `CTransactionSignatureSerializer`:
+        //
+        //     if (sigHashType.getBaseType() == BaseSigHashType::SINGLE &&
+        //         nOutput != nIn) { ::Serialize(s, CTxOut()); }
+        //     else { ::Serialize(s, txTo.vout[nOutput]); }
+        //
+        // This condition used to be inverted, which blanked the signed output
+        // and signed the free ones, so no SIGHASH_SINGLE digest on this path
+        // agreed with the node.
+        if base_type == SIGHASH_SINGLE && i != n_input {
             let empty = TxOut {
                 satoshis: -1,
                 lock_script: Script(vec![]),
@@ -361,8 +504,10 @@ fn otda_sighash_preimage(
     // Serialize the lock time
     s.write_u32::<LittleEndian>(tx.lock_time)?;
 
-    // Append the sighash_type and return the serialized preimage
-    s.write_u32::<LittleEndian>(sighash_type as u32)?;
+    // Append the sighash_type and return the serialized preimage. All 32 bits
+    // go out, matching the node's `ss << sigHashType`, which serializes the
+    // whole `uint32_t` rather than the low byte a signature carries.
+    s.write_u32::<LittleEndian>(sighash_type)?;
     Ok(s)
 }
 
@@ -401,18 +546,29 @@ pub fn sig_hash_preimage_checksig_index(
     sighash_type: u8,
     cache: &mut SigHashCache,
 ) -> Result<Vec<u8>, ChainGangError> {
+    // A signature carries the sighash type in a single trailing byte, so the
+    // public API takes a `u8`. The node's digest functions take a 32-bit
+    // `nHashType` and serialize all of it, so widen once here and let the
+    // internals work in the node's width.
+    let sighash_type = u32::from(sighash_type);
     if uses_bip143(sighash_type) {
         bip143_sighash_preimage(
             tx,
             n_input,
             script_code,
-            checksig_index,
+            ScriptCode::FromLockScript { checksig_index },
             satoshis,
             sighash_type,
             cache,
         )
     } else {
-        otda_sighash_preimage(tx, n_input, script_code, checksig_index, sighash_type)
+        otda_sighash_preimage(
+            tx,
+            n_input,
+            script_code,
+            ScriptCode::FromLockScript { checksig_index },
+            sighash_type,
+        )
     }
 }
 
@@ -420,9 +576,9 @@ fn bip143_sighash_preimage(
     tx: &Tx,
     n_input: usize,
     script_code: &[u8],
-    checksig_index: usize,
+    selection: ScriptCode,
     satoshis: i64,
-    sighash_type: u8,
+    sighash_type: u32,
     cache: &mut SigHashCache,
 ) -> Result<Vec<u8>, ChainGangError> {
     if n_input >= tx.inputs.len() {
@@ -432,11 +588,17 @@ fn bip143_sighash_preimage(
     }
 
     let mut s = Vec::with_capacity(tx.size());
-    let base_type = sighash_type & 31;
-    let anyone_can_pay = sighash_type & SIGHASH_ANYONECANPAY != 0;
+    let base_type = (sighash_type & 31) as u8;
+    let anyone_can_pay = sighash_type & u32::from(SIGHASH_ANYONECANPAY) != 0;
 
-    // Remove instances of OP_CODESEPARATOR from the script_code
-    let sub_script = extract_subscript(script_code, checksig_index)?;
+    // Byte for byte, separators included; a signer's whole locking script is
+    // cut first.
+    let sub_script = match selection {
+        ScriptCode::FromLockScript { checksig_index } => {
+            bip143_script_code(script_code, checksig_index)?
+        }
+        ScriptCode::AsGiven => script_code.to_vec(),
+    };
 
     // Serialize the version
     s.write_u32::<LittleEndian>(tx.version)?;
@@ -507,7 +669,7 @@ fn bip143_sighash_preimage(
     s.write_u32::<LittleEndian>(tx.lock_time)?;
 
     // 10. Serialize hash type
-    s.write_u32::<LittleEndian>((FORK_ID << 8) | sighash_type as u32)?;
+    s.write_u32::<LittleEndian>((FORK_ID << 8) | sighash_type)?;
     Ok(s)
 }
 
@@ -559,8 +721,16 @@ mod tests {
         let (tx, lock_script) = bip143_sighash_test_tx();
         let mut cache = SigHashCache::new();
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
-        let sighash =
-            bip143_sighash(&tx, 0, &lock_script, 0, 260000000, sighash_type, &mut cache).unwrap();
+        let sighash = bip143_sighash(
+            &tx,
+            0,
+            &lock_script,
+            ScriptCode::FromLockScript { checksig_index: 0 },
+            260000000,
+            u32::from(sighash_type),
+            &mut cache,
+        )
+        .unwrap();
         let expected = "1e2121837829018daf3aeadab76f1a542c49a3600ded7bd74323ee74ce0d840c";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
         assert!(cache.hash_prevouts.is_some());
@@ -574,8 +744,16 @@ mod tests {
         let mut cache = SigHashCache::new();
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         let routed = sighash(&tx, 0, &lock_script, 260000000, sighash_type, &mut cache).unwrap();
-        let expected =
-            bip143_sighash(&tx, 0, &lock_script, 0, 260000000, sighash_type, &mut cache).unwrap();
+        let expected = bip143_sighash(
+            &tx,
+            0,
+            &lock_script,
+            ScriptCode::FromLockScript { checksig_index: 0 },
+            260000000,
+            u32::from(sighash_type),
+            &mut cache,
+        )
+        .unwrap();
         assert_eq!(routed, expected);
     }
 
@@ -590,7 +768,14 @@ mod tests {
             sighash(&tx, 0, &lock_script, 260000000, bip143_type, &mut cache).unwrap();
         let chronicle_hash =
             sighash(&tx, 0, &lock_script, 260000000, chronicle_type, &mut cache).unwrap();
-        let expected_otda = otda_sighash(&tx, 0, &lock_script, 0, chronicle_type).unwrap();
+        let expected_otda = otda_sighash(
+            &tx,
+            0,
+            &lock_script,
+            ScriptCode::FromLockScript { checksig_index: 0 },
+            u32::from(chronicle_type),
+        )
+        .unwrap();
 
         assert_ne!(bip143_hash, chronicle_hash);
         assert_eq!(chronicle_hash, expected_otda);
@@ -639,7 +824,14 @@ mod tests {
             }],
             lock_time: 0,
         };
-        let sighash = otda_sighash(&tx, 0, &lock_script, 0, SIGHASH_ALL).unwrap();
+        let sighash = otda_sighash(
+            &tx,
+            0,
+            &lock_script,
+            ScriptCode::FromLockScript { checksig_index: 0 },
+            u32::from(SIGHASH_ALL),
+        )
+        .unwrap();
         let expected = "ad16084eccf26464a84c5ee2f8b96b4daff9a3154ac3c1b320346aed042abe57";
         assert!(sighash.0.to_vec() == hex::decode(expected).unwrap());
     }
@@ -856,4 +1048,370 @@ mod tests {
         let actual = extract_subscript(&script_code, 1).unwrap();
         assert_eq!(actual, expected);
     }
+
+    /// Two inputs, three outputs, so blanking the wrong ones is visible.
+    ///
+    /// Signing input 1 under SIGHASH_SINGLE pairs it with output 1. Output 0 is
+    /// blanked and output 2 is dropped by the `n_input + 1` truncation, so only
+    /// output 1 reaches the digest.
+    fn sighash_single_test_tx() -> (Tx, Vec<u8>) {
+        let raw = hex::decode(concat!(
+            "020000000211111111111111111111111111111111111111111111111111",
+            "111111111111110000000000feffffff2222222222222222222222222222",
+            "2222222222222222222222222222222222220700000000fdffffff03e803",
+            "0000000000001976a9143333333333333333333333333333333333333333",
+            "88acc4090000000000001976a91444444444444444444444444444444444",
+            "4444444488ac611e000000000000076a0548656c6c6f63000000",
+        ))
+        .unwrap();
+        let tx = Tx::read(&mut std::io::Cursor::new(&raw)).unwrap();
+        assert_eq!(tx.inputs.len(), 2);
+        assert_eq!(tx.outputs.len(), 3);
+        let script_code =
+            hex::decode("76a914555555555555555555555555555555555555555588ac").unwrap();
+        (tx, script_code)
+    }
+
+    /// SIGHASH_SINGLE commits to the output paired with the input, and to no
+    /// other.
+    ///
+    /// Stated as a property rather than a digest, so it says what the rule is
+    /// and catches the condition being inverted without anyone having to read a
+    /// hex constant. With the condition the wrong way round, output 1 is the one
+    /// that stops mattering and output 0 is the one that starts.
+    #[test]
+    fn sighash_single_signs_only_the_paired_output() {
+        let (tx, script_code) = sighash_single_test_tx();
+        let n_input = 1;
+
+        let digest = |tx: &Tx| {
+            let mut cache = SigHashCache::new();
+            sighash(tx, n_input, &script_code, 0, SIGHASH_SINGLE, &mut cache).unwrap()
+        };
+        let baseline = digest(&tx);
+
+        for (index, should_matter) in [(0, false), (1, true), (2, false)] {
+            let mut altered = tx.clone();
+            altered.outputs[index].satoshis += 1;
+            let changed = digest(&altered) != baseline;
+            let expectation = if should_matter {
+                "should"
+            } else {
+                "should not"
+            };
+            assert_eq!(
+                changed, should_matter,
+                "changing output {index} {expectation} change the digest"
+            );
+        }
+    }
+
+    /// The same transaction against digests the node would produce.
+    ///
+    /// The property above pins the shape; these pin the bytes. They were
+    /// produced by an independent implementation of `SignatureHashOriginal`
+    /// written from the node's source, which reproduces all 1000 rows of
+    /// bitcoin-sv's `sighash.json` exactly (see `sighash_vectors`), so they are
+    /// not this code's own answer written down.
+    ///
+    /// All three take the original algorithm: 0x03 has no FORKID, and 0x63 has
+    /// FORKID with CHRONICLE, which is the path in current use.
+    #[test]
+    fn sighash_single_matches_the_node() {
+        let (tx, script_code) = sighash_single_test_tx();
+        let cases = [
+            (
+                SIGHASH_SINGLE,
+                "03febcdf159c853553ecd381436e6d1f78a9eaf8724fc9d060722ddc4b993f91",
+            ),
+            (
+                SIGHASH_SINGLE | SIGHASH_FORKID | SIGHASH_CHRONICLE,
+                "367473babac69ec6dcf7a314df560b44fb7529dcffee5ab265b4af478f453b5c",
+            ),
+            (
+                SIGHASH_SINGLE | SIGHASH_ANYONECANPAY,
+                "f56deb451f2ba6f76f9322ad7c880a13e974d3da518a1c18ef77338a0f61dc0a",
+            ),
+        ];
+        for (sighash_type, expected) in cases {
+            let mut cache = SigHashCache::new();
+            let got = sighash(&tx, 1, &script_code, 0, sighash_type, &mut cache).unwrap();
+            assert_eq!(got.encode(), expected, "sighash_type {sighash_type:#04x}");
+        }
+    }
+
+    /// Three OP_CHECKSIGs, with a separator between each pair:
+    ///
+    /// ```text
+    /// <pk1> CHECKSIG VERIFY CODESEPARATOR <pk2> CHECKSIG VERIFY CODESEPARATOR <pk3> CHECKSIG
+    /// ```
+    ///
+    /// `checksig_index` counts OP_CHECKSIG only, so the checks are CHECKSIG
+    /// VERIFY rather than CHECKSIGVERIFY.
+    fn three_checksig_script() -> Vec<u8> {
+        let push_key = |b: u8| {
+            let mut push = vec![0x21, 0x02];
+            push.extend_from_slice(&[b; 32]);
+            push
+        };
+        let mut script = push_key(0xa1);
+        script.extend_from_slice(&[OP_CHECKSIG, OP_VERIFY, OP_CODESEPARATOR]);
+        script.extend(push_key(0xa2));
+        script.extend_from_slice(&[OP_CHECKSIG, OP_VERIFY, OP_CODESEPARATOR]);
+        script.extend(push_key(0xa3));
+        script.push(OP_CHECKSIG);
+        script
+    }
+
+    /// BIP-143 signs the script code from the executed separator onwards with
+    /// every later separator still in it (#193).
+    ///
+    /// The node's interpreter hands `SignatureHashBIP143` the script from
+    /// `pbegincodehash` to the end, and that function serializes it untouched.
+    /// So signing the first OP_CHECKSIG covers the whole script, both
+    /// separators included, and signing the second covers everything after the
+    /// first separator, the second one included. chain-gang used to delete
+    /// them, which changed the first two digests. The third has no separator
+    /// left after its cut, so it was already right and is here as the control.
+    ///
+    /// The expected digests come from an independent implementation of the
+    /// node's `SignatureHash` that reproduces both columns of all 1000 rows of
+    /// bitcoin-sv's `sighash.json`, so they are the node's answer rather than
+    /// this code's.
+    #[test]
+    fn bip143_keeps_separators_after_the_executed_one() {
+        let (tx, _) = sighash_single_test_tx();
+        let script = three_checksig_script();
+        let expected = [
+            "f77b35d7bcb5b0231066d33fb305cf36f2bfb9ded436c3e66ffd042c30271ebd",
+            "0c6b9499857e601bad2f0192a69249a30c43e244204135163b6dba2cb197345e",
+            "001710e5453f51b4c88bac9d8926391c2347616e0c81505a149fde809f0fa268",
+        ];
+        for (checksig_index, expected) in expected.iter().enumerate() {
+            let mut cache = SigHashCache::new();
+            let got = sighash_checksig_index(
+                &tx,
+                0,
+                &script,
+                checksig_index,
+                50000,
+                SIGHASH_ALL | SIGHASH_FORKID,
+                &mut cache,
+            )
+            .unwrap();
+            assert_eq!(got.encode(), *expected, "checksig_index {checksig_index}");
+        }
+    }
+
+    /// The original algorithm still deletes every separator, as the node's
+    /// `CTransactionSignatureSerializer` does. Separating where the script code
+    /// starts from what happens to the separators left in it must not have
+    /// moved this path: the same script, any separators removed, gives the same
+    /// digest.
+    #[test]
+    fn original_algorithm_still_deletes_separators() {
+        let (tx, _) = sighash_single_test_tx();
+        let script = three_checksig_script();
+        let stripped: Vec<u8> = {
+            let mut out = Vec::new();
+            let mut i = 0;
+            while i < script.len() {
+                let next = next_op(i, &script);
+                if script[i] != OP_CODESEPARATOR {
+                    out.extend_from_slice(&script[i..next]);
+                }
+                i = next;
+            }
+            out
+        };
+        let mut cache = SigHashCache::new();
+        let with_separators =
+            sighash_checksig_index(&tx, 0, &script, 0, 0, SIGHASH_ALL, &mut cache).unwrap();
+        let mut cache = SigHashCache::new();
+        let without =
+            sighash_checksig_index(&tx, 0, &stripped, 0, 0, SIGHASH_ALL, &mut cache).unwrap();
+        assert_eq!(with_separators, without);
+    }
+
+    /// CS-492's reproduction, as the ticket gives it: one separator, not the
+    /// first opcode. The node starts the script code after it; this used to keep
+    /// `OP_1 OP_DROP`.
+    ///
+    /// No separator is left after the cut, so the two algorithms must agree and
+    /// the test pins nothing about what happens to later ones (CS-488).
+    #[test]
+    fn single_separator_not_first() {
+        let hash = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        let mut script = vec![OP_1, OP_DROP, OP_CODESEPARATOR, OP_DUP, OP_HASH160, 0x14];
+        script.extend_from_slice(&hash);
+        script.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        // node: script code starts after the executed OP_CODESEPARATOR
+        let mut node = vec![OP_DUP, OP_HASH160, 0x14];
+        node.extend_from_slice(&hash);
+        node.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+
+        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
+        assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
+    }
+
+    /// One separator, as the first opcode. The old rule got this right only by
+    /// accident: it started at 0 and the separator was then deleted. BIP-143
+    /// keeps separators, so starting at 0 would sign `OP_CODESEPARATOR` itself
+    /// and the node, which starts after it, would reject the signature.
+    #[test]
+    fn single_leading_separator_is_not_signed() {
+        let mut script = vec![OP_CODESEPARATOR, 0x21, 0x02];
+        script.extend_from_slice(&[0x5a; 32]);
+        script.push(OP_CHECKSIG);
+        let node = script[1..].to_vec();
+
+        assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
+        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
+    }
+
+    /// Records the script code the interpreter hands each signature check, and
+    /// passes every check so the script runs to the end.
+    struct RecordingChecker {
+        script_codes: Vec<Vec<u8>>,
+    }
+
+    impl crate::script::Checker for RecordingChecker {
+        fn check_sig(
+            &mut self,
+            _sig: &[u8],
+            _pubkey: &[u8],
+            script: &[u8],
+        ) -> Result<bool, ChainGangError> {
+            self.script_codes.push(script.to_vec());
+            Ok(true)
+        }
+        fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+            Ok(true)
+        }
+        fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+            Ok(true)
+        }
+    }
+
+    /// The script codes chain-gang's interpreter builds for each OP_CHECKSIG in
+    /// `lock_script`, spending it the way `Tx::validate` does: unlocking
+    /// script, a separator, locking script.
+    fn interpreter_script_codes(lock_script: &[u8], checks: usize) -> Vec<Vec<u8>> {
+        let mut script = Script::new();
+        for _ in 0..checks {
+            // Any non-empty signature carrying FORKID, so nothing is removed
+            // from the script code as a pre-fork signature would be.
+            script.append_data(&[0x30, SIGHASH_ALL | SIGHASH_FORKID]);
+        }
+        script.append(OP_CODESEPARATOR);
+        script.append_slice(lock_script);
+        let mut checker = RecordingChecker {
+            script_codes: Vec::new(),
+        };
+        script.eval(&mut checker, crate::script::NO_FLAGS).unwrap();
+        assert_eq!(checker.script_codes.len(), checks);
+        checker.script_codes
+    }
+
+    /// Where the signer cuts, checked against where the interpreter does.
+    ///
+    /// Every script of the shape
+    ///
+    /// ```text
+    /// [OP_1 OP_DROP] g0 <pk1> CHECKSIG VERIFY g1 <pk2> CHECKSIG VERIFY g2 ... <pkN> CHECKSIG gN
+    /// ```
+    ///
+    /// for one to three checks, with each gap `g` holding zero, one or two
+    /// separators and the prefix present or not: a single separator at the
+    /// start, in the middle and at the end, two in a row, and every mix, signed
+    /// at every `checksig_index`. That is 234 scripts and 612 signatures, under
+    /// both digest algorithms. The public keys are full of 0xab and 0xac bytes,
+    /// so a push misread as an opcode (CS-483) would show up as well.
+    ///
+    /// The oracle is the interpreter, not this file's rule. The interpreter
+    /// tracks the executed separator itself, the same way the node's
+    /// `pbegincodehash` does, and `sighash_from_script_code` hashes what it
+    /// builds exactly as the node does: 2000 of 2000 vectors, and a mined
+    /// transaction chain-gang now validates. So agreeing with it is agreeing with
+    /// the node, by a route that never calls `subscript_start`.
+    #[test]
+    fn signer_cuts_where_the_interpreter_does() {
+        let (tx, _) = sighash_single_test_tx();
+        let push_key = |i: u8| {
+            let mut push = vec![0x21, 0x02];
+            push.extend((0..32u8).map(|j| {
+                if (i + j).is_multiple_of(2) {
+                    0xab
+                } else {
+                    0xac
+                }
+            }));
+            push
+        };
+
+        let mut signatures = 0;
+        let mut scripts = 0;
+        for checks in 1..=3usize {
+            let gaps = checks + 1;
+            for layout in 0..3usize.pow(gaps as u32) {
+                for prefix in [false, true] {
+                    let separators_in = |gap: usize| (layout / 3usize.pow(gap as u32)) % 3;
+                    let mut lock = Vec::new();
+                    if prefix {
+                        lock.extend_from_slice(&[OP_1, OP_DROP]);
+                    }
+                    for check in 0..checks {
+                        lock.extend(std::iter::repeat_n(OP_CODESEPARATOR, separators_in(check)));
+                        lock.extend(push_key(check as u8));
+                        lock.push(OP_CHECKSIG);
+                        if check + 1 < checks {
+                            lock.push(OP_VERIFY);
+                        }
+                    }
+                    lock.extend(std::iter::repeat_n(OP_CODESEPARATOR, separators_in(checks)));
+                    scripts += 1;
+
+                    let codes = interpreter_script_codes(&lock, checks);
+                    for (checksig_index, code) in codes.iter().enumerate() {
+                        for sighash_type in [SIGHASH_ALL | SIGHASH_FORKID, SIGHASH_ALL] {
+                            let mut cache = SigHashCache::new();
+                            let signer = sighash_checksig_index(
+                                &tx,
+                                0,
+                                &lock,
+                                checksig_index,
+                                1000,
+                                sighash_type,
+                                &mut cache,
+                            )
+                            .unwrap();
+                            let mut cache = SigHashCache::new();
+                            let interpreter = sighash_from_script_code(
+                                &tx,
+                                0,
+                                code,
+                                1000,
+                                sighash_type,
+                                &mut cache,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                signer,
+                                interpreter,
+                                "lock {} checksig_index {checksig_index} sighash_type {sighash_type:#04x}",
+                                hex::encode(&lock)
+                            );
+                        }
+                        signatures += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!((scripts, signatures), (234, 612));
+    }
 }
+
+#[cfg(test)]
+#[path = "sighash_vectors.rs"]
+mod sighash_vectors;

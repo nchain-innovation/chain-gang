@@ -176,6 +176,38 @@ class WalletTest(unittest.TestCase):
         w = Wallet("cVoVmd5zY69LEevwGa5iq1Ba3oBc6J8xxUqdKuJCtuFWUJJngPPP")
         self.assertEqual(w.to_int(), 110943977574299588079135027069764758606913326570652510108968462252246438125737)
 
+    def test_to_int_and_from_int_round_trip(self):
+        """ to_int gives a plain int, and from_int takes it back, at both ends of
+            the key range and in the middle (#34).
+        """
+        order = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+        for key in [1, order - 1, 110943977574299588079135027069764758606913326570652510108968462252246438125737]:
+            with self.subTest(key=key):
+                value = Wallet.from_int("BSV_Mainnet", key).to_int()
+                self.assertIs(type(value), int)
+                self.assertEqual(value, key)
+
+    def test_from_int_rejects_values_that_are_not_private_keys(self):
+        """ Each of these used to misbehave. Negative numbers lost their sign, so
+            -5 made the wallet for key 5. Zero and the curve order panicked, which
+            Python sees as PanicException, a BaseException that `except Exception`
+            does not catch. All are now ValueError (#34).
+        """
+        order = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+        for value in [-5, 0, order, 2**256]:
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    Wallet.from_int("BSV_Mainnet", value)
+        with self.assertRaises(TypeError):
+            Wallet.from_int("BSV_Mainnet", "5")
+
+    def test_bytes_and_hex_constructors_reject_an_invalid_key(self):
+        """ The all-zero key used to panic through from_bytes and from_hexstr too. """
+        with self.assertRaises(ValueError):
+            Wallet.from_bytes("BSV_Mainnet", bytes(32))
+        with self.assertRaises(ValueError):
+            Wallet.from_hexstr("BSV_Mainnet", "00" * 32)
+
     def test_wallet_to_hex(self):
         w = Wallet("cVoVmd5zY69LEevwGa5iq1Ba3oBc6J8xxUqdKuJCtuFWUJJngPPP")
         self.assertEqual(w.to_hex(), "f54810e800d14e8b2f978ddb839ce9594ddc1459ee300d0c3b9990a70d3220a9")

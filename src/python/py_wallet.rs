@@ -13,12 +13,10 @@ use crate::{
     },
 };
 use k256::{ecdsa::SigningKey, elliptic_curve::Generate};
-use num_bigint::{BigInt, Sign};
 use pyo3::{
     prelude::*,
-    types::{PyDict, PyInt, PyType},
+    types::{PyBytes, PyInt, PyType},
 };
-use std::ffi::CString;
 
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
@@ -100,7 +98,13 @@ pub fn network_and_private_key_to_wif(
 
 pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>, ChainGangError> {
     let decoded = decode_base58_checksum(address)?;
-    Ok(decoded[1..].to_vec())
+    // Drop the version byte, which a well-formed checksum does not guarantee is there
+    match decoded.split_first() {
+        Some((_version, hash)) => Ok(hash.to_vec()),
+        None => Err(ChainGangError::BadData(format!(
+            "Address '{address}' decodes to an empty payload."
+        ))),
+    }
 }
 
 /// Takes a hash160 and returns the p2pkh script
@@ -117,27 +121,31 @@ pub fn str_to_network(network: &str) -> Option<Network> {
     network.parse().ok()
 }
 
-pub fn wallet_from_int(network: &str, int_rep: BigInt) -> Result<PyWallet, ChainGangError> {
-    if let Some(netwrk) = str_to_network(network) {
-        let mut big_int_bytes = int_rep.to_bytes_be().1;
-        if big_int_bytes.len() > 32 {
-            let msg = "Private key must be 32 bytes long".to_string();
-            return Err(ChainGangError::BadData(msg));
-        }
-
-        while big_int_bytes.len() < 32 {
-            big_int_bytes.insert(0, 0);
-        }
-        let key_bytes: [u8; 32] = big_int_bytes.try_into().expect("Expected 32-byte array");
-        let private_key = SigningKey::from_slice(&key_bytes).expect("Invalid private key");
-
-        let public_key = *private_key.verifying_key();
-        let wallet = Wallet::new(private_key, public_key, netwrk);
-        Ok(PyWallet { wallet })
-    } else {
-        let msg = format!("Unknown network {}", network);
-        Err(ChainGangError::BadData(msg))
+/// Builds a wallet from a raw private key, for the `from_bytes`, `from_hexstr`
+/// and `from_int` constructors.
+///
+/// The key must be 32 bytes and a valid secp256k1 scalar: not zero, and below
+/// the curve order. Anything else is an error. These constructors used to
+/// `expect` it, so a key of zero, or one at or above the order, panicked, and
+/// Python saw a `PanicException`, which derives from `BaseException` and slips
+/// past `except Exception` (#34).
+fn wallet_from_key_bytes(network: &str, key_bytes: &[u8]) -> Result<PyWallet, ChainGangError> {
+    let netwrk = str_to_network(network)
+        .ok_or_else(|| ChainGangError::BadData(format!("Unknown network {}", network)))?;
+    if key_bytes.len() != 32 {
+        let msg = "Private key must be 32 bytes long".to_string();
+        return Err(ChainGangError::BadData(msg));
     }
+    let private_key = SigningKey::from_slice(key_bytes).map_err(|_| {
+        ChainGangError::BadData(
+            "Private key must be greater than zero and less than the secp256k1 curve order"
+                .to_string(),
+        )
+    })?;
+    let public_key = *private_key.verifying_key();
+    Ok(PyWallet {
+        wallet: Wallet::new(private_key, public_key, netwrk),
+    })
 }
 /// This class represents the Wallet functionality,
 /// including handling of Private and Public keys
@@ -167,8 +175,8 @@ impl PyWallet {
     /// Sign a transaction with the provided previous tx, Returns new signed tx
     fn sign_tx(&mut self, index: usize, input_pytx: PyTx, pytx: PyTx) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
-        let input_tx = input_pytx.as_tx();
-        let mut tx = pytx.as_tx();
+        let input_tx = input_pytx.as_tx()?;
+        let mut tx = pytx.as_tx()?;
         let sighash_type = SIGHASH_ALL | SIGHASH_FORKID;
         self.wallet
             .sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
@@ -185,8 +193,8 @@ impl PyWallet {
         sighash_type: u8,
     ) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
-        let input_tx = input_pytx.as_tx();
-        let mut tx = pytx.as_tx();
+        let input_tx = input_pytx.as_tx()?;
+        let mut tx = pytx.as_tx()?;
         self.wallet
             .sign_tx_input(&input_tx, &mut tx, index, sighash_type)?;
         let updated_txpy = tx_as_pytx(&tx);
@@ -202,8 +210,8 @@ impl PyWallet {
         checksig_index: usize,
     ) -> PyResult<PyTx> {
         // Convert PyTx -> Tx
-        let input_tx = input_pytx.as_tx();
-        let mut tx = pytx.as_tx();
+        let input_tx = input_pytx.as_tx()?;
+        let mut tx = pytx.as_tx()?;
         self.wallet.sign_tx_input_checksig_index(
             &input_tx,
             &mut tx,
@@ -246,23 +254,15 @@ impl PyWallet {
     }
 
     fn to_int(&self, py: Python<'_>) -> PyResult<Py<PyInt>> {
-        let private_key_array: [u8; 32] = self.wallet.private_key.to_bytes().into();
-
-        // convert to a BitInt (signed for now)
-        let big_int_signed_rep = BigInt::from_bytes_be(Sign::Plus, &private_key_array);
-
-        // Convert the large integer to a string (Python handles large integers from strings well)
-        let result_str = big_int_signed_rep.to_string();
-
-        // Create a new PyDict for globals
-        let globals = PyDict::new(py);
-
-        // Use Python's built-in int() constructor to convert the string to a Python integer
-        let input = CString::new(format!("int('{}')", result_str))?;
-        let py_int = py.eval(&input, Some(&globals), None)?;
-
-        // Cast to PyInt and return
-        Ok((*py_int.cast::<PyInt>()?).clone().into())
+        // `int.from_bytes(key, "big")`. Under the stable ABI the wheels are built
+        // for there is no C call that makes a 256-bit int, and this is what PyO3's
+        // own big-integer conversion does there too. It used to format the key as
+        // a decimal string and `eval` the expression `int('...')` (#34).
+        let key: [u8; 32] = self.wallet.private_key.to_bytes().into();
+        let int = py
+            .get_type::<PyInt>()
+            .call_method1("from_bytes", (PyBytes::new(py, &key), "big"))?;
+        Ok(int.cast_into::<PyInt>()?.unbind())
     }
 
     fn to_hex(&self) -> String {
@@ -285,47 +285,13 @@ impl PyWallet {
 
     #[classmethod]
     fn from_bytes(_cls: &Bound<'_, PyType>, network: &str, key_bytes: &[u8]) -> PyResult<Self> {
-        if let Some(netwrk) = str_to_network(network) {
-            // Ensure the length of key_bytes is 32 bytes
-            if key_bytes.len() != 32 {
-                let msg = "Private key must be 32 bytes long".to_string();
-                return Err(ChainGangError::BadData(msg).into());
-            }
-            let key_array: [u8; 32] = key_bytes.try_into().expect("Private key must be 32 bytes");
-            let private_key = SigningKey::from_slice(&key_array).expect("Invalid private key");
-            let public_key = *private_key.verifying_key();
-            let wallet = Wallet::new(private_key, public_key, netwrk);
-            Ok(PyWallet { wallet })
-        } else {
-            let msg = format!("Unknown network {}", network);
-            Err(ChainGangError::BadData(msg).into())
-        }
+        Ok(wallet_from_key_bytes(network, key_bytes)?)
     }
 
     #[classmethod]
     fn from_hexstr(_cls: &Bound<'_, PyType>, network: &str, hexstr: &str) -> PyResult<Self> {
-        if let Some(netwrk) = str_to_network(network) {
-            // Attempt to decode the hex string
-            let key_bytes = match hex::decode(hexstr) {
-                Ok(bytes) => bytes,
-                Err(e) => return Err(ChainGangError::BadData(e.to_string()).into()),
-            };
-
-            // Ensure the length of the bytes is exactly 32
-            if key_bytes.len() != 32 {
-                let msg = "Private key must be 32 bytes long".to_string();
-                return Err(ChainGangError::BadData(msg).into());
-            }
-
-            let key_array: [u8; 32] = key_bytes.try_into().expect("Private key must be 32 bytes");
-            let private_key = SigningKey::from_slice(&key_array).expect("Invalid private key");
-            let public_key = *private_key.verifying_key();
-            let wallet = Wallet::new(private_key, public_key, netwrk);
-            Ok(PyWallet { wallet })
-        } else {
-            let msg = format!("Unknown network {}", network);
-            Err(ChainGangError::BadData(msg).into())
-        }
+        let key_bytes = hex::decode(hexstr).map_err(|e| ChainGangError::BadData(e.to_string()))?;
+        Ok(wallet_from_key_bytes(network, &key_bytes)?)
     }
 
     #[classmethod]
@@ -334,32 +300,67 @@ impl PyWallet {
         network: &str,
         int_rep: &Bound<'_, PyAny>,
     ) -> PyResult<Self> {
-        // get a reference to the Python interpreter
-        Python::attach(|_py| {
-            // Use the bound reference to access the PyAny
-            // Downcast the PyAny reference to PyInt
-            let py_long: &Bound<'_, PyInt> = int_rep
-                .cast::<PyInt>()
-                .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected a PyInt"))?;
-
-            // Convert the PyInt into a BigInt using to_string
-            let big_int_str = py_long.str()?.to_str()?.to_owned();
-
-            // Convert the string to a Rust BigInt (assumption is base-10)
-            let big_int = BigInt::parse_bytes(big_int_str.as_bytes(), 10)
-                .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Failed to parse BigInt"))?;
-
-            let test_wallet = wallet_from_int(network, big_int)?;
-            Ok(test_wallet)
-        })
+        let int = int_rep
+            .cast::<PyInt>()
+            .map_err(|_| pyo3::exceptions::PyTypeError::new_err("Expected an int"))?;
+        // `int.to_bytes(32, "big")` raises OverflowError for a negative value or
+        // one of 2**256 or more, which no private key is. This used to go through
+        // the decimal string and drop the sign, so -5 made the wallet for key 5.
+        let key = int.call_method1("to_bytes", (32, "big")).map_err(|_| {
+            ChainGangError::BadData(
+                "Private key must be a non-negative integer below 2**256".to_string(),
+            )
+        })?;
+        Ok(wallet_from_key_bytes(
+            network,
+            key.cast::<PyBytes>()?.as_bytes(),
+        )?)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn address_with_empty_payload_is_an_error() {
+        // "3QJmnh" is the base58 checksum of an empty payload, so it has no version byte
+        assert!(address_to_public_key_hash("3QJmnh").is_err());
+    }
     use crate::util::hash160;
     use k256::SecretKey;
+
+    /// secp256k1's group order, the first value that is not a private key.
+    const CURVE_ORDER: [u8; 32] = [
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xfe, 0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b, 0xbf, 0xd2, 0x5e, 0x8c, 0xd0, 0x36,
+        0x41, 0x41,
+    ];
+
+    /// Out-of-range keys are errors, not panics (#34). The range is 1 to the
+    /// curve order less one, and both ends are accepted.
+    #[test]
+    fn key_bytes_outside_the_scalar_range_are_errors() {
+        let mut one = [0u8; 32];
+        one[31] = 1;
+        let mut order_less_one = CURVE_ORDER;
+        order_less_one[31] -= 1;
+        assert!(wallet_from_key_bytes("BSV_Mainnet", &one).is_ok());
+        assert!(wallet_from_key_bytes("BSV_Mainnet", &order_less_one).is_ok());
+
+        for (label, key) in [
+            ("zero", [0u8; 32]),
+            ("the curve order", CURVE_ORDER),
+            ("all ones", [0xff; 32]),
+        ] {
+            match wallet_from_key_bytes("BSV_Mainnet", &key) {
+                Err(e) => assert!(e.to_string().contains("curve order"), "{label}: {e}"),
+                Ok(_) => panic!("{label} is not a private key"),
+            }
+        }
+        assert!(wallet_from_key_bytes("BSV_Mainnet", &one[..31]).is_err());
+        assert!(wallet_from_key_bytes("Nonsense", &one).is_err());
+    }
 
     #[test]
     fn generate_wif_uses_the_networks_own_prefix() {

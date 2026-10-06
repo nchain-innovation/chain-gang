@@ -105,8 +105,12 @@ impl fmt::Debug for Reject {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut data_str = "".to_string();
         if self.message == *"block" || self.message == *"tx" {
+            // The data comes from the peer, so it may be shorter than a hash
             let mut data = Cursor::new(&self.data);
-            data_str = Hash256::read(&mut data).unwrap().encode();
+            data_str = match Hash256::read(&mut data) {
+                Ok(hash) => hash.encode(),
+                Err(_) => hex::encode(&self.data),
+            };
         }
         f.debug_struct("Reject")
             .field("message", &self.message)
@@ -143,6 +147,20 @@ mod tests {
         assert!(m.reason == "mandatory-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)");
         let data = "2f174bfe9e5b6e32ef2fabd164df5469f44977d93e0625238465ded771083993";
         assert!(m.data == hex::decode(data).unwrap());
+    }
+
+    #[test]
+    fn debug_with_short_data_does_not_panic() {
+        // A peer can send a tx or block reject whose data is shorter than a hash, and every
+        // received message is logged with {:?}
+        for message in ["tx", "block"] {
+            let reject = Reject {
+                message: message.to_string(),
+                data: vec![1, 2, 3],
+                ..Default::default()
+            };
+            assert!(format!("{reject:?}").contains(r#"data: "010203""#));
+        }
     }
 
     #[test]
