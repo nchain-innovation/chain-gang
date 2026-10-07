@@ -1576,3 +1576,88 @@ fn pregenesis_num2bin_reaches_520_bytes() {
     assert!(err.to_string().contains("out of range"), "{err}");
     pass(&over);
 }
+
+/// Fails before Genesis with `reason`, and passes after it, where the node's
+/// size limits are gone.
+fn assert_pregenesis_limit(script: &[u8], reason: &str) {
+    match eval(script, &mut MockChecker::new(), PREGENESIS_RULES) {
+        Err(e) if e.to_string().contains(reason) => {}
+        other => panic!("before Genesis, expected {reason:?}, got {other:?}"),
+    }
+    pass(script);
+}
+
+/// Before Genesis the node limits a push, and an OP_CAT result, to 520 bytes,
+/// and checks a push in a branch that does not execute too (script_tests.json
+/// rows 827, 1179 and 1180).
+#[test]
+fn pregenesis_elements_are_limited_to_520_bytes() {
+    let push = |len: usize, ops: &[u8]| push_then(&vec![0x5a; len], ops);
+    let skipped = |len: usize| {
+        let mut script = vec![OP_0, OP_IF];
+        script.extend(push(len, &[OP_ENDIF, OP_1]));
+        script
+    };
+    let cat = |a: usize, b: usize| {
+        let mut script = push(a, &[]);
+        script.extend(push(b, &[OP_CAT]));
+        script
+    };
+
+    pass_pregenesis(&push(520, &[]));
+    pass_pregenesis(&skipped(520));
+    pass_pregenesis(&cat(260, 260));
+    assert_pregenesis_limit(&push(521, &[]), "Push of 521 bytes");
+    assert_pregenesis_limit(&skipped(521), "Push of 521 bytes");
+    // OP_PUSHDATA2 and OP_PUSHDATA4, the forms that can carry that much.
+    for len in [521, 70_000] {
+        assert_pregenesis_limit(&push(len, &[OP_DROP, OP_1]), "exceeds the pre-Genesis");
+        assert_pregenesis_limit(&skipped(len), "exceeds the pre-Genesis");
+    }
+    assert_pregenesis_limit(&cat(260, 261), "OP_CAT result");
+}
+
+/// Before Genesis the node allows at most 1,000 items on the stack and alt
+/// stack together (rows 1183 and 1184).
+#[test]
+fn pregenesis_stacks_are_limited_to_1000_items() {
+    let ones = |n: usize, ops: &[u8]| {
+        let mut script = vec![OP_1; n];
+        script.extend_from_slice(ops);
+        script
+    };
+    pass_pregenesis(&ones(1_000, &[]));
+    pass_pregenesis(&ones(1_000, &[OP_TOALTSTACK]));
+    assert_pregenesis_limit(&ones(1_001, &[]), "1000 items");
+    assert_pregenesis_limit(&ones(1_000, &[OP_TOALTSTACK, OP_1]), "1000 items");
+    assert_pregenesis_limit(&ones(1_000, &[OP_DUP, OP_DROP]), "1000 items");
+}
+
+/// Before Genesis the node rejects a script over 10,000 bytes (row 1185).
+#[test]
+fn pregenesis_scripts_are_limited_to_10000_bytes() {
+    let script = |len: usize| {
+        let mut script = vec![OP_NOP; len - 1];
+        script.push(OP_1);
+        script
+    };
+    pass_pregenesis(&script(10_000));
+    assert_pregenesis_limit(&script(10_001), "Script of 10001 bytes");
+}
+
+/// Before Genesis the node allows an OP_CHECKMULTISIG at most 20 keys (row
+/// 1268).
+#[test]
+fn pregenesis_multisig_is_limited_to_20_keys() {
+    let zero_of = |keys: u8, op: u8| {
+        let mut script = vec![OP_0, OP_0];
+        script.extend(vec![OP_1; keys as usize]);
+        script.extend(push_then(&[keys], &[op]));
+        script.push(OP_1);
+        script
+    };
+    for op in [OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY] {
+        pass_pregenesis(&zero_of(20, op));
+        assert_pregenesis_limit(&zero_of(21, op), "20 keys");
+    }
+}
