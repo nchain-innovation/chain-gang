@@ -1036,8 +1036,8 @@ fn chronicle_nullfail_allows_failed_checksig_with_nonempty_sig() {
         tx_version: Some(2),
     };
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
     script.append(OP_DROP);
     script.append(OP_1);
@@ -1052,11 +1052,16 @@ fn strict_nullfail_rejects_failed_checksig_with_nonempty_sig() {
         sequence_checks: RefCell::new(vec![true; 32]),
         tx_version: Some(1),
     };
+    // Two-byte pushes: one-byte pushes of 1 and 2 are not minimal, and would
+    // fail MINIMALDATA before OP_CHECKSIG ran.
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
-    assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+    match eval(&script.0, &mut c, NO_FLAGS) {
+        Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
+        r => panic!("expected NULLFAIL, got {r:?}"),
+    }
 }
 
 /// `0 <sig> 1 <key> <key> 2 CHECKMULTISIG NOT`, a 1-of-2 multisig
