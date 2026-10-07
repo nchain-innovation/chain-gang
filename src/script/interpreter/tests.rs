@@ -824,7 +824,7 @@ impl Checker for MockChecker {
         Ok(self.sig_checks.borrow_mut().pop().unwrap())
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Ok(self.locktime_checks.borrow_mut().pop().unwrap())
     }
 
@@ -951,7 +951,7 @@ impl Checker for ScriptRecordingChecker {
         Ok(self.sig_checks.borrow_mut().pop().unwrap())
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Ok(true)
     }
 
@@ -1507,9 +1507,10 @@ fn locktime_operands_are_five_bytes_and_stay_on_the_stack() {
     let cltv = push_then(&[0x81, 0, 0, 0, 0], &[OP_CHECKLOCKTIMEVERIFY]);
     run(&cltv, MockChecker::new()).unwrap();
     assert!(run(&cltv, MockChecker::locktime_checks(vec![false])).is_err());
-    // One past i32 fails whatever the checker says: it takes an i32.
+    // So is one past i32, a timestamp from 2038 on.
     let past_i32 = push_then(&[0, 0, 0, 0x80, 0], &[OP_CHECKLOCKTIMEVERIFY]);
-    assert!(run(&past_i32, MockChecker::new()).is_err());
+    run(&past_i32, MockChecker::new()).unwrap();
+    assert!(run(&past_i32, MockChecker::locktime_checks(vec![false])).is_err());
 }
 
 /// OP_NUM2BIN as the node does it, in every era: the number is minimally

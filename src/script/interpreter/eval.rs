@@ -838,14 +838,7 @@ pub fn core_eval<T: Checker>(
             OP_CHECKLOCKTIMEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
                     let locktime = peek_locktime_operand(&stack, policy)?;
-                    // The checker takes an i32. A lock time past it, after
-                    // 2038, could only be met by a transaction lock time the
-                    // checker cannot compare either, so it fails here.
-                    let satisfied = match i32::try_from(locktime) {
-                        Ok(locktime) => checker.check_locktime(locktime)?,
-                        Err(_) => false,
-                    };
-                    if !satisfied {
+                    if !checker.check_locktime(locktime)? {
                         let msg = "OP_CHECKLOCKTIMEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
                     }
