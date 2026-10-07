@@ -13,6 +13,8 @@ const LOCKTIME_THRESHOLD: i32 = 500000000;
 const SEQUENCE_LOCKTIME_DISABLE_FLAG: u32 = 1 << 31;
 /// When set, sequence uses time. When unset, it uses block height.
 const SEQUENCE_LOCKTIME_TYPE_FLAG: u32 = 1 << 22;
+/// The bits of a sequence that hold the relative lock time's value.
+const SEQUENCE_LOCKTIME_MASK: u32 = 0x0000ffff;
 
 /// Whether a signature's sighash type is one the node understands, its
 /// `SigHashType::isDefined`: with the CHRONICLE, FORKID and ANYONECANPAY bits
@@ -368,8 +370,13 @@ impl Checker for TransactionChecker<'_> {
             let msg = "tx sequence disable flag set".to_string();
             return Err(ChainGangError::ScriptError(msg));
         }
-        let sequence_masked = sequence & 0x0000ffff;
-        let tx_sequence_masked = self.tx.inputs[self.input].sequence & 0x0000ffff;
+        // The type flag stays in, as in the node's `nLockTimeMask`. Masking it
+        // off along with the other unused bits left the type check below
+        // comparing two values under 2^16 against 2^22, so it never fired: a
+        // time-based CSV was met by a height-based input, and the reverse.
+        let mask = SEQUENCE_LOCKTIME_TYPE_FLAG | SEQUENCE_LOCKTIME_MASK;
+        let sequence_masked = sequence & mask;
+        let tx_sequence_masked = self.tx.inputs[self.input].sequence & mask;
         if (sequence_masked < SEQUENCE_LOCKTIME_TYPE_FLAG
             && tx_sequence_masked >= SEQUENCE_LOCKTIME_TYPE_FLAG)
             || (sequence_masked >= SEQUENCE_LOCKTIME_TYPE_FLAG
@@ -1512,4 +1519,57 @@ mod tests {
         }
     }
     */
+
+    /// Checks a CSV operand against a version 2 transaction whose one input
+    /// has `tx_sequence`.
+    fn check_sequence_against(tx_sequence: u32, sequence: u32) -> Result<bool, ChainGangError> {
+        let tx = Tx {
+            version: 2,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: Hash256([0; 32]),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: tx_sequence,
+            }],
+            outputs: vec![],
+            lock_time: 0,
+        };
+        let mut cache = SigHashCache::new();
+        let checker = TransactionChecker {
+            tx: &tx,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 0,
+            require_sighash_forkid: false,
+            script_tx_version: None,
+        };
+        checker.check_sequence(sequence as i32)
+    }
+
+    /// A CSV operand and the input's sequence must lock by the same measure:
+    /// both by time (type flag set) or both by block height, as in the node.
+    /// The flag was masked off before the type check, so it never fired.
+    #[test]
+    fn check_sequence_requires_matching_lock_types() {
+        let time = |value: u32| SEQUENCE_LOCKTIME_TYPE_FLAG | value;
+        // Same type: the values compare.
+        assert!(check_sequence_against(10, 10).unwrap());
+        assert!(check_sequence_against(time(10), time(10)).unwrap());
+        assert!(check_sequence_against(time(10), time(9)).unwrap());
+        let err = check_sequence_against(time(10), time(11)).unwrap_err();
+        assert!(err.to_string().contains("greater than tx"), "{err}");
+        // Different types fail, whatever the values.
+        for (tx_sequence, sequence) in [(time(10), 10), (10, time(10)), (10, time(0))] {
+            let err = check_sequence_against(tx_sequence, sequence).unwrap_err();
+            assert!(
+                err.to_string().contains("types different"),
+                "{tx_sequence:#x} against {sequence:#x}: {err}"
+            );
+        }
+        // Bits outside the type flag and the value still do not count.
+        assert!(check_sequence_against(time(10) | 0x0001_0000, time(10)).unwrap());
+        assert!(check_sequence_against(10, 0x0001_0000 | 10).unwrap());
+    }
 }
