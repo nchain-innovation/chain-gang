@@ -98,9 +98,18 @@ impl Script {
 
     /// Appends the opcodes to push a number to the stack
     ///
-    /// The number must be in the range [2^-31+1,2^31-1].
+    /// The shortest form, as the node's minimal-push rule requires: `OP_1NEGATE`,
+    /// `OP_0` and `OP_1` to `OP_16` for -1 to 16, otherwise a push of the
+    /// number's minimal encoding. -1 and 1 to 16 used to be pushed as one byte
+    /// of data, `01 81` for -1, which the node's policy rejects.
+    ///
+    /// The number must be in the range [-2^31+1, 2^31-1].
     pub fn append_num(&mut self, n: i32) -> Result<(), ChainGangError> {
-        self.append_data(&stack::encode_num(n as i64)?);
+        match n {
+            -1 => self.append(op_codes::OP_1NEGATE),
+            1..=16 => self.append(op_codes::OP_1 + (n - 1) as u8),
+            _ => self.append_data(&stack::encode_num(n as i64)?),
+        }
         Ok(())
     }
 
@@ -192,6 +201,42 @@ mod tests {
         s.append_data(&vec![0; 65536]);
         assert!(s.0[0] == OP_PUSHDATA4 && s.0[1] == 0 && s.0[2] == 0 && s.0[3] == 1);
         assert!(s.0.len() == 65541);
+    }
+
+    #[test]
+    fn append_num_uses_the_shortest_push() {
+        for (n, expected) in [
+            (-1, vec![OP_1NEGATE]),
+            (0, vec![OP_0]),
+            (1, vec![OP_1]),
+            (16, vec![OP_16]),
+            (17, vec![1, 17]),
+            (-2, vec![1, 0x82]),
+            (128, vec![2, 0x80, 0x00]),
+            (-1000, vec![2, 0xe8, 0x83]),
+            (i32::MAX, vec![4, 0xff, 0xff, 0xff, 0x7f]),
+            (-i32::MAX, vec![4, 0xff, 0xff, 0xff, 0xff]),
+        ] {
+            let mut s = Script::new();
+            s.append_num(n).unwrap();
+            assert_eq!(s.0, expected, "{n}");
+        }
+        // Outside the documented range, as before.
+        assert!(Script::new().append_num(i32::MIN).is_err());
+    }
+
+    /// The node's policy rejects a one-byte push of a value an opcode pushes,
+    /// so for a version 1 transaction `append_num(-1)` used to fail.
+    #[test]
+    fn append_num_passes_the_minimal_push_rule() {
+        for n in [-1, 0, 1, 16, 17, -1000, i32::MAX] {
+            let mut s = Script::new();
+            s.append_num(n).unwrap();
+            s.append_num(n).unwrap();
+            s.append(OP_EQUAL);
+            s.eval(&mut TxVersionChecker { tx_version: 1 }, NO_FLAGS)
+                .unwrap_or_else(|e| panic!("{n}: {e}"));
+        }
     }
 
     #[test]
