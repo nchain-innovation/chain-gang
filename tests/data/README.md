@@ -8,11 +8,15 @@ of the consensus rules (CS-491).
 | --- | --- | --- |
 | `sighash.json` | `src/test/data/sighash.json` | `9c1afcaf81e8482f818345efa8a3f0610f6541b975023b58550d50ad2a557f63` |
 | `script_tests_codeseparator.json` | the seven rows of `src/test/data/script_tests.json` that mention `CODESEPARATOR`, verbatim and in order | `bf346e717b03c07cf905eb4dcb344cee7e97c05dd539ffec3797643b4e4d8e9d` |
+| `script_tests.json` | `src/test/data/script_tests.json` | `a77f8b94412ef61e9ee59980ebc682a64212b47a16f06d87f809d91770ba496d` |
+| `base58_encode_decode.json` | `src/test/data/base58_encode_decode.json` | `2c56f0292ffe76083430557700a095e72e1e0483343667159700e6942795810f` |
+| `base58_keys_valid.json` | `src/test/data/base58_keys_valid.json` | `b0531bd28c931a105539d1cc26b9b8d0a866c91fe24bb46c96ac13149aa4ae78` |
+| `base58_keys_invalid.json` | `src/test/data/base58_keys_invalid.json` | `5e49887829b551d20190154695579c4c23e62fbd2c1de069a2299161daa8eeae` |
 
 Taken from commit
 [`879fc8b42168dd0e608dafd51b39c6dabad37d4d`](https://github.com/bitcoin-sv/bitcoin-sv/tree/879fc8b42168dd0e608dafd51b39c6dabad37d4d/src/test/data)
-(2026-04-28); the whole `script_tests.json` the rows were taken from has SHA-256
-`a77f8b94412ef61e9ee59980ebc682a64212b47a16f06d87f809d91770ba496d`. To refresh,
+(2026-04-28). `script_tests_codeseparator.json` is taken from `script_tests.json`
+above, which is now vendored whole as well. To refresh,
 re-download at a named commit and update the table. The digests above are what
 the files were when the counts pinned in the tests were measured, so a different
 file means those counts have to be measured again.
@@ -37,6 +41,11 @@ bitcoin-sv's work and licensed accordingly. `script_tests.json` in the same
 directory upstream says so in its own header: "Distributed under the Open BSV
 software license".
 
+`base58_encode_decode.json` is byte-for-byte Bitcoin Core's (MIT; identical in
+Core v0.14.0 and v0.15.0). The two `base58_keys_*` files have diverged from
+Core's, so they are treated as bitcoin-sv's like the others. All of them stay
+in this directory, out of the published crate.
+
 ## What uses them
 
 - `sighash.json` — `src/transaction/sighash_vectors.rs`, run by
@@ -46,17 +55,15 @@ software license".
   carry real signatures over the node test framework's crediting and spending
   transactions, so they say where the node starts each check's script code
   (CS-492, CS-488).
-
-## Not vendored: the rest of script_tests.json
-
-Only the `CODESEPARATOR` rows are taken, and they need no consensus flags. The
-rest of the file is deliberately absent, on measurement rather than principle.
-
-Of its 1483 test rows, only **149** carry no flag chain-gang lacks. The rest
-need consensus flags the interpreter does not model — it has `NO_FLAGS` and
-`PREGENESIS_RULES`, against 1092 rows needing `P2SH`, 1043 `STRICTENC`, 133
-`UTXO_AFTER_GENESIS`, 116 `MINIMALDATA`, 42 `UTXO_AFTER_CHRONICLE` and a tail of
-`DERSIG`, `MINIMALIF`, `NULLFAIL`, `CLEANSTACK`, `SIGPUSHONLY`, `LOW_S` and
-others across 29 distinct combinations. Wiring the whole file up now would skip
-about nine rows in ten, so the useful order is interpreter flag support first,
-then these vectors. Fetch it from the commit above when that lands.
+- `script_tests.json` — `tests/script_vectors.rs`, run by
+  `cargo test --test script_vectors`. Every row goes through `Tx::validate`
+  (or `Tx::validate_consensus`) over the node test framework's crediting and
+  spending transactions, with the row's flags mapped onto chain-gang's era,
+  policy and FORKID settings; accept/reject is compared, not the error code.
+  1339 of the 1483 rows agree. The other 144 are listed in the test under
+  their reasons: 99 whose verdict turns on a flag chain-gang does not take
+  one by one (`MODELLING_GAPS`), and 45 where chain-gang appears to be wrong
+  (`KNOWN_DIFFERENCES`).
+- `base58_*.json` — `tests/base58_vectors.rs` (`cargo test --test
+  base58_vectors`) through the Rust address and WIF functions, and
+  `python/src/tests/test_base58_vectors.py` through the Python ones.
