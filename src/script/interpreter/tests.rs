@@ -1636,9 +1636,12 @@ fn pregenesis_stacks_are_limited_to_1000_items() {
 /// Before Genesis the node rejects a script over 10,000 bytes (row 1185).
 #[test]
 fn pregenesis_scripts_are_limited_to_10000_bytes() {
+    // Empty pushes in a skipped branch: under the opcode limit, and nothing
+    // on the stack.
     let script = |len: usize| {
-        let mut script = vec![OP_NOP; len - 1];
-        script.push(OP_1);
+        let mut script = vec![OP_0, OP_IF];
+        script.extend(vec![OP_0; len - 4]);
+        script.extend_from_slice(&[OP_ENDIF, OP_1]);
         script
     };
     pass_pregenesis(&script(10_000));
@@ -1660,4 +1663,37 @@ fn pregenesis_multisig_is_limited_to_20_keys() {
         pass_pregenesis(&zero_of(20, op));
         assert_pregenesis_limit(&zero_of(21, op), "20 keys");
     }
+}
+
+/// Before Genesis the node allows a script 500 opcodes above OP_16, counted as
+/// it reads them, executed or not. Pushes and small numbers are free, and an
+/// OP_CHECKMULTISIG adds its keys. `script_tests.json` has no row for this.
+#[test]
+fn pregenesis_scripts_are_limited_to_500_opcodes() {
+    let script = |prefix: &[u8], nops: usize, suffix: &[u8]| {
+        let mut script = prefix.to_vec();
+        script.extend(vec![OP_NOP; nops]);
+        script.extend_from_slice(suffix);
+        script.push(OP_1);
+        script
+    };
+    pass_pregenesis(&script(&[], 500, &[]));
+    assert_pregenesis_limit(&script(&[], 501, &[]), "500 opcodes");
+
+    // Pushes and small numbers do not count.
+    let mut free = vec![OP_1; 600];
+    free.extend(push_then(&[0x5a; 10], &[OP_DROP]));
+    pass_pregenesis(&script(&free, 499, &[]));
+    assert_pregenesis_limit(&script(&free, 500, &[]), "500 opcodes");
+
+    // A skipped branch counts, its IF and ENDIF included.
+    pass_pregenesis(&script(&[OP_0, OP_IF], 498, &[OP_ENDIF]));
+    assert_pregenesis_limit(&script(&[OP_0, OP_IF], 499, &[OP_ENDIF]), "500 opcodes");
+
+    // A 0-of-20 multisig counts 21: the opcode and its keys.
+    let mut multisig = vec![OP_0, OP_0];
+    multisig.extend(vec![OP_1; 20]);
+    multisig.extend(push_then(&[20], &[OP_CHECKMULTISIG, OP_DROP]));
+    pass_pregenesis(&script(&multisig, 478, &[]));
+    assert_pregenesis_limit(&script(&multisig, 479, &[]), "500 opcodes");
 }

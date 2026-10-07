@@ -5,16 +5,18 @@ use crate::util::ChainGangError;
 
 use super::push::check_stack_size;
 use super::push::next_op;
-use super::rules::{pop_num_for_eval, tx_enforces_malleability_rules};
+use super::rules::{check_pregenesis_op_count, pop_num_for_eval, tx_enforces_malleability_rules};
 use super::MAX_PUBKEYS_PER_MULTISIG_PREGENESIS;
 
+/// `pregenesis_op_count` is the script's opcode count so far, before Genesis,
+/// and `None` after it. The keys count towards it, as in the node.
 #[inline]
 pub(crate) fn check_multisig<T: Checker>(
     stack: &mut Stack,
     checker: &mut T,
     script: &[u8],
     policy: bool,
-    pregenesis: bool,
+    pregenesis_op_count: Option<&mut usize>,
 ) -> Result<bool, ChainGangError> {
     // Pop the keys
     let total = pop_num_for_eval(stack, policy)?;
@@ -23,11 +25,15 @@ pub(crate) fn check_multisig<T: Checker>(
             "total out of range".to_string(),
         ));
     }
-    if pregenesis && total > MAX_PUBKEYS_PER_MULTISIG_PREGENESIS {
-        return Err(ChainGangError::ScriptError(format!(
-            "OP_CHECKMULTISIG has more than the pre-Genesis limit of \
-             {MAX_PUBKEYS_PER_MULTISIG_PREGENESIS} keys"
-        )));
+    if let Some(op_count) = pregenesis_op_count {
+        if total > MAX_PUBKEYS_PER_MULTISIG_PREGENESIS {
+            return Err(ChainGangError::ScriptError(format!(
+                "OP_CHECKMULTISIG has more than the pre-Genesis limit of \
+                 {MAX_PUBKEYS_PER_MULTISIG_PREGENESIS} keys"
+            )));
+        }
+        *op_count += total as usize;
+        check_pregenesis_op_count(*op_count)?;
     }
     check_stack_size(total as usize, stack)?;
     let mut keys = Vec::with_capacity(total as usize);
