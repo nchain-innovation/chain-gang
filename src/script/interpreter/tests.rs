@@ -828,7 +828,7 @@ impl Checker for MockChecker {
         Ok(self.locktime_checks.borrow_mut().pop().unwrap())
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Ok(self.sequence_checks.borrow_mut().pop().unwrap())
     }
 
@@ -955,7 +955,7 @@ impl Checker for ScriptRecordingChecker {
         Ok(true)
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Ok(true)
     }
 }

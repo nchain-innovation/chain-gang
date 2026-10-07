@@ -1289,7 +1289,7 @@ mod tests {
         fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
             Ok(true)
         }
-        fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+        fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
             Ok(true)
         }
     }

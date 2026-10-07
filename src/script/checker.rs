@@ -59,7 +59,10 @@ pub trait Checker {
     fn check_locktime(&self, locktime: i64) -> Result<bool, ChainGangError>;
 
     /// Checks that the relative lock time enforced by the sequence is valid according to BIP 112
-    fn check_sequence(&self, sequence: i32) -> Result<bool, ChainGangError>;
+    ///
+    /// `sequence` is `OP_CHECKSEQUENCEVERIFY`'s operand, read as up to 5 bytes
+    /// like `OP_CHECKLOCKTIMEVERIFY`'s, so it can exceed `i32` too.
+    fn check_sequence(&self, sequence: i64) -> Result<bool, ChainGangError>;
 
     /// Returns the executing transaction version for Chronicle OP_VER opcodes
     fn tx_version(&self) -> Result<i32, ChainGangError> {
@@ -90,7 +93,7 @@ impl Checker for TransactionlessChecker {
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -149,7 +152,7 @@ impl Checker for ZChecker {
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -180,7 +183,7 @@ impl Checker for TxVersionChecker {
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -243,7 +246,7 @@ impl Checker for ZVersionChecker {
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -360,11 +363,13 @@ impl Checker for TransactionChecker<'_> {
         Ok(true)
     }
 
-    fn check_sequence(&self, sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, sequence: i64) -> Result<bool, ChainGangError> {
         if sequence < 0 {
             return Err(ChainGangError::ScriptError("sequence negative".to_string()));
         }
-        let sequence = sequence as u32;
+        // Only the low 32 bits mean anything: like the transaction's sequence
+        // it is a u32, and the node masks the bits it compares out of it.
+        let sequence = (sequence & 0xffff_ffff) as u32;
         if sequence & SEQUENCE_LOCKTIME_DISABLE_FLAG != 0 {
             return Ok(true);
         }
@@ -1582,6 +1587,61 @@ mod tests {
         // Block heights still compare as before.
         assert!(check_locktime_against(1_000, 1_000).unwrap());
         assert!(check_locktime_against(1_000, 1_001).is_err());
+    }
+
+    fn check_sequence_against(tx_sequence: u32, sequence: i64) -> Result<bool, ChainGangError> {
+        let mut tx = locked_tx(0);
+        tx.version = 2;
+        tx.inputs[0].sequence = tx_sequence;
+        let mut cache = SigHashCache::new();
+        let checker = TransactionChecker {
+            tx: &tx,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 0,
+            require_sighash_forkid: false,
+            script_tx_version: None,
+        };
+        checker.check_sequence(sequence)
+    }
+
+    /// CHECKSEQUENCEVERIFY's operand is up to 5 bytes, so it reaches the
+    /// checker as an i64. Bits above the low 32 never count: the node masks
+    /// the operand to the bits it compares.
+    #[test]
+    fn check_sequence_takes_five_byte_operands() {
+        assert!(check_sequence_against(10, 10).unwrap());
+        assert!(check_sequence_against(10, (1 << 32) + 10).unwrap());
+        assert!(check_sequence_against(10, (0x7f << 32) + 10).unwrap());
+        let err = check_sequence_against(10, (1 << 32) + 11).unwrap_err();
+        assert!(err.to_string().contains("greater than tx"), "{err}");
+        let err = check_sequence_against(10, -1).unwrap_err();
+        assert!(err.to_string().contains("negative"), "{err}");
+    }
+
+    /// The same through the interpreter: 2^32 + 10, five bytes, before Genesis.
+    #[test]
+    fn csv_five_byte_operand_through_the_interpreter() {
+        use crate::script::PREGENESIS_RULES;
+        let mut script = Script::new();
+        script.append_data(&[10, 0x00, 0x00, 0x00, 0x01]);
+        script.append(OP_CHECKSEQUENCEVERIFY);
+        for (tx_sequence, ok) in [(10, true), (11, true), (9, false)] {
+            let mut tx = locked_tx(0);
+            tx.version = 2;
+            tx.inputs[0].sequence = tx_sequence;
+            let mut cache = SigHashCache::new();
+            let mut checker = TransactionChecker {
+                tx: &tx,
+                sig_hash_cache: &mut cache,
+                input: 0,
+                satoshis: 0,
+                require_sighash_forkid: false,
+                script_tx_version: None,
+            };
+            let result = script.eval(&mut checker, PREGENESIS_RULES);
+            assert_eq!(result.is_ok(), ok, "sequence {tx_sequence}: {result:?}");
+        }
     }
 
     /// The same through the interpreter: a 5-byte CLTV operand past `i32`,
