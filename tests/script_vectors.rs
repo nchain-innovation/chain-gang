@@ -10,7 +10,7 @@
 //! chain-gang does not take the node's flags one by one. It has an era
 //! (pre- or post-Genesis, per output), a policy/consensus switch and the
 //! sighash FORKID requirement, so each row's flags are mapped onto those (see
-//! `Mode::from_flags`). Of the 1483 rows, 1349 agree with the node. The rest
+//! `Mode::from_flags`). Of the 1483 rows, 1357 agree with the node. The rest
 //! are listed, each under its reason, in one of two places:
 //!
 //! - `MODELLING_GAPS`: the verdict turns on a flag chain-gang does not take
@@ -450,12 +450,6 @@ const KNOWN_DIFFERENCES: &[(&str, &[usize])] = &[
         "After Genesis an IF takes one ELSE. The node rejects a second \
          (UNBALANCED_CONDITIONAL); chain-gang accepts it.",
         &[45, 57, 58, 59, 60, 61, 67, 68, 69, 70, 71, 74, 75],
-    ),
-    (
-        "Before Genesis, OP_NUM2BIN to sizes up to 520 bytes, to size 0, of \
-         negative zero, and shrinking a padded number: chain-gang rejects \
-         these or produces different bytes.",
-        &[843, 845, 848, 849, 850, 853, 854, 855],
     ),
     (
         "Before Genesis the node limits pushes and results to 520 bytes (even \

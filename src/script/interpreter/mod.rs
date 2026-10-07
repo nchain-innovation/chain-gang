@@ -19,6 +19,10 @@ pub use eval::core_eval;
 pub(crate) const STACK_CAPACITY: usize = 100;
 pub(crate) const ALT_STACK_CAPACITY: usize = 10;
 
+/// The node's limit on a stack element before Genesis, in bytes
+/// (`MAX_SCRIPT_ELEMENT_SIZE_BEFORE_GENESIS`).
+pub(crate) const MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS: usize = 520;
+
 /// Execute the script with genesis rules
 pub const NO_FLAGS: u32 = 0x00;
 

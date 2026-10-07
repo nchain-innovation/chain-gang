@@ -19,7 +19,9 @@ use super::rules::{
     tx_enforces_malleability_rules, verif_branch_exec,
 };
 use super::script_code::{checksig_script_code, multisig_script_code, TwoPhaseEvalContext};
-use super::{ALT_STACK_CAPACITY, PREGENESIS_RULES, STACK_CAPACITY};
+use super::{
+    ALT_STACK_CAPACITY, MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS, PREGENESIS_RULES, STACK_CAPACITY,
+};
 
 // The interpreter entry point genuinely needs all of these: script, checker,
 // consensus flags, resume/break offsets, both stacks, and the two-phase context.
@@ -655,39 +657,43 @@ pub fn core_eval<T: Checker>(
             }
             OP_NUM2BIN => {
                 check_stack_size(2, &stack)?;
-                let m = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let size = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                // Before Genesis the node caps the size at its 520-byte element
+                // limit. After Genesis chain-gang keeps it to the script number
+                // limit, short of the node's i32::MAX.
+                let max_size = if flags & PREGENESIS_RULES == PREGENESIS_RULES {
+                    MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS
+                } else {
+                    max_num_len
+                };
+                let size = match size.to_usize() {
+                    Some(size) if size <= max_size => size,
+                    _ => {
+                        let msg = format!("OP_NUM2BIN failed, size {size} out of range");
+                        return Err(ChainGangError::ScriptError(msg));
+                    }
+                };
+                // Minimally encoded first, as the node's `MinimallyEncode`:
+                // padding is not part of the number, so a padded number can
+                // shrink, and negative zero is zero, which fits in no bytes.
                 let mut n = stack.pop().unwrap();
-                if m < BigInt::one() {
-                    let msg = format!("OP_NUM2BIN failed. m too small: {m}");
+                let mut n = encode_bigint(decode_bigint(&mut n));
+                if n.len() > size {
+                    let msg = "OP_NUM2BIN failed, number does not fit the size".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }
-                let nlen = n.len();
-                if m < BigInt::from(nlen) {
-                    let msg = "OP_NUM2BIN failed. n longer than m".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
+                if n.len() < size {
+                    // The sign moves from the number's last byte to the new
+                    // last byte. It used to go on the first, so `-42 2
+                    // NUM2BIN` gave `aa00` where the node gives `2a80`.
+                    let sign = n.last().map_or(0, |last| last & 0x80);
+                    if let Some(last) = n.last_mut() {
+                        *last &= 0x7f;
+                    }
+                    n.resize(size, 0);
+                    n[size - 1] |= sign;
                 }
-                if m > BigInt::from(max_num_len) {
-                    let msg = "OP_NUM2BIN failed. m too big".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
-                }
-                check_script_num_length(nlen, max_num_len)?;
-                let mut v = Vec::with_capacity(m.to_usize().unwrap());
-                let mut neg = 0;
-                if nlen > 0 {
-                    neg = n[nlen - 1] & 128;
-                    n[nlen - 1] &= 127;
-                }
-                // Add zeros
-                let diff = m.to_usize().unwrap() - n.len();
-                v.extend(std::iter::repeat_n(0, diff));
-                // Prepend the value
-                for b in n.iter().rev() {
-                    v.insert(0, *b);
-                }
-                // Add the sign
-                v[0] |= neg;
-                check_script_num_length(v.len(), max_num_len)?;
-                stack.push(v);
+                stack.push(n);
             }
             OP_BIN2NUM => {
                 check_stack_size(1, &stack)?;

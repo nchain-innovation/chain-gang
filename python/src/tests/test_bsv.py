@@ -360,12 +360,12 @@ class BSVTests(unittest.TestCase):
         self.assertEqual(context.get_stack(), Stack([[0x02, 0x00, 0x00, 0x00]]))
 
     def test_num2bin_2(self):
-        """ Check of num2bin
+        """ Check of num2bin: the sign moves to the last byte, as in the node
         """
         script = Script([OP_PUSHDATA1, 0x01, b"\x85", OP_4, OP_NUM2BIN])
         context = Context(script=script)
         self.assertTrue(context.evaluate_core())
-        self.assertEqual(context.get_stack(), Stack([[0x85, 0x00, 0x00, 0x00]]))
+        self.assertEqual(context.get_stack(), Stack([[0x05, 0x00, 0x00, 0x80]]))
 
     def test_num2bin_3(self):
         """ Check of num2bin
