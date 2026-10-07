@@ -2,7 +2,6 @@ use pyo3::{
     prelude::*,
     types::{PyBytes, PyInt, PyType},
 };
-use regex::Regex;
 use std::{
     fmt,
     io::{Cursor, Read, Write},
@@ -35,32 +34,6 @@ fn commands_as_vec(cmds: Vec<Command>) -> Vec<u8> {
     script
 }
 
-fn is_pushdata_operation(cmd: &Command) -> Option<usize> {
-    match cmd {
-        #[allow(clippy::match_ref_pats)]
-        Command::Int(v) => match v {
-            &op_codes::OP_PUSHDATA1 => Some(2),
-            &op_codes::OP_PUSHDATA2 => Some(3),
-            &op_codes::OP_PUSHDATA4 => Some(5),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn handle_pushdata(cmd: &Command, is_pushdata: usize) -> usize {
-    match is_pushdata_operation(cmd) {
-        Some(val) => val,
-        None => {
-            if is_pushdata > 0 {
-                is_pushdata - 1
-            } else {
-                0
-            }
-        }
-    }
-}
-
 /// Returns `data` preceded by the opcodes that push it onto the stack
 fn pushdata_bytes(data: &[u8]) -> Vec<u8> {
     let len = data.len();
@@ -85,63 +58,150 @@ fn pushdata_bytes(data: &[u8]) -> Vec<u8> {
     retval
 }
 
-/// Drops `head` characters from the front of `op` and one from the back, the delimiters of
-/// 'text' or b'bytes'. None when `op` is too short to have them.
-fn strip_delimiters(op: &str, head: usize) -> Option<&str> {
-    let start = op.char_indices().nth(head)?.0;
-    let end = op.char_indices().last()?.0;
-    op.get(start..end)
+/// The bytes a quoted token stands for: `'text'` or `b'text'`, one byte per
+/// character. None when `token` is not quoted.
+///
+/// A character above U+00FF has no single byte, so it is an error; it used to
+/// be cut to its low byte.
+fn quoted_bytes(token: &str) -> Option<Result<Vec<u8>, ChainGangError>> {
+    let inner = token
+        .strip_prefix("b'")
+        .or_else(|| token.strip_prefix('\''))?
+        .strip_suffix('\'')?;
+    Some(
+        inner
+            .chars()
+            .map(|c| {
+                u8::try_from(c).map_err(|_| {
+                    ChainGangError::BadData(format!(
+                        "Unable to parse '{token}': '{c}' is not a single byte"
+                    ))
+                })
+            })
+            .collect(),
+    )
 }
 
-fn decode_op(op: &str, is_pushdata: usize) -> Result<Command, ChainGangError> {
-    let op = op.trim();
-    if let Some(val) = op_codes::name_to_byte(op) {
-        return Ok(Command::Int(val));
+/// The bytes a `0x...` or quoted token stands for. None when it is neither.
+fn literal_bytes(token: &str) -> Option<Result<Vec<u8>, ChainGangError>> {
+    if let Some(hex_digits) = token.strip_prefix("0x") {
+        return Some(hex::decode(hex_digits).map_err(|e| {
+            ChainGangError::BadData(format!("Unable to parse '{token}' as hex: {e}"))
+        }));
     }
-    // Is an int. Parsed as a BigInt so numbers outside i32 are encoded rather than rejected,
-    // as Script.append_big_integer does.
-    if let Ok(val) = op.parse::<BigInt>() {
-        match val.to_i64() {
-            Some(-1) => return Ok(Command::Int(op_codes::OP_1NEGATE)),
-            Some(0) => return Ok(Command::Int(op_codes::OP_0)),
-            Some(small @ 1..=16) => return Ok(Command::Int(small as u8 + 0x50)), // 1 => OP_1, => 0x81
-            Some(small @ 17..=75) => {
-                if is_pushdata > 0 {
-                    return Ok(Command::Int(small as u8));
-                } else {
-                    return Ok(Command::Bytes(vec![1, small as u8]));
-                }
-            }
-            _ => {
-                let retval = encode_bigint(val);
-                if is_pushdata > 0 {
-                    return Ok(Command::Bytes(retval));
-                } else {
-                    return Ok(Command::Bytes(pushdata_bytes(&retval)));
-                }
-            }
-        }
+    quoted_bytes(token)
+}
+
+/// The script bytes for one token that is not an opcode name: a number, hex
+/// or quoted text, each pushed onto the stack. Anything else is an error; an
+/// unknown word such as `OP_DUPP` used to become raw bytes.
+fn decode_token(token: &str) -> Result<Vec<u8>, ChainGangError> {
+    // Parsed as a BigInt so numbers outside i32 are encoded rather than
+    // rejected, as Script.append_big_integer does.
+    if let Ok(val) = token.parse::<BigInt>() {
+        return Ok(match val.to_i64() {
+            Some(-1) => vec![op_codes::OP_1NEGATE],
+            Some(0) => vec![op_codes::OP_0],
+            Some(small @ 1..=16) => vec![small as u8 + 0x50], // 1 => OP_1
+            _ => pushdata_bytes(&encode_bigint(val)),
+        });
     }
-    // Hex digit, digits
-    if let Some(hex_digits) = op.strip_prefix("0x") {
-        let data: Vec<u8> = hex::decode(hex_digits)
-            .map_err(|e| ChainGangError::BadData(format!("Unable to parse '{op}' as hex: {e}")))?;
-        if is_pushdata > 0 {
-            return Ok(Command::Bytes(data));
-        } else {
-            return Ok(Command::Bytes(pushdata_bytes(&data)));
-        }
+    match literal_bytes(token) {
+        Some(bytes) => Ok(pushdata_bytes(&bytes?)),
+        None => Err(ChainGangError::BadData(format!(
+            "Unable to parse '{token}': not an opcode, number, hex or quoted text"
+        ))),
     }
-    // Byte array b'...' or string '...'
-    let (head, kind) = if op.starts_with('b') {
-        (2, "a byte array")
-    } else {
-        (1, "a string")
+}
+
+/// The length field and data that follow an explicit `OP_PUSHDATA1`, `2` or
+/// `4`, written as the two tokens after it.
+///
+/// The length is a decimal number, written in the opcode's 1, 2 or 4 bytes,
+/// little-endian, or hex of exactly that many bytes. The data is hex, quoted
+/// text or a number (as a script number), and must be as long as the length
+/// says. A decimal length of 1 to 16 used to become OP_1 to OP_16, one of 128
+/// or more gained a sign byte, and after OP_PUSHDATA2 and 4 the parser took
+/// three and five tokens as raw bytes rather than two.
+fn explicit_push_bytes(
+    op: u8,
+    length_token: Option<&str>,
+    data_token: Option<&str>,
+) -> Result<Vec<u8>, ChainGangError> {
+    let name = op_codes::opcode_name(op).unwrap_or("OP_PUSHDATA");
+    let width = match op {
+        op_codes::OP_PUSHDATA1 => 1,
+        op_codes::OP_PUSHDATA2 => 2,
+        _ => 4,
     };
-    let inner = strip_delimiters(op, head)
-        .ok_or_else(|| ChainGangError::BadData(format!("Unable to parse '{op}' as {kind}")))?;
-    let bytes: Vec<u8> = inner.chars().map(|c| c as u8).collect();
-    Ok(Command::Bytes(bytes))
+    let (Some(length_token), Some(data_token)) = (length_token, data_token) else {
+        return Err(ChainGangError::BadData(format!(
+            "{name} must be followed by a length and data"
+        )));
+    };
+    let length_field = if let Ok(length) = length_token.parse::<u32>() {
+        let bytes = length.to_le_bytes();
+        if bytes[width..].iter().any(|&b| b != 0) {
+            return Err(ChainGangError::BadData(format!(
+                "{name} length {length} does not fit in {width} bytes"
+            )));
+        }
+        bytes[..width].to_vec()
+    } else {
+        match length_token.strip_prefix("0x").map(hex::decode) {
+            Some(Ok(bytes)) if bytes.len() == width => bytes,
+            _ => {
+                return Err(ChainGangError::BadData(format!(
+                    "{name} length '{length_token}' must be a number or {width} bytes of hex"
+                )))
+            }
+        }
+    };
+    let length = length_field
+        .iter()
+        .rev()
+        .fold(0usize, |acc, &b| (acc << 8) | b as usize);
+    let data = match literal_bytes(data_token) {
+        Some(bytes) => bytes?,
+        None => match data_token.parse::<BigInt>() {
+            Ok(val) => encode_bigint(val),
+            Err(_) => {
+                return Err(ChainGangError::BadData(format!(
+                    "{name} data '{data_token}' must be hex, quoted text or a number"
+                )))
+            }
+        },
+    };
+    if data.len() != length {
+        return Err(ChainGangError::BadData(format!(
+            "{name} says {length} bytes but '{data_token}' is {}",
+            data.len()
+        )));
+    }
+    let mut bytes = vec![op];
+    bytes.extend(length_field);
+    bytes.extend(data);
+    Ok(bytes)
+}
+
+/// `Script.parse_string`: opcode names, numbers, hex and quoted text,
+/// separated by whitespace or commas. Tabs used not to separate, so
+/// `OP_1<tab>OP_2` was one unknown token.
+fn parse_script_string(in_string: &str) -> Result<Vec<u8>, ChainGangError> {
+    let mut tokens = in_string
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|token| !token.is_empty());
+    let mut script = Vec::new();
+    while let Some(token) = tokens.next() {
+        match op_codes::name_to_byte(token) {
+            Some(
+                op @ (op_codes::OP_PUSHDATA1 | op_codes::OP_PUSHDATA2 | op_codes::OP_PUSHDATA4),
+            ) => script.extend(explicit_push_bytes(op, tokens.next(), tokens.next())?),
+            Some(op) => script.push(op),
+            None => script.extend(decode_token(token)?),
+        }
+    }
+    Ok(script)
 }
 
 #[pyclass(name = "Script", get_all, set_all, from_py_object)]
@@ -357,23 +417,9 @@ impl PyScript {
     /// Converts a String to a Script
     #[classmethod]
     fn parse_string(_cls: &Bound<'_, PyType>, in_string: &str) -> PyResult<Self> {
-        let stripped = in_string.trim();
-        let separator = Regex::new(r"[ ,\n]+").unwrap();
-
-        let splits: Vec<_> = separator
-            .split(stripped)
-            .filter(|x| x.trim() != "")
-            .collect();
-        let mut decoded: Vec<Command> = Vec::new();
-        let mut is_pushdata: usize = 0;
-        for s in splits {
-            let op = decode_op(s, is_pushdata)?;
-            is_pushdata = handle_pushdata(&op, is_pushdata);
-            decoded.push(op);
-        }
-        let script = commands_as_vec(decoded);
-
-        Ok(PyScript { cmds: script })
+        Ok(PyScript {
+            cmds: parse_script_string(in_string)?,
+        })
     }
 
     /// Converts bytes to a Script:
@@ -389,7 +435,18 @@ mod tests {
     use super::*;
 
     fn decode(op: &str) -> Result<Vec<u8>, ChainGangError> {
-        decode_op(op, 0).map(|cmd| commands_as_vec(vec![cmd]))
+        decode_token(op)
+    }
+
+    fn parse(script: &str) -> Vec<u8> {
+        parse_script_string(script).unwrap_or_else(|e| panic!("{script:?}: {e}"))
+    }
+
+    fn parse_err(script: &str) -> String {
+        match parse_script_string(script) {
+            Ok(bytes) => panic!("{script:?} should fail, got {}", hex::encode(bytes)),
+            Err(e) => e.to_string(),
+        }
     }
 
     #[test]
@@ -422,15 +479,159 @@ mod tests {
 
     #[test]
     fn bad_tokens_are_errors() {
-        for op in ["0xZZ", "0x123", "x", "'", "b'", "é"] {
+        for op in ["0xZZ", "0x123", "x", "'", "b'", "é", "éa", "'abc", "abc'"] {
             assert!(decode(op).is_err(), "{op}");
+        }
+    }
+
+    /// An unknown word used to become raw bytes, its first and last
+    /// characters dropped: `OP_DUPP` gave `P_DUP`, `DUP` gave `U`.
+    #[test]
+    fn unknown_words_are_errors() {
+        for script in ["OP_DUPP", "DUP", "hello", "OP_1 OP_ADDD"] {
+            assert!(parse_err(script).contains("not an opcode"), "{script}");
         }
     }
 
     #[test]
     fn non_ascii_tokens_do_not_panic() {
-        assert_eq!(decode("éa").unwrap(), Vec::<u8>::new());
-        assert_eq!(decode("'é'").unwrap(), vec![0xe9]);
+        assert_eq!(decode("'é'").unwrap(), vec![1, 0xe9]);
+        // No single byte: it used to be cut to its low byte, 0xac.
+        assert!(decode("'€'")
+            .unwrap_err()
+            .to_string()
+            .contains("single byte"));
+    }
+
+    /// Quoted text is pushed, like hex, and like `'...'` in bitcoin-sv's
+    /// script format. It used to be inserted as raw script bytes.
+    #[test]
+    fn quoted_text_is_pushed() {
+        assert_eq!(parse("'abc'"), vec![3, b'a', b'b', b'c']);
+        assert_eq!(parse("b'abc'"), vec![3, b'a', b'b', b'c']);
+        assert_eq!(parse("''"), vec![op_codes::OP_0]);
+    }
+
+    #[test]
+    fn whitespace_and_commas_separate() {
+        let expected = vec![op_codes::OP_1, op_codes::OP_2, op_codes::OP_ADD];
+        for script in [
+            "OP_1 OP_2 OP_ADD",
+            "OP_1\tOP_2\tOP_ADD",
+            " OP_1,OP_2\r\n OP_ADD ",
+        ] {
+            assert_eq!(parse(script), expected, "{script:?}");
+        }
+    }
+
+    /// The two tokens after OP_PUSHDATA1, 2 or 4 are its length field and its
+    /// data, written as they are. The length can be decimal or hex of the
+    /// field's width (#8).
+    #[test]
+    fn explicit_pushdata() {
+        use op_codes::{OP_ADD, OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4};
+        let data = [1u8, 2, 3];
+        let push = |op: u8, field: &[u8]| {
+            let mut bytes = vec![op];
+            bytes.extend_from_slice(field);
+            bytes.extend_from_slice(&data);
+            bytes
+        };
+        for (script, expected) in [
+            ("OP_PUSHDATA1 0x03 0x010203", push(OP_PUSHDATA1, &[3])),
+            ("OP_PUSHDATA1 3 0x010203", push(OP_PUSHDATA1, &[3])),
+            ("OP_PUSHDATA2 0x0300 0x010203", push(OP_PUSHDATA2, &[3, 0])),
+            ("OP_PUSHDATA2 3 0x010203", push(OP_PUSHDATA2, &[3, 0])),
+            (
+                "OP_PUSHDATA4 0x03000000 0x010203",
+                push(OP_PUSHDATA4, &[3, 0, 0, 0]),
+            ),
+            ("OP_PUSHDATA4 3 0x010203", push(OP_PUSHDATA4, &[3, 0, 0, 0])),
+        ] {
+            assert_eq!(parse(script), expected, "{script}");
+        }
+
+        // Decimal lengths in full: 16 is not OP_16, 200 has no sign byte.
+        assert_eq!(
+            &parse(&format!("OP_PUSHDATA1 16 0x{}", "aa".repeat(16)))[..2],
+            &[OP_PUSHDATA1, 16]
+        );
+        assert_eq!(
+            &parse(&format!("OP_PUSHDATA1 200 0x{}", "aa".repeat(200)))[..2],
+            &[OP_PUSHDATA1, 200]
+        );
+        assert_eq!(
+            &parse(&format!("OP_PUSHDATA2 300 0x{}", "aa".repeat(300)))[..3],
+            &[OP_PUSHDATA2, 0x2c, 1]
+        );
+        // Empty data, as Script.to_string writes it.
+        assert_eq!(parse("OP_PUSHDATA1 0x00 0x"), vec![OP_PUSHDATA1, 0]);
+        // Quoted text as data.
+        assert_eq!(
+            parse("OP_PUSHDATA1 3 'abc'"),
+            vec![OP_PUSHDATA1, 3, b'a', b'b', b'c']
+        );
+
+        // After the data, tokens are ordinary again: pushed, not raw.
+        for op in [
+            "OP_PUSHDATA1 0x03",
+            "OP_PUSHDATA2 0x0300",
+            "OP_PUSHDATA4 0x03000000",
+        ] {
+            let script = format!("{op} 0x010203 0x0405 20 OP_ADD");
+            let parsed = parse(&script);
+            assert_eq!(
+                &parsed[parsed.len() - 6..],
+                &[2, 4, 5, 1, 20, OP_ADD],
+                "{script}"
+            );
+        }
+    }
+
+    #[test]
+    fn explicit_pushdata_errors() {
+        for (script, reason) in [
+            ("OP_PUSHDATA1", "must be followed by a length and data"),
+            ("OP_PUSHDATA1 0x03", "must be followed by a length and data"),
+            ("OP_PUSHDATA1 256 0x01", "does not fit in 1 bytes"),
+            ("OP_PUSHDATA2 65536 0x01", "does not fit in 2 bytes"),
+            ("OP_PUSHDATA1 -1 0x01", "must be a number or 1 bytes of hex"),
+            (
+                "OP_PUSHDATA2 0x03 0x010203",
+                "must be a number or 2 bytes of hex",
+            ),
+            (
+                "OP_PUSHDATA1 OP_ADD 0x01",
+                "must be a number or 1 bytes of hex",
+            ),
+            (
+                "OP_PUSHDATA1 0x03 OP_ADD",
+                "must be hex, quoted text or a number",
+            ),
+            ("OP_PUSHDATA1 0x03 0x0102", "says 3 bytes but '0x0102' is 2"),
+            (
+                "OP_PUSHDATA4 2 0x010203",
+                "says 2 bytes but '0x010203' is 3",
+            ),
+        ] {
+            let err = parse_err(script);
+            assert!(err.contains(reason), "{script}: {err}");
+        }
+    }
+
+    /// What Script.to_string writes, parse_string reads back.
+    #[test]
+    fn to_string_round_trips() {
+        let mut script = Script::new();
+        script.append_data(&[0xaa; 3]);
+        script.append_data(&[0xbb; 80]);
+        script.append_data(&[0xcc; 300]);
+        script.append(op_codes::OP_PUSHDATA4);
+        script.append_slice(&5u32.to_le_bytes());
+        script.append_slice(&[0xdd; 5]);
+        script.append(op_codes::OP_ADD);
+        let text = PyScript::new(&script.0).to_string();
+        assert_eq!(parse(&text), script.0, "{text}");
     }
 
     #[test]

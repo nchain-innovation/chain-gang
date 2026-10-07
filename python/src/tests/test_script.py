@@ -174,8 +174,47 @@ class ScriptTest(unittest.TestCase):
                     Script.parse_string(token)
 
     def test_parse_string_non_ascii_does_not_panic(self):
-        self.assertEqual(Script.parse_string("'é'").get_commands(), bytes([0xE9]))
-        self.assertEqual(Script.parse_string("éa").get_commands(), b"")
+        # Quoted text is pushed; an unquoted word is an error, not raw bytes
+        self.assertEqual(Script.parse_string("'é'").get_commands(), bytes([0x01, 0xE9]))
+        for token in ["éa", "'€'"]:
+            with self.subTest(token=token):
+                with self.assertRaises(ValueError):
+                    Script.parse_string(token)
+
+    def test_parse_string_unknown_words_raise(self):
+        # These used to become raw script bytes: OP_DUPP gave b"P_DUP"
+        for script in ["OP_DUPP", "DUP", "OP_1 OP_ADDD"]:
+            with self.subTest(script=script):
+                with self.assertRaises(ValueError):
+                    Script.parse_string(script)
+
+    def test_parse_string_quoted_text_is_pushed(self):
+        self.assertEqual(Script.parse_string("'abc'").get_commands(), bytes.fromhex("03616263"))
+        self.assertEqual(Script.parse_string("b'abc'").get_commands(), bytes.fromhex("03616263"))
+
+    def test_parse_string_tabs_separate(self):
+        self.assertEqual(Script.parse_string("OP_1\tOP_2"), Script.parse_string("OP_1 OP_2"))
+
+    def test_parse_string_explicit_pushdata(self):
+        # The length after OP_PUSHDATA1/2/4 is written in the opcode's 1, 2 or 4 bytes,
+        # decimal or hex, and the tokens after the data are pushed as usual (#8)
+        for script, expected in [
+            ("OP_PUSHDATA1 3 0x010203", "4c03010203"),
+            ("OP_PUSHDATA1 0x03 0x010203", "4c03010203"),
+            ("OP_PUSHDATA2 3 0x010203", "4d0300010203"),
+            ("OP_PUSHDATA2 0x0300 0x010203 0x0405", "4d0300010203020405"),
+            ("OP_PUSHDATA4 3 0x010203 0x0405 OP_ADD", "4e0300000001020302040593"),
+        ]:
+            with self.subTest(script=script):
+                self.assertEqual(Script.parse_string(script).get_commands().hex(), expected)
+        for script in ["OP_PUSHDATA1 256 0x01", "OP_PUSHDATA2 0x03 0x010203", "OP_PUSHDATA1 3 0x0102", "OP_PUSHDATA1"]:
+            with self.subTest(script=script):
+                with self.assertRaises(ValueError):
+                    Script.parse_string(script)
+
+    def test_parse_string_reads_to_string(self):
+        script = Script.parse_string("0xaabbcc OP_PUSHDATA1 3 0x010203 OP_PUSHDATA4 2 0x0405 OP_ADD")
+        self.assertEqual(Script.parse_string(script.to_string()), script)
 
     def test_parse_string_large_numbers(self):
         # Numbers outside the 32-bit range used to panic, and past 64 bits were read as strings
