@@ -75,11 +75,10 @@ pub fn pop_bool_minimal(
         let msg = "Cannot pop bool, empty stack".to_string();
         return Err(ChainGangError::ScriptError(msg));
     }
+    // Any length, as the node's `CastToBool` reads it, in every era: a bool is
+    // not a number, so the script number limit does not apply. This used to
+    // reject anything over 4 bytes, so `0x0100000000 VERIFY` failed.
     let top = stack.pop().unwrap();
-    if top.len() > 4 {
-        let msg = format!("Cannot pop bool, len too long {}", top.len());
-        return Err(ChainGangError::ScriptError(msg));
-    }
     if require_minimal_if && !is_minimal_if_operand(&top) {
         return Err(ChainGangError::ScriptError(
             "OP_IF/OP_NOTIF operand is not minimal".to_string(),
@@ -325,7 +324,10 @@ mod tests {
         assert!(pop_bool(&mut vec![vec![0, 0, 0, 127]]).unwrap());
         assert!(pop_bool(&mut vec![vec![0, 0, 0, 127]]).unwrap());
         assert!(pop_bool(&mut vec![]).is_err());
-        assert!(pop_bool(&mut vec![vec![0, 0, 0, 0, 0]]).is_err());
+        assert!(pop_bool(&mut vec![vec![0, 0, 0, 0, 1]]).unwrap());
+        assert!(pop_bool(&mut vec![vec![1, 0, 0, 0, 0]]).unwrap());
+        assert!(!pop_bool(&mut vec![vec![0, 0, 0, 0, 0]]).unwrap());
+        assert!(!pop_bool(&mut vec![vec![0, 0, 0, 0, 0x80]]).unwrap());
         assert!(!pop_bool(&mut vec![vec![]]).unwrap());
         assert!(!pop_bool(&mut vec![vec![0]]).unwrap());
         assert!(!pop_bool(&mut vec![vec![0, 0, 0, 0]]).unwrap());
