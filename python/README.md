@@ -16,7 +16,6 @@ Python bindings for the [chain-gang](../) Rust library, published on PyPI as [`t
 python/
 ├── src/tx_engine/   # package source (Script, Tx, Context, Wallet, …)
 ├── src/tests/       # unit tests
-├── examples/        # script debugger examples
 ├── lint.sh          # flake8
 └── tests.sh         # run unit tests
 ```
