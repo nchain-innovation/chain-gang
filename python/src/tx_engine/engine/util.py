@@ -10,6 +10,7 @@ from tx_engine.tx_engine import (  # type: ignore[attr-defined]
     MAX_SCRIPT_NUM_LENGTH_BEFORE_GENESIS,
     MAX_SCRIPT_NUM_LENGTH_AFTER_GENESIS,
     MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
+    Script,
 )
 
 # Maximum size that we are using for legacy callers
@@ -113,11 +114,14 @@ def decode_num(element: StackElement, check_encoding=False, tx_version: int | No
 
 
 def insert_num(val: int) -> List[int]:
-    """ This function is used to insert numbers into script
+    """ Returns the script bytes that push `val` as a number, any size.
+
+        The shortest push of its minimal encoding, as Script.append_big_integer
+        writes it: OP_1NEGATE, OP_0 and OP_1 to OP_16 for -1 to 16, and
+        OP_PUSHDATA1 or 2 past 75 bytes. It used to write -1 to 16 as a
+        one-byte push, which the node's policy rejects as non-minimal, and to
+        fail an assert past 75 bytes.
     """
-    val_as_bytes = bytearray(encode_num(val))
-    length = len(val_as_bytes)
-    assert length < 0x4c, "Length of number too long, need to encode using OP_PUSHDATA"
-    # Insert the length
-    val_as_bytes.insert(0, length)
-    return list(val_as_bytes)
+    script = Script()
+    script.append_big_integer(val)
+    return list(script.get_commands())
