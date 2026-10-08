@@ -72,12 +72,9 @@ class Base58KeysInvalidTest(unittest.TestCase):
                 with self.assertRaises(Exception):
                     Wallet(encoded)
 
-    @unittest.expectedFailure
     def test_none_is_an_address(self):
-        # address_to_public_key_hash checks only the base58 checksum. It does
-        # not check the version byte or that 20 bytes follow it, so 40 of
-        # these 50 come back as a "hash", of 32, 33 or 50 bytes among others.
-        # Remove expectedFailure once it validates addresses.
+        # A valid checksum is not enough: address_to_public_key_hash also
+        # needs a P2PKH or P2SH version byte followed by exactly 20 bytes
         accepted = []
         for (encoded, *_) in self.rows:
             try:
