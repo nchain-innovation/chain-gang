@@ -44,8 +44,35 @@ Script has the following methods:
 
 
 Script has the following class methods:
-* `Script.parse_string(in_string: str) -> Script` - Converts a string of OP_CODES into a Script
+* `Script.parse_string(in_string: str) -> Script` - Converts a string of OP_CODES into a Script. See [Script.parse_string](#scriptparse_string) for what it accepts
 * `Script.parse(in_bytes: bytes) -> Script` - Converts an array of bytes into a Script
+
+### Script.parse_string
+
+Tokens are separated by whitespace or commas. Each token is one of:
+
+| Token | Meaning | Example | Bytes |
+|---|---|---|---|
+| An opcode name | The opcode | `OP_ADD` | `93` |
+| A decimal number | Pushed as a script number: `-1` and `0` to `16` as their opcodes, anything else as minimally encoded data | `17` | `01 11` |
+| `0x` and hex digits | The bytes, pushed | `0x010203` | `03 010203` |
+| `'text'` or `b'text'` | The text, one byte per character (U+0000 to U+00FF), pushed. It cannot contain spaces or commas | `'abc'` | `03 616263` |
+
+Anything else, such as a misspelt opcode, raises `ValueError`.
+
+Pushes use the shortest form: a length byte for up to 75 bytes, then `OP_PUSHDATA1`, `OP_PUSHDATA2` and `OP_PUSHDATA4`. To write a push in a particular form, give the opcode followed by two tokens, the length and the data:
+
+```python
+Script.parse_string("OP_PUSHDATA1 3 0x010203")         # 4c 03 010203
+Script.parse_string("OP_PUSHDATA2 0x0300 0x010203")    # 4d 0300 010203
+Script.parse_string("OP_PUSHDATA4 3 'abc'")            # 4e 03000000 616263
+```
+
+The length is a decimal number, written in the opcode's 1, 2 or 4 bytes little-endian, or hex of exactly that width. The data is hex, quoted text or a number, and must be as long as the length says. Tokens after the data are read as usual.
+
+Unlike bitcoin-sv's own script test format, where `0x...` is inserted into the script as it stands, here hex is always pushed data. To insert raw script bytes, build the script from them, `Script([bytes.fromhex("4c03010203")])`, or use `append_byte`.
+
+`Script.to_string()` writes scripts in this form, so its output parses back to the same bytes.
 
 ## Stack
 
