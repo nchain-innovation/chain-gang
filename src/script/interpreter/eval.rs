@@ -12,7 +12,9 @@ use num_traits::{One, ToPrimitive, Zero};
 use ripemd::{Digest, Ripemd160};
 
 use super::multisig::check_multisig;
-use super::push::{check_canonical_push, check_stack_size, next_op, remains};
+use super::push::{
+    check_canonical_push, check_pregenesis_push_size, check_stack_size, next_op, remains,
+};
 use super::rules::{
     enforces_policy_rules, max_script_num_length, max_script_num_result_length,
     peek_locktime_operand, pop_bigint_for_eval, pop_bool_for_if, pop_num_for_eval, substr_error,
@@ -20,7 +22,8 @@ use super::rules::{
 };
 use super::script_code::{checksig_script_code, multisig_script_code, TwoPhaseEvalContext};
 use super::{
-    ALT_STACK_CAPACITY, MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS, PREGENESIS_RULES, STACK_CAPACITY,
+    ALT_STACK_CAPACITY, MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS, MAX_SCRIPT_SIZE_PREGENESIS,
+    MAX_STACK_ELEMENTS_PREGENESIS, PREGENESIS_RULES, STACK_CAPACITY,
 };
 
 // The interpreter entry point genuinely needs all of these: script, checker,
@@ -56,12 +59,26 @@ pub fn core_eval<T: Checker>(
     let max_num_len = max_script_num_length(checker, flags);
     let max_result_len = max_script_num_result_length(checker, flags);
 
+    // The node's size limits before Genesis: a script, each item pushed or
+    // built, and the two stacks together. Genesis lifted them.
+    if pregenesis && script.len() > MAX_SCRIPT_SIZE_PREGENESIS {
+        return Err(ChainGangError::ScriptError(format!(
+            "Script of {} bytes exceeds the pre-Genesis limit of {MAX_SCRIPT_SIZE_PREGENESIS}",
+            script.len()
+        )));
+    }
+
     'outer: while i < script.len() {
         if let Some(val) = break_at {
             // hit our breakpoint
             if i >= val {
                 break;
             }
+        }
+        // Checked as the node reads each push, before it decides whether the
+        // branch is executing, so a push in one that is not counts too.
+        if pregenesis {
+            check_pregenesis_push_size(i, script)?;
         }
         let opcode = script[i];
         let exec = conditions.active() && (!returned_in_branch || opcode == OP_RETURN);
@@ -296,6 +313,11 @@ pub fn core_eval<T: Checker>(
                 check_stack_size(2, &stack)?;
                 let top = stack.pop().unwrap();
                 let mut second = stack.pop().unwrap();
+                if pregenesis && second.len() + top.len() > MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS {
+                    return Err(ChainGangError::ScriptError(format!(
+                        "OP_CAT result exceeds the pre-Genesis limit of {MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS}"
+                    )));
+                }
                 second.extend_from_slice(&top);
                 stack.push(second);
             }
@@ -663,7 +685,7 @@ pub fn core_eval<T: Checker>(
                 // Before Genesis the node caps the size at its 520-byte element
                 // limit. After Genesis chain-gang keeps it to the script number
                 // limit, short of the node's i32::MAX.
-                let max_size = if flags & PREGENESIS_RULES == PREGENESIS_RULES {
+                let max_size = if pregenesis {
                     MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS
                 } else {
                     max_num_len
@@ -780,14 +802,14 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKMULTISIG => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                match check_multisig(&mut stack, checker, &cleaned_script, policy)? {
+                match check_multisig(&mut stack, checker, &cleaned_script, policy, pregenesis)? {
                     true => stack.push(encode_num(1)?),
                     false => stack.push(encode_num(0)?),
                 }
             }
             OP_CHECKMULTISIGVERIFY => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                if !check_multisig(&mut stack, checker, &cleaned_script, policy)? {
+                if !check_multisig(&mut stack, checker, &cleaned_script, policy, pregenesis)? {
                     let msg = "OP_CHECKMULTISIGVERIFY failed".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }
@@ -849,6 +871,11 @@ pub fn core_eval<T: Checker>(
                 let msg = format!("Bad opcode: {}, index {}", script[i], i);
                 return Err(ChainGangError::ScriptError(msg));
             }
+        }
+        if pregenesis && stack.len() + alt_stack.len() > MAX_STACK_ELEMENTS_PREGENESIS {
+            return Err(ChainGangError::ScriptError(format!(
+                "Stacks hold more than the pre-Genesis limit of {MAX_STACK_ELEMENTS_PREGENESIS} items"
+            )));
         }
         i = next_op(i, script);
     }

@@ -6,6 +6,7 @@ use crate::util::ChainGangError;
 use super::push::check_stack_size;
 use super::push::next_op;
 use super::rules::{pop_num_for_eval, tx_enforces_malleability_rules};
+use super::MAX_PUBKEYS_PER_MULTISIG_PREGENESIS;
 
 #[inline]
 pub(crate) fn check_multisig<T: Checker>(
@@ -13,6 +14,7 @@ pub(crate) fn check_multisig<T: Checker>(
     checker: &mut T,
     script: &[u8],
     policy: bool,
+    pregenesis: bool,
 ) -> Result<bool, ChainGangError> {
     // Pop the keys
     let total = pop_num_for_eval(stack, policy)?;
@@ -20,6 +22,12 @@ pub(crate) fn check_multisig<T: Checker>(
         return Err(ChainGangError::ScriptError(
             "total out of range".to_string(),
         ));
+    }
+    if pregenesis && total > MAX_PUBKEYS_PER_MULTISIG_PREGENESIS {
+        return Err(ChainGangError::ScriptError(format!(
+            "OP_CHECKMULTISIG has more than the pre-Genesis limit of \
+             {MAX_PUBKEYS_PER_MULTISIG_PREGENESIS} keys"
+        )));
     }
     check_stack_size(total as usize, stack)?;
     let mut keys = Vec::with_capacity(total as usize);
