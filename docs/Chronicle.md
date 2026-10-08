@@ -114,7 +114,7 @@ Rust: `uses_relaxed_malleability()`, `is_push_only()` — re-exported from `chai
 
 ## Script number limit
 
-The maximum encoded script number size increases from 750 KB to 32 MB for Chronicle transactions (`tx.version > 1`). Pre-genesis inputs (`PREGENESIS_RULES`) keep the 4-byte limit; post-genesis `version == 1` transactions keep 750 KB.
+The maximum encoded script number size increases from 750 KB to 32 MB for Chronicle transactions (`tx.version > 1`). Pre-genesis inputs (`PREGENESIS_RULES`) keep the 4-byte limit on numeric operands, though, as in the node, an arithmetic result may be longer and still be compared or cast to a boolean; post-genesis `version == 1` transactions keep 750 KB.
 
 Rust: `max_script_num_length()`, `MAX_SCRIPT_NUM_LENGTH_*` — re-exported from `chain_gang::chronicle`; enforced in `core_eval()` via `pop_bigint_checked()` and `OP_BIN2NUM` / `OP_NUM2BIN`.
 

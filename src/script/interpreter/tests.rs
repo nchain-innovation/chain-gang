@@ -26,10 +26,6 @@ fn valid() {
     pass(&[OP_1, OP_IF, OP_0, OP_1, OP_ENDIF]);
     pass(&[OP_1, OP_IF, OP_0, OP_IF, OP_ELSE, OP_1, OP_ENDIF, OP_ENDIF]);
     pass(&[OP_1, OP_IF, OP_PUSHDATA1, 1, 0, OP_1, OP_ENDIF]);
-    pass(&[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF]);
-    pass(&[
-        OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF,
-    ]);
     pass(&[OP_1, OP_VERIFY, OP_1]);
     pass(&[OP_1, OP_RETURN]);
     pass(&[OP_FALSE, OP_TRUE, OP_RETURN]);
@@ -237,8 +233,8 @@ fn valid() {
     pass(&[OP_1, OP_16, OP_NUM2BIN]);
     pass(&[OP_0, OP_4, OP_NUM2BIN, OP_0, OP_NUMEQUAL]);
 
-    // pass(&[OP_1, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
-    // pass(&[OP_1NEGATE, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
+    pass(&[OP_1, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
+    pass(&[OP_1NEGATE, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
 
     pass(&[OP_1, OP_PUSH + 5, 129, 0, 0, 0, 0, OP_NUM2BIN]);
 
@@ -541,7 +537,17 @@ fn invalid() {
     s.push(OP_CHECKMULTISIG);
     assert!(eval(&s, &mut c, NO_FLAGS).is_err());
     fail_pregenesis(&[OP_CHECKLOCKTIMEVERIFY, OP_1]);
-    fail_pregenesis(&[OP_PUSH + 5, 129, 0, 0, 0, 0, OP_CHECKLOCKTIMEVERIFY, OP_1]);
+    fail_pregenesis(&[
+        OP_PUSH + 6,
+        129,
+        0,
+        0,
+        0,
+        0,
+        0,
+        OP_CHECKLOCKTIMEVERIFY,
+        OP_1,
+    ]);
     let mut c = MockChecker::locktime_checks(vec![false]);
     assert!(eval(
         &[OP_0, OP_CHECKLOCKTIMEVERIFY, OP_1],
@@ -550,7 +556,17 @@ fn invalid() {
     )
     .is_err());
     fail_pregenesis(&[OP_CHECKSEQUENCEVERIFY, OP_1]);
-    fail_pregenesis(&[OP_PUSH + 5, 129, 0, 0, 0, 0, OP_CHECKSEQUENCEVERIFY, OP_1]);
+    fail_pregenesis(&[
+        OP_PUSH + 6,
+        129,
+        0,
+        0,
+        0,
+        0,
+        0,
+        OP_CHECKSEQUENCEVERIFY,
+        OP_1,
+    ]);
     let mut c = MockChecker::sequence_checks(vec![false]);
     assert!(eval(
         &[OP_0, OP_CHECKSEQUENCEVERIFY, OP_1],
@@ -804,11 +820,11 @@ impl Checker for MockChecker {
         Ok(self.sig_checks.borrow_mut().pop().unwrap())
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Ok(self.locktime_checks.borrow_mut().pop().unwrap())
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Ok(self.sequence_checks.borrow_mut().pop().unwrap())
     }
 
@@ -822,6 +838,92 @@ impl Checker for MockChecker {
 fn pass_with_version(script: &[u8], version: i32) {
     let mut c = MockChecker::with_tx_version(version);
     assert!(eval(script, &mut c, NO_FLAGS).is_ok());
+}
+
+/// An invalid opcode, which fails only if executed
+const OP_UNDEFINED: u8 = 0xba;
+
+#[test]
+fn second_else_rejected_after_genesis() {
+    // node: UNBALANCED_CONDITIONAL, whichever branch runs and in every era
+    for script in [
+        &[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF][..],
+        &[OP_0, OP_IF, OP_0, OP_ELSE, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+        &[OP_1, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF],
+        // In a branch that does not run
+        &[
+            OP_0, OP_IF, OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ENDIF, OP_ENDIF, OP_1,
+        ],
+        // After an OP_RETURN has stopped execution
+        &[OP_1, OP_1, OP_IF, OP_RETURN, OP_ELSE, OP_ELSE, OP_ENDIF],
+    ] {
+        for version in [1, 2] {
+            let mut c = MockChecker::with_tx_version(version);
+            let err = eval(script, &mut c, NO_FLAGS).unwrap_err().to_string();
+            assert!(err.contains("Second ELSE"), "{script:02x?}: {err}");
+        }
+    }
+}
+
+#[test]
+fn each_else_switches_branch_before_genesis() {
+    pass_pregenesis(&[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF]);
+    pass_pregenesis(&[
+        OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF,
+    ]);
+    // The second ELSE switches back to the IF's branch
+    pass_pregenesis(&[OP_1, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF]);
+    fail_pregenesis(&[OP_0, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF]);
+}
+
+#[test]
+fn op_return_in_branch_stops_execution_after_genesis() {
+    pass(&[OP_1, OP_DUP, OP_IF, OP_RETURN, OP_ENDIF]);
+    // Nothing runs after it, an invalid opcode included
+    pass(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_UNDEFINED, OP_0, OP_ENDIF]);
+    pass(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_0]);
+    fail(&[OP_0, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
+    pass(&[
+        OP_0, OP_IF, OP_RETURN, 1, 0xd1, OP_ELSE, OP_1, OP_RETURN, 1, 0xd2, OP_ENDIF,
+    ]);
+    // Nested: the outer ENDIF is still needed
+    pass(&[
+        OP_1, OP_1, OP_1, OP_IF, OP_IF, OP_RETURN, OP_ENDIF, OP_ENDIF,
+    ]);
+    fail(&[OP_1, OP_1, OP_1, OP_IF, OP_IF, OP_RETURN, OP_ENDIF]);
+}
+
+#[test]
+fn op_return_in_branch_still_balances_conditionals() {
+    // node: UNBALANCED_CONDITIONAL
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN]);
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_ENDIF]);
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_IF, OP_ENDIF]);
+}
+
+#[test]
+fn top_level_op_return_after_branch_return_ends_script() {
+    // The script ends successfully at the top-level OP_RETURN, so the bytes
+    // after it are not read, even an unclosed IF
+    pass(&[
+        OP_1,
+        OP_IF,
+        OP_5,
+        OP_RETURN,
+        OP_ENDIF,
+        OP_5,
+        OP_RETURN,
+        OP_UNDEFINED,
+    ]);
+    pass(&[
+        OP_1, OP_IF, OP_5, OP_RETURN, OP_ENDIF, OP_5, OP_RETURN, OP_IF,
+    ]);
+}
+
+#[test]
+fn op_return_fails_before_genesis_only_if_executed() {
+    fail_pregenesis(&[OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
+    pass_pregenesis(&[OP_0, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
 }
 
 #[test]
@@ -931,11 +1033,11 @@ impl Checker for ScriptRecordingChecker {
         Ok(self.sig_checks.borrow_mut().pop().unwrap())
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Ok(true)
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Ok(true)
     }
 }
@@ -1036,8 +1138,8 @@ fn chronicle_nullfail_allows_failed_checksig_with_nonempty_sig() {
         tx_version: Some(2),
     };
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
     script.append(OP_DROP);
     script.append(OP_1);
@@ -1052,11 +1154,86 @@ fn strict_nullfail_rejects_failed_checksig_with_nonempty_sig() {
         sequence_checks: RefCell::new(vec![true; 32]),
         tx_version: Some(1),
     };
+    // Two-byte pushes: one-byte pushes of 1 and 2 are not minimal, and would
+    // fail MINIMALDATA before OP_CHECKSIG ran.
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
-    assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+    match eval(&script.0, &mut c, NO_FLAGS) {
+        Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
+        r => panic!("expected NULLFAIL, got {r:?}"),
+    }
+}
+
+/// `0 <sig> 1 <key> <key> 2 CHECKMULTISIG NOT`, a 1-of-2 multisig
+fn one_of_two_multisig_not(sig: &[u8]) -> Script {
+    let mut script = Script::new();
+    script.append(OP_0);
+    script.append_data(sig);
+    script.append_slice(&[OP_1, OP_9, OP_9, OP_2, OP_CHECKMULTISIG, OP_NOT]);
+    script
+}
+
+#[test]
+fn strict_nullfail_rejects_failed_checkmultisig_when_keys_run_out() {
+    // Neither key matches, so the keys run out before the signature does.
+    // chain-gang used to return false there without the NULLFAIL check.
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(1),
+    };
+    let script = one_of_two_multisig_not(&[0xaa, 0xbb]);
+    match eval(&script.0, &mut c, NO_FLAGS) {
+        Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
+        r => panic!("expected NULLFAIL, got {r:?}"),
+    }
+}
+
+#[test]
+fn strict_nullfail_allows_failed_checkmultisig_with_empty_sig() {
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(1),
+    };
+    let script = one_of_two_multisig_not(&[]);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+#[test]
+fn chronicle_nullfail_allows_failed_checkmultisig_with_nonempty_sig() {
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(2),
+    };
+    let script = one_of_two_multisig_not(&[0xaa, 0xbb]);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+#[test]
+fn checkmultisig_stops_when_sigs_outnumber_keys() {
+    // 2-of-2 whose first check fails: two signatures remain for one key, so
+    // the node stops without checking the second pair. The mock has a single
+    // result and panics on a second check.
+    let mut c = MockChecker::sig_checks(vec![false]);
+    let s = [
+        OP_0,
+        OP_0,
+        OP_0,
+        OP_2,
+        OP_9,
+        OP_9,
+        OP_2,
+        OP_CHECKMULTISIG,
+        OP_NOT,
+    ];
+    assert!(eval(&s, &mut c, NO_FLAGS).is_ok());
 }
 
 #[test]
@@ -1380,4 +1557,301 @@ fn pushdata_minimal_boundaries_match_the_node() {
 fn malleable_transactions_skip_the_minimal_push_rule() {
     eval_push(&[1, 0x05], 2).unwrap();
     eval_push(&[1, 0x81], 2).unwrap();
+}
+
+/// `data` as the shortest push, followed by `ops`.
+fn push_then(data: &[u8], ops: &[u8]) -> Vec<u8> {
+    let mut script = Script::new();
+    script.append_data(data);
+    script.append_slice(ops);
+    script.0
+}
+
+/// Before Genesis the node limits numeric operands to 4 bytes but not
+/// results: two 4-byte operands add to 5 bytes and multiply to 8, and the
+/// result compares as bytes (bitcoin-sv's script_tests.json rows 313, 438 and
+/// 985 to 988). Only using such a result as a number again fails. After
+/// Genesis the limit is far above either, so nothing changes there.
+#[test]
+fn pregenesis_arithmetic_results_may_exceed_four_bytes() {
+    let max = [0xff, 0xff, 0xff, 0x7f]; // 2147483647
+    let mut add = push_then(&max, &[OP_DUP, OP_ADD]);
+    add.extend(push_then(&[0xfe, 0xff, 0xff, 0xff, 0x00], &[OP_EQUAL]));
+    let mut mul = push_then(&max, &[OP_DUP, OP_MUL]);
+    mul.extend(push_then(
+        &[0x01, 0, 0, 0, 0xff, 0xff, 0xff, 0x3f],
+        &[OP_EQUAL],
+    ));
+    let mut negative = push_then(&max, &[OP_NEGATE, OP_1SUB]);
+    negative.extend(push_then(&[0, 0, 0, 0x80, 0x80], &[OP_EQUAL]));
+    for script in [&add, &mul, &negative] {
+        pass_pregenesis(script);
+        pass(script);
+    }
+
+    // The 5-byte sum is not a pre-Genesis operand.
+    let reuse = push_then(&max, &[OP_DUP, OP_ADD, OP_1ADD, OP_DROP, OP_1]);
+    let err = eval(&reuse, &mut MockChecker::new(), PREGENESIS_RULES).unwrap_err();
+    assert!(
+        err.to_string().contains("exceeds maximum length of 4"),
+        "{err}"
+    );
+    pass(&reuse);
+}
+
+/// A boolean is read at any length, in every era, as the node's `CastToBool`
+/// does (script_tests.json row 182: `1 0x05 0x0100000000 VERIFY`). VERIFY and
+/// IF used to reject anything over 4 bytes.
+#[test]
+fn booleans_are_read_at_any_length() {
+    let five_true = [0x01, 0, 0, 0, 0];
+    let five_false = [0, 0, 0, 0, 0x80]; // negative zero
+    let mut long_true = [0u8; 520];
+    long_true[519] = 0x01;
+    for flags in [NO_FLAGS, PREGENESIS_RULES] {
+        let run = |script: &[u8]| eval(script, &mut MockChecker::new(), flags);
+        run(&push_then(&five_true, &[OP_VERIFY, OP_1])).unwrap();
+        run(&push_then(&long_true, &[OP_VERIFY, OP_1])).unwrap();
+        run(&push_then(
+            &five_true,
+            &[OP_IF, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+        ))
+        .unwrap();
+        run(&push_then(
+            &five_false,
+            &[OP_NOTIF, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+        ))
+        .unwrap();
+        let err = run(&push_then(&five_false, &[OP_VERIFY, OP_1])).unwrap_err();
+        assert!(err.to_string().contains("OP_VERIFY failed"), "{err}");
+    }
+}
+
+/// OP_CHECKLOCKTIMEVERIFY and OP_CHECKSEQUENCEVERIFY read their operand as up
+/// to 5 bytes and leave it on the stack, as the node does (BIP 65, BIP 112).
+/// chain-gang used to pop it and read it as a 4-byte number.
+#[test]
+fn locktime_operands_are_five_bytes_and_stay_on_the_stack() {
+    let run =
+        |script: &[u8], mut checker: MockChecker| eval(script, &mut checker, PREGENESIS_RULES);
+
+    // 2147483648 CHECKSEQUENCEVERIFY (row 709): bit 31 is the disable flag,
+    // so it is a NOP and the transaction is not consulted. The operand it
+    // leaves is the true value the script ends on.
+    let disabled = push_then(&[0, 0, 0, 0x80, 0], &[OP_CHECKSEQUENCEVERIFY]);
+    run(&disabled, MockChecker::sequence_checks(vec![false])).unwrap();
+
+    // 4294967296 has bit 31 clear, so the transaction is checked (row 1475).
+    let above = push_then(&[0, 0, 0, 0, 0x01], &[OP_CHECKSEQUENCEVERIFY]);
+    run(&above, MockChecker::new()).unwrap();
+    assert!(run(&above, MockChecker::sequence_checks(vec![false])).is_err());
+
+    // The operand stays: a script ending on it ends on its value.
+    for op in [OP_CHECKLOCKTIMEVERIFY, OP_CHECKSEQUENCEVERIFY] {
+        run(&[OP_1, op], MockChecker::new()).unwrap();
+        let err = run(&[OP_0, op], MockChecker::new()).unwrap_err();
+        assert!(err.to_string().contains("Top of stack is false"), "{err}");
+        let err = run(&[OP_1NEGATE, op, OP_1], MockChecker::new()).unwrap_err();
+        assert!(err.to_string().contains("Negative lock time"), "{err}");
+        // Not minimally encoded, where the policy rules apply.
+        let padded = push_then(&[0x01, 0x00], &[op]);
+        run(&padded, MockChecker::new()).unwrap();
+        let err = run(&padded, MockChecker::with_tx_version(1)).unwrap_err();
+        assert!(err.to_string().contains("minimally encoded"), "{err}");
+    }
+
+    // A 5-byte lock time is checked like any other.
+    let cltv = push_then(&[0x81, 0, 0, 0, 0], &[OP_CHECKLOCKTIMEVERIFY]);
+    run(&cltv, MockChecker::new()).unwrap();
+    assert!(run(&cltv, MockChecker::locktime_checks(vec![false])).is_err());
+    // So is one past i32, a timestamp from 2038 on.
+    let past_i32 = push_then(&[0, 0, 0, 0x80, 0], &[OP_CHECKLOCKTIMEVERIFY]);
+    run(&past_i32, MockChecker::new()).unwrap();
+    assert!(run(&past_i32, MockChecker::locktime_checks(vec![false])).is_err());
+}
+
+/// OP_NUM2BIN as the node does it, in every era: the number is minimally
+/// encoded first, so a padded number can shrink and negative zero fits in no
+/// bytes, and the sign goes on the last byte of the result (script_tests.json
+/// rows 843 to 855). chain-gang used to put the sign on the first byte and
+/// reject sizes below the number's padded length, including size 0.
+#[test]
+fn num2bin_matches_the_node() {
+    let num2bin = |n: &[u8], size: usize| {
+        let mut script = push_then(n, &[]);
+        script.extend(push_then(&encode_num(size as i64).unwrap(), &[OP_NUM2BIN]));
+        script
+    };
+    let equals = |mut script: Vec<u8>, expected: &[u8]| {
+        script.extend(push_then(expected, &[OP_EQUAL]));
+        script
+    };
+    let mut minus_42_in_10 = [0u8; 10];
+    minus_42_in_10[0] = 0x2a;
+    minus_42_in_10[9] = 0x80;
+    for flags in [NO_FLAGS, PREGENESIS_RULES] {
+        let run = |script: &[u8]| eval(script, &mut MockChecker::new(), flags);
+        for (n, size, expected) in [
+            (&[][..], 0, &[][..]),
+            (&[], 7, &[0; 7]),
+            (&[0xaa], 2, &[0x2a, 0x80]),
+            (&[0xaa], 10, &minus_42_in_10),
+            (
+                &[0xab, 0xcd, 0xef, 0x42, 0x80],
+                4,
+                &[0xab, 0xcd, 0xef, 0xc2],
+            ),
+            (&[0x01, 0x00, 0x00], 1, &[0x01]),
+            (&[0x80], 0, &[]),
+            (&[0x80], 3, &[0, 0, 0]),
+        ] {
+            run(&equals(num2bin(n, size), expected)).unwrap_or_else(|e| {
+                panic!("flags {flags:#x}: {n:02x?} {size} NUM2BIN should be {expected:02x?}: {e}")
+            });
+        }
+        // Too short for the number, even minimally encoded.
+        for (n, size) in [(&[0x01][..], 0), (&[0xff, 0x00], 1), (&[0xff, 0x80], 1)] {
+            let err = run(&num2bin(n, size)).unwrap_err();
+            assert!(err.to_string().contains("does not fit"), "{err}");
+        }
+        let err = run(&[OP_1, OP_1NEGATE, OP_NUM2BIN]).unwrap_err();
+        assert!(err.to_string().contains("out of range"), "{err}");
+    }
+}
+
+/// Before Genesis the size can reach the node's 520-byte element limit, past
+/// the 4-byte number limit chain-gang used to apply (rows 845, 849 and 850),
+/// and no further. After Genesis it stays at the script number limit.
+#[test]
+fn pregenesis_num2bin_reaches_520_bytes() {
+    let num2bin = |size: i64| push_then(&encode_num(size).unwrap(), &[OP_NUM2BIN]);
+    let mut at_limit = vec![OP_1NEGATE];
+    at_limit.extend(num2bin(520));
+    pass_pregenesis(&at_limit);
+    let mut over = vec![OP_1NEGATE];
+    over.extend(num2bin(521));
+    let err = eval(&over, &mut MockChecker::new(), PREGENESIS_RULES).unwrap_err();
+    assert!(err.to_string().contains("out of range"), "{err}");
+    pass(&over);
+}
+
+/// Fails before Genesis with `reason`, and passes after it, where the node's
+/// size limits are gone.
+fn assert_pregenesis_limit(script: &[u8], reason: &str) {
+    match eval(script, &mut MockChecker::new(), PREGENESIS_RULES) {
+        Err(e) if e.to_string().contains(reason) => {}
+        other => panic!("before Genesis, expected {reason:?}, got {other:?}"),
+    }
+    pass(script);
+}
+
+/// Before Genesis the node limits a push, and an OP_CAT result, to 520 bytes,
+/// and checks a push in a branch that does not execute too (script_tests.json
+/// rows 827, 1179 and 1180).
+#[test]
+fn pregenesis_elements_are_limited_to_520_bytes() {
+    let push = |len: usize, ops: &[u8]| push_then(&vec![0x5a; len], ops);
+    let skipped = |len: usize| {
+        let mut script = vec![OP_0, OP_IF];
+        script.extend(push(len, &[OP_ENDIF, OP_1]));
+        script
+    };
+    let cat = |a: usize, b: usize| {
+        let mut script = push(a, &[]);
+        script.extend(push(b, &[OP_CAT]));
+        script
+    };
+
+    pass_pregenesis(&push(520, &[]));
+    pass_pregenesis(&skipped(520));
+    pass_pregenesis(&cat(260, 260));
+    assert_pregenesis_limit(&push(521, &[]), "Push of 521 bytes");
+    assert_pregenesis_limit(&skipped(521), "Push of 521 bytes");
+    // OP_PUSHDATA2 and OP_PUSHDATA4, the forms that can carry that much.
+    for len in [521, 70_000] {
+        assert_pregenesis_limit(&push(len, &[OP_DROP, OP_1]), "exceeds the pre-Genesis");
+        assert_pregenesis_limit(&skipped(len), "exceeds the pre-Genesis");
+    }
+    assert_pregenesis_limit(&cat(260, 261), "OP_CAT result");
+}
+
+/// Before Genesis the node allows at most 1,000 items on the stack and alt
+/// stack together (rows 1183 and 1184).
+#[test]
+fn pregenesis_stacks_are_limited_to_1000_items() {
+    let ones = |n: usize, ops: &[u8]| {
+        let mut script = vec![OP_1; n];
+        script.extend_from_slice(ops);
+        script
+    };
+    pass_pregenesis(&ones(1_000, &[]));
+    pass_pregenesis(&ones(1_000, &[OP_TOALTSTACK]));
+    assert_pregenesis_limit(&ones(1_001, &[]), "1000 items");
+    assert_pregenesis_limit(&ones(1_000, &[OP_TOALTSTACK, OP_1]), "1000 items");
+    assert_pregenesis_limit(&ones(1_000, &[OP_DUP, OP_DROP]), "1000 items");
+}
+
+/// Before Genesis the node rejects a script over 10,000 bytes (row 1185).
+#[test]
+fn pregenesis_scripts_are_limited_to_10000_bytes() {
+    // Empty pushes in a skipped branch: under the opcode limit, and nothing
+    // on the stack.
+    let script = |len: usize| {
+        let mut script = vec![OP_0, OP_IF];
+        script.extend(vec![OP_0; len - 4]);
+        script.extend_from_slice(&[OP_ENDIF, OP_1]);
+        script
+    };
+    pass_pregenesis(&script(10_000));
+    assert_pregenesis_limit(&script(10_001), "Script of 10001 bytes");
+}
+
+/// Before Genesis the node allows an OP_CHECKMULTISIG at most 20 keys (row
+/// 1268).
+#[test]
+fn pregenesis_multisig_is_limited_to_20_keys() {
+    let zero_of = |keys: u8, op: u8| {
+        let mut script = vec![OP_0, OP_0];
+        script.extend(vec![OP_1; keys as usize]);
+        script.extend(push_then(&[keys], &[op]));
+        script.push(OP_1);
+        script
+    };
+    for op in [OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY] {
+        pass_pregenesis(&zero_of(20, op));
+        assert_pregenesis_limit(&zero_of(21, op), "20 keys");
+    }
+}
+
+/// Before Genesis the node allows a script 500 opcodes above OP_16, counted as
+/// it reads them, executed or not. Pushes and small numbers are free, and an
+/// OP_CHECKMULTISIG adds its keys. `script_tests.json` has no row for this.
+#[test]
+fn pregenesis_scripts_are_limited_to_500_opcodes() {
+    let script = |prefix: &[u8], nops: usize, suffix: &[u8]| {
+        let mut script = prefix.to_vec();
+        script.extend(vec![OP_NOP; nops]);
+        script.extend_from_slice(suffix);
+        script.push(OP_1);
+        script
+    };
+    pass_pregenesis(&script(&[], 500, &[]));
+    assert_pregenesis_limit(&script(&[], 501, &[]), "500 opcodes");
+
+    // Pushes and small numbers do not count.
+    let mut free = vec![OP_1; 600];
+    free.extend(push_then(&[0x5a; 10], &[OP_DROP]));
+    pass_pregenesis(&script(&free, 499, &[]));
+    assert_pregenesis_limit(&script(&free, 500, &[]), "500 opcodes");
+
+    // A skipped branch counts, its IF and ENDIF included.
+    pass_pregenesis(&script(&[OP_0, OP_IF], 498, &[OP_ENDIF]));
+    assert_pregenesis_limit(&script(&[OP_0, OP_IF], 499, &[OP_ENDIF]), "500 opcodes");
+
+    // A 0-of-20 multisig counts 21: the opcode and its keys.
+    let mut multisig = vec![OP_0, OP_0];
+    multisig.extend(vec![OP_1; 20]);
+    multisig.extend(push_then(&[20], &[OP_CHECKMULTISIG, OP_DROP]));
+    pass_pregenesis(&script(&multisig, 478, &[]));
+    assert_pregenesis_limit(&script(&multisig, 479, &[]), "500 opcodes");
 }

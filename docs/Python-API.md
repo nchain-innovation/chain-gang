@@ -370,7 +370,7 @@ sig_hash_value = sig_hash(own_tx, 0, script_pubkey, 99904, SIGHASH.ALL_FORKID)
 These are public key and address functions that are likely to be used if you don't have the private key and 
 are not using the Wallet class.
 
-* `address_to_public_key_hash(address: str) -> bytes` - Given the address return the hash160 of the public key
+* `address_to_public_key_hash(address: str) -> bytes` - Given a mainnet or testnet address return the 20-byte hash160 it carries: of the public key for a P2PKH address, or of the script for a P2SH address. Raises `ValueError` for anything else with a valid base58 checksum, such as a WIF private key
 * `hash160(data: bytes) -> bytes` - Returns the hash160 of the provided data (usually the public key)
 * `p2pkh_script(h160: bytes) -> Script` - Takes the hash160 of the public key and returns the locking script
 * `public_key_to_address(public_key: bytes, network: str) -> String` - Given the public key and the network (either `BSV_Mainnet` or `BSV_Testnet`) return the address

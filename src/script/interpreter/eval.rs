@@ -1,3 +1,4 @@
+use crate::script::checker::SEQUENCE_LOCKTIME_DISABLE_FLAG;
 use crate::script::op_codes::*;
 use crate::script::stack::{
     check_script_num_length, decode_bigint, decode_bool, encode_bigint, encode_num, pop_bool,
@@ -11,13 +12,19 @@ use num_traits::{One, ToPrimitive, Zero};
 use ripemd::{Digest, Ripemd160};
 
 use super::multisig::check_multisig;
-use super::push::{check_canonical_push, check_stack_size, next_op, remains, skip_branch};
+use super::push::{
+    check_canonical_push, check_pregenesis_push_size, check_stack_size, next_op, remains,
+};
 use super::rules::{
-    enforces_policy_rules, max_script_num_length, pop_bigint_for_eval, pop_bool_for_if,
+    count_pregenesis_op, enforces_policy_rules, max_script_num_length,
+    max_script_num_result_length, peek_locktime_operand, pop_bigint_for_eval, pop_bool_for_if,
     pop_num_for_eval, substr_error, tx_enforces_malleability_rules, verif_branch_exec,
 };
 use super::script_code::{checksig_script_code, multisig_script_code, TwoPhaseEvalContext};
-use super::{ALT_STACK_CAPACITY, PREGENESIS_RULES, STACK_CAPACITY};
+use super::{
+    ALT_STACK_CAPACITY, MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS, MAX_SCRIPT_SIZE_PREGENESIS,
+    MAX_STACK_ELEMENTS_PREGENESIS, PREGENESIS_RULES, STACK_CAPACITY,
+};
 
 // The interpreter entry point genuinely needs all of these: script, checker,
 // consensus flags, resume/break offsets, both stacks, and the two-phase context.
@@ -41,26 +48,56 @@ pub fn core_eval<T: Checker>(
     // change during evaluation.
     let policy = enforces_policy_rules(checker, flags);
 
-    // True if executing current if/else branch, false if next else
-    let mut branch_exec: Vec<bool> = Vec::new();
+    let pregenesis = flags & PREGENESIS_RULES == PREGENESIS_RULES;
+    let mut conditions = Conditions::default();
+    // After Genesis, an OP_RETURN inside an executed branch stops execution
+    // but not the script: the node still reads IF, ELSE and ENDIF for balance,
+    // and an OP_RETURN reached at top level ends it.
+    let mut returned_in_branch = false;
     let mut check_index = 0;
     let mut i = start_at.unwrap_or(0);
     let max_num_len = max_script_num_length(checker, flags);
+    let max_result_len = max_script_num_result_length(checker, flags);
+
+    // The node's size limits before Genesis: a script, each item pushed or
+    // built, the two stacks together and the opcodes in a script. Genesis
+    // lifted them.
+    let mut op_count = 0;
+    if pregenesis && script.len() > MAX_SCRIPT_SIZE_PREGENESIS {
+        return Err(ChainGangError::ScriptError(format!(
+            "Script of {} bytes exceeds the pre-Genesis limit of {MAX_SCRIPT_SIZE_PREGENESIS}",
+            script.len()
+        )));
+    }
 
     'outer: while i < script.len() {
-        if !branch_exec.is_empty() && !branch_exec[branch_exec.len() - 1] {
-            i = skip_branch(script, i);
-            if i >= script.len() {
-                break;
-            }
-        }
         if let Some(val) = break_at {
             // hit our breakpoint
             if i >= val {
                 break;
             }
         }
-        match script[i] {
+        // Checked as the node reads each push, before it decides whether the
+        // branch is executing, so a push in one that is not counts too.
+        if pregenesis {
+            check_pregenesis_push_size(i, script)?;
+            count_pregenesis_op(script[i], &mut op_count)?;
+        }
+        let opcode = script[i];
+        let exec = conditions.active() && (!returned_in_branch || opcode == OP_RETURN);
+        if !exec {
+            // As the node: an opcode that does not execute is only read, unless
+            // it opens, switches or closes a branch.
+            match opcode {
+                OP_IF | OP_NOTIF | OP_VERIF | OP_VERNOTIF => conditions.push(false),
+                OP_ELSE => conditions.toggle(pregenesis)?,
+                OP_ENDIF => conditions.pop()?,
+                _ => {}
+            }
+            i = next_op(i, script);
+            continue;
+        }
+        match opcode {
             OP_0 => stack.push(encode_num(0)?),
             OP_1NEGATE => stack.push(encode_num(-1)?),
             OP_1 => stack.push(encode_num(1)?),
@@ -124,41 +161,31 @@ pub fn core_eval<T: Checker>(
             OP_VER => {
                 stack.push(encode_num(checker.tx_version()? as i64)?);
             }
-            OP_IF => branch_exec.push(pop_bool_for_if(&mut stack)?),
-            OP_NOTIF => branch_exec.push(!pop_bool_for_if(&mut stack)?),
+            OP_IF => conditions.push(pop_bool_for_if(&mut stack)?),
+            OP_NOTIF => conditions.push(!pop_bool_for_if(&mut stack)?),
             OP_VERIF => {
                 let comparison = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
-                branch_exec.push(verif_branch_exec(checker, comparison, false)?);
+                conditions.push(verif_branch_exec(checker, comparison, false)?);
             }
             OP_VERNOTIF => {
                 let comparison = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
-                branch_exec.push(verif_branch_exec(checker, comparison, true)?);
+                conditions.push(verif_branch_exec(checker, comparison, true)?);
             }
-            OP_ELSE => {
-                let len = branch_exec.len();
-                if len == 0 {
-                    let msg = "ELSE found without matching IF".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
-                }
-                branch_exec[len - 1] = !branch_exec[len - 1];
-            }
-            OP_ENDIF => {
-                if branch_exec.is_empty() {
-                    let msg = "ENDIF found without matching IF".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
-                }
-                branch_exec.pop().unwrap();
-            }
+            OP_ELSE => conditions.toggle(pregenesis)?,
+            OP_ENDIF => conditions.pop()?,
             OP_VERIFY => {
                 if !pop_bool(&mut stack)? {
                     return Err(ChainGangError::ScriptError("OP_VERIFY failed".to_string()));
                 }
             }
             OP_RETURN => {
-                if flags & PREGENESIS_RULES == PREGENESIS_RULES {
+                if pregenesis {
                     return Err(ChainGangError::ScriptError("Hit OP_RETURN".to_string()));
-                } else {
+                } else if conditions.is_empty() {
+                    // The rest of the script is not read, balanced or not
                     break 'outer;
+                } else {
+                    returned_in_branch = true;
                 }
             }
             OP_TOALTSTACK => {
@@ -289,6 +316,11 @@ pub fn core_eval<T: Checker>(
                 check_stack_size(2, &stack)?;
                 let top = stack.pop().unwrap();
                 let mut second = stack.pop().unwrap();
+                if pregenesis && second.len() + top.len() > MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS {
+                    return Err(ChainGangError::ScriptError(format!(
+                        "OP_CAT result exceeds the pre-Genesis limit of {MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS}"
+                    )));
+                }
                 second.extend_from_slice(&top);
                 stack.push(second);
             }
@@ -454,24 +486,24 @@ pub fn core_eval<T: Checker>(
             OP_1ADD => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x += 1;
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_1SUB => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x -= 1;
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_NEGATE => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x = -x;
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_ABS => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if x < BigInt::zero() {
                     x = -x;
                 }
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_NOT => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -480,7 +512,7 @@ pub fn core_eval<T: Checker>(
                 } else {
                     x = BigInt::zero();
                 }
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_0NOTEQUAL => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -489,31 +521,31 @@ pub fn core_eval<T: Checker>(
                 } else {
                     x = BigInt::one();
                 }
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_ADD => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let sum = a + b;
-                push_bigint_checked(&mut stack, sum, max_num_len)?;
+                push_bigint_checked(&mut stack, sum, max_result_len)?;
             }
             OP_SUB => {
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let difference = b - a;
-                push_bigint_checked(&mut stack, difference, max_num_len)?;
+                push_bigint_checked(&mut stack, difference, max_result_len)?;
             }
             OP_MUL => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let product = a * b;
-                push_bigint_checked(&mut stack, product, max_num_len)?;
+                push_bigint_checked(&mut stack, product, max_result_len)?;
             }
             OP_2MUL => {
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let two = BigInt::from(2);
                 let product = a * two;
-                push_bigint_checked(&mut stack, product, max_num_len)?;
+                push_bigint_checked(&mut stack, product, max_result_len)?;
             }
             OP_DIV => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -523,14 +555,14 @@ pub fn core_eval<T: Checker>(
                     return Err(ChainGangError::ScriptError(msg));
                 }
                 let quotient = a / b;
-                push_bigint_checked(&mut stack, quotient, max_num_len)?;
+                push_bigint_checked(&mut stack, quotient, max_result_len)?;
             }
             OP_2DIV => {
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let b = BigInt::from(2);
 
                 let quotient = a / b;
-                push_bigint_checked(&mut stack, quotient, max_num_len)?;
+                push_bigint_checked(&mut stack, quotient, max_result_len)?;
             }
             OP_MOD => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -540,7 +572,7 @@ pub fn core_eval<T: Checker>(
                     return Err(ChainGangError::ScriptError(msg));
                 }
                 let remainder = a % b;
-                push_bigint_checked(&mut stack, remainder, max_num_len)?;
+                push_bigint_checked(&mut stack, remainder, max_result_len)?;
             }
             OP_BOOLAND => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -626,18 +658,18 @@ pub fn core_eval<T: Checker>(
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a < b {
-                    push_bigint_checked(&mut stack, a, max_num_len)?;
+                    push_bigint_checked(&mut stack, a, max_result_len)?;
                 } else {
-                    push_bigint_checked(&mut stack, b, max_num_len)?;
+                    push_bigint_checked(&mut stack, b, max_result_len)?;
                 }
             }
             OP_MAX => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a > b {
-                    push_bigint_checked(&mut stack, a, max_num_len)?;
+                    push_bigint_checked(&mut stack, a, max_result_len)?;
                 } else {
-                    push_bigint_checked(&mut stack, b, max_num_len)?;
+                    push_bigint_checked(&mut stack, b, max_result_len)?;
                 }
             }
             OP_WITHIN => {
@@ -652,39 +684,43 @@ pub fn core_eval<T: Checker>(
             }
             OP_NUM2BIN => {
                 check_stack_size(2, &stack)?;
-                let m = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                let size = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
+                // Before Genesis the node caps the size at its 520-byte element
+                // limit. After Genesis chain-gang keeps it to the script number
+                // limit, short of the node's i32::MAX.
+                let max_size = if pregenesis {
+                    MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS
+                } else {
+                    max_num_len
+                };
+                let size = match size.to_usize() {
+                    Some(size) if size <= max_size => size,
+                    _ => {
+                        let msg = format!("OP_NUM2BIN failed, size {size} out of range");
+                        return Err(ChainGangError::ScriptError(msg));
+                    }
+                };
+                // Minimally encoded first, as the node's `MinimallyEncode`:
+                // padding is not part of the number, so a padded number can
+                // shrink, and negative zero is zero, which fits in no bytes.
                 let mut n = stack.pop().unwrap();
-                if m < BigInt::one() {
-                    let msg = format!("OP_NUM2BIN failed. m too small: {m}");
+                let mut n = encode_bigint(decode_bigint(&mut n));
+                if n.len() > size {
+                    let msg = "OP_NUM2BIN failed, number does not fit the size".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }
-                let nlen = n.len();
-                if m < BigInt::from(nlen) {
-                    let msg = "OP_NUM2BIN failed. n longer than m".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
+                if n.len() < size {
+                    // The sign moves from the number's last byte to the new
+                    // last byte. It used to go on the first, so `-42 2
+                    // NUM2BIN` gave `aa00` where the node gives `2a80`.
+                    let sign = n.last().map_or(0, |last| last & 0x80);
+                    if let Some(last) = n.last_mut() {
+                        *last &= 0x7f;
+                    }
+                    n.resize(size, 0);
+                    n[size - 1] |= sign;
                 }
-                if m > BigInt::from(max_num_len) {
-                    let msg = "OP_NUM2BIN failed. m too big".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
-                }
-                check_script_num_length(nlen, max_num_len)?;
-                let mut v = Vec::with_capacity(m.to_usize().unwrap());
-                let mut neg = 0;
-                if nlen > 0 {
-                    neg = n[nlen - 1] & 128;
-                    n[nlen - 1] &= 127;
-                }
-                // Add zeros
-                let diff = m.to_usize().unwrap() - n.len();
-                v.extend(std::iter::repeat_n(0, diff));
-                // Prepend the value
-                for b in n.iter().rev() {
-                    v.insert(0, *b);
-                }
-                // Add the sign
-                v[0] |= neg;
-                check_script_num_length(v.len(), max_num_len)?;
-                stack.push(v);
+                stack.push(n);
             }
             OP_BIN2NUM => {
                 check_stack_size(1, &stack)?;
@@ -769,21 +805,33 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKMULTISIG => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                match check_multisig(&mut stack, checker, &cleaned_script, policy)? {
+                match check_multisig(
+                    &mut stack,
+                    checker,
+                    &cleaned_script,
+                    policy,
+                    pregenesis.then_some(&mut op_count),
+                )? {
                     true => stack.push(encode_num(1)?),
                     false => stack.push(encode_num(0)?),
                 }
             }
             OP_CHECKMULTISIGVERIFY => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                if !check_multisig(&mut stack, checker, &cleaned_script, policy)? {
+                if !check_multisig(
+                    &mut stack,
+                    checker,
+                    &cleaned_script,
+                    policy,
+                    pregenesis.then_some(&mut op_count),
+                )? {
                     let msg = "OP_CHECKMULTISIGVERIFY failed".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }
             }
             OP_CHECKLOCKTIMEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let locktime = pop_num_for_eval(&mut stack, policy)?;
+                    let locktime = peek_locktime_operand(&stack, policy)?;
                     if !checker.check_locktime(locktime)? {
                         let msg = "OP_CHECKLOCKTIMEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
@@ -792,8 +840,11 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKSEQUENCEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let sequence = pop_num_for_eval(&mut stack, policy)?;
-                    if !checker.check_sequence(sequence)? {
+                    let sequence = peek_locktime_operand(&stack, policy)?;
+                    // With the disable flag set the opcode is a NOP (BIP 112).
+                    if sequence & i64::from(SEQUENCE_LOCKTIME_DISABLE_FLAG) == 0
+                        && !checker.check_sequence(sequence)?
+                    {
                         let msg = "OP_CHECKSEQUENCEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
                     }
@@ -827,13 +878,86 @@ pub fn core_eval<T: Checker>(
                 return Err(ChainGangError::ScriptError(msg));
             }
         }
+        if pregenesis && stack.len() + alt_stack.len() > MAX_STACK_ELEMENTS_PREGENESIS {
+            return Err(ChainGangError::ScriptError(format!(
+                "Stacks hold more than the pre-Genesis limit of {MAX_STACK_ELEMENTS_PREGENESIS} items"
+            )));
+        }
         i = next_op(i, script);
     }
 
-    if !branch_exec.is_empty() {
+    if !conditions.is_empty() {
         return Err(ChainGangError::ScriptError("ENDIF missing".to_string()));
     }
 
     let optional_i = break_at.map(|_| i);
     Ok((stack, alt_stack, optional_i))
+}
+
+/// The open IFs, innermost last, as the node's condition stack: whether each
+/// one's current branch runs and whether it has had its ELSE.
+#[derive(Default)]
+struct Conditions {
+    branches: Vec<Branch>,
+    /// How many open IFs are in a branch that does not run
+    not_running: usize,
+}
+
+struct Branch {
+    runs: bool,
+    had_else: bool,
+}
+
+impl Conditions {
+    fn is_empty(&self) -> bool {
+        self.branches.is_empty()
+    }
+
+    /// Whether every open IF is in a branch that runs
+    fn active(&self) -> bool {
+        self.not_running == 0
+    }
+
+    fn push(&mut self, runs: bool) {
+        if !runs {
+            self.not_running += 1;
+        }
+        self.branches.push(Branch {
+            runs,
+            had_else: false,
+        });
+    }
+
+    /// OP_ELSE. After Genesis an IF takes one ELSE; before it, each further
+    /// ELSE switches branch again.
+    fn toggle(&mut self, pregenesis: bool) -> Result<(), ChainGangError> {
+        let Some(branch) = self.branches.last_mut() else {
+            let msg = "ELSE found without matching IF".to_string();
+            return Err(ChainGangError::ScriptError(msg));
+        };
+        if branch.had_else && !pregenesis {
+            let msg = "Second ELSE for one IF".to_string();
+            return Err(ChainGangError::ScriptError(msg));
+        }
+        if branch.runs {
+            self.not_running += 1;
+        } else {
+            self.not_running -= 1;
+        }
+        branch.runs = !branch.runs;
+        branch.had_else = true;
+        Ok(())
+    }
+
+    /// OP_ENDIF
+    fn pop(&mut self) -> Result<(), ChainGangError> {
+        let Some(branch) = self.branches.pop() else {
+            let msg = "ENDIF found without matching IF".to_string();
+            return Err(ChainGangError::ScriptError(msg));
+        };
+        if !branch.runs {
+            self.not_running -= 1;
+        }
+        Ok(())
+    }
 }

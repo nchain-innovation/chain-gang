@@ -2,6 +2,8 @@ use crate::script::op_codes::*;
 use crate::script::stack::Stack;
 use crate::util::ChainGangError;
 
+use super::MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS;
+
 /// True when the script contains only push operations.
 ///
 /// A push whose data runs past the end of the script is not a push: the node's
@@ -98,6 +100,32 @@ pub(crate) fn check_canonical_push(i: usize, script: &[u8]) -> Result<(), ChainG
     }
 }
 
+/// Fails a push of more than the node's pre-Genesis element limit, taking the
+/// length the push opcode at `i` declares.
+///
+/// The node checks each push as it reads it, before it decides whether the
+/// branch is executing, so this applies to pushes that are skipped too. A
+/// push whose data runs past the end of the script fails either way.
+pub(crate) fn check_pregenesis_push_size(i: usize, script: &[u8]) -> Result<(), ChainGangError> {
+    let len = match script[i] {
+        len @ 1..=75 => len as usize,
+        OP_PUSHDATA1 => script.get(i + 1).map_or(0, |&len| len as usize),
+        OP_PUSHDATA2 => script
+            .get(i + 1..i + 3)
+            .map_or(0, |len| u16::from_le_bytes([len[0], len[1]]) as usize),
+        OP_PUSHDATA4 => script.get(i + 1..i + 5).map_or(0, |len| {
+            u32::from_le_bytes([len[0], len[1], len[2], len[3]]) as usize
+        }),
+        _ => 0,
+    };
+    if len > MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS {
+        return Err(ChainGangError::ScriptError(format!(
+            "Push of {len} bytes exceeds the pre-Genesis limit of {MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS}"
+        )));
+    }
+    Ok(())
+}
+
 #[inline]
 pub(crate) fn check_stack_size(minsize: usize, stack: &Stack) -> Result<(), ChainGangError> {
     if stack.len() < minsize {
@@ -156,31 +184,4 @@ pub fn next_op(i: usize, script: &[u8]) -> usize {
     } else {
         next
     }
-}
-
-/// Skips over a branch of if/else and return the index of the next else or endif opcode
-pub(crate) fn skip_branch(script: &[u8], mut i: usize) -> usize {
-    let mut sub = 0;
-    while i < script.len() {
-        match script[i] {
-            OP_IF => sub += 1,
-            OP_NOTIF => sub += 1,
-            OP_VERIF => sub += 1,
-            OP_VERNOTIF => sub += 1,
-            OP_ELSE => {
-                if sub == 0 {
-                    return i;
-                }
-            }
-            OP_ENDIF => {
-                if sub == 0 {
-                    return i;
-                }
-                sub -= 1;
-            }
-            _ => {}
-        }
-        i = next_op(i, script);
-    }
-    script.len()
 }

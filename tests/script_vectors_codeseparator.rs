@@ -21,8 +21,9 @@
 //! `Tx::validate` applies push-only as a transaction rule regardless and
 //! rejects it, which is a statement about flags, not separators.
 //!
-//! The rest of `script_tests.json` is not run: almost all of it needs consensus
-//! flags chain-gang's interpreter does not model. These rows need none.
+//! The whole of `script_tests.json` is run too, by `tests/script_vectors.rs`,
+//! through `Tx::validate`. These seven stay here because they say more than
+//! accept or reject: where each check's script code starts.
 
 use chain_gang::messages::{OutPoint, Tx, TxIn, TxOut};
 use chain_gang::script::op_codes::*;

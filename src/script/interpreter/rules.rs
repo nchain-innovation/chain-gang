@@ -1,5 +1,6 @@
 use crate::script::stack::{
-    decode_bool, pop_bigint_checked_minimal, pop_bool_minimal, pop_num_minimal, Stack,
+    check_script_num_length, decode_bigint, decode_bool, is_minimally_encoded,
+    pop_bigint_checked_minimal, pop_bool_minimal, pop_num_minimal, Stack,
     MAX_SCRIPT_NUM_LENGTH_CHRONICLE, MAX_SCRIPT_NUM_LENGTH_GENESIS,
     MAX_SCRIPT_NUM_LENGTH_PREGENESIS,
 };
@@ -7,8 +8,10 @@ use crate::script::Checker;
 use crate::util::ChainGangError;
 
 use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 
-use super::{CONSENSUS_ONLY, PREGENESIS_RULES};
+use super::{CONSENSUS_ONLY, MAX_OPS_PER_SCRIPT_PREGENESIS, PREGENESIS_RULES};
+use crate::script::op_codes::OP_16;
 
 /// Whether script inputs are evaluated in separate unlock/lock phases (Chronicle).
 pub fn uses_two_phase_eval(tx_version: u32) -> bool {
@@ -31,6 +34,80 @@ pub fn max_script_num_length<T: Checker>(checker: &T, flags: u32) -> usize {
         }
     }
     MAX_SCRIPT_NUM_LENGTH_GENESIS
+}
+
+/// Longest encoded result of a numeric opcode.
+///
+/// Before Genesis the node limits numeric operands to 4 bytes but not results:
+/// it does the arithmetic in 64 bits and pushes whatever comes out, so
+/// `2147483647 DUP ADD` leaves a 5-byte number and two 4-byte operands
+/// multiply to 8 bytes. Such a result can be compared as bytes or cast to a
+/// boolean; only using it as a number again fails. After Genesis results keep
+/// the operand limit.
+pub(crate) fn max_script_num_result_length<T: Checker>(checker: &T, flags: u32) -> usize {
+    if flags & PREGENESIS_RULES != 0 {
+        return usize::MAX;
+    }
+    max_script_num_length(checker, flags)
+}
+
+/// Longest operand `OP_CHECKLOCKTIMEVERIFY` and `OP_CHECKSEQUENCEVERIFY` read.
+///
+/// One byte past the 4-byte limit on other operands, as in the node, so that
+/// a lock time or sequence number, both unsigned 32-bit fields, fits: 5 bytes
+/// hold up to 2^39 - 1.
+const LOCKTIME_OPERAND_MAX_LENGTH: usize = 5;
+
+/// Reads the operand of `OP_CHECKLOCKTIMEVERIFY` or `OP_CHECKSEQUENCEVERIFY` as
+/// the node does: up to 5 bytes, minimally encoded where the policy rules
+/// apply, not negative, and left on the stack.
+///
+/// Both opcodes took over a NOP, so they leave the stack as they found it; a
+/// script drops the operand itself. chain-gang used to pop it, and to read it
+/// as an ordinary 4-byte number, so it rejected `2147483648
+/// OP_CHECKSEQUENCEVERIFY`, which the node accepts.
+pub(crate) fn peek_locktime_operand(stack: &Stack, policy: bool) -> Result<i64, ChainGangError> {
+    let top = stack
+        .last()
+        .ok_or_else(|| ChainGangError::ScriptError("Stack too small: 1".to_string()))?;
+    check_script_num_length(top.len(), LOCKTIME_OPERAND_MAX_LENGTH)?;
+    if policy && !is_minimally_encoded(top) {
+        return Err(ChainGangError::ScriptError(
+            "Number is not minimally encoded".to_string(),
+        ));
+    }
+    let n = decode_bigint(&mut top.clone())
+        .to_i64()
+        .expect("5 bytes fit in an i64");
+    if n < 0 {
+        return Err(ChainGangError::ScriptError(
+            "Negative lock time".to_string(),
+        ));
+    }
+    Ok(n)
+}
+
+/// Counts `op` towards the node's pre-Genesis opcode limit, failing past it.
+///
+/// The node counts every opcode above `OP_16` as it reads it, executed or
+/// not; pushes and small numbers are free. `OP_CHECKMULTISIG` adds its key
+/// count on top, through [`check_pregenesis_op_count`].
+pub(crate) fn count_pregenesis_op(op: u8, op_count: &mut usize) -> Result<(), ChainGangError> {
+    if op > OP_16 {
+        *op_count += 1;
+        check_pregenesis_op_count(*op_count)?;
+    }
+    Ok(())
+}
+
+/// Fails an opcode count past the node's pre-Genesis limit.
+pub(crate) fn check_pregenesis_op_count(op_count: usize) -> Result<(), ChainGangError> {
+    if op_count > MAX_OPS_PER_SCRIPT_PREGENESIS {
+        return Err(ChainGangError::ScriptError(format!(
+            "Script has more than the pre-Genesis limit of {MAX_OPS_PER_SCRIPT_PREGENESIS} opcodes"
+        )));
+    }
+    Ok(())
 }
 
 pub(crate) fn tx_enforces_malleability_rules<T: Checker>(checker: &T) -> bool {

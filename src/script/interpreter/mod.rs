@@ -19,6 +19,26 @@ pub use eval::core_eval;
 pub(crate) const STACK_CAPACITY: usize = 100;
 pub(crate) const ALT_STACK_CAPACITY: usize = 10;
 
+/// The node's limit on a stack element before Genesis, in bytes
+/// (`MAX_SCRIPT_ELEMENT_SIZE_BEFORE_GENESIS`).
+pub(crate) const MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS: usize = 520;
+
+/// The node's limit on the items on the stack and alt stack together, before
+/// Genesis (`MAX_STACK_ELEMENTS_BEFORE_GENESIS`).
+pub(crate) const MAX_STACK_ELEMENTS_PREGENESIS: usize = 1_000;
+
+/// The node's limit on a script before Genesis, in bytes
+/// (`MAX_SCRIPT_SIZE_BEFORE_GENESIS`).
+pub(crate) const MAX_SCRIPT_SIZE_PREGENESIS: usize = 10_000;
+
+/// The node's limit on the keys of an `OP_CHECKMULTISIG` before Genesis
+/// (`MAX_PUBKEYS_PER_MULTISIG_BEFORE_GENESIS`).
+pub(crate) const MAX_PUBKEYS_PER_MULTISIG_PREGENESIS: i32 = 20;
+
+/// The node's limit on the opcodes in a script before Genesis
+/// (`MAX_OPS_PER_SCRIPT_BEFORE_GENESIS`).
+pub(crate) const MAX_OPS_PER_SCRIPT_PREGENESIS: usize = 500;
+
 /// Execute the script with genesis rules
 pub const NO_FLAGS: u32 = 0x00;
 
