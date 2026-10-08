@@ -168,6 +168,32 @@ class ScriptOPTests(unittest.TestCase):
         context = Context(script=script)
         self.assertTrue(context.evaluate())
 
+    def test_insert_num_is_the_shortest_push(self):
+        """ insert_num pushes small numbers with their opcodes and long ones with
+            OP_PUSHDATA, as Script.append_big_integer does
+        """
+        self.assertEqual(insert_num(-1), [OP_1NEGATE])
+        self.assertEqual(insert_num(0), [0x00])
+        self.assertEqual(insert_num(1), [0x51])
+        self.assertEqual(insert_num(16), [0x60])
+        self.assertEqual(insert_num(17), [0x01, 17])
+        self.assertEqual(insert_num(-1000), [0x02, 0xE8, 0x83])
+        self.assertEqual(insert_num(2**700)[:2], [OP_PUSHDATA1, 88])
+        for n in [-(2**2100), -129, -2, -1, 0, 5, 16, 75, 128, 2**64, 2**2100]:
+            with self.subTest(n=n):
+                expected = Script()
+                expected.append_big_integer(n)
+                self.assertEqual(Script(insert_num(n)), expected)  # type: ignore[arg-type]
+
+    def test_insert_num_passes_the_minimal_push_rule(self):
+        """ The node's policy rejects a one-byte push of a value an opcode
+            pushes, so for a version 1 transaction insert_num(-1) used to fail
+        """
+        for n in [-1, 1, 16, 2**700]:
+            with self.subTest(n=n):
+                script = Script(insert_num(n) + insert_num(n) + [OP_EQUAL])  # type: ignore[arg-type]
+                self.assertTrue(Context(script=script, tx_version=1).evaluate())
+
     def test_pushdata1_1(self):
         """ Check of pushdata1
         """
