@@ -440,18 +440,6 @@ const MODELLING_GAPS: &[(&str, &[usize])] = &[
 /// which its rows come off this list.
 const KNOWN_DIFFERENCES: &[(&str, &[usize])] = &[
     (
-        "After Genesis, an OP_RETURN inside an executed branch stops \
-         execution, but the node still processes IF, ELSE and ENDIF after \
-         it, and a later top-level OP_RETURN ends the script. chain-gang stops \
-         at the first OP_RETURN and reports the branch unclosed.",
-        &[111, 115, 123, 125, 757, 767],
-    ),
-    (
-        "After Genesis an IF takes one ELSE. The node rejects a second \
-         (UNBALANCED_CONDITIONAL); chain-gang accepts it.",
-        &[45, 57, 58, 59, 60, 61, 67, 68, 69, 70, 71, 74, 75],
-    ),
-    (
         "Before Genesis the 4-byte limit applies to numeric operands, not \
          results. The node accepts a 5- or 8-byte arithmetic result and \
          compares it, casts a value of any length to a boolean, and reads \

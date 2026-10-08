@@ -26,10 +26,6 @@ fn valid() {
     pass(&[OP_1, OP_IF, OP_0, OP_1, OP_ENDIF]);
     pass(&[OP_1, OP_IF, OP_0, OP_IF, OP_ELSE, OP_1, OP_ENDIF, OP_ENDIF]);
     pass(&[OP_1, OP_IF, OP_PUSHDATA1, 1, 0, OP_1, OP_ENDIF]);
-    pass(&[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF]);
-    pass(&[
-        OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF,
-    ]);
     pass(&[OP_1, OP_VERIFY, OP_1]);
     pass(&[OP_1, OP_RETURN]);
     pass(&[OP_FALSE, OP_TRUE, OP_RETURN]);
@@ -822,6 +818,92 @@ impl Checker for MockChecker {
 fn pass_with_version(script: &[u8], version: i32) {
     let mut c = MockChecker::with_tx_version(version);
     assert!(eval(script, &mut c, NO_FLAGS).is_ok());
+}
+
+/// An invalid opcode, which fails only if executed
+const OP_UNDEFINED: u8 = 0xba;
+
+#[test]
+fn second_else_rejected_after_genesis() {
+    // node: UNBALANCED_CONDITIONAL, whichever branch runs and in every era
+    for script in [
+        &[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF][..],
+        &[OP_0, OP_IF, OP_0, OP_ELSE, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+        &[OP_1, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF],
+        // In a branch that does not run
+        &[
+            OP_0, OP_IF, OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ENDIF, OP_ENDIF, OP_1,
+        ],
+        // After an OP_RETURN has stopped execution
+        &[OP_1, OP_1, OP_IF, OP_RETURN, OP_ELSE, OP_ELSE, OP_ENDIF],
+    ] {
+        for version in [1, 2] {
+            let mut c = MockChecker::with_tx_version(version);
+            let err = eval(script, &mut c, NO_FLAGS).unwrap_err().to_string();
+            assert!(err.contains("Second ELSE"), "{script:02x?}: {err}");
+        }
+    }
+}
+
+#[test]
+fn each_else_switches_branch_before_genesis() {
+    pass_pregenesis(&[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF]);
+    pass_pregenesis(&[
+        OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF,
+    ]);
+    // The second ELSE switches back to the IF's branch
+    pass_pregenesis(&[OP_1, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF]);
+    fail_pregenesis(&[OP_0, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF]);
+}
+
+#[test]
+fn op_return_in_branch_stops_execution_after_genesis() {
+    pass(&[OP_1, OP_DUP, OP_IF, OP_RETURN, OP_ENDIF]);
+    // Nothing runs after it, an invalid opcode included
+    pass(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_UNDEFINED, OP_0, OP_ENDIF]);
+    pass(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_0]);
+    fail(&[OP_0, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
+    pass(&[
+        OP_0, OP_IF, OP_RETURN, 1, 0xd1, OP_ELSE, OP_1, OP_RETURN, 1, 0xd2, OP_ENDIF,
+    ]);
+    // Nested: the outer ENDIF is still needed
+    pass(&[
+        OP_1, OP_1, OP_1, OP_IF, OP_IF, OP_RETURN, OP_ENDIF, OP_ENDIF,
+    ]);
+    fail(&[OP_1, OP_1, OP_1, OP_IF, OP_IF, OP_RETURN, OP_ENDIF]);
+}
+
+#[test]
+fn op_return_in_branch_still_balances_conditionals() {
+    // node: UNBALANCED_CONDITIONAL
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN]);
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_ENDIF]);
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_IF, OP_ENDIF]);
+}
+
+#[test]
+fn top_level_op_return_after_branch_return_ends_script() {
+    // The script ends successfully at the top-level OP_RETURN, so the bytes
+    // after it are not read, even an unclosed IF
+    pass(&[
+        OP_1,
+        OP_IF,
+        OP_5,
+        OP_RETURN,
+        OP_ENDIF,
+        OP_5,
+        OP_RETURN,
+        OP_UNDEFINED,
+    ]);
+    pass(&[
+        OP_1, OP_IF, OP_5, OP_RETURN, OP_ENDIF, OP_5, OP_RETURN, OP_IF,
+    ]);
+}
+
+#[test]
+fn op_return_fails_before_genesis_only_if_executed() {
+    fail_pregenesis(&[OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
+    pass_pregenesis(&[OP_0, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
 }
 
 #[test]
