@@ -7,7 +7,7 @@ use crate::util::{ChainGangError, Hash256};
 use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 
 /// Locktimes greater than or equal to this are interpreted as timestamps. Less then, block heights.
-const LOCKTIME_THRESHOLD: i32 = 500000000;
+const LOCKTIME_THRESHOLD: i64 = 500000000;
 
 /// Disables the relative lock time for the sequence field
 pub(crate) const SEQUENCE_LOCKTIME_DISABLE_FLAG: u32 = 1 << 31;
@@ -51,10 +51,18 @@ pub trait Checker {
     ) -> Result<bool, ChainGangError>;
 
     /// Checks that the lock time is valid according to BIP 65
-    fn check_locktime(&self, locktime: i32) -> Result<bool, ChainGangError>;
+    ///
+    /// `locktime` is `OP_CHECKLOCKTIMEVERIFY`'s operand, which the interpreter
+    /// reads as up to 5 bytes, as the node does, so it can exceed `i32`: a
+    /// timestamp from 2038 on is past `i32::MAX`, and a transaction's
+    /// `lock_time` is a `u32`.
+    fn check_locktime(&self, locktime: i64) -> Result<bool, ChainGangError>;
 
     /// Checks that the relative lock time enforced by the sequence is valid according to BIP 112
-    fn check_sequence(&self, sequence: i32) -> Result<bool, ChainGangError>;
+    ///
+    /// `sequence` is `OP_CHECKSEQUENCEVERIFY`'s operand, read as up to 5 bytes
+    /// like `OP_CHECKLOCKTIMEVERIFY`'s, so it can exceed `i32` too.
+    fn check_sequence(&self, sequence: i64) -> Result<bool, ChainGangError>;
 
     /// Returns the executing transaction version for Chronicle OP_VER opcodes
     fn tx_version(&self) -> Result<i32, ChainGangError> {
@@ -79,13 +87,13 @@ impl Checker for TransactionlessChecker {
         ))
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -138,13 +146,13 @@ impl Checker for ZChecker {
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -169,13 +177,13 @@ impl Checker for TxVersionChecker {
         ))
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -232,13 +240,13 @@ impl Checker for ZVersionChecker {
         Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
     }
 
-    fn check_locktime(&self, _locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
     }
 
-    fn check_sequence(&self, _sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, _sequence: i64) -> Result<bool, ChainGangError> {
         Err(ChainGangError::IllegalState(
             "Illegal transaction check".to_string(),
         ))
@@ -327,18 +335,22 @@ impl Checker for TransactionChecker<'_> {
         Ok(self.chronicle_script_version() as i32)
     }
 
-    fn check_locktime(&self, locktime: i32) -> Result<bool, ChainGangError> {
+    fn check_locktime(&self, locktime: i64) -> Result<bool, ChainGangError> {
         if locktime < 0 {
             return Err(ChainGangError::ScriptError("locktime negative".to_string()));
         }
-        if (locktime >= LOCKTIME_THRESHOLD && (self.tx.lock_time as i32) < LOCKTIME_THRESHOLD)
-            || (locktime < LOCKTIME_THRESHOLD && (self.tx.lock_time as i32) >= LOCKTIME_THRESHOLD)
+        // Widened, not cast: `lock_time as i32` made every lock time from
+        // 2038 on negative, so a transaction locked past then could never
+        // satisfy a CHECKLOCKTIMEVERIFY.
+        let tx_lock_time = i64::from(self.tx.lock_time);
+        if (locktime >= LOCKTIME_THRESHOLD && tx_lock_time < LOCKTIME_THRESHOLD)
+            || (locktime < LOCKTIME_THRESHOLD && tx_lock_time >= LOCKTIME_THRESHOLD)
         {
             return Err(ChainGangError::ScriptError(
                 "locktime types different".to_string(),
             ));
         }
-        if locktime > self.tx.lock_time as i32 {
+        if locktime > tx_lock_time {
             return Err(ChainGangError::ScriptError(
                 "locktime greater than tx".to_string(),
             ));
@@ -351,11 +363,13 @@ impl Checker for TransactionChecker<'_> {
         Ok(true)
     }
 
-    fn check_sequence(&self, sequence: i32) -> Result<bool, ChainGangError> {
+    fn check_sequence(&self, sequence: i64) -> Result<bool, ChainGangError> {
         if sequence < 0 {
             return Err(ChainGangError::ScriptError("sequence negative".to_string()));
         }
-        let sequence = sequence as u32;
+        // Only the low 32 bits mean anything: like the transaction's sequence
+        // it is a u32, and the node masks the bits it compares out of it.
+        let sequence = (sequence & 0xffff_ffff) as u32;
         if sequence & SEQUENCE_LOCKTIME_DISABLE_FLAG != 0 {
             return Ok(true);
         }
@@ -1512,4 +1526,149 @@ mod tests {
         }
     }
     */
+
+    /// A transaction with one input, `sequence` 0 so it is not final.
+    fn locked_tx(lock_time: u32) -> Tx {
+        Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: OutPoint {
+                    hash: Hash256([0; 32]),
+                    index: 0,
+                },
+                unlock_script: Script(vec![]),
+                sequence: 0,
+            }],
+            outputs: vec![],
+            lock_time,
+        }
+    }
+
+    fn check_locktime_against(lock_time: u32, locktime: i64) -> Result<bool, ChainGangError> {
+        let tx = locked_tx(lock_time);
+        let mut cache = SigHashCache::new();
+        let checker = TransactionChecker {
+            tx: &tx,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 0,
+            require_sighash_forkid: false,
+            script_tx_version: None,
+        };
+        checker.check_locktime(locktime)
+    }
+
+    /// A lock time from 2038 on is past `i32::MAX`. The checker used to cast
+    /// the transaction's `lock_time` to an `i32`, which made it negative, so
+    /// no CHECKLOCKTIMEVERIFY could be met by a transaction locked past then.
+    /// The node compares them as 64-bit numbers.
+    #[test]
+    fn check_locktime_past_2038() {
+        let late = 0xffff_fff0_u32;
+        for locktime in [500_000_000, 0x8000_0000, i64::from(late)] {
+            assert!(
+                check_locktime_against(late, locktime).unwrap(),
+                "{locktime}"
+            );
+        }
+        // Later than the transaction, including past u32, which 5 bytes allow.
+        for locktime in [i64::from(late) + 1, 1 << 32, (1 << 39) - 1] {
+            let err = check_locktime_against(late, locktime).unwrap_err();
+            assert!(
+                err.to_string().contains("greater than tx"),
+                "{locktime}: {err}"
+            );
+        }
+        // A block height against a timestamp.
+        let err = check_locktime_against(late, 499_999_999).unwrap_err();
+        assert!(err.to_string().contains("types different"), "{err}");
+        let err = check_locktime_against(1_000, 0x8000_0000).unwrap_err();
+        assert!(err.to_string().contains("types different"), "{err}");
+        // Block heights still compare as before.
+        assert!(check_locktime_against(1_000, 1_000).unwrap());
+        assert!(check_locktime_against(1_000, 1_001).is_err());
+    }
+
+    fn check_sequence_against(tx_sequence: u32, sequence: i64) -> Result<bool, ChainGangError> {
+        let mut tx = locked_tx(0);
+        tx.version = 2;
+        tx.inputs[0].sequence = tx_sequence;
+        let mut cache = SigHashCache::new();
+        let checker = TransactionChecker {
+            tx: &tx,
+            sig_hash_cache: &mut cache,
+            input: 0,
+            satoshis: 0,
+            require_sighash_forkid: false,
+            script_tx_version: None,
+        };
+        checker.check_sequence(sequence)
+    }
+
+    /// CHECKSEQUENCEVERIFY's operand is up to 5 bytes, so it reaches the
+    /// checker as an i64. Bits above the low 32 never count: the node masks
+    /// the operand to the bits it compares.
+    #[test]
+    fn check_sequence_takes_five_byte_operands() {
+        assert!(check_sequence_against(10, 10).unwrap());
+        assert!(check_sequence_against(10, (1 << 32) + 10).unwrap());
+        assert!(check_sequence_against(10, (0x7f << 32) + 10).unwrap());
+        let err = check_sequence_against(10, (1 << 32) + 11).unwrap_err();
+        assert!(err.to_string().contains("greater than tx"), "{err}");
+        let err = check_sequence_against(10, -1).unwrap_err();
+        assert!(err.to_string().contains("negative"), "{err}");
+    }
+
+    /// The same through the interpreter: 2^32 + 10, five bytes, before Genesis.
+    #[test]
+    fn csv_five_byte_operand_through_the_interpreter() {
+        use crate::script::PREGENESIS_RULES;
+        let mut script = Script::new();
+        script.append_data(&[10, 0x00, 0x00, 0x00, 0x01]);
+        script.append(OP_CHECKSEQUENCEVERIFY);
+        for (tx_sequence, ok) in [(10, true), (11, true), (9, false)] {
+            let mut tx = locked_tx(0);
+            tx.version = 2;
+            tx.inputs[0].sequence = tx_sequence;
+            let mut cache = SigHashCache::new();
+            let mut checker = TransactionChecker {
+                tx: &tx,
+                sig_hash_cache: &mut cache,
+                input: 0,
+                satoshis: 0,
+                require_sighash_forkid: false,
+                script_tx_version: None,
+            };
+            let result = script.eval(&mut checker, PREGENESIS_RULES);
+            assert_eq!(result.is_ok(), ok, "sequence {tx_sequence}: {result:?}");
+        }
+    }
+
+    /// The same through the interpreter: a 5-byte CLTV operand past `i32`,
+    /// against a transaction locked as late, before Genesis.
+    #[test]
+    fn cltv_past_2038_through_the_interpreter() {
+        use crate::script::PREGENESIS_RULES;
+        let mut script = Script::new();
+        script.append_data(&[0x00, 0x00, 0x00, 0x80, 0x00]); // 2^31
+        script.append(OP_CHECKLOCKTIMEVERIFY);
+        for (lock_time, ok) in [
+            (0x8000_0000, true),
+            (0xffff_ffff, true),
+            (0x7fff_ffff, false),
+        ] {
+            let tx = locked_tx(lock_time);
+            let mut cache = SigHashCache::new();
+            let mut checker = TransactionChecker {
+                tx: &tx,
+                sig_hash_cache: &mut cache,
+                input: 0,
+                satoshis: 0,
+                require_sighash_forkid: false,
+                script_tx_version: None,
+            };
+            let result = script.eval(&mut checker, PREGENESIS_RULES);
+            assert_eq!(result.is_ok(), ok, "lock_time {lock_time:#x}: {result:?}");
+        }
+    }
 }
