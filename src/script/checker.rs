@@ -13,6 +13,8 @@ const LOCKTIME_THRESHOLD: i64 = 500000000;
 pub(crate) const SEQUENCE_LOCKTIME_DISABLE_FLAG: u32 = 1 << 31;
 /// When set, sequence uses time. When unset, it uses block height.
 const SEQUENCE_LOCKTIME_TYPE_FLAG: u32 = 1 << 22;
+/// The bits of a sequence that hold the relative lock time's value.
+const SEQUENCE_LOCKTIME_MASK: u32 = 0x0000ffff;
 
 /// Whether a signature's sighash type is one the node understands, its
 /// `SigHashType::isDefined`: with the CHRONICLE, FORKID and ANYONECANPAY bits
@@ -382,8 +384,13 @@ impl Checker for TransactionChecker<'_> {
             let msg = "tx sequence disable flag set".to_string();
             return Err(ChainGangError::ScriptError(msg));
         }
-        let sequence_masked = sequence & 0x0000ffff;
-        let tx_sequence_masked = self.tx.inputs[self.input].sequence & 0x0000ffff;
+        // The type flag stays in, as in the node's `nLockTimeMask`. Masking it
+        // off along with the other unused bits left the type check below
+        // comparing two values under 2^16 against 2^22, so it never fired: a
+        // time-based CSV was met by a height-based input, and the reverse.
+        let mask = SEQUENCE_LOCKTIME_TYPE_FLAG | SEQUENCE_LOCKTIME_MASK;
+        let sequence_masked = sequence & mask;
+        let tx_sequence_masked = self.tx.inputs[self.input].sequence & mask;
         if (sequence_masked < SEQUENCE_LOCKTIME_TYPE_FLAG
             && tx_sequence_masked >= SEQUENCE_LOCKTIME_TYPE_FLAG)
             || (sequence_masked >= SEQUENCE_LOCKTIME_TYPE_FLAG
@@ -1617,6 +1624,34 @@ mod tests {
         assert!(err.to_string().contains("greater than tx"), "{err}");
         let err = check_sequence_against(10, -1).unwrap_err();
         assert!(err.to_string().contains("negative"), "{err}");
+    }
+
+    /// A CSV operand and the input's sequence must lock by the same measure:
+    /// both by time (type flag set) or both by block height, as in the node.
+    /// The flag was masked off before the type check, so it never fired.
+    #[test]
+    fn check_sequence_requires_matching_lock_types() {
+        let time = |value: u32| SEQUENCE_LOCKTIME_TYPE_FLAG | value;
+        let check = |tx_sequence: u32, sequence: u32| {
+            check_sequence_against(tx_sequence, i64::from(sequence))
+        };
+        // Same type: the values compare.
+        assert!(check(10, 10).unwrap());
+        assert!(check(time(10), time(10)).unwrap());
+        assert!(check(time(10), time(9)).unwrap());
+        let err = check(time(10), time(11)).unwrap_err();
+        assert!(err.to_string().contains("greater than tx"), "{err}");
+        // Different types fail, whatever the values.
+        for (tx_sequence, sequence) in [(time(10), 10), (10, time(10)), (10, time(0))] {
+            let err = check(tx_sequence, sequence).unwrap_err();
+            assert!(
+                err.to_string().contains("types different"),
+                "{tx_sequence:#x} against {sequence:#x}: {err}"
+            );
+        }
+        // Bits outside the type flag and the value still do not count.
+        assert!(check(time(10) | 0x0001_0000, time(10)).unwrap());
+        assert!(check(10, 0x0001_0000 | 10).unwrap());
     }
 
     /// The same through the interpreter: 2^32 + 10, five bytes, before Genesis.
