@@ -60,9 +60,9 @@ in this directory, out of the published crate.
   (or `Tx::validate_consensus`) over the node test framework's crediting and
   spending transactions, with the row's flags mapped onto chain-gang's era,
   policy and FORKID settings; accept/reject is compared, not the error code.
-  1339 of the 1483 rows agree. The other 144 are listed in the test under
-  their reasons: 99 whose verdict turns on a flag chain-gang does not take
-  one by one (`MODELLING_GAPS`), and 45 where chain-gang appears to be wrong
+  1335 of the 1483 rows agree. The other 148 are listed in the test under
+  their reasons: 104 whose verdict turns on a flag chain-gang does not take
+  one by one (`MODELLING_GAPS`), and 44 where chain-gang appears to be wrong
   (`KNOWN_DIFFERENCES`).
 - `base58_*.json` — `tests/base58_vectors.rs` (`cargo test --test
   base58_vectors`) through the Rust address and WIF functions, and

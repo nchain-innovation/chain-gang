@@ -66,18 +66,21 @@ pub(crate) fn check_multisig<T: Checker>(
         }
     }
 
+    // As the node does, stop as soon as the remaining signatures outnumber the
+    // remaining keys, so pairs it never checks are not checked here either.
+    // A failure falls through to NULLFAIL below.
     let mut key = 0;
     let mut sig = 0;
-    while sig < sigs.len() {
-        if key == keys.len() {
-            return Ok(false);
-        }
+    let mut success = true;
+    while success && sig < sigs.len() {
         if checker.check_sig(&sigs[sig], &keys[key], &cleaned_script)? {
             sig += 1;
         }
         key += 1;
+        if sigs.len() - sig > keys.len() - key {
+            success = false;
+        }
     }
-    let success = sig == sigs.len();
     if !success && tx_enforces_malleability_rules(checker) {
         for remaining in &sigs {
             if !remaining.is_empty() {
