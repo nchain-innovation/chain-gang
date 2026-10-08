@@ -10,7 +10,7 @@
 //! chain-gang does not take the node's flags one by one. It has an era
 //! (pre- or post-Genesis, per output), a policy/consensus switch and the
 //! sighash FORKID requirement, so each row's flags are mapped onto those (see
-//! `Mode::from_flags`). Of the 1483 rows, 1335 agree with the node. The rest
+//! `Mode::from_flags`). Of the 1483 rows, 1364 agree with the node. The rest
 //! are listed, each under its reason, in one of two places:
 //!
 //! - `MODELLING_GAPS`: the verdict turns on a flag chain-gang does not take
@@ -440,14 +440,6 @@ const MODELLING_GAPS: &[(&str, &[usize])] = &[
 /// same rules: chain-gang appears to be wrong. Each is a fix to make, after
 /// which its rows come off this list.
 const KNOWN_DIFFERENCES: &[(&str, &[usize])] = &[
-    (
-        "Before Genesis the 4-byte limit applies to numeric operands, not \
-         results. The node accepts a 5- or 8-byte arithmetic result and \
-         compares it, casts a value of any length to a boolean, and reads \
-         OP_CHECKSEQUENCEVERIFY's operand as up to 5 bytes. chain-gang \
-         rejects each.",
-        &[182, 313, 314, 438, 439, 709, 985, 986, 987, 988],
-    ),
     (
         "Before Genesis, OP_NUM2BIN to sizes up to 520 bytes, to size 0, of \
          negative zero, and shrinking a padded number: chain-gang rejects \

@@ -10,7 +10,7 @@ use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 const LOCKTIME_THRESHOLD: i32 = 500000000;
 
 /// Disables the relative lock time for the sequence field
-const SEQUENCE_LOCKTIME_DISABLE_FLAG: u32 = 1 << 31;
+pub(crate) const SEQUENCE_LOCKTIME_DISABLE_FLAG: u32 = 1 << 31;
 /// When set, sequence uses time. When unset, it uses block height.
 const SEQUENCE_LOCKTIME_TYPE_FLAG: u32 = 1 << 22;
 

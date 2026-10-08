@@ -537,7 +537,17 @@ fn invalid() {
     s.push(OP_CHECKMULTISIG);
     assert!(eval(&s, &mut c, NO_FLAGS).is_err());
     fail_pregenesis(&[OP_CHECKLOCKTIMEVERIFY, OP_1]);
-    fail_pregenesis(&[OP_PUSH + 5, 129, 0, 0, 0, 0, OP_CHECKLOCKTIMEVERIFY, OP_1]);
+    fail_pregenesis(&[
+        OP_PUSH + 6,
+        129,
+        0,
+        0,
+        0,
+        0,
+        0,
+        OP_CHECKLOCKTIMEVERIFY,
+        OP_1,
+    ]);
     let mut c = MockChecker::locktime_checks(vec![false]);
     assert!(eval(
         &[OP_0, OP_CHECKLOCKTIMEVERIFY, OP_1],
@@ -546,7 +556,17 @@ fn invalid() {
     )
     .is_err());
     fail_pregenesis(&[OP_CHECKSEQUENCEVERIFY, OP_1]);
-    fail_pregenesis(&[OP_PUSH + 5, 129, 0, 0, 0, 0, OP_CHECKSEQUENCEVERIFY, OP_1]);
+    fail_pregenesis(&[
+        OP_PUSH + 6,
+        129,
+        0,
+        0,
+        0,
+        0,
+        0,
+        OP_CHECKSEQUENCEVERIFY,
+        OP_1,
+    ]);
     let mut c = MockChecker::sequence_checks(vec![false]);
     assert!(eval(
         &[OP_0, OP_CHECKSEQUENCEVERIFY, OP_1],
@@ -1537,4 +1557,114 @@ fn pushdata_minimal_boundaries_match_the_node() {
 fn malleable_transactions_skip_the_minimal_push_rule() {
     eval_push(&[1, 0x05], 2).unwrap();
     eval_push(&[1, 0x81], 2).unwrap();
+}
+
+/// `data` as the shortest push, followed by `ops`.
+fn push_then(data: &[u8], ops: &[u8]) -> Vec<u8> {
+    let mut script = Script::new();
+    script.append_data(data);
+    script.append_slice(ops);
+    script.0
+}
+
+/// Before Genesis the node limits numeric operands to 4 bytes but not
+/// results: two 4-byte operands add to 5 bytes and multiply to 8, and the
+/// result compares as bytes (bitcoin-sv's script_tests.json rows 313, 438 and
+/// 985 to 988). Only using such a result as a number again fails. After
+/// Genesis the limit is far above either, so nothing changes there.
+#[test]
+fn pregenesis_arithmetic_results_may_exceed_four_bytes() {
+    let max = [0xff, 0xff, 0xff, 0x7f]; // 2147483647
+    let mut add = push_then(&max, &[OP_DUP, OP_ADD]);
+    add.extend(push_then(&[0xfe, 0xff, 0xff, 0xff, 0x00], &[OP_EQUAL]));
+    let mut mul = push_then(&max, &[OP_DUP, OP_MUL]);
+    mul.extend(push_then(
+        &[0x01, 0, 0, 0, 0xff, 0xff, 0xff, 0x3f],
+        &[OP_EQUAL],
+    ));
+    let mut negative = push_then(&max, &[OP_NEGATE, OP_1SUB]);
+    negative.extend(push_then(&[0, 0, 0, 0x80, 0x80], &[OP_EQUAL]));
+    for script in [&add, &mul, &negative] {
+        pass_pregenesis(script);
+        pass(script);
+    }
+
+    // The 5-byte sum is not a pre-Genesis operand.
+    let reuse = push_then(&max, &[OP_DUP, OP_ADD, OP_1ADD, OP_DROP, OP_1]);
+    let err = eval(&reuse, &mut MockChecker::new(), PREGENESIS_RULES).unwrap_err();
+    assert!(
+        err.to_string().contains("exceeds maximum length of 4"),
+        "{err}"
+    );
+    pass(&reuse);
+}
+
+/// A boolean is read at any length, in every era, as the node's `CastToBool`
+/// does (script_tests.json row 182: `1 0x05 0x0100000000 VERIFY`). VERIFY and
+/// IF used to reject anything over 4 bytes.
+#[test]
+fn booleans_are_read_at_any_length() {
+    let five_true = [0x01, 0, 0, 0, 0];
+    let five_false = [0, 0, 0, 0, 0x80]; // negative zero
+    let mut long_true = [0u8; 520];
+    long_true[519] = 0x01;
+    for flags in [NO_FLAGS, PREGENESIS_RULES] {
+        let run = |script: &[u8]| eval(script, &mut MockChecker::new(), flags);
+        run(&push_then(&five_true, &[OP_VERIFY, OP_1])).unwrap();
+        run(&push_then(&long_true, &[OP_VERIFY, OP_1])).unwrap();
+        run(&push_then(
+            &five_true,
+            &[OP_IF, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+        ))
+        .unwrap();
+        run(&push_then(
+            &five_false,
+            &[OP_NOTIF, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+        ))
+        .unwrap();
+        let err = run(&push_then(&five_false, &[OP_VERIFY, OP_1])).unwrap_err();
+        assert!(err.to_string().contains("OP_VERIFY failed"), "{err}");
+    }
+}
+
+/// OP_CHECKLOCKTIMEVERIFY and OP_CHECKSEQUENCEVERIFY read their operand as up
+/// to 5 bytes and leave it on the stack, as the node does (BIP 65, BIP 112).
+/// chain-gang used to pop it and read it as a 4-byte number.
+#[test]
+fn locktime_operands_are_five_bytes_and_stay_on_the_stack() {
+    let run =
+        |script: &[u8], mut checker: MockChecker| eval(script, &mut checker, PREGENESIS_RULES);
+
+    // 2147483648 CHECKSEQUENCEVERIFY (row 709): bit 31 is the disable flag,
+    // so it is a NOP and the transaction is not consulted. The operand it
+    // leaves is the true value the script ends on.
+    let disabled = push_then(&[0, 0, 0, 0x80, 0], &[OP_CHECKSEQUENCEVERIFY]);
+    run(&disabled, MockChecker::sequence_checks(vec![false])).unwrap();
+
+    // 4294967296 has bit 31 clear, so the transaction is checked (row 1475).
+    let above = push_then(&[0, 0, 0, 0, 0x01], &[OP_CHECKSEQUENCEVERIFY]);
+    run(&above, MockChecker::new()).unwrap();
+    assert!(run(&above, MockChecker::sequence_checks(vec![false])).is_err());
+
+    // The operand stays: a script ending on it ends on its value.
+    for op in [OP_CHECKLOCKTIMEVERIFY, OP_CHECKSEQUENCEVERIFY] {
+        run(&[OP_1, op], MockChecker::new()).unwrap();
+        let err = run(&[OP_0, op], MockChecker::new()).unwrap_err();
+        assert!(err.to_string().contains("Top of stack is false"), "{err}");
+        let err = run(&[OP_1NEGATE, op, OP_1], MockChecker::new()).unwrap_err();
+        assert!(err.to_string().contains("Negative lock time"), "{err}");
+        // Not minimally encoded, where the policy rules apply.
+        let padded = push_then(&[0x01, 0x00], &[op]);
+        run(&padded, MockChecker::new()).unwrap();
+        let err = run(&padded, MockChecker::with_tx_version(1)).unwrap_err();
+        assert!(err.to_string().contains("minimally encoded"), "{err}");
+    }
+
+    // A 5-byte lock time is checked like any other.
+    let cltv = push_then(&[0x81, 0, 0, 0, 0], &[OP_CHECKLOCKTIMEVERIFY]);
+    run(&cltv, MockChecker::new()).unwrap();
+    assert!(run(&cltv, MockChecker::locktime_checks(vec![false])).is_err());
+    // One past i32 fails whatever the checker says: it takes an i32.
+    let past_i32 = push_then(&[0, 0, 0, 0x80, 0], &[OP_CHECKLOCKTIMEVERIFY]);
+    assert!(run(&past_i32, MockChecker::new()).is_err());
 }

@@ -1,3 +1,4 @@
+use crate::script::checker::SEQUENCE_LOCKTIME_DISABLE_FLAG;
 use crate::script::op_codes::*;
 use crate::script::stack::{
     check_script_num_length, decode_bigint, decode_bool, encode_bigint, encode_num, pop_bool,
@@ -13,8 +14,9 @@ use ripemd::{Digest, Ripemd160};
 use super::multisig::check_multisig;
 use super::push::{check_canonical_push, check_stack_size, next_op, remains};
 use super::rules::{
-    enforces_policy_rules, max_script_num_length, pop_bigint_for_eval, pop_bool_for_if,
-    pop_num_for_eval, substr_error, tx_enforces_malleability_rules, verif_branch_exec,
+    enforces_policy_rules, max_script_num_length, max_script_num_result_length,
+    peek_locktime_operand, pop_bigint_for_eval, pop_bool_for_if, pop_num_for_eval, substr_error,
+    tx_enforces_malleability_rules, verif_branch_exec,
 };
 use super::script_code::{checksig_script_code, multisig_script_code, TwoPhaseEvalContext};
 use super::{ALT_STACK_CAPACITY, PREGENESIS_RULES, STACK_CAPACITY};
@@ -50,6 +52,7 @@ pub fn core_eval<T: Checker>(
     let mut check_index = 0;
     let mut i = start_at.unwrap_or(0);
     let max_num_len = max_script_num_length(checker, flags);
+    let max_result_len = max_script_num_result_length(checker, flags);
 
     'outer: while i < script.len() {
         if let Some(val) = break_at {
@@ -456,24 +459,24 @@ pub fn core_eval<T: Checker>(
             OP_1ADD => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x += 1;
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_1SUB => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x -= 1;
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_NEGATE => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 x = -x;
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_ABS => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if x < BigInt::zero() {
                     x = -x;
                 }
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_NOT => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -482,7 +485,7 @@ pub fn core_eval<T: Checker>(
                 } else {
                     x = BigInt::zero();
                 }
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_0NOTEQUAL => {
                 let mut x = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -491,31 +494,31 @@ pub fn core_eval<T: Checker>(
                 } else {
                     x = BigInt::one();
                 }
-                push_bigint_checked(&mut stack, x, max_num_len)?;
+                push_bigint_checked(&mut stack, x, max_result_len)?;
             }
             OP_ADD => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let sum = a + b;
-                push_bigint_checked(&mut stack, sum, max_num_len)?;
+                push_bigint_checked(&mut stack, sum, max_result_len)?;
             }
             OP_SUB => {
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let difference = b - a;
-                push_bigint_checked(&mut stack, difference, max_num_len)?;
+                push_bigint_checked(&mut stack, difference, max_result_len)?;
             }
             OP_MUL => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let product = a * b;
-                push_bigint_checked(&mut stack, product, max_num_len)?;
+                push_bigint_checked(&mut stack, product, max_result_len)?;
             }
             OP_2MUL => {
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let two = BigInt::from(2);
                 let product = a * two;
-                push_bigint_checked(&mut stack, product, max_num_len)?;
+                push_bigint_checked(&mut stack, product, max_result_len)?;
             }
             OP_DIV => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -525,14 +528,14 @@ pub fn core_eval<T: Checker>(
                     return Err(ChainGangError::ScriptError(msg));
                 }
                 let quotient = a / b;
-                push_bigint_checked(&mut stack, quotient, max_num_len)?;
+                push_bigint_checked(&mut stack, quotient, max_result_len)?;
             }
             OP_2DIV => {
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let b = BigInt::from(2);
 
                 let quotient = a / b;
-                push_bigint_checked(&mut stack, quotient, max_num_len)?;
+                push_bigint_checked(&mut stack, quotient, max_result_len)?;
             }
             OP_MOD => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -542,7 +545,7 @@ pub fn core_eval<T: Checker>(
                     return Err(ChainGangError::ScriptError(msg));
                 }
                 let remainder = a % b;
-                push_bigint_checked(&mut stack, remainder, max_num_len)?;
+                push_bigint_checked(&mut stack, remainder, max_result_len)?;
             }
             OP_BOOLAND => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -628,18 +631,18 @@ pub fn core_eval<T: Checker>(
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a < b {
-                    push_bigint_checked(&mut stack, a, max_num_len)?;
+                    push_bigint_checked(&mut stack, a, max_result_len)?;
                 } else {
-                    push_bigint_checked(&mut stack, b, max_num_len)?;
+                    push_bigint_checked(&mut stack, b, max_result_len)?;
                 }
             }
             OP_MAX => {
                 let b = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let a = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 if a > b {
-                    push_bigint_checked(&mut stack, a, max_num_len)?;
+                    push_bigint_checked(&mut stack, a, max_result_len)?;
                 } else {
-                    push_bigint_checked(&mut stack, b, max_num_len)?;
+                    push_bigint_checked(&mut stack, b, max_result_len)?;
                 }
             }
             OP_WITHIN => {
@@ -785,8 +788,15 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKLOCKTIMEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let locktime = pop_num_for_eval(&mut stack, policy)?;
-                    if !checker.check_locktime(locktime)? {
+                    let locktime = peek_locktime_operand(&stack, policy)?;
+                    // The checker takes an i32. A lock time past it, after
+                    // 2038, could only be met by a transaction lock time the
+                    // checker cannot compare either, so it fails here.
+                    let satisfied = match i32::try_from(locktime) {
+                        Ok(locktime) => checker.check_locktime(locktime)?,
+                        Err(_) => false,
+                    };
+                    if !satisfied {
                         let msg = "OP_CHECKLOCKTIMEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
                     }
@@ -794,8 +804,13 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKSEQUENCEVERIFY => {
                 if flags & PREGENESIS_RULES == PREGENESIS_RULES {
-                    let sequence = pop_num_for_eval(&mut stack, policy)?;
-                    if !checker.check_sequence(sequence)? {
+                    let sequence = peek_locktime_operand(&stack, policy)?;
+                    // With the disable flag set the opcode is a NOP (BIP 112).
+                    // Otherwise only the low bits count: the node masks the
+                    // rest off before comparing, so the bits above 31 can go.
+                    if sequence & i64::from(SEQUENCE_LOCKTIME_DISABLE_FLAG) == 0
+                        && !checker.check_sequence((sequence & 0x7fff_ffff) as i32)?
+                    {
                         let msg = "OP_CHECKSEQUENCEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
                     }
