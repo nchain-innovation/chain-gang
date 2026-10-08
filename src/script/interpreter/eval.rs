@@ -16,9 +16,9 @@ use super::push::{
     check_canonical_push, check_pregenesis_push_size, check_stack_size, next_op, remains,
 };
 use super::rules::{
-    enforces_policy_rules, max_script_num_length, max_script_num_result_length,
-    peek_locktime_operand, pop_bigint_for_eval, pop_bool_for_if, pop_num_for_eval, substr_error,
-    tx_enforces_malleability_rules, verif_branch_exec,
+    count_pregenesis_op, enforces_policy_rules, max_script_num_length,
+    max_script_num_result_length, peek_locktime_operand, pop_bigint_for_eval, pop_bool_for_if,
+    pop_num_for_eval, substr_error, tx_enforces_malleability_rules, verif_branch_exec,
 };
 use super::script_code::{checksig_script_code, multisig_script_code, TwoPhaseEvalContext};
 use super::{
@@ -60,7 +60,9 @@ pub fn core_eval<T: Checker>(
     let max_result_len = max_script_num_result_length(checker, flags);
 
     // The node's size limits before Genesis: a script, each item pushed or
-    // built, and the two stacks together. Genesis lifted them.
+    // built, the two stacks together and the opcodes in a script. Genesis
+    // lifted them.
+    let mut op_count = 0;
     if pregenesis && script.len() > MAX_SCRIPT_SIZE_PREGENESIS {
         return Err(ChainGangError::ScriptError(format!(
             "Script of {} bytes exceeds the pre-Genesis limit of {MAX_SCRIPT_SIZE_PREGENESIS}",
@@ -79,6 +81,7 @@ pub fn core_eval<T: Checker>(
         // branch is executing, so a push in one that is not counts too.
         if pregenesis {
             check_pregenesis_push_size(i, script)?;
+            count_pregenesis_op(script[i], &mut op_count)?;
         }
         let opcode = script[i];
         let exec = conditions.active() && (!returned_in_branch || opcode == OP_RETURN);
@@ -802,14 +805,26 @@ pub fn core_eval<T: Checker>(
             }
             OP_CHECKMULTISIG => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                match check_multisig(&mut stack, checker, &cleaned_script, policy, pregenesis)? {
+                match check_multisig(
+                    &mut stack,
+                    checker,
+                    &cleaned_script,
+                    policy,
+                    pregenesis.then_some(&mut op_count),
+                )? {
                     true => stack.push(encode_num(1)?),
                     false => stack.push(encode_num(0)?),
                 }
             }
             OP_CHECKMULTISIGVERIFY => {
                 let cleaned_script = multisig_script_code(script, check_index, two_phase);
-                if !check_multisig(&mut stack, checker, &cleaned_script, policy, pregenesis)? {
+                if !check_multisig(
+                    &mut stack,
+                    checker,
+                    &cleaned_script,
+                    policy,
+                    pregenesis.then_some(&mut op_count),
+                )? {
                     let msg = "OP_CHECKMULTISIGVERIFY failed".to_string();
                     return Err(ChainGangError::ScriptError(msg));
                 }

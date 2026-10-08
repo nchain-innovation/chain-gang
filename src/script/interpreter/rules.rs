@@ -10,7 +10,8 @@ use crate::util::ChainGangError;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-use super::{CONSENSUS_ONLY, PREGENESIS_RULES};
+use super::{CONSENSUS_ONLY, MAX_OPS_PER_SCRIPT_PREGENESIS, PREGENESIS_RULES};
+use crate::script::op_codes::OP_16;
 
 /// Whether script inputs are evaluated in separate unlock/lock phases (Chronicle).
 pub fn uses_two_phase_eval(tx_version: u32) -> bool {
@@ -84,6 +85,29 @@ pub(crate) fn peek_locktime_operand(stack: &Stack, policy: bool) -> Result<i64, 
         ));
     }
     Ok(n)
+}
+
+/// Counts `op` towards the node's pre-Genesis opcode limit, failing past it.
+///
+/// The node counts every opcode above `OP_16` as it reads it, executed or
+/// not; pushes and small numbers are free. `OP_CHECKMULTISIG` adds its key
+/// count on top, through [`check_pregenesis_op_count`].
+pub(crate) fn count_pregenesis_op(op: u8, op_count: &mut usize) -> Result<(), ChainGangError> {
+    if op > OP_16 {
+        *op_count += 1;
+        check_pregenesis_op_count(*op_count)?;
+    }
+    Ok(())
+}
+
+/// Fails an opcode count past the node's pre-Genesis limit.
+pub(crate) fn check_pregenesis_op_count(op_count: usize) -> Result<(), ChainGangError> {
+    if op_count > MAX_OPS_PER_SCRIPT_PREGENESIS {
+        return Err(ChainGangError::ScriptError(format!(
+            "Script has more than the pre-Genesis limit of {MAX_OPS_PER_SCRIPT_PREGENESIS} opcodes"
+        )));
+    }
+    Ok(())
 }
 
 pub(crate) fn tx_enforces_malleability_rules<T: Checker>(checker: &T) -> bool {
