@@ -1118,8 +1118,8 @@ fn chronicle_nullfail_allows_failed_checksig_with_nonempty_sig() {
         tx_version: Some(2),
     };
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
     script.append(OP_DROP);
     script.append(OP_1);
@@ -1134,11 +1134,86 @@ fn strict_nullfail_rejects_failed_checksig_with_nonempty_sig() {
         sequence_checks: RefCell::new(vec![true; 32]),
         tx_version: Some(1),
     };
+    // Two-byte pushes: one-byte pushes of 1 and 2 are not minimal, and would
+    // fail MINIMALDATA before OP_CHECKSIG ran.
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
-    assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+    match eval(&script.0, &mut c, NO_FLAGS) {
+        Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
+        r => panic!("expected NULLFAIL, got {r:?}"),
+    }
+}
+
+/// `0 <sig> 1 <key> <key> 2 CHECKMULTISIG NOT`, a 1-of-2 multisig
+fn one_of_two_multisig_not(sig: &[u8]) -> Script {
+    let mut script = Script::new();
+    script.append(OP_0);
+    script.append_data(sig);
+    script.append_slice(&[OP_1, OP_9, OP_9, OP_2, OP_CHECKMULTISIG, OP_NOT]);
+    script
+}
+
+#[test]
+fn strict_nullfail_rejects_failed_checkmultisig_when_keys_run_out() {
+    // Neither key matches, so the keys run out before the signature does.
+    // chain-gang used to return false there without the NULLFAIL check.
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(1),
+    };
+    let script = one_of_two_multisig_not(&[0xaa, 0xbb]);
+    match eval(&script.0, &mut c, NO_FLAGS) {
+        Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
+        r => panic!("expected NULLFAIL, got {r:?}"),
+    }
+}
+
+#[test]
+fn strict_nullfail_allows_failed_checkmultisig_with_empty_sig() {
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(1),
+    };
+    let script = one_of_two_multisig_not(&[]);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+#[test]
+fn chronicle_nullfail_allows_failed_checkmultisig_with_nonempty_sig() {
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(2),
+    };
+    let script = one_of_two_multisig_not(&[0xaa, 0xbb]);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+#[test]
+fn checkmultisig_stops_when_sigs_outnumber_keys() {
+    // 2-of-2 whose first check fails: two signatures remain for one key, so
+    // the node stops without checking the second pair. The mock has a single
+    // result and panics on a second check.
+    let mut c = MockChecker::sig_checks(vec![false]);
+    let s = [
+        OP_0,
+        OP_0,
+        OP_0,
+        OP_2,
+        OP_9,
+        OP_9,
+        OP_2,
+        OP_CHECKMULTISIG,
+        OP_NOT,
+    ];
+    assert!(eval(&s, &mut c, NO_FLAGS).is_ok());
 }
 
 #[test]
