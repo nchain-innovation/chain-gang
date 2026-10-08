@@ -96,15 +96,32 @@ pub fn network_and_private_key_to_wif(
     Ok(bytes_to_wif(&private_key.to_bytes(), prefix))
 }
 
+/// Decodes a base58 address to the 20-byte hash it carries.
+///
+/// Takes no network, so accepts a P2PKH or P2SH address for mainnet or testnet
+/// (regtest and STN share testnet's version bytes). Anything else with a valid
+/// checksum, such as a WIF private key, is an error rather than a "hash" of the
+/// wrong length that would build an unspendable locking script.
 pub fn address_to_public_key_hash(address: &str) -> Result<Vec<u8>, ChainGangError> {
     let decoded = decode_base58_checksum(address)?;
-    // Drop the version byte, which a well-formed checksum does not guarantee is there
-    match decoded.split_first() {
-        Some((_version, hash)) => Ok(hash.to_vec()),
-        None => Err(ChainGangError::BadData(format!(
-            "Address '{address}' decodes to an empty payload."
-        ))),
+    let (version, hash) = match decoded.split_first() {
+        Some((version, hash)) if hash.len() == 20 => (*version, hash),
+        _ => {
+            return Err(ChainGangError::BadData(format!(
+                "Address '{address}' decodes to {} bytes, not a version byte and a 20-byte hash.",
+                decoded.len()
+            )))
+        }
+    };
+    let is_address_version = [Network::BSV_Mainnet, Network::BSV_Testnet]
+        .iter()
+        .any(|n| version == n.addr_pubkeyhash_flag() || version == n.addr_script_flag());
+    if !is_address_version {
+        return Err(ChainGangError::BadData(format!(
+            "Address '{address}' has version byte {version:#04x}, which is not a P2PKH or P2SH address version."
+        )));
     }
+    Ok(hash.to_vec())
 }
 
 /// Takes a hash160 and returns the p2pkh script
@@ -326,6 +343,36 @@ mod tests {
     fn address_with_empty_payload_is_an_error() {
         // "3QJmnh" is the base58 checksum of an empty payload, so it has no version byte
         assert!(address_to_public_key_hash("3QJmnh").is_err());
+    }
+
+    #[test]
+    fn address_to_public_key_hash_accepts_both_networks_and_types() {
+        let hash = [0x5au8; 20];
+        for network in [Network::BSV_Mainnet, Network::BSV_Testnet] {
+            for version in [network.addr_pubkeyhash_flag(), network.addr_script_flag()] {
+                let mut payload = vec![version];
+                payload.extend_from_slice(&hash);
+                let address = encode_base58_checksum(&payload);
+                assert_eq!(address_to_public_key_hash(&address).unwrap(), hash);
+            }
+        }
+    }
+
+    #[test]
+    fn address_to_public_key_hash_rejects_non_addresses() {
+        // A compressed WIF private key: right checksum, wrong version and length
+        let wif = bytes_to_wif(&[1u8; 32], MAIN_PRIVATE_KEY);
+        assert!(address_to_public_key_hash(&wif).is_err());
+        // An address version byte followed by 19 or 21 bytes
+        for len in [19, 21] {
+            let mut payload = vec![0x00];
+            payload.extend(std::iter::repeat_n(0x5a, len));
+            assert!(address_to_public_key_hash(&encode_base58_checksum(&payload)).is_err());
+        }
+        // 20 bytes behind a version byte that is no address type
+        let mut payload = vec![0x01];
+        payload.extend_from_slice(&[0x5a; 20]);
+        assert!(address_to_public_key_hash(&encode_base58_checksum(&payload)).is_err());
     }
     use crate::util::hash160;
     use k256::SecretKey;
