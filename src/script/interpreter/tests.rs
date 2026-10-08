@@ -233,8 +233,8 @@ fn valid() {
     pass(&[OP_1, OP_16, OP_NUM2BIN]);
     pass(&[OP_0, OP_4, OP_NUM2BIN, OP_0, OP_NUMEQUAL]);
 
-    // pass(&[OP_1, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
-    // pass(&[OP_1NEGATE, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
+    pass(&[OP_1, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
+    pass(&[OP_1NEGATE, OP_DUP, OP_16, OP_NUM2BIN, OP_BIN2NUM, OP_EQUAL]);
 
     pass(&[OP_1, OP_PUSH + 5, 129, 0, 0, 0, 0, OP_NUM2BIN]);
 
@@ -1667,4 +1667,69 @@ fn locktime_operands_are_five_bytes_and_stay_on_the_stack() {
     // One past i32 fails whatever the checker says: it takes an i32.
     let past_i32 = push_then(&[0, 0, 0, 0x80, 0], &[OP_CHECKLOCKTIMEVERIFY]);
     assert!(run(&past_i32, MockChecker::new()).is_err());
+}
+
+/// OP_NUM2BIN as the node does it, in every era: the number is minimally
+/// encoded first, so a padded number can shrink and negative zero fits in no
+/// bytes, and the sign goes on the last byte of the result (script_tests.json
+/// rows 843 to 855). chain-gang used to put the sign on the first byte and
+/// reject sizes below the number's padded length, including size 0.
+#[test]
+fn num2bin_matches_the_node() {
+    let num2bin = |n: &[u8], size: usize| {
+        let mut script = push_then(n, &[]);
+        script.extend(push_then(&encode_num(size as i64).unwrap(), &[OP_NUM2BIN]));
+        script
+    };
+    let equals = |mut script: Vec<u8>, expected: &[u8]| {
+        script.extend(push_then(expected, &[OP_EQUAL]));
+        script
+    };
+    let mut minus_42_in_10 = [0u8; 10];
+    minus_42_in_10[0] = 0x2a;
+    minus_42_in_10[9] = 0x80;
+    for flags in [NO_FLAGS, PREGENESIS_RULES] {
+        let run = |script: &[u8]| eval(script, &mut MockChecker::new(), flags);
+        for (n, size, expected) in [
+            (&[][..], 0, &[][..]),
+            (&[], 7, &[0; 7]),
+            (&[0xaa], 2, &[0x2a, 0x80]),
+            (&[0xaa], 10, &minus_42_in_10),
+            (
+                &[0xab, 0xcd, 0xef, 0x42, 0x80],
+                4,
+                &[0xab, 0xcd, 0xef, 0xc2],
+            ),
+            (&[0x01, 0x00, 0x00], 1, &[0x01]),
+            (&[0x80], 0, &[]),
+            (&[0x80], 3, &[0, 0, 0]),
+        ] {
+            run(&equals(num2bin(n, size), expected)).unwrap_or_else(|e| {
+                panic!("flags {flags:#x}: {n:02x?} {size} NUM2BIN should be {expected:02x?}: {e}")
+            });
+        }
+        // Too short for the number, even minimally encoded.
+        for (n, size) in [(&[0x01][..], 0), (&[0xff, 0x00], 1), (&[0xff, 0x80], 1)] {
+            let err = run(&num2bin(n, size)).unwrap_err();
+            assert!(err.to_string().contains("does not fit"), "{err}");
+        }
+        let err = run(&[OP_1, OP_1NEGATE, OP_NUM2BIN]).unwrap_err();
+        assert!(err.to_string().contains("out of range"), "{err}");
+    }
+}
+
+/// Before Genesis the size can reach the node's 520-byte element limit, past
+/// the 4-byte number limit chain-gang used to apply (rows 845, 849 and 850),
+/// and no further. After Genesis it stays at the script number limit.
+#[test]
+fn pregenesis_num2bin_reaches_520_bytes() {
+    let num2bin = |size: i64| push_then(&encode_num(size).unwrap(), &[OP_NUM2BIN]);
+    let mut at_limit = vec![OP_1NEGATE];
+    at_limit.extend(num2bin(520));
+    pass_pregenesis(&at_limit);
+    let mut over = vec![OP_1NEGATE];
+    over.extend(num2bin(521));
+    let err = eval(&over, &mut MockChecker::new(), PREGENESIS_RULES).unwrap_err();
+    assert!(err.to_string().contains("out of range"), "{err}");
+    pass(&over);
 }

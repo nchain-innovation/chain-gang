@@ -10,7 +10,7 @@
 //! chain-gang does not take the node's flags one by one. It has an era
 //! (pre- or post-Genesis, per output), a policy/consensus switch and the
 //! sighash FORKID requirement, so each row's flags are mapped onto those (see
-//! `Mode::from_flags`). Of the 1483 rows, 1364 agree with the node. The rest
+//! `Mode::from_flags`). Of the 1483 rows, 1372 agree with the node. The rest
 //! are listed, each under its reason, in one of two places:
 //!
 //! - `MODELLING_GAPS`: the verdict turns on a flag chain-gang does not take
@@ -439,21 +439,13 @@ const MODELLING_GAPS: &[(&str, &[usize])] = &[
 /// Rows where chain-gang gives a different verdict from the node under the
 /// same rules: chain-gang appears to be wrong. Each is a fix to make, after
 /// which its rows come off this list.
-const KNOWN_DIFFERENCES: &[(&str, &[usize])] = &[
-    (
-        "Before Genesis, OP_NUM2BIN to sizes up to 520 bytes, to size 0, of \
-         negative zero, and shrinking a padded number: chain-gang rejects \
-         these or produces different bytes.",
-        &[843, 845, 848, 849, 850, 853, 854, 855],
-    ),
-    (
-        "Before Genesis the node limits pushes and results to 520 bytes (even \
+const KNOWN_DIFFERENCES: &[(&str, &[usize])] = &[(
+    "Before Genesis the node limits pushes and results to 520 bytes (even \
          in an unexecuted branch), the stacks to 1,000 items, a script to \
          10,000 bytes and a multisig to 20 keys. chain-gang enforces none of \
          these for a pre-Genesis output.",
-        &[827, 1179, 1180, 1183, 1184, 1185, 1268],
-    ),
-];
+    &[827, 1179, 1180, 1183, 1184, 1185, 1268],
+)];
 
 #[test]
 fn bitcoin_sv_script_tests() {
