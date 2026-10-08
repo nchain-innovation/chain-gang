@@ -26,10 +26,6 @@ fn valid() {
     pass(&[OP_1, OP_IF, OP_0, OP_1, OP_ENDIF]);
     pass(&[OP_1, OP_IF, OP_0, OP_IF, OP_ELSE, OP_1, OP_ENDIF, OP_ENDIF]);
     pass(&[OP_1, OP_IF, OP_PUSHDATA1, 1, 0, OP_1, OP_ENDIF]);
-    pass(&[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF]);
-    pass(&[
-        OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF,
-    ]);
     pass(&[OP_1, OP_VERIFY, OP_1]);
     pass(&[OP_1, OP_RETURN]);
     pass(&[OP_FALSE, OP_TRUE, OP_RETURN]);
@@ -844,6 +840,92 @@ fn pass_with_version(script: &[u8], version: i32) {
     assert!(eval(script, &mut c, NO_FLAGS).is_ok());
 }
 
+/// An invalid opcode, which fails only if executed
+const OP_UNDEFINED: u8 = 0xba;
+
+#[test]
+fn second_else_rejected_after_genesis() {
+    // node: UNBALANCED_CONDITIONAL, whichever branch runs and in every era
+    for script in [
+        &[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF][..],
+        &[OP_0, OP_IF, OP_0, OP_ELSE, OP_1, OP_ELSE, OP_0, OP_ENDIF],
+        &[OP_1, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF],
+        // In a branch that does not run
+        &[
+            OP_0, OP_IF, OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ENDIF, OP_ENDIF, OP_1,
+        ],
+        // After an OP_RETURN has stopped execution
+        &[OP_1, OP_1, OP_IF, OP_RETURN, OP_ELSE, OP_ELSE, OP_ENDIF],
+    ] {
+        for version in [1, 2] {
+            let mut c = MockChecker::with_tx_version(version);
+            let err = eval(script, &mut c, NO_FLAGS).unwrap_err().to_string();
+            assert!(err.contains("Second ELSE"), "{script:02x?}: {err}");
+        }
+    }
+}
+
+#[test]
+fn each_else_switches_branch_before_genesis() {
+    pass_pregenesis(&[OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF]);
+    pass_pregenesis(&[
+        OP_1, OP_IF, OP_ELSE, OP_ELSE, OP_ELSE, OP_ELSE, OP_1, OP_ENDIF,
+    ]);
+    // The second ELSE switches back to the IF's branch
+    pass_pregenesis(&[OP_1, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF]);
+    fail_pregenesis(&[OP_0, OP_IF, OP_1, OP_ELSE, OP_0, OP_ELSE, OP_ENDIF]);
+}
+
+#[test]
+fn op_return_in_branch_stops_execution_after_genesis() {
+    pass(&[OP_1, OP_DUP, OP_IF, OP_RETURN, OP_ENDIF]);
+    // Nothing runs after it, an invalid opcode included
+    pass(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_UNDEFINED, OP_0, OP_ENDIF]);
+    pass(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_0]);
+    fail(&[OP_0, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
+    pass(&[
+        OP_0, OP_IF, OP_RETURN, 1, 0xd1, OP_ELSE, OP_1, OP_RETURN, 1, 0xd2, OP_ENDIF,
+    ]);
+    // Nested: the outer ENDIF is still needed
+    pass(&[
+        OP_1, OP_1, OP_1, OP_IF, OP_IF, OP_RETURN, OP_ENDIF, OP_ENDIF,
+    ]);
+    fail(&[OP_1, OP_1, OP_1, OP_IF, OP_IF, OP_RETURN, OP_ENDIF]);
+}
+
+#[test]
+fn op_return_in_branch_still_balances_conditionals() {
+    // node: UNBALANCED_CONDITIONAL
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN]);
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_ENDIF]);
+    fail(&[OP_1, OP_1, OP_IF, OP_RETURN, OP_IF, OP_ENDIF]);
+}
+
+#[test]
+fn top_level_op_return_after_branch_return_ends_script() {
+    // The script ends successfully at the top-level OP_RETURN, so the bytes
+    // after it are not read, even an unclosed IF
+    pass(&[
+        OP_1,
+        OP_IF,
+        OP_5,
+        OP_RETURN,
+        OP_ENDIF,
+        OP_5,
+        OP_RETURN,
+        OP_UNDEFINED,
+    ]);
+    pass(&[
+        OP_1, OP_IF, OP_5, OP_RETURN, OP_ENDIF, OP_5, OP_RETURN, OP_IF,
+    ]);
+}
+
+#[test]
+fn op_return_fails_before_genesis_only_if_executed() {
+    fail_pregenesis(&[OP_1, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
+    pass_pregenesis(&[OP_0, OP_IF, OP_RETURN, OP_ENDIF, OP_1]);
+}
+
 #[test]
 fn chronicle_op_ver_pushes_tx_version() {
     pass_with_version(&[OP_VER, OP_2, OP_NUMEQUAL], 2);
@@ -1056,8 +1138,8 @@ fn chronicle_nullfail_allows_failed_checksig_with_nonempty_sig() {
         tx_version: Some(2),
     };
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
     script.append(OP_DROP);
     script.append(OP_1);
@@ -1072,11 +1154,86 @@ fn strict_nullfail_rejects_failed_checksig_with_nonempty_sig() {
         sequence_checks: RefCell::new(vec![true; 32]),
         tx_version: Some(1),
     };
+    // Two-byte pushes: one-byte pushes of 1 and 2 are not minimal, and would
+    // fail MINIMALDATA before OP_CHECKSIG ran.
     let mut script = Script::new();
-    script.append_data(&[0x01]);
-    script.append_data(&[0x02]);
+    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
-    assert!(eval(&script.0, &mut c, NO_FLAGS).is_err());
+    match eval(&script.0, &mut c, NO_FLAGS) {
+        Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
+        r => panic!("expected NULLFAIL, got {r:?}"),
+    }
+}
+
+/// `0 <sig> 1 <key> <key> 2 CHECKMULTISIG NOT`, a 1-of-2 multisig
+fn one_of_two_multisig_not(sig: &[u8]) -> Script {
+    let mut script = Script::new();
+    script.append(OP_0);
+    script.append_data(sig);
+    script.append_slice(&[OP_1, OP_9, OP_9, OP_2, OP_CHECKMULTISIG, OP_NOT]);
+    script
+}
+
+#[test]
+fn strict_nullfail_rejects_failed_checkmultisig_when_keys_run_out() {
+    // Neither key matches, so the keys run out before the signature does.
+    // chain-gang used to return false there without the NULLFAIL check.
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(1),
+    };
+    let script = one_of_two_multisig_not(&[0xaa, 0xbb]);
+    match eval(&script.0, &mut c, NO_FLAGS) {
+        Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
+        r => panic!("expected NULLFAIL, got {r:?}"),
+    }
+}
+
+#[test]
+fn strict_nullfail_allows_failed_checkmultisig_with_empty_sig() {
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(1),
+    };
+    let script = one_of_two_multisig_not(&[]);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+#[test]
+fn chronicle_nullfail_allows_failed_checkmultisig_with_nonempty_sig() {
+    let mut c = MockChecker {
+        sig_checks: RefCell::new(vec![false, false]),
+        locktime_checks: RefCell::new(vec![true; 32]),
+        sequence_checks: RefCell::new(vec![true; 32]),
+        tx_version: Some(2),
+    };
+    let script = one_of_two_multisig_not(&[0xaa, 0xbb]);
+    assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
+}
+
+#[test]
+fn checkmultisig_stops_when_sigs_outnumber_keys() {
+    // 2-of-2 whose first check fails: two signatures remain for one key, so
+    // the node stops without checking the second pair. The mock has a single
+    // result and panics on a second check.
+    let mut c = MockChecker::sig_checks(vec![false]);
+    let s = [
+        OP_0,
+        OP_0,
+        OP_0,
+        OP_2,
+        OP_9,
+        OP_9,
+        OP_2,
+        OP_CHECKMULTISIG,
+        OP_NOT,
+    ];
+    assert!(eval(&s, &mut c, NO_FLAGS).is_ok());
 }
 
 #[test]

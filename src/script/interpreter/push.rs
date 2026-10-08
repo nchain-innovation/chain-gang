@@ -185,30 +185,3 @@ pub fn next_op(i: usize, script: &[u8]) -> usize {
         next
     }
 }
-
-/// Skips over a branch of if/else and return the index of the next else or endif opcode
-pub(crate) fn skip_branch(script: &[u8], mut i: usize) -> usize {
-    let mut sub = 0;
-    while i < script.len() {
-        match script[i] {
-            OP_IF => sub += 1,
-            OP_NOTIF => sub += 1,
-            OP_VERIF => sub += 1,
-            OP_VERNOTIF => sub += 1,
-            OP_ELSE => {
-                if sub == 0 {
-                    return i;
-                }
-            }
-            OP_ENDIF => {
-                if sub == 0 {
-                    return i;
-                }
-                sub -= 1;
-            }
-            _ => {}
-        }
-        i = next_op(i, script);
-    }
-    script.len()
-}

@@ -14,7 +14,6 @@ use ripemd::{Digest, Ripemd160};
 use super::multisig::check_multisig;
 use super::push::{
     check_canonical_push, check_pregenesis_push_size, check_stack_size, next_op, remains,
-    skip_branch,
 };
 use super::rules::{
     count_pregenesis_op, enforces_policy_rules, max_script_num_length,
@@ -49,8 +48,12 @@ pub fn core_eval<T: Checker>(
     // change during evaluation.
     let policy = enforces_policy_rules(checker, flags);
 
-    // True if executing current if/else branch, false if next else
-    let mut branch_exec: Vec<bool> = Vec::new();
+    let pregenesis = flags & PREGENESIS_RULES == PREGENESIS_RULES;
+    let mut conditions = Conditions::default();
+    // After Genesis, an OP_RETURN inside an executed branch stops execution
+    // but not the script: the node still reads IF, ELSE and ENDIF for balance,
+    // and an OP_RETURN reached at top level ends it.
+    let mut returned_in_branch = false;
     let mut check_index = 0;
     let mut i = start_at.unwrap_or(0);
     let max_num_len = max_script_num_length(checker, flags);
@@ -59,7 +62,6 @@ pub fn core_eval<T: Checker>(
     // The node's size limits before Genesis: a script, each item pushed or
     // built, the two stacks together and the opcodes in a script. Genesis
     // lifted them.
-    let pregenesis = flags & PREGENESIS_RULES == PREGENESIS_RULES;
     let mut op_count = 0;
     if pregenesis && script.len() > MAX_SCRIPT_SIZE_PREGENESIS {
         return Err(ChainGangError::ScriptError(format!(
@@ -69,31 +71,33 @@ pub fn core_eval<T: Checker>(
     }
 
     'outer: while i < script.len() {
-        if !branch_exec.is_empty() && !branch_exec[branch_exec.len() - 1] {
-            let end = skip_branch(script, i);
-            if pregenesis {
-                while i < end {
-                    check_pregenesis_push_size(i, script)?;
-                    count_pregenesis_op(script[i], &mut op_count)?;
-                    i = next_op(i, script);
-                }
-            }
-            i = end;
-            if i >= script.len() {
-                break;
-            }
-        }
         if let Some(val) = break_at {
             // hit our breakpoint
             if i >= val {
                 break;
             }
         }
+        // Checked as the node reads each push, before it decides whether the
+        // branch is executing, so a push in one that is not counts too.
         if pregenesis {
             check_pregenesis_push_size(i, script)?;
             count_pregenesis_op(script[i], &mut op_count)?;
         }
-        match script[i] {
+        let opcode = script[i];
+        let exec = conditions.active() && (!returned_in_branch || opcode == OP_RETURN);
+        if !exec {
+            // As the node: an opcode that does not execute is only read, unless
+            // it opens, switches or closes a branch.
+            match opcode {
+                OP_IF | OP_NOTIF | OP_VERIF | OP_VERNOTIF => conditions.push(false),
+                OP_ELSE => conditions.toggle(pregenesis)?,
+                OP_ENDIF => conditions.pop()?,
+                _ => {}
+            }
+            i = next_op(i, script);
+            continue;
+        }
+        match opcode {
             OP_0 => stack.push(encode_num(0)?),
             OP_1NEGATE => stack.push(encode_num(-1)?),
             OP_1 => stack.push(encode_num(1)?),
@@ -157,41 +161,31 @@ pub fn core_eval<T: Checker>(
             OP_VER => {
                 stack.push(encode_num(checker.tx_version()? as i64)?);
             }
-            OP_IF => branch_exec.push(pop_bool_for_if(&mut stack)?),
-            OP_NOTIF => branch_exec.push(!pop_bool_for_if(&mut stack)?),
+            OP_IF => conditions.push(pop_bool_for_if(&mut stack)?),
+            OP_NOTIF => conditions.push(!pop_bool_for_if(&mut stack)?),
             OP_VERIF => {
                 let comparison = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
-                branch_exec.push(verif_branch_exec(checker, comparison, false)?);
+                conditions.push(verif_branch_exec(checker, comparison, false)?);
             }
             OP_VERNOTIF => {
                 let comparison = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
-                branch_exec.push(verif_branch_exec(checker, comparison, true)?);
+                conditions.push(verif_branch_exec(checker, comparison, true)?);
             }
-            OP_ELSE => {
-                let len = branch_exec.len();
-                if len == 0 {
-                    let msg = "ELSE found without matching IF".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
-                }
-                branch_exec[len - 1] = !branch_exec[len - 1];
-            }
-            OP_ENDIF => {
-                if branch_exec.is_empty() {
-                    let msg = "ENDIF found without matching IF".to_string();
-                    return Err(ChainGangError::ScriptError(msg));
-                }
-                branch_exec.pop().unwrap();
-            }
+            OP_ELSE => conditions.toggle(pregenesis)?,
+            OP_ENDIF => conditions.pop()?,
             OP_VERIFY => {
                 if !pop_bool(&mut stack)? {
                     return Err(ChainGangError::ScriptError("OP_VERIFY failed".to_string()));
                 }
             }
             OP_RETURN => {
-                if flags & PREGENESIS_RULES == PREGENESIS_RULES {
+                if pregenesis {
                     return Err(ChainGangError::ScriptError("Hit OP_RETURN".to_string()));
-                } else {
+                } else if conditions.is_empty() {
+                    // The rest of the script is not read, balanced or not
                     break 'outer;
+                } else {
+                    returned_in_branch = true;
                 }
             }
             OP_TOALTSTACK => {
@@ -901,10 +895,78 @@ pub fn core_eval<T: Checker>(
         i = next_op(i, script);
     }
 
-    if !branch_exec.is_empty() {
+    if !conditions.is_empty() {
         return Err(ChainGangError::ScriptError("ENDIF missing".to_string()));
     }
 
     let optional_i = break_at.map(|_| i);
     Ok((stack, alt_stack, optional_i))
+}
+
+/// The open IFs, innermost last, as the node's condition stack: whether each
+/// one's current branch runs and whether it has had its ELSE.
+#[derive(Default)]
+struct Conditions {
+    branches: Vec<Branch>,
+    /// How many open IFs are in a branch that does not run
+    not_running: usize,
+}
+
+struct Branch {
+    runs: bool,
+    had_else: bool,
+}
+
+impl Conditions {
+    fn is_empty(&self) -> bool {
+        self.branches.is_empty()
+    }
+
+    /// Whether every open IF is in a branch that runs
+    fn active(&self) -> bool {
+        self.not_running == 0
+    }
+
+    fn push(&mut self, runs: bool) {
+        if !runs {
+            self.not_running += 1;
+        }
+        self.branches.push(Branch {
+            runs,
+            had_else: false,
+        });
+    }
+
+    /// OP_ELSE. After Genesis an IF takes one ELSE; before it, each further
+    /// ELSE switches branch again.
+    fn toggle(&mut self, pregenesis: bool) -> Result<(), ChainGangError> {
+        let Some(branch) = self.branches.last_mut() else {
+            let msg = "ELSE found without matching IF".to_string();
+            return Err(ChainGangError::ScriptError(msg));
+        };
+        if branch.had_else && !pregenesis {
+            let msg = "Second ELSE for one IF".to_string();
+            return Err(ChainGangError::ScriptError(msg));
+        }
+        if branch.runs {
+            self.not_running += 1;
+        } else {
+            self.not_running -= 1;
+        }
+        branch.runs = !branch.runs;
+        branch.had_else = true;
+        Ok(())
+    }
+
+    /// OP_ENDIF
+    fn pop(&mut self) -> Result<(), ChainGangError> {
+        let Some(branch) = self.branches.pop() else {
+            let msg = "ENDIF found without matching IF".to_string();
+            return Err(ChainGangError::ScriptError(msg));
+        };
+        if !branch.runs {
+            self.not_running -= 1;
+        }
+        Ok(())
+    }
 }
