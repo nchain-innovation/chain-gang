@@ -22,7 +22,13 @@ byteorder = "1.5"
 dns-lookup = "4.0.1"
 hex = "0.4.3"
 linked-hash-map = "0.5"
-log = { version = "0.4.33", features = ["max_level_trace", "release_max_level_warn"] }
+# No `max_level_*` or `release_max_level_*` features. Cargo merges a crate's
+# features across the whole dependency graph, so a cap set here applies to every
+# `log` call in every application that depends on chain-gang, not only to
+# chain-gang's own. `release_max_level_warn` compiled `info!` and below out of
+# their release builds, whatever level they configured. The application's
+# runtime filter decides.
+log = "0.4.33"
 thiserror = "2.0.19"
 url = "2.5.8"
 
