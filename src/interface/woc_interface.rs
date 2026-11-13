@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     interface::blockchain_interface::{
-        check_status, Balance, BlockchainInterface, Utxo, UtxoEntry, UNCONFIRMED_HEIGHT,
+        check_status, refusal, Balance, BlockchainInterface, Utxo, UtxoEntry, UNCONFIRMED_HEIGHT,
     },
     messages::{BlockHeader, Tx},
     network::Network,
@@ -509,13 +509,8 @@ impl BlockchainInterface for WocInterface {
                 let txid = hash.trim_matches('"');
                 Ok(txid.to_string())
             }
-            _ => {
-                log::debug!("url = {}", url);
-                Err(ChainGangError::ResponseError(format!(
-                    "response.status() = {}",
-                    status
-                )))
-            }
+            // The body holds the node's reason for refusing it
+            _ => Err(refusal(response, &url).await),
         }
     }
 
