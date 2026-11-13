@@ -9,10 +9,10 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use sha2::{Digest, Sha256};
 
 /* Constants for the max size buffer that can the read() function
-** Problem is the read() from socket function
-** https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-read-read-from-file-socket
-** This states that the size of the buffer can not be greater than INT_MAX (+2147483647)
-*/
+ ** Problem is the read() from socket function
+ ** https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-read-read-from-file-socket
+ ** This states that the size of the buffer can not be greater than INT_MAX (+2147483647)
+ */
 
 /// Header that begins all messages
 #[derive(Default, PartialEq, Eq, Hash, Clone)]
