@@ -70,7 +70,7 @@ pyo3 = { version = "0.30.1", optional = true, features = ["abi3-py311"] }
 # await. The crate's own tokio dependency carries only "time", which is all the
 # library needs; a test runtime is dev-only and reaches no consumer.
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt", "time"] }
+tokio = { version = "1", features = ["macros", "rt", "time", "net", "io-util"] }
 
 [lib]
 name = "chain_gang"
