@@ -1,0 +1,2126 @@
+{
+  "metadata": {
+    "date": "2026-11-19",
+    "runtime": "Apple Container/Rosetta",
+    "network": "isolated regtest",
+    "node_source": "6504a3aff65ba97c0f6c80962b033e35ecbfed4b",
+    "image": "docker.io/bitcoinsv/bitcoin-sv@sha256:d96fe4786a00e5fc10bc9e0e76a6006376f9472d4eb74d07e4c1e0d019493d33",
+    "profile": "default",
+    "genesis": 1,
+    "chronicle": 200,
+    "library_base": "666ef8d",
+    "source_sha256": {
+      "src/script/interpreter/multisig.rs": "ae13a30605be84c7d36eb0d143c81838261d82a7b77b7e55d1b8a4bed976a9ce",
+      "src/script/interpreter/script_code.rs": "5b13d16679be90adb63c1379c06fa16ffe4472be8a4aca6b1b157af232331a22"
+    },
+    "script_sha256": {
+      "harness.py": "9f6d65c0a4917e8d73c9a4dcbba2b4edbbf7f02895135ac0b1b54ed0895e9d85",
+      "launch.sh": "fb7eb7545d44e5dbe03de7f999a58623a78111d7736a31a9704dcf5b877a5dbf",
+      "current_multisig.py": "43b25d60aed52c7ae5348a28965f6b766debb5202865cc5ce477d3f65fc98fc0",
+      "current_multisig_constant.py": "199e8c3417bd584b44e622246282dbec5681fd01f89dbd03960119897554885b",
+      "multisig_cleanup_probe.py": "c369ea72b35b0cc7f32e535a898cffa77975e5ecadb9cf2e2e68380e0ed596f9"
+    },
+    "lab": "f8f184bb6a35139ce8d1971a6f514cffc666e4d3"
+  },
+  "counts": {
+    "admissions": 81,
+    "ordinary": 39,
+    "rejected": 42,
+    "blocks": 81,
+    "accepted_blocks": 41,
+    "rejected_blocks": 40
+  },
+  "cases": [
+    {
+      "name": "cleanup-41-False-lock-canonical-match-False",
+      "txid": "22c6ca5f7afddfe7f1873a88eeb7dc67ff866fb4f262670be468cfb66623b818",
+      "height": 602,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "22c6ca5f7afddfe7f1873a88eeb7dc67ff866fb4f262670be468cfb66623b818",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "f653238880a6320c601b660d2f0bf2d7d9761a068b943d107f3864b730dfe5ff"
+    },
+    {
+      "name": "cleanup-41-False-lock-canonical-match-False-mined",
+      "block": true,
+      "hash": "399ac7b64a128d91c7b43610c4e194c42af9f4d78ffbb49e2c66ff6945f76b01",
+      "height": 602,
+      "txid": "22c6ca5f7afddfe7f1873a88eeb7dc67ff866fb4f262670be468cfb66623b818",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-False-lock-canonical-match-True",
+      "txid": "ca6055c428db77d1553cf76fb8f08762c9e4e7c06781cc318964eb3bccc8048d",
+      "height": 604,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "f1731717cb77224937cff8c2cb12c441113707f464b08495929efca02fdb2fe4"
+    },
+    {
+      "name": "cleanup-41-False-lock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 604,
+      "hash": "51803cde2fcfffcc7920025373ec5595af70d0bb2c34289964e3efcda7a8445c",
+      "old_tip": "79b09ec3a92fe6848d7b3a6a655e85c3be6c481ec2261255f04f24aebf9fc5c3",
+      "new_tip": "79b09ec3a92fe6848d7b3a6a655e85c3be6c481ec2261255f04f24aebf9fc5c3",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "ca6055c428db77d1553cf76fb8f08762c9e4e7c06781cc318964eb3bccc8048d"
+      ],
+      "block_file": "cleanup-41-False-lock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-False-unlock-canonical-match-False",
+      "txid": "f450a795c636f4265578a8d109b70df578308735116fd97f95f52538d9a4c978",
+      "height": 605,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "f450a795c636f4265578a8d109b70df578308735116fd97f95f52538d9a4c978",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "67e0df58505de4a5fe36692846314a53fcd45f4762824ed2ba7016b99c125d0d"
+    },
+    {
+      "name": "cleanup-41-False-unlock-canonical-match-False-mined",
+      "block": true,
+      "hash": "5f761ab5e1bb204a4013d34b30a24f8959a7373435befa61f4f51dbb3c10822d",
+      "height": 605,
+      "txid": "f450a795c636f4265578a8d109b70df578308735116fd97f95f52538d9a4c978",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-False-unlock-canonical-match-True",
+      "txid": "4ce68ceaaa338b9406afadd3b7efc5cc63198cd73c713e0fd8111832c0ed9981",
+      "height": 607,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "6cfcd72b34823f5c61fc718a3c4aa8e241b6cb25ea9977d6adbe65edc200252a"
+    },
+    {
+      "name": "cleanup-41-False-unlock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 607,
+      "hash": "6273f4f2f00ce0d20a9765916926673c9dbbd76e00befda469160074113e3cc2",
+      "old_tip": "7511b3f21f7ca71e33c7d0edfdf685590db1eff64851c8148307749b1c2d6895",
+      "new_tip": "7511b3f21f7ca71e33c7d0edfdf685590db1eff64851c8148307749b1c2d6895",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "4ce68ceaaa338b9406afadd3b7efc5cc63198cd73c713e0fd8111832c0ed9981"
+      ],
+      "block_file": "cleanup-41-False-unlock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-True-lock-canonical-match-False",
+      "txid": "b2a7b65902443df214490cadcbb682b61ddbd4b50323895b499ef0936b3ce2b7",
+      "height": 608,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "b2a7b65902443df214490cadcbb682b61ddbd4b50323895b499ef0936b3ce2b7",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "0e6b6fa1034e9bbc1b1a66e56f983724ce171ba87bf97e7b0260ab0406664433"
+    },
+    {
+      "name": "cleanup-41-True-lock-canonical-match-False-mined",
+      "block": true,
+      "hash": "578e3f187b7de27150f62b904b6bfce38a8e45a5c902ea4f2640ebbedc8b307a",
+      "height": 608,
+      "txid": "b2a7b65902443df214490cadcbb682b61ddbd4b50323895b499ef0936b3ce2b7",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-True-lock-canonical-match-True",
+      "txid": "08f5f67b998c37ad6842446375afbaf0db99e6a79fa49fe809dac6e006ce657a",
+      "height": 610,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical public key`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Public key is neither compressed or uncompressed)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "5261b39e4ae8a063ebee61164b97cb68e617ec3f9f58a99ca2c7bf5be802a24e"
+    },
+    {
+      "name": "cleanup-41-True-lock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 610,
+      "hash": "3061fa02e2066732993e1bc432ed8a79dc7fee6696f3763516d406ea29e63614",
+      "old_tip": "5434565101f8c7815b6d3f29335b0700002f83051b2fedeec044060c0c380c90",
+      "new_tip": "5434565101f8c7815b6d3f29335b0700002f83051b2fedeec044060c0c380c90",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "08f5f67b998c37ad6842446375afbaf0db99e6a79fa49fe809dac6e006ce657a"
+      ],
+      "block_file": "cleanup-41-True-lock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-True-unlock-canonical-match-False",
+      "txid": "5ba8507a6287f2bfad69ea99d4ddf963934ef0eef8723d307c4fc48058fbab40",
+      "height": 611,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "5ba8507a6287f2bfad69ea99d4ddf963934ef0eef8723d307c4fc48058fbab40",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "8d83dec0cea26504fe21405f80c1fcc463baa4c1fb4ef3c07478ef283301b1b8"
+    },
+    {
+      "name": "cleanup-41-True-unlock-canonical-match-False-mined",
+      "block": true,
+      "hash": "6a1e2b23961b5cda57dff362c5da7b0c679f628d909b8bf61f7ec23313892e2b",
+      "height": 611,
+      "txid": "5ba8507a6287f2bfad69ea99d4ddf963934ef0eef8723d307c4fc48058fbab40",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-True-unlock-canonical-match-True",
+      "txid": "c7b707b8291f37a01aa01e91b386ae2d3732ee3bb08d34ffcc6e316866cfa190",
+      "height": 613,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical public key`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Public key is neither compressed or uncompressed)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "fab0e29785a236107d5be2b72455470234bee67954a766b72846aaf5f6cd2b5f"
+    },
+    {
+      "name": "cleanup-41-True-unlock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 613,
+      "hash": "7cde03ee26c480f3469e9320ec3227acee97bfb1c34aa817a35fb156750edb82",
+      "old_tip": "5388da40be49eb3e823e797a09d9d78bc87773f33d15c746eba52f1f0c6f3e0b",
+      "new_tip": "5388da40be49eb3e823e797a09d9d78bc87773f33d15c746eba52f1f0c6f3e0b",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "c7b707b8291f37a01aa01e91b386ae2d3732ee3bb08d34ffcc6e316866cfa190"
+      ],
+      "block_file": "cleanup-41-True-unlock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-False-lock-canonical-match-False",
+      "txid": "320eceb4b9c4ee08295f9409483da86ddc21b75771feebc5824132e054672b5e",
+      "height": 614,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "320eceb4b9c4ee08295f9409483da86ddc21b75771feebc5824132e054672b5e",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "f865e256708a61c4903be0bd8db0df755ef6508e4e45cbddd2b85ee7357f9ec1"
+    },
+    {
+      "name": "cleanup-61-False-lock-canonical-match-False-mined",
+      "block": true,
+      "hash": "6a402cfbc91f6b2d1e7d4e88184d10eb9c8ebcb46f94c713195a12003609aafc",
+      "height": 614,
+      "txid": "320eceb4b9c4ee08295f9409483da86ddc21b75771feebc5824132e054672b5e",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-False-lock-canonical-match-True",
+      "txid": "3f2f94f4f9eb4878b47944b99c1b2ba41311503a32b9f41ab8c4f0ff9bba4d44",
+      "height": 616,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "9a36c9eb0c31281a5b7e94485143caec58c3b483ae7e840198ce9dbde6b2e146"
+    },
+    {
+      "name": "cleanup-61-False-lock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 616,
+      "hash": "2c82e387b5a9e609b483b336d997e037a950864c8efe4754ad62cb2c8a302461",
+      "old_tip": "5c2013cacef508264f983ae5d2dff75eaa3a059cc0545dd1d45462f44cfdad0f",
+      "new_tip": "5c2013cacef508264f983ae5d2dff75eaa3a059cc0545dd1d45462f44cfdad0f",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "3f2f94f4f9eb4878b47944b99c1b2ba41311503a32b9f41ab8c4f0ff9bba4d44"
+      ],
+      "block_file": "cleanup-61-False-lock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-False-unlock-canonical-match-False",
+      "txid": "9276ae761c42405a39feec5a2823e4cc78159d7642e5e40d44b19123e7d22e6c",
+      "height": 617,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "9276ae761c42405a39feec5a2823e4cc78159d7642e5e40d44b19123e7d22e6c",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "9bbb93f9fd9e8da1e177071b6af7b9ac794dc3a15a7927ff9d88fd2676da68cc"
+    },
+    {
+      "name": "cleanup-61-False-unlock-canonical-match-False-mined",
+      "block": true,
+      "hash": "0ecde4839f142e2de8ec2f992f7f8b152f41aa93f9e2698728929c857297464e",
+      "height": 617,
+      "txid": "9276ae761c42405a39feec5a2823e4cc78159d7642e5e40d44b19123e7d22e6c",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-False-unlock-canonical-match-True",
+      "txid": "01907c2b3a841ba3b8e14d78259a88b26fde47fef13d2d7746f59520bc9234e3",
+      "height": 619,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "931b5250f4c33c11375fe09801ee4cbb77b2535e31ff4b83d8e760bfad2c1b34"
+    },
+    {
+      "name": "cleanup-61-False-unlock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 619,
+      "hash": "70be914fc3333c5cf5671ab1b1c06a25046945bca44fcbdd5697d0442b32955b",
+      "old_tip": "4ec4de7d4545af5734b66775cf5163df32cb22fabd6c9e4b5bf7f761b204c330",
+      "new_tip": "4ec4de7d4545af5734b66775cf5163df32cb22fabd6c9e4b5bf7f761b204c330",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "01907c2b3a841ba3b8e14d78259a88b26fde47fef13d2d7746f59520bc9234e3"
+      ],
+      "block_file": "cleanup-61-False-unlock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-True-lock-canonical-match-False",
+      "txid": "e0e6aa7be292a1930c1cecaa3f0861df81cd824af827f3fa1ba38506ef0cfc85",
+      "height": 620,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "e0e6aa7be292a1930c1cecaa3f0861df81cd824af827f3fa1ba38506ef0cfc85",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "068d5cf7de6cd6378a3a3e33f9423b5fcf108748c0712c7ef067e8c7b4f37201"
+    },
+    {
+      "name": "cleanup-61-True-lock-canonical-match-False-mined",
+      "block": true,
+      "hash": "1fec7a05d95ed1f34e0409e8216a46d6eb020a460328b14db5ed1e418e62a77b",
+      "height": 620,
+      "txid": "e0e6aa7be292a1930c1cecaa3f0861df81cd824af827f3fa1ba38506ef0cfc85",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-True-lock-canonical-match-True",
+      "txid": "019301a44ab017e4eb1ab2257742d48f1018d3c0a9c40bec11adfd8cb67cb376",
+      "height": 622,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical public key`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Public key is neither compressed or uncompressed)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "4491122bc356921bfb800e1b22a79e66038c03170ee5588bf46a4aa3d714d958"
+    },
+    {
+      "name": "cleanup-61-True-lock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 622,
+      "hash": "376b5b0cc08c6c5af014062abc858c13dd4f94da899d8e0959d0933ddcdd8679",
+      "old_tip": "49fb26f204bc8862a8e719fe8df1c61f1992d32f42dfec6e72ee752b1a11b95d",
+      "new_tip": "49fb26f204bc8862a8e719fe8df1c61f1992d32f42dfec6e72ee752b1a11b95d",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "019301a44ab017e4eb1ab2257742d48f1018d3c0a9c40bec11adfd8cb67cb376"
+      ],
+      "block_file": "cleanup-61-True-lock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-True-unlock-canonical-match-False",
+      "txid": "afbac2d1bbb3bddfab0d5571d75d15e2aaaf315ea2ba859c2e550b66e33842af",
+      "height": 623,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "afbac2d1bbb3bddfab0d5571d75d15e2aaaf315ea2ba859c2e550b66e33842af",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "ff52d37e52537a134109636927e8d190867dd8f64c19c9ac79919a71f1cd9b81"
+    },
+    {
+      "name": "cleanup-61-True-unlock-canonical-match-False-mined",
+      "block": true,
+      "hash": "5983dfc73907d7eb624afecd951c8daaa3a372a2d156518c936bf4b3f9b06696",
+      "height": 623,
+      "txid": "afbac2d1bbb3bddfab0d5571d75d15e2aaaf315ea2ba859c2e550b66e33842af",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-True-unlock-canonical-match-True",
+      "txid": "9694332c3eb2404bf1630ff9f0746e5a6271af8eafe446c82da84b1ffcfc3b72",
+      "height": 625,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical public key`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Public key is neither compressed or uncompressed)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "ef8fa44eb2e1115ce3e6db4d6e163c43dd790506cff6788f5e66df9a82a58c7a"
+    },
+    {
+      "name": "cleanup-61-True-unlock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 625,
+      "hash": "434b50b31fec23dd90281d35d7d2a45096e743b0b17b7de15738d12230f777cd",
+      "old_tip": "781270720ec0d6e76aad0559aa8e147664ab827cfefd03641b3e109eb885b6b6",
+      "new_tip": "781270720ec0d6e76aad0559aa8e147664ab827cfefd03641b3e109eb885b6b6",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "9694332c3eb2404bf1630ff9f0746e5a6271af8eafe446c82da84b1ffcfc3b72"
+      ],
+      "block_file": "cleanup-61-True-unlock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-e3-False-lock-canonical-match-False",
+      "txid": "0db327708b1c1e3a5acad47e740b84597f24b7681fccaa63671019885f5c7a62",
+      "height": 626,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "0db327708b1c1e3a5acad47e740b84597f24b7681fccaa63671019885f5c7a62",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "35cec1ce9befd967375a8b0c762badd99f6be53688c98e1aa70b649cf49021ee"
+    },
+    {
+      "name": "cleanup-e3-False-lock-canonical-match-False-mined",
+      "block": true,
+      "hash": "2df47c1dcb36934189f4ceb7ac5344dd089fb5c4f2552bdd2f41e6891258d323",
+      "height": 626,
+      "txid": "0db327708b1c1e3a5acad47e740b84597f24b7681fccaa63671019885f5c7a62",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-e3-False-lock-canonical-match-True",
+      "txid": "bc33b548ed60bad2380c9a4bd00e4324ee5b0429b450f60dd9e13318061addea",
+      "height": 628,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "c5ab4fc62c39b18a01de688d8f012db090b03c02b2d4e5510c6d92622d6ace2b"
+    },
+    {
+      "name": "cleanup-e3-False-lock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 628,
+      "hash": "51e14972fe27c2099acf47fc8042b5512b7017788aaceda4deb19ec5ad5b0283",
+      "old_tip": "284cc2eff60d029a63d75ac1907117d9a790e4731005e4003f34f5b20a8c547d",
+      "new_tip": "284cc2eff60d029a63d75ac1907117d9a790e4731005e4003f34f5b20a8c547d",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "bc33b548ed60bad2380c9a4bd00e4324ee5b0429b450f60dd9e13318061addea"
+      ],
+      "block_file": "cleanup-e3-False-lock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-e3-False-unlock-canonical-match-False",
+      "txid": "60a7f9409a6604cf729a5b36638d99298265fdfd1b3815f1d1a7fb7301142fb4",
+      "height": 629,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "60a7f9409a6604cf729a5b36638d99298265fdfd1b3815f1d1a7fb7301142fb4",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "bb771595d3e15a5408d0dde6c9eaa0139c15f635f2b2aac052d0b1c40b1386e3"
+    },
+    {
+      "name": "cleanup-e3-False-unlock-canonical-match-False-mined",
+      "block": true,
+      "hash": "4d30f37349f57b62114a28b0f9124ef50a6dd795b05d41ed8e72aa6f7a9af8e3",
+      "height": 629,
+      "txid": "60a7f9409a6604cf729a5b36638d99298265fdfd1b3815f1d1a7fb7301142fb4",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-e3-False-unlock-canonical-match-True",
+      "txid": "02b68741638042b8284e9e3891fd97b688aeaf25950913c3090068130d6b9497",
+      "height": 631,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "85f1b9501bce8427d39587f7172df7899d7bcd4509241e0ed130bae811d00f64"
+    },
+    {
+      "name": "cleanup-e3-False-unlock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 631,
+      "hash": "4ef8a4b80bc8cc58f178b1b1d508cfb1b7cb1e9b59d6398f99837f693e2d5c92",
+      "old_tip": "6cc196ad26476e707f34f1f5304d095d4afaa4969ab5bda4c56e49bd18c0f6fa",
+      "new_tip": "6cc196ad26476e707f34f1f5304d095d4afaa4969ab5bda4c56e49bd18c0f6fa",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "02b68741638042b8284e9e3891fd97b688aeaf25950913c3090068130d6b9497"
+      ],
+      "block_file": "cleanup-e3-False-unlock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-e3-True-lock-canonical-match-False",
+      "txid": "4a2bf7bd17babab88bcc189a3f20befefbdfd929de2d06830bc3f73d8cd78206",
+      "height": 632,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "4a2bf7bd17babab88bcc189a3f20befefbdfd929de2d06830bc3f73d8cd78206",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "b21c37cc85f03c6efab5559961516c7d74e749f1337cf701d10f425d7830f979"
+    },
+    {
+      "name": "cleanup-e3-True-lock-canonical-match-False-mined",
+      "block": true,
+      "hash": "77b7588da014a70f64b47ddb7a3b453ad73a50c503bec8acadf50e9a43262cbe",
+      "height": 632,
+      "txid": "4a2bf7bd17babab88bcc189a3f20befefbdfd929de2d06830bc3f73d8cd78206",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-e3-True-lock-canonical-match-True",
+      "txid": "2e910552d4bf4f4e79462d9e78c8a9723f0d8f64e8ba7ff2904c51f056ea2755",
+      "height": 634,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical public key`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Public key is neither compressed or uncompressed)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "adf563b4eebfb296f28c0b6a7dc2cf7e8f963c2920454bf539f0f9ebc19e98e5"
+    },
+    {
+      "name": "cleanup-e3-True-lock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 634,
+      "hash": "19b6e0db943afee00e54182018ced6d060994ff37c91698f9d9fce32e288e539",
+      "old_tip": "3b2a91f133d9a54d8f391db3b59e52327ec4b41764f936c9fe63a1db9bd0f625",
+      "new_tip": "3b2a91f133d9a54d8f391db3b59e52327ec4b41764f936c9fe63a1db9bd0f625",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "2e910552d4bf4f4e79462d9e78c8a9723f0d8f64e8ba7ff2904c51f056ea2755"
+      ],
+      "block_file": "cleanup-e3-True-lock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-e3-True-unlock-canonical-match-False",
+      "txid": "4fcd5339051dcf1a9236bb5ed91531ce57c71223473201423b4877cf5c73ce15",
+      "height": 635,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "4fcd5339051dcf1a9236bb5ed91531ce57c71223473201423b4877cf5c73ce15",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "03dcd1ad2db4a466b4325dcc0a6e875185358394ca3590e28fb0195a63b2691a"
+    },
+    {
+      "name": "cleanup-e3-True-unlock-canonical-match-False-mined",
+      "block": true,
+      "hash": "0a4bc83d1073e1d3780741570c3bf4e34f093bf219c8125ea38a0ee5e3495bbb",
+      "height": 635,
+      "txid": "4fcd5339051dcf1a9236bb5ed91531ce57c71223473201423b4877cf5c73ce15",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-e3-True-unlock-canonical-match-True",
+      "txid": "78ab3a56b5f62e5238401ec5097149be6f8a09ce5c6c81eb6b404c4347192b40",
+      "height": 637,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical public key`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Public key is neither compressed or uncompressed)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "3d67f26cbc97f1658538b058301b708dce176b2aa7c2d8e8eeb3afa8bbb37151"
+    },
+    {
+      "name": "cleanup-e3-True-unlock-canonical-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 637,
+      "hash": "199316a65b69244d866c74c11fa8d27cb2f29def92ce420a179b59ad02d3c0d0",
+      "old_tip": "5f32665e87d4a7dd1fe41b2e1f6cb6a5766a1733e4c626c05ceafa2c0368c2cc",
+      "new_tip": "5f32665e87d4a7dd1fe41b2e1f6cb6a5766a1733e4c626c05ceafa2c0368c2cc",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "78ab3a56b5f62e5238401ec5097149be6f8a09ce5c6c81eb6b404c4347192b40"
+      ],
+      "block_file": "cleanup-e3-True-unlock-canonical-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-False-lock-repeat-match-False",
+      "txid": "2360a6e55e96566de21e043742b2242cc93546161f6e2f2987aa4104ded8c137",
+      "height": 638,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "2360a6e55e96566de21e043742b2242cc93546161f6e2f2987aa4104ded8c137",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "fe4eee119dcfb7e8242bd03931b09c2e98d0e2b0cc89a9cd22eb96adb0951709"
+    },
+    {
+      "name": "cleanup-41-False-lock-repeat-match-False-mined",
+      "block": true,
+      "hash": "59c0c38e16c106f7d395007b20ff14f691e772dc8f14d43b5315803d2d443598",
+      "height": 638,
+      "txid": "2360a6e55e96566de21e043742b2242cc93546161f6e2f2987aa4104ded8c137",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-False-lock-repeat-match-True",
+      "txid": "24a01c8722efea1906cb07c86e08aabfcb52a710252b1ad22d07f2f0fa9b07eb",
+      "height": 640,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "7e6cd06893752503360a60145d123e0d5b3a112eead85a974b3be88fa49fbca9"
+    },
+    {
+      "name": "cleanup-41-False-lock-repeat-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 640,
+      "hash": "752f8656262b04124e93d925a8d6745695b07754bd4c7d8aba234697ff4b8372",
+      "old_tip": "0352087db4a674d5f3f57a20ac3069613d452f821ed474625e82fd07ea621535",
+      "new_tip": "0352087db4a674d5f3f57a20ac3069613d452f821ed474625e82fd07ea621535",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "24a01c8722efea1906cb07c86e08aabfcb52a710252b1ad22d07f2f0fa9b07eb"
+      ],
+      "block_file": "cleanup-41-False-lock-repeat-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-False-lock-alias-match-False",
+      "txid": "00d1e7ba25d9e621258155e87fc82729d99ff97071ce21d818483118a3ab6981",
+      "height": 641,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "00d1e7ba25d9e621258155e87fc82729d99ff97071ce21d818483118a3ab6981",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "67d6382d78e39a51648d0ebb76b9126102db09d32423c70f64af4fb01da1503d"
+    },
+    {
+      "name": "cleanup-41-False-lock-alias-match-False-mined",
+      "block": true,
+      "hash": "5c5e4844471ad38fd1c46629c073c99f60308c8108965ed02077f1f09e571e96",
+      "height": 641,
+      "txid": "00d1e7ba25d9e621258155e87fc82729d99ff97071ce21d818483118a3ab6981",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-False-lock-alias-match-True",
+      "txid": "b9d280c1c208998f33ba63b6e2fd3f186c7e65fe29ef65bcf48f8b8c668184b9",
+      "height": 643,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "e167bef06e3d67aeaa5f342bb4ed8dbd5bd856a13a2947657e2c0d4026ab622a"
+    },
+    {
+      "name": "cleanup-41-False-lock-alias-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 643,
+      "hash": "19c0bd93daebe477d860da8db74620e45324821ebd89eb5f3619027bd55ef29c",
+      "old_tip": "321abed306a79da1e271557aa752462f457d132c8dff55a360cf7594ad6bc5cb",
+      "new_tip": "321abed306a79da1e271557aa752462f457d132c8dff55a360cf7594ad6bc5cb",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "b9d280c1c208998f33ba63b6e2fd3f186c7e65fe29ef65bcf48f8b8c668184b9"
+      ],
+      "block_file": "cleanup-41-False-lock-alias-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-False-lock-nested-match-False",
+      "txid": "9a784b54882d8a5b673259c739b7326fd9e9c052e8d93e62f9548d36b57879f2",
+      "height": 644,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "9a784b54882d8a5b673259c739b7326fd9e9c052e8d93e62f9548d36b57879f2",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "0ca1c607610a490dbe783b03c8bb98054981ffdd440312998a5ee7be9b96bd4d"
+    },
+    {
+      "name": "cleanup-41-False-lock-nested-match-False-mined",
+      "block": true,
+      "hash": "3947e72e664bce341a3812f6daa928e22d3aa3cc0cb8d6adfff33d2fe55d8509",
+      "height": 644,
+      "txid": "9a784b54882d8a5b673259c739b7326fd9e9c052e8d93e62f9548d36b57879f2",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-False-lock-nested-match-True",
+      "txid": "07f0bde0a77145900afdf8516868adc9728f8b597b8de3fbfcaf39a991f94820",
+      "height": 646,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "32eb12a3f5f03a42b63bbf3453e53934cd00d3134edd40dfbff9844299c27e87"
+    },
+    {
+      "name": "cleanup-41-False-lock-nested-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 646,
+      "hash": "10b5d9395a8ed87eb0858b5cf652321e6d06ddc466e4a51053f96c38b5751d77",
+      "old_tip": "50d163b826ff714939beb32cb9bd96de61e57ed8649043cf5599d5998d28ec33",
+      "new_tip": "50d163b826ff714939beb32cb9bd96de61e57ed8649043cf5599d5998d28ec33",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "07f0bde0a77145900afdf8516868adc9728f8b597b8de3fbfcaf39a991f94820"
+      ],
+      "block_file": "cleanup-41-False-lock-nested-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-False-lock-skipped-match-False",
+      "txid": "33aa586ade1c24842c3fe19cdf3048c309cda43ec0ff75cadcde2af98240a2b2",
+      "height": 647,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "33aa586ade1c24842c3fe19cdf3048c309cda43ec0ff75cadcde2af98240a2b2",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "4dbec866315a9f615c76e5f26d94539f12bae2aedb5e36b35d4cdbbe1b54a144"
+    },
+    {
+      "name": "cleanup-41-False-lock-skipped-match-False-mined",
+      "block": true,
+      "hash": "5a450ac1e734b524da254af2fca5963758812217733ab2c197e14eb72a90a560",
+      "height": 647,
+      "txid": "33aa586ade1c24842c3fe19cdf3048c309cda43ec0ff75cadcde2af98240a2b2",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-False-lock-skipped-match-True",
+      "txid": "c99d37dadf9ff7b6bb34dc365d66ac3138ba73814a4e23828ebb9d29143853ee",
+      "height": 649,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "80b280195aa24cff583c3403a06d04adc236763b66cd29b29dc8f56d15031ba4"
+    },
+    {
+      "name": "cleanup-41-False-lock-skipped-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 649,
+      "hash": "2951ddb0af1ab7f3449320a142b85c2ecd07d1d7988fa29570995de305f56c18",
+      "old_tip": "5bc16f6c2bcbbc33c407667c36c7018341a4c3203769fc79bece7ce984d69b29",
+      "new_tip": "5bc16f6c2bcbbc33c407667c36c7018341a4c3203769fc79bece7ce984d69b29",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "c99d37dadf9ff7b6bb34dc365d66ac3138ba73814a4e23828ebb9d29143853ee"
+      ],
+      "block_file": "cleanup-41-False-lock-skipped-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-41-False-lock-long-match-False",
+      "txid": "1814c355bba9b15c97bf3636a546cc68c227df88b059506ed50aae365b8457c6",
+      "height": 650,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "1814c355bba9b15c97bf3636a546cc68c227df88b059506ed50aae365b8457c6",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "bdd416b652c5a40f7733bca83de4dcf3dab5041160b237a6edb3f6eff8aca15f"
+    },
+    {
+      "name": "cleanup-41-False-lock-long-match-False-mined",
+      "block": true,
+      "hash": "748e24c55888f1cc541b67538dc98b6fad795c2cd0fcdb3b4ff81f6c3c1bffc5",
+      "height": 650,
+      "txid": "1814c355bba9b15c97bf3636a546cc68c227df88b059506ed50aae365b8457c6",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-41-False-lock-long-match-True",
+      "txid": "fc15b1f8fc51386199ec6f6c7c4d0a601bcea51904ce3912ff2cdc528c4b855f",
+      "height": 652,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "6e9642dd44ecef78a39c3bf85f45d30d33c2c045b142da5bdf421c139ace111d"
+    },
+    {
+      "name": "cleanup-41-False-lock-long-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 652,
+      "hash": "67b4163d0e2726241dfa5a8b09762f8e934f9d13aa1303824c5fc7c706f817b2",
+      "old_tip": "3596547bf01e526ef56cfd07fcf55718d1f4aa34d45be13fc2456854c5eee603",
+      "new_tip": "3596547bf01e526ef56cfd07fcf55718d1f4aa34d45be13fc2456854c5eee603",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "fc15b1f8fc51386199ec6f6c7c4d0a601bcea51904ce3912ff2cdc528c4b855f"
+      ],
+      "block_file": "cleanup-41-False-lock-long-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-False-lock-repeat-match-False",
+      "txid": "87a415edfc99fdbb8965329a53d219ac8625df23cd1c100d3f86b0de925eb351",
+      "height": 653,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "87a415edfc99fdbb8965329a53d219ac8625df23cd1c100d3f86b0de925eb351",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "71e799d3c16218a45ca40a5032594907e6cfda03cf111aea70aecb97dd553098"
+    },
+    {
+      "name": "cleanup-61-False-lock-repeat-match-False-mined",
+      "block": true,
+      "hash": "53ba30da52565a6a05b015c18262589965b4584554e4540172d66f1e4ef49328",
+      "height": 653,
+      "txid": "87a415edfc99fdbb8965329a53d219ac8625df23cd1c100d3f86b0de925eb351",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-False-lock-repeat-match-True",
+      "txid": "6bcd1d16ed150447cf053e752f2e3f33ad40fa39595fa30c4f4e37f0db5766b7",
+      "height": 655,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "af6838f9d1dfff1ab80ddcf1431ef641f59486982ef835b7b667611af7eff6eb"
+    },
+    {
+      "name": "cleanup-61-False-lock-repeat-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 655,
+      "hash": "19dee237107d81b540dc0777af55d3f659d46b51b55ce95765ceb2da1d414041",
+      "old_tip": "332703fc668e8ec6e5b94998735ec175255123d71a42e94ec7f16f439c43b7d6",
+      "new_tip": "332703fc668e8ec6e5b94998735ec175255123d71a42e94ec7f16f439c43b7d6",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "6bcd1d16ed150447cf053e752f2e3f33ad40fa39595fa30c4f4e37f0db5766b7"
+      ],
+      "block_file": "cleanup-61-False-lock-repeat-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-False-lock-alias-match-False",
+      "txid": "00fb11dd6cb11bbf0370e68bb0d8fa5f66c9c24cb01f9d5fecc93ba25c9429ba",
+      "height": 656,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "00fb11dd6cb11bbf0370e68bb0d8fa5f66c9c24cb01f9d5fecc93ba25c9429ba",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "c3e9d83d2a6b3a65d753b3d8757f83f35786137f52eb87caebfc3dc8e5af2cc5"
+    },
+    {
+      "name": "cleanup-61-False-lock-alias-match-False-mined",
+      "block": true,
+      "hash": "3bd18cb8ef062fcd4acdbe79c82308ff853225704cbf30a1ea1c5249f35d96b2",
+      "height": 656,
+      "txid": "00fb11dd6cb11bbf0370e68bb0d8fa5f66c9c24cb01f9d5fecc93ba25c9429ba",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-False-lock-alias-match-True",
+      "txid": "e6685e5216a44c7541c61a1f25de208b77c8394e4838eac75dfa60f4d813600f",
+      "height": 658,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "60340846e19f61ecd288dca9ac8c3cb8fbbbb249f9a111d91473c21542370080"
+    },
+    {
+      "name": "cleanup-61-False-lock-alias-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 658,
+      "hash": "0dae40a2d4d71383a114ebac423e4e5636eb60365aec6e2bbeac059f90be13e2",
+      "old_tip": "376ff603d528fc5dac6ba25a1cc1cc9403663761384959a3362dc4571eb1235b",
+      "new_tip": "376ff603d528fc5dac6ba25a1cc1cc9403663761384959a3362dc4571eb1235b",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "e6685e5216a44c7541c61a1f25de208b77c8394e4838eac75dfa60f4d813600f"
+      ],
+      "block_file": "cleanup-61-False-lock-alias-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-False-lock-nested-match-False",
+      "txid": "1ee56bf59f88da964a70276a67895fcacd93ebe08d632c827c3d7b9422e4198b",
+      "height": 659,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "1ee56bf59f88da964a70276a67895fcacd93ebe08d632c827c3d7b9422e4198b",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "c318cb0477156d5f136396ab23bc216ab558669d804ee15d9f0d29cd070bb05a"
+    },
+    {
+      "name": "cleanup-61-False-lock-nested-match-False-mined",
+      "block": true,
+      "hash": "613df0b722e9bf71965b7e60b8dcbc4ce1eeede63b44f347dd59791968018066",
+      "height": 659,
+      "txid": "1ee56bf59f88da964a70276a67895fcacd93ebe08d632c827c3d7b9422e4198b",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-False-lock-nested-match-True",
+      "txid": "e6b0fddce5e952932e8511522878026ea281bbee81b8469c56a4470d2620be01",
+      "height": 661,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "0b1c8cf1b69df57d71b8679569449f53372747de465fbe35b242dd13d884f929"
+    },
+    {
+      "name": "cleanup-61-False-lock-nested-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 661,
+      "hash": "082bb4d9ff2d99a9b0bab6ac42e5974916e1e1e79bfe230f21e75a8c541028fe",
+      "old_tip": "0c5bc6b1f9b4b7c8b615ad295618d7e07c61f4e3ab987d6b37c15deaadb0bba8",
+      "new_tip": "0c5bc6b1f9b4b7c8b615ad295618d7e07c61f4e3ab987d6b37c15deaadb0bba8",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "e6b0fddce5e952932e8511522878026ea281bbee81b8469c56a4470d2620be01"
+      ],
+      "block_file": "cleanup-61-False-lock-nested-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-False-lock-skipped-match-False",
+      "txid": "7f7c15059507de7214faef9248d60f6a2bc5750d6863eb5e9c23aaed8dd8a74c",
+      "height": 662,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "7f7c15059507de7214faef9248d60f6a2bc5750d6863eb5e9c23aaed8dd8a74c",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "a723842b84a625257c6b9a3501b64ec613c4615090bdcc6e64f3287966419ec1"
+    },
+    {
+      "name": "cleanup-61-False-lock-skipped-match-False-mined",
+      "block": true,
+      "hash": "115292b5ec725655ccd3c8480ad1faa05716a894f999325c391c4e4c2dae6b25",
+      "height": 662,
+      "txid": "7f7c15059507de7214faef9248d60f6a2bc5750d6863eb5e9c23aaed8dd8a74c",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-False-lock-skipped-match-True",
+      "txid": "9a47897c4fe5205f75d775b8459e6db750dc008d1e07ec519b9af3ab03d9a5af",
+      "height": 664,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "57954fc95479af7a47514d416cf2f36610171498d1b8113a0dfaa669e807875e"
+    },
+    {
+      "name": "cleanup-61-False-lock-skipped-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 664,
+      "hash": "0ded198623d897bd407c04c7535aaf3443814148b44e13251e9b274d57b2142d",
+      "old_tip": "57969752b38bb25024e394f5450f683ab72d09af658d7227821ba6dc6e9a6498",
+      "new_tip": "57969752b38bb25024e394f5450f683ab72d09af658d7227821ba6dc6e9a6498",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "9a47897c4fe5205f75d775b8459e6db750dc008d1e07ec519b9af3ab03d9a5af"
+      ],
+      "block_file": "cleanup-61-False-lock-skipped-match-True-block.block.hex"
+    },
+    {
+      "name": "cleanup-61-False-lock-long-match-False",
+      "txid": "4e59cfd70dff3bb5221184e5803f4a277ab54155da1a0945584c8db46c0d8d05",
+      "height": 665,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "4e59cfd70dff3bb5221184e5803f4a277ab54155da1a0945584c8db46c0d8d05",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "063aac6423f7811f1782e710d57e4b8e9ac382c6016ad5a29a36aac07f986e9b"
+    },
+    {
+      "name": "cleanup-61-False-lock-long-match-False-mined",
+      "block": true,
+      "hash": "4aab1e9192d200347f62bd64781c0a5ba017685dca863d86b37c4cff37d8604b",
+      "height": 665,
+      "txid": "4e59cfd70dff3bb5221184e5803f4a277ab54155da1a0945584c8db46c0d8d05",
+      "confirmations": 1
+    },
+    {
+      "name": "cleanup-61-False-lock-long-match-True",
+      "txid": "3eb76cffc6f418c787c44165c019699b20570c75ad25047bd42df599f35c12eb",
+      "height": 667,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "b6eb95f561962a65525a261662f0d1e57b75d5af70288c33f135fd7242996766"
+    },
+    {
+      "name": "cleanup-61-False-lock-long-match-True-block",
+      "block": false,
+      "expected": false,
+      "height": 667,
+      "hash": "2e0457f2b70419627c5a64437444af781d352a0aeaaeeaf4b9379c88e43dae19",
+      "old_tip": "002eb661ee00eee3bab1409926cef81b5955eec73a2fa1163fa5928af842f057",
+      "new_tip": "002eb661ee00eee3bab1409926cef81b5955eec73a2fa1163fa5928af842f057",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "3eb76cffc6f418c787c44165c019699b20570c75ad25047bd42df599f35c12eb"
+      ],
+      "block_file": "cleanup-61-False-lock-long-match-True-block.block.hex"
+    },
+    {
+      "name": "matching-unused-malformed-key",
+      "txid": "ee97c2dc415c28dab2007b6f4c67f8475f6dedf37ca4eee0c4495cfc74e35048",
+      "height": 668,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "ee97c2dc415c28dab2007b6f4c67f8475f6dedf37ca4eee0c4495cfc74e35048",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "d3c62b3e5d3cea2824e3b1bf710e2e2b681d806768a48ed891e3cea0a7778570"
+    },
+    {
+      "name": "matching-unused-malformed-key-mined",
+      "block": true,
+      "hash": "4b56e0ee5cd7531850816dfc68905bc232e57fb17e637c0f9d4e2ed940129be8",
+      "height": 668,
+      "txid": "ee97c2dc415c28dab2007b6f4c67f8475f6dedf37ca4eee0c4495cfc74e35048",
+      "confirmations": 1
+    },
+    {
+      "name": "matching-visited-malformed-key",
+      "txid": "2099f866aeeb40cb151d8d2a0e8f1c47450fc1d5d34162ccd26bc7016f0159ba",
+      "height": 670,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical public key`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Public key is neither compressed or uncompressed)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "6544b7d923fae07712a8f66b27fc9a3ab8a08a370dedfcc09e676388c977be2d"
+    },
+    {
+      "name": "matching-visited-malformed-key-block",
+      "block": false,
+      "expected": false,
+      "height": 670,
+      "hash": "3d285d29744422486a24a98262a06da337ed1a1680c0f06e5b4515bfc2a962c8",
+      "old_tip": "4229c1921cfc252047297a694b77f19bc6a9c2dbe8d533ffcad78f2b7881fbe8",
+      "new_tip": "4229c1921cfc252047297a694b77f19bc6a9c2dbe8d533ffcad78f2b7881fbe8",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "2099f866aeeb40cb151d8d2a0e8f1c47450fc1d5d34162ccd26bc7016f0159ba"
+      ],
+      "block_file": "matching-visited-malformed-key-block.block.hex"
+    },
+    {
+      "name": "matching-zero-of-invalid-keys",
+      "txid": "87dbce6c655991a4ea30911f23371830843c73dd2a3bc9bcba0077df3911e5e8",
+      "height": 671,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "87dbce6c655991a4ea30911f23371830843c73dd2a3bc9bcba0077df3911e5e8",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "14a306af8f7e1033cc2f90719870a97a5a549a35aab80d95e57893b91cf46944"
+    },
+    {
+      "name": "matching-zero-of-invalid-keys-mined",
+      "block": true,
+      "hash": "0c82374964c8d60f5bd032ab3b50cb5a0696827ef6201b4f712d0bbb3eaa9710",
+      "height": 671,
+      "txid": "87dbce6c655991a4ea30911f23371830843c73dd2a3bc9bcba0077df3911e5e8",
+      "confirmations": 1
+    },
+    {
+      "name": "matching-zero-of-zero",
+      "txid": "971a322f3f35f6782b3605e9d9e1479fe288086ea71a74e98feb6829cff0437e",
+      "height": 673,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "971a322f3f35f6782b3605e9d9e1479fe288086ea71a74e98feb6829cff0437e",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "328f1a7c6f2dbff6b34a9aa2ed4fa554522dc4f64898e6c3c39a1bfa80650f28"
+    },
+    {
+      "name": "matching-zero-of-zero-mined",
+      "block": true,
+      "hash": "5bdac6d40bfcc8436075cde9d45fb543b06cbd8aa4b40094735239805a9626e4",
+      "height": 673,
+      "txid": "971a322f3f35f6782b3605e9d9e1479fe288086ea71a74e98feb6829cff0437e",
+      "confirmations": 1
+    },
+    {
+      "name": "matching-zero-missing-dummy",
+      "txid": "44e3b3e5954f346ec1c2b281cc89b64dc07f7d8fce3d52471f53eaa1be52367c",
+      "height": 675,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Stack too small: 1`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Operation not valid with the current stack size)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "ae224531c665134b00f69706e0dd5b829085bfc2336d3935f057a37cbb3a992e"
+    },
+    {
+      "name": "matching-zero-missing-dummy-block",
+      "block": false,
+      "expected": false,
+      "height": 675,
+      "hash": "040ba82626aa84cbac0ca805be5888b8564f995d89318806219ea55a18adc523",
+      "old_tip": "162233d21d351c8003ac7f1b88db5970b892276fb5cf5107c22b7de6053d8e8d",
+      "new_tip": "162233d21d351c8003ac7f1b88db5970b892276fb5cf5107c22b7de6053d8e8d",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "44e3b3e5954f346ec1c2b281cc89b64dc07f7d8fce3d52471f53eaa1be52367c"
+      ],
+      "block_file": "matching-zero-missing-dummy-block.block.hex"
+    },
+    {
+      "name": "matching-too-many-signatures",
+      "txid": "59b262dda6eeaa9008e7ef1997a4c304617d067b9f05afc0490a986a0eb3f3f1",
+      "height": 676,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `required out of range`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Signature count negative or greater than pubkey count)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "58f6f2cead250d5b1d80f6680dfe74f1a11f7341f426febe048baf02c9cdad7b"
+    },
+    {
+      "name": "matching-too-many-signatures-block",
+      "block": false,
+      "expected": false,
+      "height": 676,
+      "hash": "78e88c8b10dc3a74cb2b76dbbe0d280b3cb0e68e1f35812b111d89b242773e23",
+      "old_tip": "38508778c65c5cc10ebac6d65f986865b0a49f36c70b6c575e77cca73c8ce427",
+      "new_tip": "38508778c65c5cc10ebac6d65f986865b0a49f36c70b6c575e77cca73c8ce427",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "59b262dda6eeaa9008e7ef1997a4c304617d067b9f05afc0490a986a0eb3f3f1"
+      ],
+      "block_file": "matching-too-many-signatures-block.block.hex"
+    },
+    {
+      "name": "matching-negative-signature-count",
+      "txid": "6a23ddcd1804de5ba57ca20f86473a161eeddb414b198e882b24bed42cd00769",
+      "height": 677,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `required out of range`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Signature count negative or greater than pubkey count)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "4a4f4c113b06caefb54f3fdd36f0047b91cab59a320026dd0ec8b435063ad69b"
+    },
+    {
+      "name": "matching-negative-signature-count-block",
+      "block": false,
+      "expected": false,
+      "height": 677,
+      "hash": "19e0aa06c8680fd99c13bda2d5cd05820f1a6fe8ea14f0bf5b0cd0c8d50a238e",
+      "old_tip": "7d39e9fd2b7c974d5a09dc818303ef3af28118d16fc0725635430a98f1290be1",
+      "new_tip": "7d39e9fd2b7c974d5a09dc818303ef3af28118d16fc0725635430a98f1290be1",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "6a23ddcd1804de5ba57ca20f86473a161eeddb414b198e882b24bed42cd00769"
+      ],
+      "block_file": "matching-negative-signature-count-block.block.hex"
+    },
+    {
+      "name": "matching-five-byte-key-count",
+      "txid": "887a43a7eae8838a65c0fe8b277845b4fb1b6bec4de8032d282401ca1adffc5a",
+      "height": 678,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Cannot pop num, len too long 5`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script number overflow)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "09a88f5b421ad0b8d6598affd0df573fb8e1d48874fed2b1d8eb886461c3601e"
+    },
+    {
+      "name": "matching-five-byte-key-count-block",
+      "block": false,
+      "expected": false,
+      "height": 678,
+      "hash": "3ea1741e6fdbbc0d9e81cd63a778af80fadc37a47e304027b2fd9a3bc6e31e47",
+      "old_tip": "0be891457f79e7b60050f5005aa073531219a404a6cd6ae84126d1986885a990",
+      "new_tip": "0be891457f79e7b60050f5005aa073531219a404a6cd6ae84126d1986885a990",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "887a43a7eae8838a65c0fe8b277845b4fb1b6bec4de8032d282401ca1adffc5a"
+      ],
+      "block_file": "matching-five-byte-key-count-block.block.hex"
+    },
+    {
+      "name": "matching-early-exit-skips-malformed",
+      "txid": "7099e94413ae1358ac44b96de6ebd661b6fe1a071d1c8c5ea45ad6059433d1e2",
+      "height": 679,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "7099e94413ae1358ac44b96de6ebd661b6fe1a071d1c8c5ea45ad6059433d1e2",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "1d1a874ee04a12c018319c7b483981ab0cfb0f7e110917ae76526259947dabd4"
+    },
+    {
+      "name": "matching-early-exit-skips-malformed-mined",
+      "block": true,
+      "hash": "46957d5a2fa29ffb5ae2c861592ed4e3f6af33b42cdd436a89b1e4ae0e44ac64",
+      "height": 679,
+      "txid": "7099e94413ae1358ac44b96de6ebd661b6fe1a071d1c8c5ea45ad6059433d1e2",
+      "confirmations": 1
+    },
+    {
+      "name": "matching-visited-malformed-signature",
+      "txid": "4ed5e5e6f053e6090c2df2f702ce684cbbdcb6615e2a8777ece43f7825d55852",
+      "height": 681,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-canonical DER signature`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Non-canonical DER signature)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "f26df1bb5ed90e17572e8e0168aec31d174904de893397c12528dce2f17df7d5"
+    },
+    {
+      "name": "matching-visited-malformed-signature-block",
+      "block": false,
+      "expected": false,
+      "height": 681,
+      "hash": "36da75a84b9feaf327dea90227e9b79ea41edfe2f612a206f8af5a2e95054b5d",
+      "old_tip": "28dfa7c9dba831254b13cc029fcfc71b1bce16a3f339ecebe34fca455ef132ab",
+      "new_tip": "28dfa7c9dba831254b13cc029fcfc71b1bce16a3f339ecebe34fca455ef132ab",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "4ed5e5e6f053e6090c2df2f702ce684cbbdcb6615e2a8777ece43f7825d55852"
+      ],
+      "block_file": "matching-visited-malformed-signature-block.block.hex"
+    },
+    {
+      "name": "matching-nullfail-includes-unvisited",
+      "txid": "f7ee873e33382763b4661464ac537a2be5442be94d266ae218a58679d04cf144",
+      "height": 682,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIG NULLFAIL`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Signature must be zero for failed CHECK(MULTI)SIG operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "cf23ef6ae20da8ff0192b59eebf4c26dea95441aedd7924c7d86ae91834d6ebf"
+    },
+    {
+      "name": "matching-nullfail-includes-unvisited-block",
+      "block": false,
+      "expected": false,
+      "height": 682,
+      "hash": "0bc90fde8872ed8350b5519c1f50dbfa9c708414cc9ac2552039071fc9dad0b1",
+      "old_tip": "7e658fc4824f713f4dd23e7556d024bc7fc46879f0c9334f5173296cffbbbd15",
+      "new_tip": "7e658fc4824f713f4dd23e7556d024bc7fc46879f0c9334f5173296cffbbbd15",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "f7ee873e33382763b4661464ac537a2be5442be94d266ae218a58679d04cf144"
+      ],
+      "block_file": "matching-nullfail-includes-unvisited-block.block.hex"
+    },
+    {
+      "name": "matching-all-empty-v1",
+      "txid": "03b6a5eb4aa76d5716c1c83179f0bb0ca128db2c989c5a59104ff5a0a16aa86f",
+      "height": 683,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "03b6a5eb4aa76d5716c1c83179f0bb0ca128db2c989c5a59104ff5a0a16aa86f",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "4205f6e7ce0eecb180f403962c92101ee746577d427e550dd24700d976d5da27"
+    },
+    {
+      "name": "matching-all-empty-v1-mined",
+      "block": true,
+      "hash": "32a91d76ca567347aee67b1fd262d4a4687ca1fa91a4a6b5d654f5b00398685d",
+      "height": 683,
+      "txid": "03b6a5eb4aa76d5716c1c83179f0bb0ca128db2c989c5a59104ff5a0a16aa86f",
+      "confirmations": 1
+    },
+    {
+      "name": "matching-verify-cannot-invert-failure",
+      "txid": "16251b2ae8cca790f90ab91d82b07fb9ed4da72d32500dc26d6c024460f3823b",
+      "height": 685,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKMULTISIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "370a848c828d8dc1372674034d83a7261ddc956ab889f9621cd69711078ea519"
+    },
+    {
+      "name": "matching-verify-cannot-invert-failure-block",
+      "block": false,
+      "expected": false,
+      "height": 685,
+      "hash": "1c23e5ef0aa9ce07fce8c1ef8ed963a36a51d782c96768f1d5e738b8ecd7cd8e",
+      "old_tip": "6eb6dcb6f7f2a9dc8c666b973c659d7127b069ff98b0a9a6f5dc5664bff75995",
+      "new_tip": "6eb6dcb6f7f2a9dc8c666b973c659d7127b069ff98b0a9a6f5dc5664bff75995",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "16251b2ae8cca790f90ab91d82b07fb9ed4da72d32500dc26d6c024460f3823b"
+      ],
+      "block_file": "matching-verify-cannot-invert-failure-block.block.hex"
+    },
+    {
+      "name": "matching-current-nonempty-dummy",
+      "txid": "a68a0ff7b5a8998365b3b97557a7b6355b4b9a302a75df1edb2ec3aabe5778a6",
+      "height": 686,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "a68a0ff7b5a8998365b3b97557a7b6355b4b9a302a75df1edb2ec3aabe5778a6",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "c65c7123fe2ac50d8f3415147c4a7074cf287766f394e5ff2d2f0cb649241dc7"
+    },
+    {
+      "name": "matching-current-nonempty-dummy-mined",
+      "block": true,
+      "hash": "07af086bc04e0d027d25ab50d562da6d2ea7e9c0d4affe70487d1e37a9cd8eac",
+      "height": 686,
+      "txid": "a68a0ff7b5a8998365b3b97557a7b6355b4b9a302a75df1edb2ec3aabe5778a6",
+      "confirmations": 1
+    },
+    {
+      "name": "matching-v1-dummy-policy",
+      "txid": "443c01f98d936a5fb6a0cf6034f87dd6f282fbf885e9521b55f1654472cd1dae",
+      "height": 688,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Non-minimal push`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Data push larger than necessary)",
+      "expected": "rejected",
+      "library_consensus": true,
+      "tx_sha256": "92220bc6952b7c6e7166e3f38b3da4ec1a63fef877e5b09bf999fe3daaa0b09f"
+    },
+    {
+      "name": "matching-v1-dummy-policy-block",
+      "block": true,
+      "expected": true,
+      "height": 688,
+      "hash": "477e8bb3b199f8be9cb2c22cf0b814ecc3e805aeea4ea1e67d7118bebfd3758a",
+      "old_tip": "1be19843d82c0330b94eb7b602dbecdd2cc927670fbec6983faab1c3de14aea6",
+      "new_tip": "477e8bb3b199f8be9cb2c22cf0b814ecc3e805aeea4ea1e67d7118bebfd3758a",
+      "submit_result": null,
+      "transactions": [
+        "443c01f98d936a5fb6a0cf6034f87dd6f282fbf885e9521b55f1654472cd1dae"
+      ],
+      "block_file": "matching-v1-dummy-policy-block.block.hex",
+      "confirmed": {
+        "443c01f98d936a5fb6a0cf6034f87dd6f282fbf885e9521b55f1654472cd1dae": 1
+      }
+    },
+    {
+      "name": "matching-current-nonminimal-count",
+      "txid": "194fd30b486be254897cd405a8d4a459608ade61f44b603965b925518fc8eeb1",
+      "height": 690,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "194fd30b486be254897cd405a8d4a459608ade61f44b603965b925518fc8eeb1",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "e0c0d0ec68bdf07359fb6197903606e49a747ea67261bbbdd038e8dd70a239fd"
+    },
+    {
+      "name": "matching-current-nonminimal-count-mined",
+      "block": true,
+      "hash": "03e50b00fc4fd8ab4e7935254fe94298e80cb9685ae29cb9116e6ead5d2e2d4f",
+      "height": 690,
+      "txid": "194fd30b486be254897cd405a8d4a459608ade61f44b603965b925518fc8eeb1",
+      "confirmations": 1
+    },
+    {
+      "name": "matching-v1-nonminimal-count-policy",
+      "txid": "43b9c056cb291cd7367fbcde5f0493023c82fabe0395f53a4f349f717cda66c5",
+      "height": 692,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `Number is not minimally encoded`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Non-minimally encoded script number)",
+      "expected": "rejected",
+      "library_consensus": true,
+      "tx_sha256": "31b93757072b2588730da1b31dd9ebc6f2e3ce74df9ce65376f5dfded8da3920"
+    },
+    {
+      "name": "matching-v1-nonminimal-count-policy-block",
+      "block": true,
+      "expected": true,
+      "height": 692,
+      "hash": "17aa268062e886516fa266a2309440e37e384ac12c2c8b9b29c36a698c80a39b",
+      "old_tip": "090de5262ff8a5ca492d2955b6a5a45b27377164b04f83340d69fde974e31ace",
+      "new_tip": "17aa268062e886516fa266a2309440e37e384ac12c2c8b9b29c36a698c80a39b",
+      "submit_result": null,
+      "transactions": [
+        "43b9c056cb291cd7367fbcde5f0493023c82fabe0395f53a4f349f717cda66c5"
+      ],
+      "block_file": "matching-v1-nonminimal-count-policy-block.block.hex",
+      "confirmed": {
+        "43b9c056cb291cd7367fbcde5f0493023c82fabe0395f53a4f349f717cda66c5": 1
+      }
+    },
+    {
+      "name": "mixed-types-41-61",
+      "txid": "fe799d8ff19a73fa9ec18d71983a9d2c0b5e3368e2a3ce05ba4a39cd4e178a7a",
+      "height": 694,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "fe799d8ff19a73fa9ec18d71983a9d2c0b5e3368e2a3ce05ba4a39cd4e178a7a",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "70dc3e429c356018b766d436b8d70676131c515acf6a7c96c93b983cfbdbcdfd"
+    },
+    {
+      "name": "mixed-types-41-61-mined",
+      "block": true,
+      "hash": "1cd24095184c83795fa3c9ed9174dbc8ad096b4ce86e221c21d8f4c1d8160b28",
+      "height": 694,
+      "txid": "fe799d8ff19a73fa9ec18d71983a9d2c0b5e3368e2a3ce05ba4a39cd4e178a7a",
+      "confirmations": 1
+    },
+    {
+      "name": "mixed-types-61-41",
+      "txid": "b681a80d661334d7bdbb1d76d0897729683006a1e0d9dd033318598a44100a54",
+      "height": 696,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "b681a80d661334d7bdbb1d76d0897729683006a1e0d9dd033318598a44100a54",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "d0f2dec0cc0c01ec29a7b804c9ed7109d059353880f517d04dbcb412afd49fc6"
+    },
+    {
+      "name": "mixed-types-61-41-mined",
+      "block": true,
+      "hash": "020b8647943baef068a72afee41d7ae9da78d3f2ecce9fafff3ae824b0eb72a0",
+      "height": 696,
+      "txid": "b681a80d661334d7bdbb1d76d0897729683006a1e0d9dd033318598a44100a54",
+      "confirmations": 1
+    },
+    {
+      "name": "mixed-types-43-e3",
+      "txid": "f7f0812fe1296b0f37fda235bbbbefa7622231a62b7985e8e4169a261c1aa4d9",
+      "height": 698,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "f7f0812fe1296b0f37fda235bbbbefa7622231a62b7985e8e4169a261c1aa4d9",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "9aa31c91809aa79f46ab3a73db7776e9729f0f91f9b31c6ee539f9261ae0d12b"
+    },
+    {
+      "name": "mixed-types-43-e3-mined",
+      "block": true,
+      "hash": "38b86eb5aaf81297a188866d8f2a9c5caf6e916d18c70272460d1595d6f6dd50",
+      "height": 698,
+      "txid": "f7f0812fe1296b0f37fda235bbbbefa7622231a62b7985e8e4169a261c1aa4d9",
+      "confirmations": 1
+    },
+    {
+      "name": "mixed-types-e1-62",
+      "txid": "8969bd4ba411f7619bf9e075c6bfe06a482432352543a5c8c72e7fb98afaa63b",
+      "height": 700,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "8969bd4ba411f7619bf9e075c6bfe06a482432352543a5c8c72e7fb98afaa63b",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "84cbb2c374158c83d4b1fc609753d47109f0d3a020398c8e396dec1acf7d9223"
+    },
+    {
+      "name": "mixed-types-e1-62-mined",
+      "block": true,
+      "hash": "5b4f0f2a04469575d19432837811a71a3e0a8c8e4e8a06387a9376d4812ddac9",
+      "height": 700,
+      "txid": "8969bd4ba411f7619bf9e075c6bfe06a482432352543a5c8c72e7fb98afaa63b",
+      "confirmations": 1
+    },
+    {
+      "name": "cross-multi-unlock-61-41-none",
+      "txid": "64fc5a8d3d4050c57eeaadc243f494c671d96895d861cef0d3ecd228c837d06d",
+      "height": 702,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "64fc5a8d3d4050c57eeaadc243f494c671d96895d861cef0d3ecd228c837d06d",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "2cc0fde426f778b7f92df5615a4a2e9240009ba2a58c200c1963e4bbd1528510"
+    },
+    {
+      "name": "cross-multi-unlock-61-41-none-mined",
+      "block": true,
+      "hash": "6c51ab335f36c17d94022c54a2fe8089ccf2fa5c2b7293f9817c08016ea39a79",
+      "height": 702,
+      "txid": "64fc5a8d3d4050c57eeaadc243f494c671d96895d861cef0d3ecd228c837d06d",
+      "confirmations": 1
+    },
+    {
+      "name": "cross-multi-unlock-61-41-first",
+      "txid": "b641b537929b71b733cb7c01a30d0b96e239b802c811cab881b66524801e4a64",
+      "height": 704,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKMULTISIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "49d8b8e257049b570653f1ebba5b797bc540ccc897e3045b5b429cf6b1395835"
+    },
+    {
+      "name": "cross-multi-unlock-61-41-first-block",
+      "block": false,
+      "expected": false,
+      "height": 704,
+      "hash": "70a4da5337423dcb3c4a2819c768657022a527751fe7fa09bb319e45d45c6325",
+      "old_tip": "17a90dd71a8acee783b334e4fb771a6d116b10f4ceee2513057d27f6f832acf9",
+      "new_tip": "17a90dd71a8acee783b334e4fb771a6d116b10f4ceee2513057d27f6f832acf9",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "b641b537929b71b733cb7c01a30d0b96e239b802c811cab881b66524801e4a64"
+      ],
+      "block_file": "cross-multi-unlock-61-41-first-block.block.hex"
+    },
+    {
+      "name": "cross-multi-unlock-61-41-second",
+      "txid": "9a56a784791acdbc5aaf3a966b85ebb21cb4359eb3081e1d416173823666daf8",
+      "height": 705,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKSIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKSIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "50f2fe9704f77eeba9b884eb66477753f7375846751fea5ac252dd7ff968f96e"
+    },
+    {
+      "name": "cross-multi-unlock-61-41-second-block",
+      "block": false,
+      "expected": false,
+      "height": 705,
+      "hash": "34713898599e35e3c8bf37fe8480eb5dfcca172aa320ae68278c737530fb7092",
+      "old_tip": "1117531ffc4738988bf7836b268ee54a15bf37c71ebd2c307aed39d5f9788cea",
+      "new_tip": "1117531ffc4738988bf7836b268ee54a15bf37c71ebd2c307aed39d5f9788cea",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "9a56a784791acdbc5aaf3a966b85ebb21cb4359eb3081e1d416173823666daf8"
+      ],
+      "block_file": "cross-multi-unlock-61-41-second-block.block.hex"
+    },
+    {
+      "name": "cross-multi-unlock-41-e3-none",
+      "txid": "b8b9817ad7db5dfdc9056ed7e0e5e7160882e3dd8ccee10df25fa9e333d8d7ac",
+      "height": 706,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "b8b9817ad7db5dfdc9056ed7e0e5e7160882e3dd8ccee10df25fa9e333d8d7ac",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "dc1470cd1be3f32a17eb76819ed3d68f28076da2766b906cc9348cf7c27bae72"
+    },
+    {
+      "name": "cross-multi-unlock-41-e3-none-mined",
+      "block": true,
+      "hash": "3b06781fa7fbbedb0b02dfe15e2fe571cf1438d29f23a9957474c268b260494b",
+      "height": 706,
+      "txid": "b8b9817ad7db5dfdc9056ed7e0e5e7160882e3dd8ccee10df25fa9e333d8d7ac",
+      "confirmations": 1
+    },
+    {
+      "name": "cross-multi-unlock-41-e3-first",
+      "txid": "85d4e4330058fd244e10f84b004f9723df21958385950c621615414b3dc90dea",
+      "height": 708,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKMULTISIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "c4bf8e0baa8f2d41445521c9fea8a54f74b65f8e3d2cedd96955d5127af68e71"
+    },
+    {
+      "name": "cross-multi-unlock-41-e3-first-block",
+      "block": false,
+      "expected": false,
+      "height": 708,
+      "hash": "02b48da9ce4b3cadad6f0c3e171428de5820333feed60943c5b395e74b205933",
+      "old_tip": "759424c4644698e2518f03f7ec7ce17f9fec15f9089983669eb7caf3d81a37ea",
+      "new_tip": "759424c4644698e2518f03f7ec7ce17f9fec15f9089983669eb7caf3d81a37ea",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "85d4e4330058fd244e10f84b004f9723df21958385950c621615414b3dc90dea"
+      ],
+      "block_file": "cross-multi-unlock-41-e3-first-block.block.hex"
+    },
+    {
+      "name": "cross-multi-unlock-41-e3-second",
+      "txid": "c972579e4d172ce6dbaec9de5ce479876e5d56d68f1e488c81ab2315d7c4587d",
+      "height": 709,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKSIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKSIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "ea85cb4af52bba884465ee5237a59cb414b129d4ad2de2eea3dfb5015e4347fd"
+    },
+    {
+      "name": "cross-multi-unlock-41-e3-second-block",
+      "block": false,
+      "expected": false,
+      "height": 709,
+      "hash": "483c27eaed7326fb44b2f6e7e95655cc622c946035e6239696865d8cbf6acafc",
+      "old_tip": "3135073540085196eb548ece0f5b1b104814ec63624215c572dcd15731e2c175",
+      "new_tip": "3135073540085196eb548ece0f5b1b104814ec63624215c572dcd15731e2c175",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "c972579e4d172ce6dbaec9de5ce479876e5d56d68f1e488c81ab2315d7c4587d"
+      ],
+      "block_file": "cross-multi-unlock-41-e3-second-block.block.hex"
+    },
+    {
+      "name": "cross-single-unlock-61-41-none",
+      "txid": "e85d63191e1c7d547996ba563ed9f8d2832c384561adc1405952a54e298582fc",
+      "height": 710,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "e85d63191e1c7d547996ba563ed9f8d2832c384561adc1405952a54e298582fc",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "594a95b3f36a01ac96141727245c5878ca0ef8d8d038488931dbbecb80c1a699"
+    },
+    {
+      "name": "cross-single-unlock-61-41-none-mined",
+      "block": true,
+      "hash": "7c3bfd187e7512aa3ca8731abb5c542c150da216c51244b1e13116f899360280",
+      "height": 710,
+      "txid": "e85d63191e1c7d547996ba563ed9f8d2832c384561adc1405952a54e298582fc",
+      "confirmations": 1
+    },
+    {
+      "name": "cross-single-unlock-61-41-first",
+      "txid": "bac7f54890a7ba99b67a0cbce0e182ba6f86dd2ce9d46a697dd35c6542ca7911",
+      "height": 712,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKSIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKSIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "c8cc5cb7818fe3e736d4dd50d7d49e35ba24854ad1ea13a9edb0cb5db27e38e9"
+    },
+    {
+      "name": "cross-single-unlock-61-41-first-block",
+      "block": false,
+      "expected": false,
+      "height": 712,
+      "hash": "69d503b52484464fde120f5f61eea592ffd0218f96b19fef348c3f1206553fdd",
+      "old_tip": "7dfb21a9cb3eec0e5f3c1268d11a26a6e81f8850d9eeebd9b6975b966479a819",
+      "new_tip": "7dfb21a9cb3eec0e5f3c1268d11a26a6e81f8850d9eeebd9b6975b966479a819",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "bac7f54890a7ba99b67a0cbce0e182ba6f86dd2ce9d46a697dd35c6542ca7911"
+      ],
+      "block_file": "cross-single-unlock-61-41-first-block.block.hex"
+    },
+    {
+      "name": "cross-single-unlock-61-41-second",
+      "txid": "c33ea726907ec6302d16d53ba595d070d586586392681a491c456f42c0f9d97a",
+      "height": 713,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKMULTISIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "ed4c88d9625fc957a785062df8db418e944e145848f46ae8ced9589f053b16f1"
+    },
+    {
+      "name": "cross-single-unlock-61-41-second-block",
+      "block": false,
+      "expected": false,
+      "height": 713,
+      "hash": "1fc089fbf4bf0c791c604a32825ea234c4d70923fd8b8cab87f9ba75b7f63bc6",
+      "old_tip": "7b088b4ef67fb45b21e8afba17820ed03fa446a02a663e089ef8ce123c6d1977",
+      "new_tip": "7b088b4ef67fb45b21e8afba17820ed03fa446a02a663e089ef8ce123c6d1977",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "c33ea726907ec6302d16d53ba595d070d586586392681a491c456f42c0f9d97a"
+      ],
+      "block_file": "cross-single-unlock-61-41-second-block.block.hex"
+    },
+    {
+      "name": "cross-single-unlock-41-e3-none",
+      "txid": "ff9470f8d48ba656bd2abd400bff2d60bd71a223ab245e05591c3aea6a0a65cd",
+      "height": 714,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "ff9470f8d48ba656bd2abd400bff2d60bd71a223ab245e05591c3aea6a0a65cd",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "28941cbe7c19634b40d3a64085ae48c5caf18932219002b401591bbac91ca75c"
+    },
+    {
+      "name": "cross-single-unlock-41-e3-none-mined",
+      "block": true,
+      "hash": "1563d37562092a89ca8974e44b9e6593c1b15158a7a9a4ba2e8c859452fe5c42",
+      "height": 714,
+      "txid": "ff9470f8d48ba656bd2abd400bff2d60bd71a223ab245e05591c3aea6a0a65cd",
+      "confirmations": 1
+    },
+    {
+      "name": "cross-single-unlock-41-e3-first",
+      "txid": "be6c79196d2ec7cedddabad02e42a12029b9128a8df935584508107d008d2dd0",
+      "height": 716,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKSIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKSIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "6522513b57c66a28dcdd137ce7aab09ce428315f67a55bb1e0f82e69aafb9326"
+    },
+    {
+      "name": "cross-single-unlock-41-e3-first-block",
+      "block": false,
+      "expected": false,
+      "height": 716,
+      "hash": "46eea8a0d4a95f30d9f03ed6dacc29a72870586b4ca11e5af5b1b1bf03502d5b",
+      "old_tip": "66049a2d84767d94dc3aa68da15744879f6e62c9e43bd5885f998a9fed2a650a",
+      "new_tip": "66049a2d84767d94dc3aa68da15744879f6e62c9e43bd5885f998a9fed2a650a",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "be6c79196d2ec7cedddabad02e42a12029b9128a8df935584508107d008d2dd0"
+      ],
+      "block_file": "cross-single-unlock-41-e3-first-block.block.hex"
+    },
+    {
+      "name": "cross-single-unlock-41-e3-second",
+      "txid": "56f7af3d29cd2493cd274a3a8de2eb340802a55b6371b5a49b297dd605f95163",
+      "height": 717,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKMULTISIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "005c27a861a7ae7a4b49b700bd0fd375a69f8a6c0da89393daadd808a5a82d8f"
+    },
+    {
+      "name": "cross-single-unlock-41-e3-second-block",
+      "block": false,
+      "expected": false,
+      "height": 717,
+      "hash": "244811b590df03fe23206e93531016d79cd4b8ba6fa8814f7f3e55297473c1b5",
+      "old_tip": "775c9c73956b92ff10aa38d282f010f797ccac9b858a72e641282f6ef527219a",
+      "new_tip": "775c9c73956b92ff10aa38d282f010f797ccac9b858a72e641282f6ef527219a",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "56f7af3d29cd2493cd274a3a8de2eb340802a55b6371b5a49b297dd605f95163"
+      ],
+      "block_file": "cross-single-unlock-41-e3-second-block.block.hex"
+    },
+    {
+      "name": "current-multisig-finished",
+      "result": "passed"
+    },
+    {
+      "name": "constant-multisig-63-delete-forkid-push-False",
+      "txid": "dd2ab77b5cc6adf19518a97da61b2744934785fb46cb4c599d9a11daa7ce63de",
+      "height": 719,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "dd2ab77b5cc6adf19518a97da61b2744934785fb46cb4c599d9a11daa7ce63de",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "32decaa2b7adb46cd4791e639d786426db03ffc0f7cd640eac625c528e2538ac"
+    },
+    {
+      "name": "constant-multisig-63-delete-forkid-push-False-mined",
+      "block": true,
+      "hash": "415b31c9f00a83e50b9cc5e4b48b36c0b1314273f543e5f082f8f196d88c0b66",
+      "height": 719,
+      "txid": "dd2ab77b5cc6adf19518a97da61b2744934785fb46cb4c599d9a11daa7ce63de",
+      "confirmations": 1
+    },
+    {
+      "name": "constant-multisig-63-delete-forkid-push-True",
+      "txid": "f7ee3ca8d2409595ab8a8998d2373b78761a47e454754192b9d1a005e3bf799a",
+      "height": 722,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKMULTISIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "1540e64517cd2c710eb1a45bcf65923be10dc032bf4fbf3f99278e6abbd7039a"
+    },
+    {
+      "name": "constant-multisig-63-delete-forkid-push-True-block",
+      "block": false,
+      "expected": false,
+      "height": 722,
+      "hash": "0920ec19e638a66eb1f04e69171fe83b2457e4f76a38bd4acec5fcf59980c36e",
+      "old_tip": "41ca087c72d85ef48e1db3d1a543bbf48de45372b9c6408c1750dd6874098709",
+      "new_tip": "41ca087c72d85ef48e1db3d1a543bbf48de45372b9c6408c1750dd6874098709",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "f7ee3ca8d2409595ab8a8998d2373b78761a47e454754192b9d1a005e3bf799a"
+      ],
+      "block_file": "constant-multisig-63-delete-forkid-push-True-block.block.hex"
+    },
+    {
+      "name": "constant-multisig-e3-delete-forkid-push-False",
+      "txid": "97c53f131d1302f6de8010705ce2c51f450fe41f1a268d5af2d6d232572a0d0c",
+      "height": 724,
+      "library": {
+        "accepted": true
+      },
+      "mempool": "regular",
+      "rpc_result": "97c53f131d1302f6de8010705ce2c51f450fe41f1a268d5af2d6d232572a0d0c",
+      "rpc_error": null,
+      "expected": "regular",
+      "library_consensus": true,
+      "tx_sha256": "1323fc546aa023ad0b71cdf6a99d6fee9fe77fe36032553d8f0f370b3a51b072"
+    },
+    {
+      "name": "constant-multisig-e3-delete-forkid-push-False-mined",
+      "block": true,
+      "hash": "6cffaa9b7cb2d462623edf0c4191f900a31aace42bec021cd24c344666c99151",
+      "height": 724,
+      "txid": "97c53f131d1302f6de8010705ce2c51f450fe41f1a268d5af2d6d232572a0d0c",
+      "confirmations": 1
+    },
+    {
+      "name": "constant-multisig-e3-delete-forkid-push-True",
+      "txid": "0a69a70b98cb59b6930e9978346a89e09b64f0967cd566016bae48dcfb45a008",
+      "height": 727,
+      "library": {
+        "accepted": false,
+        "error": "Error evaluating the script `OP_CHECKMULTISIGVERIFY failed`"
+      },
+      "mempool": "rejected",
+      "rpc_result": null,
+      "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKMULTISIGVERIFY operation)",
+      "expected": "rejected",
+      "library_consensus": false,
+      "tx_sha256": "fe0b54de3fb00bc5bae55a0839bf3e93f56bc4367f283085538f4da02208aad2"
+    },
+    {
+      "name": "constant-multisig-e3-delete-forkid-push-True-block",
+      "block": false,
+      "expected": false,
+      "height": 727,
+      "hash": "12345180557baf1121bdbed7f279c4748e6da2cf5e3841538108cf85aaba6343",
+      "old_tip": "661437232c1d691a737c76c0fd71213ddd8a3c6d4b088276017b445766c5eb34",
+      "new_tip": "661437232c1d691a737c76c0fd71213ddd8a3c6d4b088276017b445766c5eb34",
+      "submit_result": "blk-bad-inputs",
+      "transactions": [
+        "0a69a70b98cb59b6930e9978346a89e09b64f0967cd566016bae48dcfb45a008"
+      ],
+      "block_file": "constant-multisig-e3-delete-forkid-push-True-block.block.hex"
+    },
+    {
+      "name": "current-multisig-constant-finished",
+      "result": "passed"
+    }
+  ],
+  "archive_sha256": "28e08702d8d80ddf7ba1489598130fbcfe3903ee96ee860aa3929d09dd72ddb8"
+}

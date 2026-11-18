@@ -1,0 +1,87 @@
+{
+  "node_version": "Bitcoin SV version v1.2.3",
+  "image": "docker.io/bitcoinsv/bitcoin-sv@sha256:d96fe4786a00e5fc10bc9e0e76a6006376f9472d4eb74d07e4c1e0d019493d33",
+  "runtime": "Apple Container",
+  "cases": [
+    {
+      "expected": true,
+      "library": true,
+      "name": "bip143-lock-separator",
+      "request": {
+        "flags": 4014094,
+        "n": 0,
+        "reportflags": true,
+        "tx": "0200000001030303030303030303030303030303030303030303030303030303030303030300000000494830450221008a18678c5b004c5a173d94197f1141563b71b702559994a5f5b02744d1011e2102200b2ef4a05d1b4b45219661f60693e1cb5a4d83fa2d03969cb080bb61d7df887741ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "210256b328b30c8bf5839e24058747879408bdb36241dc9c2e7c619faa12b2920967adab51",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 4014094
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "bip143-unlock-separator",
+      "request": {
+        "flags": 4014094,
+        "n": 0,
+        "reportflags": true,
+        "tx": "02000000010303030303030303030303030303030303030303030303030303030303030303000000006f483045022100e2c360f0f0e2998dbe1b6c1c69a8bfc1b9de3f96efbfa9c9b8ce367656d3295e0220069b1cdad5ed8fb9aa4c46bcf784c115bb06e0fde5a896454481ac033d4aaddf41ab210256b328b30c8bf5839e24058747879408bdb36241dc9c2e7c619faa12b2920967adab51ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "7551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 4014094
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "mixed-multisig",
+      "request": {
+        "flags": 4014094,
+        "n": 0,
+        "reportflags": true,
+        "tx": "0200000001030303030303030303030303030303030303030303030303030303030303030300000000910047304402203b21599f5c0a64099aaa9f42228a8898b5a8247bd7995f80685e11e00b465bfb02206d19d2c7e881a080ad4e9543138b3c022800a42aa398ae56185fd630c56b2314414730440220616541b3184bb71b8c76d9023dd7be65c22e30c0aa9bf6e71ba88e7d4ccc5d2d022037826da34e66436fbda7d586a5d8c021f61830dd5aff56997d4b40e5993a056961ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "52210256b328b30c8bf5839e24058747879408bdb36241dc9c2e7c619faa12b2920967210256b328b30c8bf5839e24058747879408bdb36241dc9c2e7c619faa12b292096752afab51",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 4014094
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "high-s-chronicle",
+      "request": {
+        "flags": 4014094,
+        "n": 0,
+        "reportflags": true,
+        "tx": "020000000103030303030303030303030303030303030303030303030303030303030303030000000049483045022034ec249042be09d63f8f34ea47d33070a9d5211072c6be0c2cb5d99297b3465a022100c7c3cd98d0c5c5b03be4a83ab34963730a4a85ffdede78a01a61d75fe003054661ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "210256b328b30c8bf5839e24058747879408bdb36241dc9c2e7c619faa12b2920967adab51",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 4014094
+      },
+      "matches": true
+    }
+  ]
+}

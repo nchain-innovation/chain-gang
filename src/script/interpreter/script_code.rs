@@ -1,7 +1,4 @@
-use crate::script::op_codes::*;
-
-use super::multisig::{prefork, remove_sig};
-use super::push::next_op;
+use super::multisig::{needs_signature_cleanup, remove_sig};
 
 /// Phase of a two-phase unlock/lock script evaluation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -16,19 +13,6 @@ pub struct TwoPhaseEvalContext<'a> {
     pub phase: TwoPhasePhase,
 }
 
-pub(crate) fn strip_code_separators(script: &[u8]) -> Vec<u8> {
-    let mut result = Vec::with_capacity(script.len());
-    let mut i = 0;
-    while i < script.len() {
-        let next = next_op(i, script);
-        if script[i] != OP_CODESEPARATOR {
-            result.extend_from_slice(&script[i..next]);
-        }
-        i = next;
-    }
-    result
-}
-
 pub(crate) fn checksig_script_code(
     script: &[u8],
     check_index: usize,
@@ -38,13 +22,13 @@ pub(crate) fn checksig_script_code(
     let mut cleaned_script = match two_phase {
         None => script[check_index..].to_vec(),
         Some(ctx) if ctx.phase == TwoPhasePhase::Unlock => {
-            let mut code = strip_code_separators(&script[check_index..]);
-            code.extend(strip_code_separators(ctx.lock_script));
+            let mut code = script[check_index..].to_vec();
+            code.extend_from_slice(ctx.lock_script);
             code
         }
-        Some(_) => strip_code_separators(&script[check_index..]),
+        Some(_) => script[check_index..].to_vec(),
     };
-    if prefork(sig) {
+    if needs_signature_cleanup(sig) {
         cleaned_script = remove_sig(sig, &cleaned_script);
     }
     cleaned_script
@@ -58,10 +42,10 @@ pub(crate) fn multisig_script_code(
     match two_phase {
         None => script[check_index..].to_vec(),
         Some(ctx) if ctx.phase == TwoPhasePhase::Unlock => {
-            let mut code = strip_code_separators(&script[check_index..]);
-            code.extend(strip_code_separators(ctx.lock_script));
+            let mut code = script[check_index..].to_vec();
+            code.extend_from_slice(ctx.lock_script);
             code
         }
-        Some(_) => strip_code_separators(&script[check_index..]),
+        Some(_) => script[check_index..].to_vec(),
     }
 }

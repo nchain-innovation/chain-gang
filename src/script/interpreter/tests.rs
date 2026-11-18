@@ -1,5 +1,4 @@
 use super::multisig::remove_sig;
-use super::script_code::strip_code_separators;
 use super::*;
 use crate::script::op_codes::*;
 use crate::script::stack::{
@@ -655,16 +654,23 @@ fn next_op_tests() {
 
 #[test]
 fn remove_sig_tests() {
-    let expected: Vec<u8> = vec![];
-    assert!(remove_sig(&[], &[]) == expected);
-
-    let expected: Vec<u8> = vec![OP_0];
-    assert!(remove_sig(&[], &[OP_0]) == expected);
-
-    let expected: Vec<u8> = vec![];
-    assert!(remove_sig(&[OP_0], &[OP_0]) == expected);
-    let v = [OP_0, OP_1, OP_2, OP_3, OP_4, OP_0, OP_1, OP_2, OP_3, OP_4];
-    assert!(remove_sig(&[OP_2, OP_3], &v) == vec![OP_0, OP_1, OP_4, OP_0, OP_1, OP_4]);
+    assert!(remove_sig(&[], &[]).is_empty());
+    assert!(remove_sig(&[], &[OP_0]).is_empty());
+    // A data byte inside a push is not an opcode boundary.
+    assert_eq!(remove_sig(&[], &[1, OP_0]), vec![1, OP_0]);
+    assert_eq!(remove_sig(&[OP_0], &[OP_0]), vec![OP_0]);
+    assert!(remove_sig(&[OP_0], &[1, OP_0]).is_empty());
+    let sig = [0x30, 1];
+    assert_eq!(
+        remove_sig(&sig, &[2, 0x30, 1, OP_DROP, 2, 0x30, 1]),
+        vec![OP_DROP]
+    );
+    // A nonminimal PUSHDATA1 alias is not the serialized CScript(sig) target.
+    assert_eq!(
+        remove_sig(&sig, &[OP_PUSHDATA1, 2, 0x30, 1]),
+        vec![OP_PUSHDATA1, 2, 0x30, 1]
+    );
+    assert_eq!(remove_sig(&sig, &[3, 2, 0x30, 1]), vec![3, 2, 0x30, 1]);
 }
 
 /// A test run that doesn't do signature checks and expects failure
@@ -1072,19 +1078,6 @@ fn chronicle_two_phase_unlock_checksig_script_code() {
     assert_eq!(scripts.len(), 2);
     assert_eq!(scripts[0], expected_unlock_code.0);
     assert_eq!(scripts[1], expected_lock_code.0);
-}
-
-#[test]
-fn strip_code_separators_removes_codesep_bytes() {
-    let mut script = Script::new();
-    script.append(OP_1);
-    script.append(OP_CODESEPARATOR);
-    script.append(OP_2);
-    script.append(OP_CODESEPARATOR);
-    script.append(OP_3);
-
-    let stripped = strip_code_separators(&script.0);
-    assert_eq!(stripped, [OP_1, OP_2, OP_3]);
 }
 
 #[test]

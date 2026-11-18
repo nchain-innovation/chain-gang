@@ -35,6 +35,67 @@ fn is_defined_sighash_type(sighash_type: u8) -> bool {
 /// The node's message for an undefined sighash type (`SCRIPT_ERR_SIG_HASHTYPE`).
 const UNDEFINED_SIGHASH_TYPE: &str = "Signature hash type missing or not understood";
 
+/// BSV's BIP66 encoding check is separate from ECDSA scalar validity.
+/// Zero or out-of-range R/S can be DER-canonical yet fail verification.
+fn check_script_encodings(
+    sig: &[u8],
+    pubkey: &[u8],
+    strict_pubkey: bool,
+) -> Result<(), ChainGangError> {
+    let valid_der = || {
+        if !(9..=73).contains(&sig.len()) || sig[0] != 0x30 || usize::from(sig[1]) != sig.len() - 3
+        {
+            return false;
+        }
+        let r = usize::from(sig[3]);
+        if 5 + r >= sig.len() {
+            return false;
+        }
+        let s = usize::from(sig[5 + r]);
+        if r + s + 7 != sig.len() || sig[2] != 2 || r == 0 || sig[4] & 0x80 != 0 {
+            return false;
+        }
+        if r > 1 && sig[4] == 0 && sig[5] & 0x80 == 0 {
+            return false;
+        }
+        if sig[r + 4] != 2 || s == 0 || sig[r + 6] & 0x80 != 0 {
+            return false;
+        }
+        !(s > 1 && sig[r + 6] == 0 && sig[r + 7] & 0x80 == 0)
+    };
+    if !sig.is_empty() && !valid_der() {
+        return Err(ChainGangError::ScriptError(
+            "Non-canonical DER signature".to_string(),
+        ));
+    }
+    // STRICTENC also checks public-key shape for an empty signature. Curve
+    // membership, however, is a verification failure rather than an encoding error.
+    if strict_pubkey
+        && !matches!(
+            (pubkey.len(), pubkey.first()),
+            (33, Some(2 | 3)) | (65, Some(4))
+        )
+    {
+        return Err(ChainGangError::ScriptError(
+            "Non-canonical public key".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn verify_script_ecdsa(message: &[u8], der: &[u8], pubkey: &[u8], relax_low_s: bool) -> bool {
+    let Ok(mut signature) = Signature::from_der(der) else {
+        return false;
+    };
+    if relax_low_s {
+        signature = signature.normalize_s();
+    }
+    let Ok(key) = VerifyingKey::from_sec1_bytes(pubkey) else {
+        return false;
+    };
+    key.verify_prehash(message, &signature).is_ok()
+}
+
 /// Checks that external values are correct in the script
 pub trait Checker {
     /// Checks that a signature and public key validate within a script
@@ -122,6 +183,7 @@ impl Checker for ZChecker {
         // CHECK(MULTI)SIG", passed by its encoding checks and simply false. It
         // is also the one failing signature NULLFAIL allows, which the
         // interpreter already exempts (#210).
+        check_script_encodings(sig, pubkey, true)?;
         if sig.is_empty() {
             return Ok(false);
         }
@@ -139,13 +201,7 @@ impl Checker for ZChecker {
 
         let sig_hash = self.z;
         let der_sig = &sig[0..sig.len() - 1];
-        let signature = Signature::from_der(der_sig)?;
-
-        let message = sig_hash.0;
-
-        let verifying_key = VerifyingKey::from_sec1_bytes(pubkey)?;
-
-        Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
+        Ok(verify_script_ecdsa(&sig_hash.0, der_sig, pubkey, false))
     }
 
     fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
@@ -216,6 +272,7 @@ impl Checker for ZVersionChecker {
         // CHECK(MULTI)SIG", passed by its encoding checks and simply false. It
         // is also the one failing signature NULLFAIL allows, which the
         // interpreter already exempts (#210).
+        check_script_encodings(sig, pubkey, true)?;
         if sig.is_empty() {
             return Ok(false);
         }
@@ -233,13 +290,12 @@ impl Checker for ZVersionChecker {
 
         let sig_hash = self.z;
         let der_sig = &sig[0..sig.len() - 1];
-        let signature = Signature::from_der(der_sig)?;
-
-        let message = sig_hash.0;
-
-        let verifying_key = VerifyingKey::from_sec1_bytes(pubkey)?;
-
-        Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
+        Ok(verify_script_ecdsa(
+            &sig_hash.0,
+            der_sig,
+            pubkey,
+            self.tx_version > 1,
+        ))
     }
 
     fn check_locktime(&self, _locktime: i64) -> Result<bool, ChainGangError> {
@@ -294,6 +350,9 @@ impl Checker for TransactionChecker<'_> {
         // CHECK(MULTI)SIG", passed by its encoding checks and simply false. It
         // is also the one failing signature NULLFAIL allows, which the
         // interpreter already exempts (#210).
+        if self.require_sighash_forkid {
+            check_script_encodings(sig, pubkey, true)?;
+        }
         if sig.is_empty() {
             return Ok(false);
         }
@@ -323,14 +382,22 @@ impl Checker for TransactionChecker<'_> {
         )?;
         let der_sig = &sig[0..sig.len() - 1];
 
-        let mut signature = Signature::from_der(der_sig)?;
-        if self.chronicle_script_version() > 1 {
-            // Chronicle lifts the low-S rule; normalize so k256 accepts high-S encodings.
-            signature = signature.normalize_s();
+        // Preserve the compatibility API's historical no-FORKID behavior.
+        // The encoding/verification distinction here targets current BSV rules.
+        if !self.require_sighash_forkid {
+            let mut signature = Signature::from_der(der_sig)?;
+            if (self.chronicle_script_version() as i32) > 1 {
+                signature = signature.normalize_s();
+            }
+            let key = VerifyingKey::from_sec1_bytes(pubkey)?;
+            return Ok(key.verify_prehash(&sig_hash.0, &signature).is_ok());
         }
-        let message = sig_hash.0;
-        let verifying_key: VerifyingKey = VerifyingKey::from_sec1_bytes(pubkey)?;
-        Ok(verifying_key.verify_prehash(&message, &signature).is_ok())
+        Ok(verify_script_ecdsa(
+            &sig_hash.0,
+            der_sig,
+            pubkey,
+            (self.chronicle_script_version() as i32) > 1,
+        ))
     }
 
     fn tx_version(&self) -> Result<i32, ChainGangError> {

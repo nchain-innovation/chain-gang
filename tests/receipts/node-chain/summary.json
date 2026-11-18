@@ -1,0 +1,2636 @@
+{
+  "metadata": {
+    "date": "2026-11-19",
+    "runtime": "Apple Container with Rosetta",
+    "node_source": "6504a3aff65ba97c0f6c80962b033e35ecbfed4b",
+    "node_image": "docker.io/bitcoinsv/bitcoin-sv@sha256:d96fe4786a00e5fc10bc9e0e76a6006376f9472d4eb74d07e4c1e0d019493d33",
+    "library_commit": "2234c00cc5b30d996234cd38d36f3eadfb0d0876",
+    "lab_commit": "f8f184bb6a35139ce8d1971a6f514cffc666e4d3",
+    "network": "isolated regtest; no mainnet broadcast",
+    "genesis_height": 1,
+    "chronicle_height": 200,
+    "regtest_csv_bip113_height": 576,
+    "mainnet_csv_bip113_height": 419328,
+    "script_sha256": {
+      "sequences.py": "d969ac437648cba91347e26b1f864c92a8e13d9464487a86019270e173243e56",
+      "boundary.py": "f649e112069ce1333707f0663f88fd9116f1f7764acf7f44bfbfc0f1b7c7762d",
+      "harness.py": "98e9b3af55c51b83c5c73b0de2045bebf61cd4190c89a2ed1da1bef3c38343d0",
+      "replacement_rate.py": "c9ae80f52d63101d516b9635e695227f63070c9a32d329a2f1fad2cab9687d8d",
+      "complete_spends.py": "f19cb19b22b0cc6508dae5cb7271ea022ec4c8e3c085a4bf64dd96afcae4c197",
+      "standard_policy.py": "6ce92359a9176fa362bbbe0e5274b83c2aee16b911ba0ce4a4d91b27e9a389b4",
+      "signed_replacements.py": "bf8c4f67b6d61e3b0c6f2cf4057e05c9fed411964822a6ab85f7fd05851ac5b6",
+      "run_all.py": "6fa1ffc5e50bf1d12addbbb2f3880ddc6e3ec0ad67a2c10d1465a33f3bb44f04",
+      "default_policy.py": "5fc55997731d3459ba69ca1c2f15bc4166d0d28972f8a59b14f640ba23100e6a"
+    }
+  },
+  "profiles": {
+    "flexible": {
+      "counts": {
+        "admissions": 91,
+        "mempool": 39,
+        "nonfinal_pool": 13,
+        "rejected": 39,
+        "block_checks": 75,
+        "block_accepted": 42,
+        "block_rejected": 33
+      },
+      "cases": [
+        {
+          "name": "environment",
+          "result": "started",
+          "node_version": "/Bitcoin SV:1.2.3/",
+          "network": "regtest",
+          "source": "6504a3aff65ba97c0f6c80962b033e35ecbfed4b",
+          "runtime": "Apple Container",
+          "activation": 200,
+          "genesis": 1,
+          "csv_bip113": 576,
+          "policy": "flexible app profile; separate strict-policy run required"
+        },
+        {
+          "name": "pre-activation-61",
+          "txid": "4f68f5c1eba3e12f74570de509e5914e57a0727bf1c2eaf1cae821379cf76598",
+          "height": 199,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `SIGHASH_CHRONICLE before activation`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: flexible-mandatory-script-verify-flag-failed (Illegal use of SIGHASH_CHRONICLE)",
+          "expected": "rejected",
+          "tx_sha256": "098f8acba1469468c6a52e038ce54ca24a51b947ec5f9c883f1cca518f9a10b9"
+        },
+        {
+          "name": "pre-activation-61-block",
+          "block": false,
+          "expected": false,
+          "height": 199,
+          "hash": "3e57d74e2540981cd2f7f5f9997e941bc0c5af51ef52f7b36defc5e9fc00f016",
+          "old_tip": "5b6429812e58d97abe61714640150b5504bf42075be2af8287c5959ee618cf02",
+          "new_tip": "5b6429812e58d97abe61714640150b5504bf42075be2af8287c5959ee618cf02",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "4f68f5c1eba3e12f74570de509e5914e57a0727bf1c2eaf1cae821379cf76598"
+          ],
+          "block_file": "pre-activation-61-block.block.hex",
+          "block_sha256": "c5c668da11b92cdad95ff09f0e27152500e9505f9d0a0397ed13dbdbb4ee9cff"
+        },
+        {
+          "name": "pre-activation-companion-63",
+          "txid": "3a7d938a34a123918901251c8da07da224b6ab0509d653695a521c7b0355df98",
+          "height": 199,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `SIGHASH_CHRONICLE before activation`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: flexible-mandatory-script-verify-flag-failed (Illegal use of SIGHASH_CHRONICLE)",
+          "expected": "rejected",
+          "tx_sha256": "f51ac197fb7e88d571ebf0933428583ddccd314435a3060e52c951c705183df9"
+        },
+        {
+          "name": "pre-activation-companion-63-block",
+          "block": false,
+          "expected": false,
+          "height": 199,
+          "hash": "6240759c77cac95822c5858961168c6001bb266c3b9943373204d0667d5ef621",
+          "old_tip": "5b6429812e58d97abe61714640150b5504bf42075be2af8287c5959ee618cf02",
+          "new_tip": "5b6429812e58d97abe61714640150b5504bf42075be2af8287c5959ee618cf02",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "3a7d938a34a123918901251c8da07da224b6ab0509d653695a521c7b0355df98"
+          ],
+          "block_file": "pre-activation-companion-63-block.block.hex",
+          "block_sha256": "7d2908b81521486f749e250d8605489def6c353de97eeb0bccdb2b4044f372d2"
+        },
+        {
+          "name": "pre-activation-companion-e3",
+          "txid": "d4e402d6ffbaeb40f5d4820e643e1f68c625b2a6f5a23e02b793952323426c41",
+          "height": 199,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `SIGHASH_CHRONICLE before activation`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: flexible-mandatory-script-verify-flag-failed (Illegal use of SIGHASH_CHRONICLE)",
+          "expected": "rejected",
+          "tx_sha256": "12dcbf741f5344de6b55ad7f1cb126d61314dc8f50341fce500db5da2311b32f"
+        },
+        {
+          "name": "pre-activation-companion-e3-block",
+          "block": false,
+          "expected": false,
+          "height": 199,
+          "hash": "64cf8b4f02e79c73e4a2530965a419aea12a957493d5cb075ff8460325064a13",
+          "old_tip": "5b6429812e58d97abe61714640150b5504bf42075be2af8287c5959ee618cf02",
+          "new_tip": "5b6429812e58d97abe61714640150b5504bf42075be2af8287c5959ee618cf02",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "d4e402d6ffbaeb40f5d4820e643e1f68c625b2a6f5a23e02b793952323426c41"
+          ],
+          "block_file": "pre-activation-companion-e3-block.block.hex",
+          "block_sha256": "3949309531010f8babb7143d44072aaca756bdec001a0a4c85a29916e0102ceb"
+        },
+        {
+          "name": "pre-activation-41-control",
+          "txid": "3a8b66ff3aa7fac9b8ffbfa0a4a107ccd534a51b37c28ab0cbfa0325e5e8bc33",
+          "height": 199,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "3a8b66ff3aa7fac9b8ffbfa0a4a107ccd534a51b37c28ab0cbfa0325e5e8bc33",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "d0e08afefa9b7b01e62989dd5871cad1417059775b787d6ae3df7cce22e17746"
+        },
+        {
+          "name": "height-199-control",
+          "block": true,
+          "expected": true,
+          "height": 199,
+          "hash": "16c81a5d382709e8f658f7fe19c76ecdbee4f963b8e0a0395f099244e91773b3",
+          "old_tip": "5b6429812e58d97abe61714640150b5504bf42075be2af8287c5959ee618cf02",
+          "new_tip": "16c81a5d382709e8f658f7fe19c76ecdbee4f963b8e0a0395f099244e91773b3",
+          "submit_result": null,
+          "transactions": [
+            "3a8b66ff3aa7fac9b8ffbfa0a4a107ccd534a51b37c28ab0cbfa0325e5e8bc33"
+          ],
+          "block_file": "height-199-control.block.hex",
+          "confirmed": {
+            "3a8b66ff3aa7fac9b8ffbfa0a4a107ccd534a51b37c28ab0cbfa0325e5e8bc33": 1
+          },
+          "block_sha256": "637381e51bf965f7ee51c8945cc3172186614bc66ef4d6358b1f04119b88f09c"
+        },
+        {
+          "name": "activation-61-old-utxo",
+          "txid": "4f68f5c1eba3e12f74570de509e5914e57a0727bf1c2eaf1cae821379cf76598",
+          "height": 200,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "4f68f5c1eba3e12f74570de509e5914e57a0727bf1c2eaf1cae821379cf76598",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "098f8acba1469468c6a52e038ce54ca24a51b947ec5f9c883f1cca518f9a10b9"
+        },
+        {
+          "name": "height-200-activation",
+          "block": true,
+          "expected": true,
+          "height": 200,
+          "hash": "1fc554e8be781296723678eef157320f1677a6125d29ebf8b26ceae7b82008df",
+          "old_tip": "16c81a5d382709e8f658f7fe19c76ecdbee4f963b8e0a0395f099244e91773b3",
+          "new_tip": "1fc554e8be781296723678eef157320f1677a6125d29ebf8b26ceae7b82008df",
+          "submit_result": null,
+          "transactions": [
+            "4f68f5c1eba3e12f74570de509e5914e57a0727bf1c2eaf1cae821379cf76598",
+            "d8d91cae11fe2f9e93958c81d97d9e8e4b88e8376af782dc3b48384462b98883"
+          ],
+          "block_file": "height-200-activation.block.hex",
+          "confirmed": {
+            "4f68f5c1eba3e12f74570de509e5914e57a0727bf1c2eaf1cae821379cf76598": 1,
+            "d8d91cae11fe2f9e93958c81d97d9e8e4b88e8376af782dc3b48384462b98883": 1
+          },
+          "block_sha256": "8e4281f2b62f93a8e3ff09cef8be20d3dafa64a7b66dfd1795fb738c60bda201"
+        },
+        {
+          "name": "post-activation-old-opcode",
+          "txid": "8b15d33c8f5a94f6c261273803d7e98e513c8d2360a31b11d52eae519f089fe1",
+          "height": 201,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `disabled pre-Chronicle opcode`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: chronicle-script-verify-flag-failed (Attempted to use a disabled opcode)",
+          "expected": "rejected",
+          "tx_sha256": "1163f96b8dc0e31397e824a645c46b935ced745df5d6d6436ef16135a09498b0"
+        },
+        {
+          "name": "old-opcode-block",
+          "block": false,
+          "expected": false,
+          "height": 201,
+          "hash": "75f55b6aa6a92704fda08a1abcff61bad320768230eaaa85ae2578cf14992eb9",
+          "old_tip": "1fc554e8be781296723678eef157320f1677a6125d29ebf8b26ceae7b82008df",
+          "new_tip": "1fc554e8be781296723678eef157320f1677a6125d29ebf8b26ceae7b82008df",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "8b15d33c8f5a94f6c261273803d7e98e513c8d2360a31b11d52eae519f089fe1"
+          ],
+          "block_file": "old-opcode-block.block.hex",
+          "block_sha256": "5e4cc08003a0618b3cd29f12a89430c0b5adf80ca7029b78f5d385aa3b370f03"
+        },
+        {
+          "name": "post-activation-new-opcode-v1",
+          "txid": "9a4bf345d403ba168b7138d8b549d5298623c02201aed5a4d486044f8fd2084e",
+          "height": 201,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "9a4bf345d403ba168b7138d8b549d5298623c02201aed5a4d486044f8fd2084e",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "37d15ac9266dd4c107e309fef3ab0e3808e10bd27dbef4bc92ab722f435f7e80"
+        },
+        {
+          "name": "new-opcode-height-201",
+          "block": true,
+          "hash": "671e8d0331fd3670b19dbbe93df1758535124a439df12a420e42ea101d5aba13",
+          "height": 201,
+          "txid": "9a4bf345d403ba168b7138d8b549d5298623c02201aed5a4d486044f8fd2084e",
+          "confirmations": 1
+        },
+        {
+          "name": "old-nop-policy",
+          "txid": "9a0f1260b8bc2cb3bd8d16961a8b33b97aad2d775aac15fba1e6764dc452fa49",
+          "height": 202,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (NOPx reserved for soft-fork upgrades)",
+          "expected": "rejected",
+          "tx_sha256": "c39f05f510cb86c9905db180418f6b6f8638de69f25c727e25c85e47567b219a"
+        },
+        {
+          "name": "old-nop-consensus",
+          "block": true,
+          "expected": true,
+          "height": 202,
+          "hash": "2098a23e22a2ca0cbbe8cdd70f50d9d4864e6a7736f7cd3d527cb79d6eaf86ad",
+          "old_tip": "671e8d0331fd3670b19dbbe93df1758535124a439df12a420e42ea101d5aba13",
+          "new_tip": "2098a23e22a2ca0cbbe8cdd70f50d9d4864e6a7736f7cd3d527cb79d6eaf86ad",
+          "submit_result": null,
+          "transactions": [
+            "9a0f1260b8bc2cb3bd8d16961a8b33b97aad2d775aac15fba1e6764dc452fa49"
+          ],
+          "block_file": "old-nop-consensus.block.hex",
+          "confirmed": {
+            "9a0f1260b8bc2cb3bd8d16961a8b33b97aad2d775aac15fba1e6764dc452fa49": 1
+          },
+          "block_sha256": "dbbddd94fc846970f10e07cd3d5898805a9fbdabe7e6f89c7d93c506f28d35e0"
+        },
+        {
+          "name": "post-activation-companion-63",
+          "txid": "3a7d938a34a123918901251c8da07da224b6ab0509d653695a521c7b0355df98",
+          "height": 203,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "3a7d938a34a123918901251c8da07da224b6ab0509d653695a521c7b0355df98",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "f51ac197fb7e88d571ebf0933428583ddccd314435a3060e52c951c705183df9"
+        },
+        {
+          "name": "companion-63-mined",
+          "block": true,
+          "hash": "50e257b1eb2ed736207da69090e9010fde237b3b4287c209f73de6893e5876f5",
+          "height": 203,
+          "txid": "3a7d938a34a123918901251c8da07da224b6ab0509d653695a521c7b0355df98",
+          "confirmations": 1
+        },
+        {
+          "name": "post-activation-companion-e3",
+          "txid": "d4e402d6ffbaeb40f5d4820e643e1f68c625b2a6f5a23e02b793952323426c41",
+          "height": 204,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "d4e402d6ffbaeb40f5d4820e643e1f68c625b2a6f5a23e02b793952323426c41",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "12dcbf741f5344de6b55ad7f1cb126d61314dc8f50341fce500db5da2311b32f"
+        },
+        {
+          "name": "companion-e3-mined",
+          "block": true,
+          "hash": "5b4c22b561df04c98536585359ccd67737077bb76a2038cbd2019767a3805e1b",
+          "height": 204,
+          "txid": "d4e402d6ffbaeb40f5d4820e643e1f68c625b2a6f5a23e02b793952323426c41",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-41-bad-sequence",
+          "txid": "b37095f8aa1602b0eb378e6c1a96d71daf170c75f3a830da8d97e380578a5d83",
+          "height": 206,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "0129b819f40b5ae4325cf967a92ae6627e56f46b012066bbb7692707374f34d6"
+        },
+        {
+          "name": "paired-full-41-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 206,
+          "hash": "158d76a6b3683653089e71aabf45b931b127cb615eea98b9091da4c8b19631c8",
+          "old_tip": "29b69daa607122aabd1db5a2fa7d1c459f1dfe160f68242d8a354429f8bb04ac",
+          "new_tip": "29b69daa607122aabd1db5a2fa7d1c459f1dfe160f68242d8a354429f8bb04ac",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "b37095f8aa1602b0eb378e6c1a96d71daf170c75f3a830da8d97e380578a5d83"
+          ],
+          "block_file": "paired-full-41-bad-sequence-block.block.hex",
+          "block_sha256": "e8b53082ece99bc15bde53b21dbcf21bca2f80ac4ca14a95a3d88c7a7d2a1474"
+        },
+        {
+          "name": "paired-full-41",
+          "txid": "72748a5ad791a7f1bcac1700c003646826ae7c587b960dc7def21e8640e3b19b",
+          "height": 206,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "72748a5ad791a7f1bcac1700c003646826ae7c587b960dc7def21e8640e3b19b",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "847647e77674982144679c4308973fbbc8abf97df57937eb3baf1fa2cb373226"
+        },
+        {
+          "name": "paired-full-41-mined",
+          "block": true,
+          "hash": "6d0d6059caf25257af8beacb8e34fd96d105ca070b3156dce39864f47212a8d8",
+          "height": 206,
+          "txid": "72748a5ad791a7f1bcac1700c003646826ae7c587b960dc7def21e8640e3b19b",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-42-bad-sequence",
+          "txid": "1fc4acbacbb987fe1f276cacf7cc3026e4c6314b1ad7bb254d48f3a8f63cc85b",
+          "height": 208,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "a67e3bfc3c96526cd8763e319712e66f72f8bbd6778a1c1a1f3eab8f41804496"
+        },
+        {
+          "name": "paired-full-42-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 208,
+          "hash": "2b44b438544f19df6a305acd5d4ded9d428642fe4d6fc405206b6ba45c2d3ab4",
+          "old_tip": "6ebe1b847b5bc861a2d74056097dd9699f0d80da61195de43943d9f05ff97f79",
+          "new_tip": "6ebe1b847b5bc861a2d74056097dd9699f0d80da61195de43943d9f05ff97f79",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "1fc4acbacbb987fe1f276cacf7cc3026e4c6314b1ad7bb254d48f3a8f63cc85b"
+          ],
+          "block_file": "paired-full-42-bad-sequence-block.block.hex",
+          "block_sha256": "8eecd9ca41787924d5532cd073e2a2cc17f7a549dda3084b62ff82ba7534c6ac"
+        },
+        {
+          "name": "paired-full-42",
+          "txid": "d05715856c5b4ccd40153d4b8f82115796ea0c7e0a716cb2473ca9167ce2f111",
+          "height": 208,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "d05715856c5b4ccd40153d4b8f82115796ea0c7e0a716cb2473ca9167ce2f111",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "9d3e12f230ab134bb71a2817313ed08cafcde4e523f04d76560302864af691d6"
+        },
+        {
+          "name": "paired-full-42-mined",
+          "block": true,
+          "hash": "130b87220056c2d9af07f63d496031da5a4df29c3aa4279db4b8e46864205cc9",
+          "height": 208,
+          "txid": "d05715856c5b4ccd40153d4b8f82115796ea0c7e0a716cb2473ca9167ce2f111",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-43-bad-sequence",
+          "txid": "d01c84c82e3801a3add92776be61867967f1adaaf7d7b158aaba39226d311c13",
+          "height": 210,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "8843267f6a3c84ed62d8169ec075a52f9761580ae844dbc2e0736debc3fb4404"
+        },
+        {
+          "name": "paired-full-43-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 210,
+          "hash": "63d3a75e34242507db2415b305b0670a19762b3b86efeab4f7404f787eb0fd8a",
+          "old_tip": "07a6c473688553afe7d0c484629c42cf38e06a0761738a6e5291d8ba1d9c095c",
+          "new_tip": "07a6c473688553afe7d0c484629c42cf38e06a0761738a6e5291d8ba1d9c095c",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "d01c84c82e3801a3add92776be61867967f1adaaf7d7b158aaba39226d311c13"
+          ],
+          "block_file": "paired-full-43-bad-sequence-block.block.hex",
+          "block_sha256": "4bad8ec853e03a51e1a183240ef8837a7effd06fac17aa9e0841d63ad3d66d3e"
+        },
+        {
+          "name": "paired-full-43",
+          "txid": "fe5285d93a2c0dd7080d60a6887329e48be8ce5ec721c1b90b0b5585143d6fab",
+          "height": 210,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "fe5285d93a2c0dd7080d60a6887329e48be8ce5ec721c1b90b0b5585143d6fab",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "5c96f7bccd29f7fe9e379d00efdd77145234e6f45b771f33a55113ce0bb5c499"
+        },
+        {
+          "name": "paired-full-43-mined",
+          "block": true,
+          "hash": "7cdbc8d2aa6f9e430aae7e1fa38677cc4b81494a6b18c4d0a12f4c3487a50572",
+          "height": 210,
+          "txid": "fe5285d93a2c0dd7080d60a6887329e48be8ce5ec721c1b90b0b5585143d6fab",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-c1-bad-sequence",
+          "txid": "6a00c6333a85318cd84a09c7afdcf8f3cfe4bceaf26e2e25b2d336036af484de",
+          "height": 212,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "db1ffd323554f6672f87e2e681ba6f85cad954b179a21d5424ae5bd65641ef9d"
+        },
+        {
+          "name": "paired-full-c1-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 212,
+          "hash": "66d306e377f948b944553aeb5ae5eede790644e0041c59165edc5ebe3bc4abc3",
+          "old_tip": "09ccadea5e44a27fd49c25962d2294284670bcbbbee280333e7d77fc0a2d12ae",
+          "new_tip": "09ccadea5e44a27fd49c25962d2294284670bcbbbee280333e7d77fc0a2d12ae",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "6a00c6333a85318cd84a09c7afdcf8f3cfe4bceaf26e2e25b2d336036af484de"
+          ],
+          "block_file": "paired-full-c1-bad-sequence-block.block.hex",
+          "block_sha256": "f3160271422176fb3d9b58c608ca521946ed5e7af9b2857795ea4895f7d1733e"
+        },
+        {
+          "name": "paired-full-c1",
+          "txid": "ee9500840011038232885b69e1b85b6060a587e9e61de91dae25bff8be0429ff",
+          "height": 212,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "ee9500840011038232885b69e1b85b6060a587e9e61de91dae25bff8be0429ff",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "6fcff223d8a71dc2acd0645a3e728baa9b6831d0e91afaac6d2df662233af261"
+        },
+        {
+          "name": "paired-full-c1-mined",
+          "block": true,
+          "hash": "116c5157145f116f0ad3c0bf3683dc8f1226b4056a171046eeca136bb088cb41",
+          "height": 212,
+          "txid": "ee9500840011038232885b69e1b85b6060a587e9e61de91dae25bff8be0429ff",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-c2-bad-sequence",
+          "txid": "31c33acd0256c2c970c3a8bae8ce4eae78a431aae5983955ec14a5b50b47557a",
+          "height": 214,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "6f403e5f893dcec3487511bba5255e432827850c7a46267924f53cac1d746e68"
+        },
+        {
+          "name": "paired-full-c2-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 214,
+          "hash": "1ecd16f4ddbe58a2e42e7922e2392d8a03c62cb7ecb907b596bfeb2cf6bd4aa9",
+          "old_tip": "4054d71758bb9de281382ac17c48fed4afb2bd219089522207746f2a723f9b02",
+          "new_tip": "4054d71758bb9de281382ac17c48fed4afb2bd219089522207746f2a723f9b02",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "31c33acd0256c2c970c3a8bae8ce4eae78a431aae5983955ec14a5b50b47557a"
+          ],
+          "block_file": "paired-full-c2-bad-sequence-block.block.hex",
+          "block_sha256": "995c977a54405bc69f84c47bf1d4deab7045ff970565c23b660ef80dd63c9925"
+        },
+        {
+          "name": "paired-full-c2",
+          "txid": "e64addd02c11edbc0261c9bae86640d3bade0d49907cb9db96c4899c8437a98a",
+          "height": 214,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "e64addd02c11edbc0261c9bae86640d3bade0d49907cb9db96c4899c8437a98a",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "fc14344cf9a0fc50cf752c1fe16ebc4fc7c97a07bc570bf5c9d9d788997522dd"
+        },
+        {
+          "name": "paired-full-c2-mined",
+          "block": true,
+          "hash": "1ac277dff0e8a379e38115e0128b991a54da7fbb3c10b62b85aca539993cd521",
+          "height": 214,
+          "txid": "e64addd02c11edbc0261c9bae86640d3bade0d49907cb9db96c4899c8437a98a",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-c3-bad-sequence",
+          "txid": "ac5588e5dcc2de48dbde4cf1bdc403a9dfa3d874c3dd59ded99b82a0a056645e",
+          "height": 216,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "0b0f0311120820b33921198a82860c2a5cdd6fa0a255d9ec270c732377647ed4"
+        },
+        {
+          "name": "paired-full-c3-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 216,
+          "hash": "4a5d52769048942301ffa64f9c6e421708c306d91aac8c5dda7ca355c5dadc22",
+          "old_tip": "12f095ac74259460aefbc90f03dc3d0a032cfc4a64a32f9b759d062cd99faf3a",
+          "new_tip": "12f095ac74259460aefbc90f03dc3d0a032cfc4a64a32f9b759d062cd99faf3a",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "ac5588e5dcc2de48dbde4cf1bdc403a9dfa3d874c3dd59ded99b82a0a056645e"
+          ],
+          "block_file": "paired-full-c3-bad-sequence-block.block.hex",
+          "block_sha256": "d261f74cc50b64e596c16f49c70812bf47037205a2fb30a478a0167c37b75bcc"
+        },
+        {
+          "name": "paired-full-c3",
+          "txid": "48d54fab526880d951a1c2948993fd6c077ce5e9947f06fdc9adc02555da5565",
+          "height": 216,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "48d54fab526880d951a1c2948993fd6c077ce5e9947f06fdc9adc02555da5565",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "a35d148ebae8a4f3f5b88377ccee4d547158af582a654f55b3dc51cb68d12b33"
+        },
+        {
+          "name": "paired-full-c3-mined",
+          "block": true,
+          "hash": "6e10f99e63a8746516ef7f5deb27bf5f1891ddb15d1973d9d56fd75020d1f4e3",
+          "height": 216,
+          "txid": "48d54fab526880d951a1c2948993fd6c077ce5e9947f06fdc9adc02555da5565",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-61-bad-sequence",
+          "txid": "d8e4158acdddcaf43c04c9e91d8c0ef2e15443bea68bb86106dd020e2a1a30ec",
+          "height": 218,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "03d654e29e4da8a7c1ddfd9e89023ffc24a4af540379c1572fb04e5b43c2f11f"
+        },
+        {
+          "name": "paired-full-61-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 218,
+          "hash": "33a6b4bba098258937f3c6fe7981ff6aa92652d8cc89e4f626b216ab4c6ae4ad",
+          "old_tip": "1c7a1a1116548833635312611dbd63a22858d3f9f8f6db10df8b416e820d4ceb",
+          "new_tip": "1c7a1a1116548833635312611dbd63a22858d3f9f8f6db10df8b416e820d4ceb",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "d8e4158acdddcaf43c04c9e91d8c0ef2e15443bea68bb86106dd020e2a1a30ec"
+          ],
+          "block_file": "paired-full-61-bad-sequence-block.block.hex",
+          "block_sha256": "5ba2d201aeb4554deb4730d3bef3d135a390f485737442765d683cae0e48119c"
+        },
+        {
+          "name": "paired-full-61",
+          "txid": "04929c419ed099b3c74cf4862c1c814abf531fe0af789fcae8ac5094e2e7f33d",
+          "height": 218,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "04929c419ed099b3c74cf4862c1c814abf531fe0af789fcae8ac5094e2e7f33d",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "59101f36d4f0dc4058965018c6f35cad0cff0b7adddb6a7e06d168ed47858352"
+        },
+        {
+          "name": "paired-full-61-mined",
+          "block": true,
+          "hash": "17739b073d07aa67ff1395efad534722dc067e88e92d8aa5eb979edec438bef2",
+          "height": 218,
+          "txid": "04929c419ed099b3c74cf4862c1c814abf531fe0af789fcae8ac5094e2e7f33d",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-62-bad-sequence",
+          "txid": "07b55758de3d1c780497e1d344b3d5dbc3f75c127dc92a26273153a2c4347755",
+          "height": 220,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "1b7c5b87025b099fd1be3ace7b07ea57803e921ac8221ed59923db142145dbe5"
+        },
+        {
+          "name": "paired-full-62-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 220,
+          "hash": "4a2d7b59255dd6de4ac113a84e5177a463f876095c0fed172357c26b61887788",
+          "old_tip": "17f31d533638be4b73a6a59ef4f7a0899829797e4b74bab2bce15778b259fce7",
+          "new_tip": "17f31d533638be4b73a6a59ef4f7a0899829797e4b74bab2bce15778b259fce7",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "07b55758de3d1c780497e1d344b3d5dbc3f75c127dc92a26273153a2c4347755"
+          ],
+          "block_file": "paired-full-62-bad-sequence-block.block.hex",
+          "block_sha256": "85dc5ec354424cbbfdb5321c0e5ef08d12433025ca4659db36492faa5baf2e41"
+        },
+        {
+          "name": "paired-full-62",
+          "txid": "49d1c14d0f72db60b44aedec1dfa97e6ca9721620f8bd6a8207414d86f6ee4d6",
+          "height": 220,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "49d1c14d0f72db60b44aedec1dfa97e6ca9721620f8bd6a8207414d86f6ee4d6",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "bd66c31278554475a794d8d31d0013f7396e026e17a8c313bd5bc1ea761cc639"
+        },
+        {
+          "name": "paired-full-62-mined",
+          "block": true,
+          "hash": "2c6c04f6fc32b407cd2b4942b1042a90c528b67da527b2d0037c7edbd77d6805",
+          "height": 220,
+          "txid": "49d1c14d0f72db60b44aedec1dfa97e6ca9721620f8bd6a8207414d86f6ee4d6",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-63-bad-sequence",
+          "txid": "b247d5aba42283506d0c2f9623bbc2d69157257eec38832b1fb7b2931faa7c6c",
+          "height": 222,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "e7185cc9a76da1acddb22986f986877d70563a89df1bb8ecedb9fd50f6ca4381"
+        },
+        {
+          "name": "paired-full-63-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 222,
+          "hash": "075e4f4d8264e70652c29c7fcba9387189562f42e9cee9eddd33e13b0571cef9",
+          "old_tip": "6e1b06d41a409ce0f7186ba3ce68267da6497d68da56635e300cd4a35ad5fd15",
+          "new_tip": "6e1b06d41a409ce0f7186ba3ce68267da6497d68da56635e300cd4a35ad5fd15",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "b247d5aba42283506d0c2f9623bbc2d69157257eec38832b1fb7b2931faa7c6c"
+          ],
+          "block_file": "paired-full-63-bad-sequence-block.block.hex",
+          "block_sha256": "45442ba497e324765e42be8e04cd5997718e96a533397ac77a6623525d6bc5c5"
+        },
+        {
+          "name": "paired-full-63",
+          "txid": "8b091e96b296a5f2773eaebc07c17f600f4eea458e2a211f6648ee2009394984",
+          "height": 222,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "8b091e96b296a5f2773eaebc07c17f600f4eea458e2a211f6648ee2009394984",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "49b32a65554e320fe538e1762d684253d728cafea9a7ac7edebbbd93e62e583c"
+        },
+        {
+          "name": "paired-full-63-mined",
+          "block": true,
+          "hash": "60e17d62d375167eebc72cef309b0aaefed789db7a1ccaab6d9ee2e1427edcb8",
+          "height": 222,
+          "txid": "8b091e96b296a5f2773eaebc07c17f600f4eea458e2a211f6648ee2009394984",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-e1-bad-sequence",
+          "txid": "fec8ed0bd0f8da186cba28ae0a5e097f7e141c0f3fc22b782a7a2d97543bf5c2",
+          "height": 224,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "352c3b7db375587217df4dcb5c7c4ee167861f143628f5cd7d5cf772968f7860"
+        },
+        {
+          "name": "paired-full-e1-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 224,
+          "hash": "3bc4fe2f8bf527bf4d36a0e967e4637a291c214a64306422386636a3b2172d93",
+          "old_tip": "0eee51b25d82bb38a24bd199a18c108fcb6ed7a8f6055b020d0307aeb79a2a65",
+          "new_tip": "0eee51b25d82bb38a24bd199a18c108fcb6ed7a8f6055b020d0307aeb79a2a65",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "fec8ed0bd0f8da186cba28ae0a5e097f7e141c0f3fc22b782a7a2d97543bf5c2"
+          ],
+          "block_file": "paired-full-e1-bad-sequence-block.block.hex",
+          "block_sha256": "b8f3dd4d52ed7e1db5640bd33c8f69c647d28920418209c5b3088974a5c69ffc"
+        },
+        {
+          "name": "paired-full-e1",
+          "txid": "28ec6cbd1631f9dc3627d6509ecf267fbb90240363ad83033a7c401fa57c0a9b",
+          "height": 224,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "28ec6cbd1631f9dc3627d6509ecf267fbb90240363ad83033a7c401fa57c0a9b",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "16450e246990d75fa5a52ffe0ad1fbf7a474c900a308d7004945c15b8589bcf5"
+        },
+        {
+          "name": "paired-full-e1-mined",
+          "block": true,
+          "hash": "352bad6acbabc51ac43c50b1870c0df78b23dc2737a07cc8da4e98d6d2864e9c",
+          "height": 224,
+          "txid": "28ec6cbd1631f9dc3627d6509ecf267fbb90240363ad83033a7c401fa57c0a9b",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-e2-bad-sequence",
+          "txid": "daaf775f57283174f1fc15ae20931e8c92196c229ce0743ae29573053377f936",
+          "height": 226,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "3f25661b4bb578b900965bdb701956b5b15f0fa97aef8694e91e888f4c5520fd"
+        },
+        {
+          "name": "paired-full-e2-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 226,
+          "hash": "7b9b6ecf5fb4857c0a6ffe1e211be8c49d8c258ccd0bd25870caa40b93a5f7df",
+          "old_tip": "2659ef6d1494ec7cdf279bfeec0b5b5cc8cf701c489ba42ff3484f4cbf10bd22",
+          "new_tip": "2659ef6d1494ec7cdf279bfeec0b5b5cc8cf701c489ba42ff3484f4cbf10bd22",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "daaf775f57283174f1fc15ae20931e8c92196c229ce0743ae29573053377f936"
+          ],
+          "block_file": "paired-full-e2-bad-sequence-block.block.hex",
+          "block_sha256": "a7444aba049be1f7670c1e96a42b1e76fd6fbcaff4a889bda4ba205e9efc7806"
+        },
+        {
+          "name": "paired-full-e2",
+          "txid": "8a346d585d2f8cc7f42a6416cbb1eb5600db44b05fa1591c691b354766de5a78",
+          "height": 226,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "8a346d585d2f8cc7f42a6416cbb1eb5600db44b05fa1591c691b354766de5a78",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "5d4e62d642e157eb249c20f39a7ecf1c6fd10ef94222fe0cd168b74e4c141af2"
+        },
+        {
+          "name": "paired-full-e2-mined",
+          "block": true,
+          "hash": "53162dd0955053f1d73459e9018ed14ea5debdc18d63d31233c453f549cece7e",
+          "height": 226,
+          "txid": "8a346d585d2f8cc7f42a6416cbb1eb5600db44b05fa1591c691b354766de5a78",
+          "confirmations": 1
+        },
+        {
+          "name": "paired-full-e3-bad-sequence",
+          "txid": "e81311105bc5d5e98c8e8e12b55cef3515b5247616e6e09dda79117382e34eec",
+          "height": 228,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "acdd4adb1ee12a554335721dc59a447b39f210a5e6ec4df58317eff25d669a4b"
+        },
+        {
+          "name": "paired-full-e3-bad-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 228,
+          "hash": "200128d9d92c0a124853ebaff36c58d67c432f2ff7bff7c848ece650d93a58f8",
+          "old_tip": "2f3c297842f927f35729d62c6278c7bd459c6948ffcc9a0aa65bc20ac9a04e20",
+          "new_tip": "2f3c297842f927f35729d62c6278c7bd459c6948ffcc9a0aa65bc20ac9a04e20",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "e81311105bc5d5e98c8e8e12b55cef3515b5247616e6e09dda79117382e34eec"
+          ],
+          "block_file": "paired-full-e3-bad-sequence-block.block.hex",
+          "block_sha256": "22eb05ad91769c04af1d749be7e04dad1152f369a60fc0e3d04abccf268e0d66"
+        },
+        {
+          "name": "paired-full-e3",
+          "txid": "b5a5e37a72c10b5a9a54196b3fa34b3c93d8fe6123589bc0bede15939a934044",
+          "height": 228,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "b5a5e37a72c10b5a9a54196b3fa34b3c93d8fe6123589bc0bede15939a934044",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "0fcf2c937365f17976394139e762c1670993ad96c82bc185e166a934a1a35438"
+        },
+        {
+          "name": "paired-full-e3-mined",
+          "block": true,
+          "hash": "335c11b2bcfceddff4b06e89f1a42d480dac63d09d4f7121714b17de83af2be5",
+          "height": 228,
+          "txid": "b5a5e37a72c10b5a9a54196b3fa34b3c93d8fe6123589bc0bede15939a934044",
+          "confirmations": 1
+        },
+        {
+          "name": "companion-63-paired-output-added",
+          "txid": "9a3bc9093ef5b5c31fe23eb7a65bdd193e22108de3f997619b3e4eea3bfb93b3",
+          "height": 232,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `OP_CHECKSIGVERIFY failed`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKSIGVERIFY operation)",
+          "expected": "rejected",
+          "tx_sha256": "4cab2c29dd905bab6c8d53e5b32b9e11918d9fd3cc6a1adc5fcc7499851dc323"
+        },
+        {
+          "name": "companion-63-paired-output-added-block",
+          "block": false,
+          "expected": false,
+          "height": 232,
+          "hash": "32d9b8a85809307be53e86ea005636b31489e720e4beb4731210b46051321175",
+          "old_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "new_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "9a3bc9093ef5b5c31fe23eb7a65bdd193e22108de3f997619b3e4eea3bfb93b3"
+          ],
+          "block_file": "companion-63-paired-output-added-block.block.hex",
+          "block_sha256": "c99ead2c1233c246f2bb4f06ebe115d45cc6ad79ade11834fe28097419dbbd38"
+        },
+        {
+          "name": "companion-63-locktime",
+          "txid": "8a1560b9289b2910e8adacde0b45330413c6115749aa078f988af0823d125e8c",
+          "height": 232,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "75fda1c5d8be8c6510f433b207c45a28e17510c1f7fae4b63236465da1b01c2d"
+        },
+        {
+          "name": "companion-63-locktime-block",
+          "block": false,
+          "expected": false,
+          "height": 232,
+          "hash": "66d0128d5b47836874d045e49d7686bc268a053923c84806a55073188353e10b",
+          "old_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "new_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "8a1560b9289b2910e8adacde0b45330413c6115749aa078f988af0823d125e8c"
+          ],
+          "block_file": "companion-63-locktime-block.block.hex",
+          "block_sha256": "ea05a0e78f0ed200a5ad6479ca02b882272414c5c0fc4ba830abe8f95a010671"
+        },
+        {
+          "name": "companion-63-own-sequence",
+          "txid": "143264c2a4d1f76227e8ab9dca3e51d43192912962be3ebf4a600fcc2fac1f9e",
+          "height": 232,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "094bfcb051f7de93384bc68040ca2545bfc8d718a7a815c65a3f40e3903ff64f"
+        },
+        {
+          "name": "companion-63-own-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 232,
+          "hash": "2eeaa9ac4ebf37573fa6e0b561ddf98dda133b808030207e4e211ce71751e6eb",
+          "old_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "new_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "143264c2a4d1f76227e8ab9dca3e51d43192912962be3ebf4a600fcc2fac1f9e"
+          ],
+          "block_file": "companion-63-own-sequence-block.block.hex",
+          "block_sha256": "a10945507eeafb806e1e6456037f5631b62ecc0b58ef99eeeb587e3fab596b65"
+        },
+        {
+          "name": "companion-63-parent-swapped",
+          "txid": "ce09f57d10499bb0541c042555cd17cbf8efd0821e396ed96067ee3cc48ea090",
+          "height": 232,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "fba62d0b9fe68d8a2c1a2e6a3eae1110ebec6320bdbae014f63af662b0547093"
+        },
+        {
+          "name": "companion-63-parent-swapped-block",
+          "block": false,
+          "expected": false,
+          "height": 232,
+          "hash": "4d487dae6c2e543cd0c5c62c07b4be60e0fd60fff1626ce0d4b9758d4fdffa0e",
+          "old_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "new_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "ce09f57d10499bb0541c042555cd17cbf8efd0821e396ed96067ee3cc48ea090"
+          ],
+          "block_file": "companion-63-parent-swapped-block.block.hex",
+          "block_sha256": "1c08336320bdc9fe9f7ae2a815beef2da54a706f298b95b584797bf1766555b8"
+        },
+        {
+          "name": "companion-63-bad-r1-witness",
+          "txid": "4f673b0ba4c16ff808338de1fe973abcc52fc7d17793e7fd539446f7e8363fbc",
+          "height": 232,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `OP_VERIFY failed`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_VERIFY operation)",
+          "expected": "rejected",
+          "tx_sha256": "686a428fc3b08ff3afd797576a1f74ef22592f6bedba2304d5244b2605c27cf1"
+        },
+        {
+          "name": "companion-63-bad-r1-witness-block",
+          "block": false,
+          "expected": false,
+          "height": 232,
+          "hash": "2b26f9ca03612423a39d64c51b1cb6841f4666dcda639ab810f3f67e3beed30d",
+          "old_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "new_tip": "5218ae0ea145b2e775ec3c9e8653b3f619f309f2a83a258162205c3e475e15f0",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "4f673b0ba4c16ff808338de1fe973abcc52fc7d17793e7fd539446f7e8363fbc"
+          ],
+          "block_file": "companion-63-bad-r1-witness-block.block.hex",
+          "block_sha256": "6fb570681ba32946bf88d0e42f28dbfa9846f3bd96764ed2f8c890e87aa815c5"
+        },
+        {
+          "name": "companion-63-other-sequence",
+          "txid": "879d051ecf0bab3f223d7840e4ba1a1b1f0e1240307ed6632a18f87b76333fb5",
+          "height": 232,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "879d051ecf0bab3f223d7840e4ba1a1b1f0e1240307ed6632a18f87b76333fb5",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "033c74ae596518ea731acb942afb7918985b7016df140f2027d64ce30782636b"
+        },
+        {
+          "name": "companion-63-other-sequence-mined",
+          "block": true,
+          "hash": "3602a45e473722d1a57e1a043da5b7770a388d4027e76541ce38dfca61c6360b",
+          "height": 232,
+          "txid": "879d051ecf0bab3f223d7840e4ba1a1b1f0e1240307ed6632a18f87b76333fb5",
+          "confirmations": 1
+        },
+        {
+          "name": "companion-e3-paired-output-added",
+          "txid": "6572416bf1203a50bb413ae5952fb3eb174e7117f4989bdf13067402c30de60d",
+          "height": 236,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `OP_CHECKSIGVERIFY failed`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_CHECKSIGVERIFY operation)",
+          "expected": "rejected",
+          "tx_sha256": "af12c9838f807ecdfb0e335341e147bc9966a2d2b22cd653fd42fd452f0110b3"
+        },
+        {
+          "name": "companion-e3-paired-output-added-block",
+          "block": false,
+          "expected": false,
+          "height": 236,
+          "hash": "32fbae4ea4f119bb8a13dca34f85a2624fd0aafa6daba77daa98b26aedd5c10e",
+          "old_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "new_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "6572416bf1203a50bb413ae5952fb3eb174e7117f4989bdf13067402c30de60d"
+          ],
+          "block_file": "companion-e3-paired-output-added-block.block.hex",
+          "block_sha256": "672ec20212429bd9102453bd2c1e6c31db3e011764c1b5213ec8b2281ff520d1"
+        },
+        {
+          "name": "companion-e3-locktime",
+          "txid": "313f8e33667900ce9051b397e341b294713ea883a644104ae0aeaa5627c7dcc3",
+          "height": 236,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "8000da07afbf12694c25af784040dbb5ef6dd02f7b88c65d757e12a1d7327693"
+        },
+        {
+          "name": "companion-e3-locktime-block",
+          "block": false,
+          "expected": false,
+          "height": 236,
+          "hash": "24ba5fbe6cd2892b78b5d7b9c00fff15ce3386b685e257aa0a728bf78ac82d0c",
+          "old_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "new_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "313f8e33667900ce9051b397e341b294713ea883a644104ae0aeaa5627c7dcc3"
+          ],
+          "block_file": "companion-e3-locktime-block.block.hex",
+          "block_sha256": "738262bdafaf84adc4f868a682ee9b5af9f139d321c8fd64bfb04eabd5b44e6d"
+        },
+        {
+          "name": "companion-e3-own-sequence",
+          "txid": "ccf94f9291835fb0637d3139c6b508615d2b759513df44178594ea7023a5c8bb",
+          "height": 236,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "59e3b22883bd2d82b2b85afc8b099cd659c34d0d81111a34cd7f6ae1295787eb"
+        },
+        {
+          "name": "companion-e3-own-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 236,
+          "hash": "590e283688febdd9d3cb5be38ead5cd11177e7bd02d41607f4ec30e1204939a9",
+          "old_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "new_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "ccf94f9291835fb0637d3139c6b508615d2b759513df44178594ea7023a5c8bb"
+          ],
+          "block_file": "companion-e3-own-sequence-block.block.hex",
+          "block_sha256": "94f760ebf4e63447b22576046ac6b3a92e5ee8ab753d4197fdb3d41a22e668b0"
+        },
+        {
+          "name": "companion-e3-parent-swapped",
+          "txid": "3838f4336b9790f8d7eb48fbafb5b598ad4f06b20debadb999fd82aa4025d776",
+          "height": 236,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "de03b92896e6d7fe9d9f93c5a63ea6976b935ccd14a31726bf774a1e8731ebbf"
+        },
+        {
+          "name": "companion-e3-parent-swapped-block",
+          "block": false,
+          "expected": false,
+          "height": 236,
+          "hash": "324faf08eff145e00faa9fbed75277bc1298153ea74f4d55d37a62dc3c8aec5c",
+          "old_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "new_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "3838f4336b9790f8d7eb48fbafb5b598ad4f06b20debadb999fd82aa4025d776"
+          ],
+          "block_file": "companion-e3-parent-swapped-block.block.hex",
+          "block_sha256": "611ff89b7cf9f42904adcf601caa2fdf18ebf4fc42234cd39d05fe94ecaf5182"
+        },
+        {
+          "name": "companion-e3-bad-r1-witness",
+          "txid": "34f1069c769cfd147119eaa8525bafbbf2282524d2772568f3f9d41972065cb9",
+          "height": 236,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `OP_VERIFY failed`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script failed an OP_VERIFY operation)",
+          "expected": "rejected",
+          "tx_sha256": "01c9d9195cfb12ba1653669ebb88b94eda221a92dc2f210d17220134977e82a6"
+        },
+        {
+          "name": "companion-e3-bad-r1-witness-block",
+          "block": false,
+          "expected": false,
+          "height": 236,
+          "hash": "67ec4aea37bc23d165d36f555f882218bd00e3b404b6876815925bbce178b99f",
+          "old_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "new_tip": "5a36bb11a41612f01c39f81f7139f477dc47c20d3e8e97ce834f70ac0c4f03c6",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "34f1069c769cfd147119eaa8525bafbbf2282524d2772568f3f9d41972065cb9"
+          ],
+          "block_file": "companion-e3-bad-r1-witness-block.block.hex",
+          "block_sha256": "dc641d786d75d733e10b51f278bbfd9d4ee735f680ad30b12fad96f2391d0a3d"
+        },
+        {
+          "name": "companion-e3-other-sequence",
+          "txid": "11628ff45322e89a6bb7fff85c907382337f4cd2a85ea150e06f9c587a24a0e8",
+          "height": 236,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "11628ff45322e89a6bb7fff85c907382337f4cd2a85ea150e06f9c587a24a0e8",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "674fd4f2e97af0455ab94f81b32acb2368f4e06a9ecdb9734484a08a83fc39f2"
+        },
+        {
+          "name": "companion-e3-other-sequence-mined",
+          "block": true,
+          "hash": "1550522914901d861b8704e92cedbdb2f7bf2623b111fa33e1426a0dd28f23cf",
+          "height": 236,
+          "txid": "11628ff45322e89a6bb7fff85c907382337f4cd2a85ea150e06f9c587a24a0e8",
+          "confirmations": 1
+        },
+        {
+          "name": "zero-fee-secondary",
+          "txid": "44168718ddf69276845f145aac415e85030f37c6eb32cbf6cc41f8d29da47560",
+          "height": 238,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "44168718ddf69276845f145aac415e85030f37c6eb32cbf6cc41f8d29da47560",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "5777259b1d839cb263f2b29a66881b573f5e3e7092bf842c544e1fd703619ad1"
+        },
+        {
+          "name": "zero-fee-not-selected",
+          "mempool": "regular",
+          "mined_block": "7afa3a8709af51cfa24b3db1478955ad8c98d1de65bcee8a64026124e8ab46ab",
+          "included": false,
+          "mempoolinfo": {
+            "size": 1,
+            "journalsize": 0,
+            "nonfinalsize": 0,
+            "bytes": 61,
+            "usage": 1216,
+            "usagedisk": 0,
+            "usagecpfp": 744,
+            "nonfinalusage": 256,
+            "maxmempool": 1000000000,
+            "maxmempoolsizedisk": 0,
+            "maxmempoolsizecpfp": 100000000,
+            "mempoolminfee": 0.0
+          }
+        },
+        {
+          "name": "zero-fee-consensus",
+          "block": true,
+          "expected": true,
+          "height": 239,
+          "hash": "49d6d4d3cac3f3dedca6fa9150b2c717664ad39c549f7a1deccb2e31ab3d99e9",
+          "old_tip": "7afa3a8709af51cfa24b3db1478955ad8c98d1de65bcee8a64026124e8ab46ab",
+          "new_tip": "49d6d4d3cac3f3dedca6fa9150b2c717664ad39c549f7a1deccb2e31ab3d99e9",
+          "submit_result": null,
+          "transactions": [
+            "44168718ddf69276845f145aac415e85030f37c6eb32cbf6cc41f8d29da47560"
+          ],
+          "block_file": "zero-fee-consensus.block.hex",
+          "confirmed": {
+            "44168718ddf69276845f145aac415e85030f37c6eb32cbf6cc41f8d29da47560": 1
+          },
+          "block_sha256": "fc0bb25fc4f47829b4eb9aa1f66499d73956e5f3ee01172f2451eb0f2b0f3cec"
+        },
+        {
+          "name": "nonfinal-initial",
+          "txid": "3644c678d90b59ed4cb3158a40035d3dd786887f7ae8737770a2fb7f8576b1ac",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "3644c678d90b59ed4cb3158a40035d3dd786887f7ae8737770a2fb7f8576b1ac",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "8f3d7bc64448cf5b2ff105e1197e0dfb49dce31f1229bb4893a0441ce2f24b11"
+        },
+        {
+          "name": "nonfinal-not-mineable",
+          "block": false,
+          "expected": false,
+          "height": 243,
+          "hash": "05886b1dafed4d1df45d669c4eb57a75947494a0bdc276275f64fa18731b28c1",
+          "old_tip": "67860895cc58b50ff43b4e459d95df823f22637e71e6b698d4d16d9c37c8375d",
+          "new_tip": "67860895cc58b50ff43b4e459d95df823f22637e71e6b698d4d16d9c37c8375d",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "3644c678d90b59ed4cb3158a40035d3dd786887f7ae8737770a2fb7f8576b1ac"
+          ],
+          "block_file": "nonfinal-not-mineable.block.hex",
+          "block_sha256": "72b06bbe3bd9d52b71ea6348ac68571caaf499272bf99b61ca44b694a233914f"
+        },
+        {
+          "name": "nonfinal-reject-equal",
+          "txid": "03061d0bbacc27825d50f36714823a69ec06c3e9c34cb0dcff2d3486101c24a4",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "2b3144156d271b66c2b3c48d1463f8262db9e4dc34d0ff53fd4f2c18c8fedc20"
+        },
+        {
+          "name": "nonfinal-reject-decrease",
+          "txid": "3c4e80d87183bc6066af94fe0924424c9e5473092a4ff0d303879f054d89564c",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "e1f2e2eed4ad75495fb3ea9872ca0c535edcb900165721b86e16b87af64aa725"
+        },
+        {
+          "name": "nonfinal-reject-mixed-up-down",
+          "txid": "464debde131f6d53b77040a21821e4226f94bbd9f1a7cde9c2387c8a51ff2ec5",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "9b937bc287ddcff124734ed2c74190fe5386fc5047da37f1eb45dabac7c6a4b7"
+        },
+        {
+          "name": "nonfinal-reject-reordered",
+          "txid": "79561621fbd9fca69968be2a674e207b379581823de3047169997c1b08d9fd13",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "947343973a295dcea787ac3d3f3230fcaeb96283ba5533ceebf0c73ff1824fac"
+        },
+        {
+          "name": "nonfinal-reject-input-added",
+          "txid": "0ec7c1f98633931353f13e19b9a1a50ad6d1d51643041e48c5b707497b5d59e8",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "0534a7b9f60f9c421d59cde1ecba4c13e8a97b3bc76223a5b1b7bc6ac2d86769"
+        },
+        {
+          "name": "nonfinal-reject-input-removed",
+          "txid": "0c31b5eb61552094cf753d1d5a67a22521d5acd2503cf3a45fe0b0acb35a514b",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "c06b2b9e7e90f9d898a33d908d156d20758ee1a21c867815181f262bff32d7e2"
+        },
+        {
+          "name": "nonfinal-one-increased",
+          "txid": "45adb1b61efce709dea02e38a7c7c232a1b3a491f32f75efb7d2b254915c3525",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "45adb1b61efce709dea02e38a7c7c232a1b3a491f32f75efb7d2b254915c3525",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "4c388e0599b93a8a45471127157c99f6d37e7563da20466959a8ec5ded09cb78"
+        },
+        {
+          "name": "nonfinal-partial-finalization",
+          "txid": "13381afca58c2112a80c42cd2c81f598fb505e5f776cd91e36769fdc25273e6d",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "13381afca58c2112a80c42cd2c81f598fb505e5f776cd91e36769fdc25273e6d",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "9177415e5d801ab0b2dcdac0552162009d612a95a5988a76ab384c07ed594d17"
+        },
+        {
+          "name": "partial-not-mineable",
+          "block": false,
+          "expected": false,
+          "height": 243,
+          "hash": "48dac0be1ff70a35ec3751573415a6e8faee0c1295135d9f086c44d1e962fd53",
+          "old_tip": "67860895cc58b50ff43b4e459d95df823f22637e71e6b698d4d16d9c37c8375d",
+          "new_tip": "67860895cc58b50ff43b4e459d95df823f22637e71e6b698d4d16d9c37c8375d",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "13381afca58c2112a80c42cd2c81f598fb505e5f776cd91e36769fdc25273e6d"
+          ],
+          "block_file": "partial-not-mineable.block.hex",
+          "block_sha256": "837854253f9450e193484dd411caf93d4faaa0ab22e36bdb52c597132321f6cc"
+        },
+        {
+          "name": "nonfinal-finalize",
+          "txid": "e9976efeb4b33b5f252e8f88de80fbd6c91ac99de39254b9c1f0c2a3c93a4ff3",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "e9976efeb4b33b5f252e8f88de80fbd6c91ac99de39254b9c1f0c2a3c93a4ff3",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "b8481e70b118c00f85ec1ddf9a0e9a28a99764dd5932f7945db3c349fc57ee3e"
+        },
+        {
+          "name": "higher-fee-final-conflict",
+          "txid": "78ed248afd9f3e355615bfd1b69fa7ec40a14249a502ad37e727a3ad1838dfc6",
+          "height": 243,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n258: txn-mempool-conflict",
+          "expected": "rejected",
+          "tx_sha256": "fe53718d089de67e0793794b0d7a19f0d2b88543a7d0345eb6a4d90f5ec7d6e5"
+        },
+        {
+          "name": "conflict-valid-in-block",
+          "block": true,
+          "expected": true,
+          "height": 243,
+          "hash": "3ca73038de364d41e82e09983a5e08cce283431105c17a0ab7e7809614d417af",
+          "old_tip": "67860895cc58b50ff43b4e459d95df823f22637e71e6b698d4d16d9c37c8375d",
+          "new_tip": "3ca73038de364d41e82e09983a5e08cce283431105c17a0ab7e7809614d417af",
+          "submit_result": null,
+          "transactions": [
+            "78ed248afd9f3e355615bfd1b69fa7ec40a14249a502ad37e727a3ad1838dfc6"
+          ],
+          "block_file": "conflict-valid-in-block.block.hex",
+          "confirmed": {
+            "78ed248afd9f3e355615bfd1b69fa7ec40a14249a502ad37e727a3ad1838dfc6": 1
+          },
+          "block_sha256": "44bc1422d27e1ba9c2b50998ec1dafc1bb77c1d78e89a5895b0a5b60c24195cb"
+        },
+        {
+          "name": "low-sequence-locktime-zero",
+          "txid": "d5cf46f5836f87a45a8472c8bc88b9ff393b4218586333195f247ee39ff6a82b",
+          "height": 245,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "d5cf46f5836f87a45a8472c8bc88b9ff393b4218586333195f247ee39ff6a82b",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "8fa687faee2abd2e99fbb428909cf0e92714ca3a0b03c2a123508bfdfed234d0"
+        },
+        {
+          "name": "low-sequence-fee-bump-not-rbf",
+          "txid": "094c6e2b0c80eded232a8e0f6feca1392be6faf7f1ffe35c5ca82ad1ac30a439",
+          "height": 245,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n258: txn-mempool-conflict",
+          "expected": "rejected",
+          "tx_sha256": "1cbfc186cc24e08b8c7fc6b2a680d91a039b020ab428e80664f2f2d0bd1362a8"
+        },
+        {
+          "name": "low-sequence-original-mined",
+          "block": true,
+          "hash": "7647c05502c6a0a86103d3e302e9e77bbd1197279d01a5b0a8b35c7e869e96c5",
+          "height": 245,
+          "txid": "d5cf46f5836f87a45a8472c8bc88b9ff393b4218586333195f247ee39ff6a82b",
+          "confirmations": 1
+        },
+        {
+          "name": "sequence-bits-00000000",
+          "txid": "60d8c534896af03ee7ac40054938bc5de028bb0023aa72b81efa5cbb825bf143",
+          "height": 247,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "60d8c534896af03ee7ac40054938bc5de028bb0023aa72b81efa5cbb825bf143",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "66e5290f44c96bcaf1a913b2e297430608d00084bf493ef1dbbaebfc69d54422"
+        },
+        {
+          "name": "sequence-bits-00000000-mined",
+          "block": true,
+          "hash": "6e3809ef0ba584834fac100fc7add664fc5466802c8a484c626b434aab47cef5",
+          "height": 247,
+          "txid": "60d8c534896af03ee7ac40054938bc5de028bb0023aa72b81efa5cbb825bf143",
+          "confirmations": 1
+        },
+        {
+          "name": "sequence-bits-0000ffff",
+          "txid": "4530eec45d3b23e327b8130b036bb1afa56aef5366af00129e98721e79dc45e8",
+          "height": 249,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "4530eec45d3b23e327b8130b036bb1afa56aef5366af00129e98721e79dc45e8",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "37cbf0e72867da765db20d9b70804e793ee33c58310d4216c3959c6d5aaccf4f"
+        },
+        {
+          "name": "sequence-bits-0000ffff-mined",
+          "block": true,
+          "hash": "7cdc9a78a8d8ff68c7631e3e98b947ba908c169d952c8ad2e065031afe5debc1",
+          "height": 249,
+          "txid": "4530eec45d3b23e327b8130b036bb1afa56aef5366af00129e98721e79dc45e8",
+          "confirmations": 1
+        },
+        {
+          "name": "sequence-bits-00400001",
+          "txid": "8c131c6a76d51c957347ecd82cde79c479f07fcff07db75661f9470fff32a349",
+          "height": 251,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "8c131c6a76d51c957347ecd82cde79c479f07fcff07db75661f9470fff32a349",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "9f80ff1aa1b89cee364b33a6e38089a4085f96ed96381d7336039fe4744fd6e5"
+        },
+        {
+          "name": "sequence-bits-00400001-mined",
+          "block": true,
+          "hash": "38cd3a9cd3dcf4bc084f632f77d379bfe5c4a49722b82c2685b83b949ce10599",
+          "height": 251,
+          "txid": "8c131c6a76d51c957347ecd82cde79c479f07fcff07db75661f9470fff32a349",
+          "confirmations": 1
+        },
+        {
+          "name": "sequence-bits-80000000",
+          "txid": "01b2f3578e34dd1fc42831e54914ac9930474fbc56a7cd92c5c089542b98c36a",
+          "height": 253,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "01b2f3578e34dd1fc42831e54914ac9930474fbc56a7cd92c5c089542b98c36a",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "60c3b82f19b6fe4b4d528d14d10cbe4771da5b47914321a79b1ec5682210c0ab"
+        },
+        {
+          "name": "sequence-bits-80000000-mined",
+          "block": true,
+          "hash": "629f6ab25739a6c1e7b0fcf188b557e49858375d41e319747b9da88873803b7b",
+          "height": 253,
+          "txid": "01b2f3578e34dd1fc42831e54914ac9930474fbc56a7cd92c5c089542b98c36a",
+          "confirmations": 1
+        },
+        {
+          "name": "sequence-bits-fffffffe",
+          "txid": "8d5ea0d2001d717d00e8b92b77008e05fd756913de0a7cd7e54b30c9d2fa344b",
+          "height": 255,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "8d5ea0d2001d717d00e8b92b77008e05fd756913de0a7cd7e54b30c9d2fa344b",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "3de6ba1b659508bbfc6ef06b61a4f1944965317386746393d48672a6e7f1a79b"
+        },
+        {
+          "name": "sequence-bits-fffffffe-mined",
+          "block": true,
+          "hash": "1a73d0f96942913f1698d638bf173f8166076a6871bfe19f065bf8a5b9d88745",
+          "height": 255,
+          "txid": "8d5ea0d2001d717d00e8b92b77008e05fd756913de0a7cd7e54b30c9d2fa344b",
+          "confirmations": 1
+        },
+        {
+          "name": "sequence-bits-ffffffff",
+          "txid": "a8dd18e40f01702ec16b4af008342ab6ceaf563147ec5350d04bf8eb7c3ef021",
+          "height": 257,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "a8dd18e40f01702ec16b4af008342ab6ceaf563147ec5350d04bf8eb7c3ef021",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "0f920fcf66284aae78a40d247abbffa29addffcc8ef2b52cbbe1b2c19241a1bf"
+        },
+        {
+          "name": "sequence-bits-ffffffff-mined",
+          "block": true,
+          "hash": "7f27ec3bd6b7a62a04225c097f0703c6b3a082d89bed6e3a7cdc90b5cec91429",
+          "height": 257,
+          "txid": "a8dd18e40f01702ec16b4af008342ab6ceaf563147ec5350d04bf8eb7c3ef021",
+          "confirmations": 1
+        },
+        {
+          "name": "locktime-80000000-final",
+          "txid": "e60319c73bc68d4de5abe985062aa20cb7b6bb3f3564ab37bdd542fa3979154c",
+          "height": 259,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "e60319c73bc68d4de5abe985062aa20cb7b6bb3f3564ab37bdd542fa3979154c",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "07511b5a01d0eb46d3e286a088bf431ffd279c7e97cfc8eb688401a559561786"
+        },
+        {
+          "name": "locktime-80000000-final-mined",
+          "block": true,
+          "hash": "6f5a014529aa05b780a03f5e93fe24e09066c016566e0c97c3bc088658158630",
+          "height": 259,
+          "txid": "e60319c73bc68d4de5abe985062aa20cb7b6bb3f3564ab37bdd542fa3979154c",
+          "confirmations": 1
+        },
+        {
+          "name": "locktime-ffffffff-final",
+          "txid": "890047f92c0e6b79a1166f20ea0fcf8a8387e984e9b9c8b74e467c5a84c47c68",
+          "height": 261,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "890047f92c0e6b79a1166f20ea0fcf8a8387e984e9b9c8b74e467c5a84c47c68",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "47aa84c99bdee04fbeab91ab7b6ead5cd457dd862ead0b3161690b4509e62e9c"
+        },
+        {
+          "name": "locktime-ffffffff-final-mined",
+          "block": true,
+          "hash": "03d633949b87035b602989d58ee46a374af70989ac1acd26581c3ef652dd0d64",
+          "height": 261,
+          "txid": "890047f92c0e6b79a1166f20ea0fcf8a8387e984e9b9c8b74e467c5a84c47c68",
+          "confirmations": 1
+        },
+        {
+          "name": "height-lock-equal",
+          "txid": "9a7008e89bd336dc0b5f70d3cf17d1c12b0dcf9c40782b089cbd381378ba91b6",
+          "height": 263,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "9a7008e89bd336dc0b5f70d3cf17d1c12b0dcf9c40782b089cbd381378ba91b6",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "3720a2c46c6e0739d219edda4a49af7f90a9e07b598a00eca5d53a2d27ef3f16"
+        },
+        {
+          "name": "height-lock-equal-block",
+          "block": false,
+          "expected": false,
+          "height": 263,
+          "hash": "1df25d8e2643a978d74e946f4526d765d61dad6ec92bca8c6f6f66d82dfb0119",
+          "old_tip": "75d35ed2d7d16c769d35dd508b7e898c9a0c408717f850cfccfdd5e7b3f12ed6",
+          "new_tip": "75d35ed2d7d16c769d35dd508b7e898c9a0c408717f850cfccfdd5e7b3f12ed6",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "9a7008e89bd336dc0b5f70d3cf17d1c12b0dcf9c40782b089cbd381378ba91b6"
+          ],
+          "block_file": "height-lock-equal-block.block.hex",
+          "block_sha256": "d87664acdbadb498484ad86ec7ca0c5b3d4c97d165f1642260cdd137f07a7e82"
+        },
+        {
+          "name": "height-lock-next-block",
+          "block": true,
+          "expected": true,
+          "height": 264,
+          "hash": "72cc59b57a68235f9f8930b43fef50d87d68fdbb6ffb59d149a7a1087190f4ca",
+          "old_tip": "077ca2a755598422a7a1366e0db794307696e73d7b89cf89c626d766cfda1c30",
+          "new_tip": "72cc59b57a68235f9f8930b43fef50d87d68fdbb6ffb59d149a7a1087190f4ca",
+          "submit_result": null,
+          "transactions": [
+            "9a7008e89bd336dc0b5f70d3cf17d1c12b0dcf9c40782b089cbd381378ba91b6"
+          ],
+          "block_file": "height-lock-next-block.block.hex",
+          "confirmed": {
+            "9a7008e89bd336dc0b5f70d3cf17d1c12b0dcf9c40782b089cbd381378ba91b6": 1
+          },
+          "block_sha256": "a428bf46b4df80bcffd6d67d6e6fd51794b80a1ac2489ae0d8c0fda1ff255372"
+        },
+        {
+          "name": "pre-csv-time-equal-mtp",
+          "txid": "3cdfce85359d4317a29ab71a5efb9d888ee73097db412e5e8eeaea22dae9c07d",
+          "height": 266,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "3cdfce85359d4317a29ab71a5efb9d888ee73097db412e5e8eeaea22dae9c07d",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "4287ba589ea5397d2d44bf662e3e3f9c842eb165fe301066ea4582f931dd55e8"
+        },
+        {
+          "name": "pre-csv-block-uses-header-time",
+          "block": true,
+          "expected": true,
+          "height": 266,
+          "hash": "1969c9f4114826b5e73cfcbe774620307950ade3e196536228d15fbd92899380",
+          "old_tip": "28fef60301d84f3fe254ef00d3fed0bf6f833f557477a7be60109095fc58f650",
+          "new_tip": "1969c9f4114826b5e73cfcbe774620307950ade3e196536228d15fbd92899380",
+          "submit_result": null,
+          "transactions": [
+            "3cdfce85359d4317a29ab71a5efb9d888ee73097db412e5e8eeaea22dae9c07d"
+          ],
+          "block_file": "pre-csv-block-uses-header-time.block.hex",
+          "confirmed": {
+            "3cdfce85359d4317a29ab71a5efb9d888ee73097db412e5e8eeaea22dae9c07d": 1
+          },
+          "block_sha256": "2d6a81d4ac19a9acd2c35962ac96f912e2f8b2d097a87e4b0750d1f4108fc23b"
+        },
+        {
+          "name": "post-csv-sequence-0000ffff",
+          "txid": "5b9ee63bfe41de545eb8ce86b8081c32acd12d6ee58d8627f083ebfcfffae96e",
+          "height": 578,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "5b9ee63bfe41de545eb8ce86b8081c32acd12d6ee58d8627f083ebfcfffae96e",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "a44016438cac981274111688d97b53ab1f2b6fbeb3cbe2a93365b3aba1153745"
+        },
+        {
+          "name": "post-csv-sequence-0000ffff-mined",
+          "block": true,
+          "hash": "5b47458470fb7845ec700a07b70590191287c73a9de49e4d4ae2b3b59ea7a026",
+          "height": 578,
+          "txid": "5b9ee63bfe41de545eb8ce86b8081c32acd12d6ee58d8627f083ebfcfffae96e",
+          "confirmations": 1
+        },
+        {
+          "name": "post-csv-sequence-00400001",
+          "txid": "46737dd968e44b6ddcc87b38c2939c71fbd46a1f9a461f1ae457b6d725ea3da3",
+          "height": 580,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "46737dd968e44b6ddcc87b38c2939c71fbd46a1f9a461f1ae457b6d725ea3da3",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "87e7e9c2363bf489106a606acec3c6b0ceb69547ea51ebf7d73a54f90374cc34"
+        },
+        {
+          "name": "post-csv-sequence-00400001-mined",
+          "block": true,
+          "hash": "549bd0ae9f7746e051d3249c98dbbaa0fb9900b3ea430040bfab8ff932ff1562",
+          "height": 580,
+          "txid": "46737dd968e44b6ddcc87b38c2939c71fbd46a1f9a461f1ae457b6d725ea3da3",
+          "confirmations": 1
+        },
+        {
+          "name": "post-csv-sequence-80000000",
+          "txid": "8939e1fb8879c408b120b52dd9c73dbb184c071d2e5502b71aac86f297ee2bff",
+          "height": 582,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "8939e1fb8879c408b120b52dd9c73dbb184c071d2e5502b71aac86f297ee2bff",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "8dcc8791ab74992ab41e0ff29891fc3f9afa03ff8adb4a2ccb8bfcb2cb6475c3"
+        },
+        {
+          "name": "post-csv-sequence-80000000-mined",
+          "block": true,
+          "hash": "5dc95ac05dff6fcbb00aa02b3a9b031cdd7ed7af33a962c1eebeb954900a9826",
+          "height": 582,
+          "txid": "8939e1fb8879c408b120b52dd9c73dbb184c071d2e5502b71aac86f297ee2bff",
+          "confirmations": 1
+        },
+        {
+          "name": "post-csv-sequence-fffffffe",
+          "txid": "177d5344dfc793177e4dd8fb71ae0037f9b5c9baa73e10a9e9d6c0eb2d152bf8",
+          "height": 584,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "177d5344dfc793177e4dd8fb71ae0037f9b5c9baa73e10a9e9d6c0eb2d152bf8",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "6e8c6ba39d0ebc5044b90ec41c58f718c071f9a76af326177c11accac13310b3"
+        },
+        {
+          "name": "post-csv-sequence-fffffffe-mined",
+          "block": true,
+          "hash": "0e8cf77f3d922415bd541939a1f04b804d34a930c084791d785b3e2038af9b66",
+          "height": 584,
+          "txid": "177d5344dfc793177e4dd8fb71ae0037f9b5c9baa73e10a9e9d6c0eb2d152bf8",
+          "confirmations": 1
+        },
+        {
+          "name": "time-lock-equal-mtp",
+          "txid": "e3ccb207c65d73e9610a96d537a587cee13db08b7b1d02792dbe1d3aa01050d9",
+          "height": 586,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "e3ccb207c65d73e9610a96d537a587cee13db08b7b1d02792dbe1d3aa01050d9",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "1b0db1ed74781056965c62cd03c9b341e0365cf3486d3a0dea119eb1f7be0993"
+        },
+        {
+          "name": "time-lock-equal-mtp-block",
+          "block": false,
+          "expected": false,
+          "height": 586,
+          "hash": "1b0a43519d766c280921813bd0fd153b9c89852bed56d6c5c3b46b154797ec03",
+          "old_tip": "7c559aa69e1ad2dce8fbc9c714382915b0e547652d97960cb680facf0929f52d",
+          "new_tip": "7c559aa69e1ad2dce8fbc9c714382915b0e547652d97960cb680facf0929f52d",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "e3ccb207c65d73e9610a96d537a587cee13db08b7b1d02792dbe1d3aa01050d9"
+          ],
+          "block_file": "time-lock-equal-mtp-block.block.hex",
+          "block_sha256": "bd7ad994ec3d8a4e1c0a3ff52426371b2f22eb30e935f31e6718d6f2f6d0ff7d"
+        },
+        {
+          "name": "time-lock-final-control",
+          "txid": "c656fe8f94bc7882395528b6f716af91ddd798330eb9d599ad75508af2cf7cf9",
+          "height": 586,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "c656fe8f94bc7882395528b6f716af91ddd798330eb9d599ad75508af2cf7cf9",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "d06dc1b4ec88a6e6456423eaff634a581c75c408de3c562337d86811f5f5cee1"
+        },
+        {
+          "name": "time-lock-final-control-mined",
+          "block": true,
+          "hash": "17a6511cfad982f93d2b4145869ecaac6ff9b7647d2b4387459bd4dcf0058046",
+          "height": 586,
+          "txid": "c656fe8f94bc7882395528b6f716af91ddd798330eb9d599ad75508af2cf7cf9",
+          "confirmations": 1
+        },
+        {
+          "name": "time-lock-below-mtp",
+          "txid": "27c1d8af9a9a13b7754739aab22a3c037d9bc2a18bc17eafc6d5bd22ae9be55d",
+          "height": 588,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "27c1d8af9a9a13b7754739aab22a3c037d9bc2a18bc17eafc6d5bd22ae9be55d",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "7eb8a73db2e5a3d8376277ab23dd482370043f4fae8bc22a90c5b2225729ce05"
+        },
+        {
+          "name": "time-lock-below-mtp-mined",
+          "block": true,
+          "hash": "1346ffa2d36c9162bb2c337b0fdf4554c4e8d7f1bf276ea80adbbaeae8966b22",
+          "height": 588,
+          "txid": "27c1d8af9a9a13b7754739aab22a3c037d9bc2a18bc17eafc6d5bd22ae9be55d",
+          "confirmations": 1
+        },
+        {
+          "name": "maximum-time-nonfinal",
+          "txid": "f11cba2325c6e166db00c392b6291d80d46d026ffea25728460d7143fb5b2cc7",
+          "height": 590,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "f11cba2325c6e166db00c392b6291d80d46d026ffea25728460d7143fb5b2cc7",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "2123fb0fba3bc03e04a84e92e5d5b43e1d18a9f9b5da2f0825027fbd4c1ffec3"
+        },
+        {
+          "name": "maximum-time-nonfinal-block",
+          "block": false,
+          "expected": false,
+          "height": 590,
+          "hash": "747350cf9b1c63f45e9210e9cebe7e2bba629350dfda888a671df6aa74185f23",
+          "old_tip": "6a2c3db67530fa7e5cfc57c54711d0a72f909f272f4917faf39f1c23189c359c",
+          "new_tip": "6a2c3db67530fa7e5cfc57c54711d0a72f909f272f4917faf39f1c23189c359c",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "f11cba2325c6e166db00c392b6291d80d46d026ffea25728460d7143fb5b2cc7"
+          ],
+          "block_file": "maximum-time-nonfinal-block.block.hex",
+          "block_sha256": "411a41d9e7f67b9c4131114ef617c8c73bc1d05d61892d15223f37b2d48a0899"
+        },
+        {
+          "name": "maximum-time-finalized",
+          "txid": "ae7b75af5b1a17910ced692c1a8c4d95ded6bf5f15600ab2430a3945578d0bf3",
+          "height": 590,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "ae7b75af5b1a17910ced692c1a8c4d95ded6bf5f15600ab2430a3945578d0bf3",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "cf40fbe5cffc54206fb56faac201500dcdddb3a520f603dc40a35d9854f2bc27"
+        },
+        {
+          "name": "maximum-time-finalized-mined",
+          "block": true,
+          "hash": "639ed04c4d5060cef68548e3ee70020f876a28429a27346920224a1e3b9689cb",
+          "height": 590,
+          "txid": "ae7b75af5b1a17910ced692c1a8c4d95ded6bf5f15600ab2430a3945578d0bf3",
+          "confirmations": 1
+        },
+        {
+          "name": "signed-63-nonfinal",
+          "txid": "242ebd124447e6aeed9410762994acb671c70fa11df65c49210afda00b57a02d",
+          "height": 593,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "242ebd124447e6aeed9410762994acb671c70fa11df65c49210afda00b57a02d",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "4db5d203d3cc25bb9a908acb9b7d55df646a66e4a6f5dd916d1a05371cc5327a"
+        },
+        {
+          "name": "signed-63-own-sequence-without-resigning",
+          "txid": "3384768b968d9ad5d653ebb034955a65d422d405258a1d770df1e961570a75e7",
+          "height": 593,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "d2997535fa77f448e492817131b4edfdc38926d220bf6a1a2abb403e021f4541"
+        },
+        {
+          "name": "signed-63-invalid-update-block",
+          "block": false,
+          "expected": false,
+          "height": 593,
+          "hash": "3d23dc40098905e9ddd9459adb911552cb6ea1ad25149afbe8c05133231293ce",
+          "old_tip": "6e68a119c6985fc0b95934623ea55402fb393801eacb4565fbec8e8edabddc43",
+          "new_tip": "6e68a119c6985fc0b95934623ea55402fb393801eacb4565fbec8e8edabddc43",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "3384768b968d9ad5d653ebb034955a65d422d405258a1d770df1e961570a75e7"
+          ],
+          "block_file": "signed-63-invalid-update-block.block.hex",
+          "block_sha256": "1f18ede34582f17181e1b0f4ba0d0fab0bfbfe3f828acf5918b06ea9628b1302"
+        },
+        {
+          "name": "signed-63-other-sequence-down",
+          "txid": "b4e0136ee859b189ba0a0ed56b0ef1dcd713c748e6f65ed20ad45ac9ec5fc6ec",
+          "height": 593,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "3a1620e01947db92b3533b1a49d722a345f7ac166ff9ef1e74def5164cc1a4bf"
+        },
+        {
+          "name": "signed-63-other-sequence-up",
+          "txid": "72819d0f52d062088ea1c2e0553fbec54b3f5c29179ce456e33883e236afd189",
+          "height": 593,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "72819d0f52d062088ea1c2e0553fbec54b3f5c29179ce456e33883e236afd189",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "fe4344593204c730e6829cd918704b972fbd7fe557ada71c2e662d8b32c25bc1"
+        },
+        {
+          "name": "signed-63-resigned-update",
+          "txid": "f37fc594e067d69c86ccdc87815a7dde36a0710e18d1a5b30d8cc58f66d73e48",
+          "height": 593,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "f37fc594e067d69c86ccdc87815a7dde36a0710e18d1a5b30d8cc58f66d73e48",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "5e3db5474d919e9eef0c9f7013debcc63ce4a5dad32965b6db594c475a878e53"
+        },
+        {
+          "name": "signed-63-resigned-final",
+          "txid": "7dca36e46573316556eab52ade83f277d7d46665eddf32b415f1171e5d7177c6",
+          "height": 593,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "7dca36e46573316556eab52ade83f277d7d46665eddf32b415f1171e5d7177c6",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "6502d3e1f6f84d9f6a998fff94ab4396e1a49fb96bbc75ef8debb484e5ea91ef"
+        },
+        {
+          "name": "signed-63-final-mined",
+          "block": true,
+          "hash": "41f2907e22c4320788a986d2f4a8ecef0239396bf7f1537448ca187aed62728d",
+          "height": 593,
+          "txid": "7dca36e46573316556eab52ade83f277d7d46665eddf32b415f1171e5d7177c6",
+          "confirmations": 1
+        },
+        {
+          "name": "signed-e3-nonfinal",
+          "txid": "ba5c559afd0f5f9c8936a1e83121d345ed271c6a0cb918fe7ad279914cc434f7",
+          "height": 596,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "ba5c559afd0f5f9c8936a1e83121d345ed271c6a0cb918fe7ad279914cc434f7",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "d83ea8c828668d293db61e6748b41ad9e1eb7dfb80393da9f396b74e085c0bf8"
+        },
+        {
+          "name": "signed-e3-own-sequence-without-resigning",
+          "txid": "b4de1740d2b734095c34ac7786722e551591399f4d658bbfe5fed50b39e6d7ab",
+          "height": 596,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Top of stack is false`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+          "expected": "rejected",
+          "tx_sha256": "220477eb84dc2883e9e4d3037b4c169a80c45d22f0d6f82eff77243ea010af44"
+        },
+        {
+          "name": "signed-e3-invalid-update-block",
+          "block": false,
+          "expected": false,
+          "height": 596,
+          "hash": "7af891146b2578e4cbe043322544319f44f1fd92e54bf2b9a20fb25224650dcd",
+          "old_tip": "1bb4bf6833eab6ea241c86cde44f0e910d6032267d5ac25ac26e02184c459e66",
+          "new_tip": "1bb4bf6833eab6ea241c86cde44f0e910d6032267d5ac25ac26e02184c459e66",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "b4de1740d2b734095c34ac7786722e551591399f4d658bbfe5fed50b39e6d7ab"
+          ],
+          "block_file": "signed-e3-invalid-update-block.block.hex",
+          "block_sha256": "2feec1381b96eb32541ae208663abfc53f7f10df48d20b60499c9b0f15e11e19"
+        },
+        {
+          "name": "signed-e3-other-sequence-down",
+          "txid": "c26e50b197f65d1105f7412a342c5ba884bcc165e19cf3f2fd7dc88a023bec48",
+          "height": 596,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected",
+          "tx_sha256": "2c1a913ba41e6778efc95938cb970092c68253a3c4e15563fd3913277287c2f8"
+        },
+        {
+          "name": "signed-e3-other-sequence-up",
+          "txid": "e68ff00bfc904f3b57fec670dbb413c1bee9f2f059776ca3a960445b8a17df7d",
+          "height": 596,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "e68ff00bfc904f3b57fec670dbb413c1bee9f2f059776ca3a960445b8a17df7d",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "dc6703d6d6b2f3a02f4328dece85c123452760de4a303f93d07bea7690b41230"
+        },
+        {
+          "name": "signed-e3-resigned-update",
+          "txid": "4f92bcddd520989ce6b16e81f8d7903e2741f62a41f6a2ba8720a1ba4bde6809",
+          "height": 596,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "4f92bcddd520989ce6b16e81f8d7903e2741f62a41f6a2ba8720a1ba4bde6809",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "d68fb49d70f2f79b8520e3f883c264a9f1891eecc6243245fc36de5a160ba57f"
+        },
+        {
+          "name": "signed-e3-resigned-final",
+          "txid": "9586bd0a1514a0a896042f9c34f02f85279ea24ee8679facfcb5a3d56e2ebeab",
+          "height": 596,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "9586bd0a1514a0a896042f9c34f02f85279ea24ee8679facfcb5a3d56e2ebeab",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "3215db40d7d5df93b934edc3945d2d74585656756e5ae28566919ea5a4188b9b"
+        },
+        {
+          "name": "signed-e3-final-mined",
+          "block": true,
+          "hash": "340c52ed298b14dc823b8481bcf19f99004b3c6c70165be5af10e0e7b00eadce",
+          "height": 596,
+          "txid": "9586bd0a1514a0a896042f9c34f02f85279ea24ee8679facfcb5a3d56e2ebeab",
+          "confirmations": 1
+        },
+        {
+          "name": "finished",
+          "result": "passed",
+          "height": 596,
+          "pools": {
+            "regular": [],
+            "nonfinal": [
+              "3cdfce85359d4317a29ab71a5efb9d888ee73097db412e5e8eeaea22dae9c07d",
+              "9a7008e89bd336dc0b5f70d3cf17d1c12b0dcf9c40782b089cbd381378ba91b6"
+            ]
+          },
+          "note": "Any retained non-final entries have spent inputs; no ordinary pending transactions remain."
+        }
+      ]
+    },
+    "standard": {
+      "counts": {
+        "admissions": 8,
+        "mempool": 5,
+        "nonfinal_pool": 2,
+        "rejected": 1,
+        "block_checks": 8,
+        "block_accepted": 6,
+        "block_rejected": 2
+      },
+      "cases": [
+        {
+          "name": "standard-locktime-7fffffff",
+          "txid": "41c8af7a8b857b629f90a2ab434f7edf50a082ea09ca57a88b43c9bf9f08b072",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "41c8af7a8b857b629f90a2ab434f7edf50a082ea09ca57a88b43c9bf9f08b072",
+          "rpc_error": null,
+          "before": {
+            "regular": [],
+            "nonfinal": []
+          },
+          "after": {
+            "regular": [
+              "41c8af7a8b857b629f90a2ab434f7edf50a082ea09ca57a88b43c9bf9f08b072"
+            ],
+            "nonfinal": []
+          },
+          "expected": "regular",
+          "tx_sha256": "5a52863d5b287be0a02dbcaafde4bb47505bfa7493aa1f4ee8948b5a3bddc766"
+        },
+        {
+          "name": "standard-locktime-7fffffff-mined",
+          "block": true,
+          "hash": "49b4dac04d7350b8f279a9b9acce139e132d26c5d5f774ebcb288de6e7c234d8",
+          "height": 602,
+          "txid": "41c8af7a8b857b629f90a2ab434f7edf50a082ea09ca57a88b43c9bf9f08b072",
+          "confirmations": 1
+        },
+        {
+          "name": "standard-locktime-80000000",
+          "txid": "51649481ba103f18a63be04a5b444a34e1a0ab4b5c6788fafa08ff74a9712814",
+          "height": 604,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "51649481ba103f18a63be04a5b444a34e1a0ab4b5c6788fafa08ff74a9712814",
+          "rpc_error": null,
+          "before": {
+            "regular": [],
+            "nonfinal": []
+          },
+          "after": {
+            "regular": [
+              "51649481ba103f18a63be04a5b444a34e1a0ab4b5c6788fafa08ff74a9712814"
+            ],
+            "nonfinal": []
+          },
+          "expected": "regular",
+          "tx_sha256": "07f7123f974e2c0dfce8d48be578d1d845ca5904187b9af59453716ecbe4d18b"
+        },
+        {
+          "name": "standard-locktime-80000000-mined",
+          "block": true,
+          "hash": "00c22173cf87b795dcac45f1315cae174021bd8150436dfa8487d69b2bc9c8a7",
+          "height": 604,
+          "txid": "51649481ba103f18a63be04a5b444a34e1a0ab4b5c6788fafa08ff74a9712814",
+          "confirmations": 1
+        },
+        {
+          "name": "standard-locktime-ffffffff",
+          "txid": "c6a46aaaa65d3c7fa043600771025a6fcb3f90359593a90d91de60497fc8f4d6",
+          "height": 606,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "c6a46aaaa65d3c7fa043600771025a6fcb3f90359593a90d91de60497fc8f4d6",
+          "rpc_error": null,
+          "before": {
+            "regular": [],
+            "nonfinal": []
+          },
+          "after": {
+            "regular": [
+              "c6a46aaaa65d3c7fa043600771025a6fcb3f90359593a90d91de60497fc8f4d6"
+            ],
+            "nonfinal": []
+          },
+          "expected": "regular",
+          "tx_sha256": "e7af74fda0a3476d6bdc66b99d45a3e46a3869be06245081f54371a8d6a597d7"
+        },
+        {
+          "name": "standard-locktime-ffffffff-mined",
+          "block": true,
+          "hash": "1ecf8e91824098aae08e22bd4fb4d5fe72557d8554b2d0ef8e130ed1a5f7d893",
+          "height": 606,
+          "txid": "c6a46aaaa65d3c7fa043600771025a6fcb3f90359593a90d91de60497fc8f4d6",
+          "confirmations": 1
+        },
+        {
+          "name": "standard-maximum-time-nonfinal",
+          "txid": "bd8bd19ecd0ffb649f6d9cffafa45993596220e8bdda3ef1b111266c20cf717d",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "bd8bd19ecd0ffb649f6d9cffafa45993596220e8bdda3ef1b111266c20cf717d",
+          "rpc_error": null,
+          "before": {
+            "regular": [],
+            "nonfinal": []
+          },
+          "after": {
+            "regular": [],
+            "nonfinal": [
+              "bd8bd19ecd0ffb649f6d9cffafa45993596220e8bdda3ef1b111266c20cf717d"
+            ]
+          },
+          "expected": "nonfinal",
+          "tx_sha256": "a922d03b98dfd3261ea79ca9ba0f823698fea945afe07d3353dac7a1bbcbae2c"
+        },
+        {
+          "name": "standard-maximum-time-nonfinal-block",
+          "block": false,
+          "expected": false,
+          "height": 608,
+          "hash": "5bb4f99daace8a34e124979cd507cb20db802da5d0df74dff890453f8cad9542",
+          "old_tip": "004fbbd4d38eb8669693be175730bd222357cf097b9c8242b5c51b6bee2f0c08",
+          "new_tip": "004fbbd4d38eb8669693be175730bd222357cf097b9c8242b5c51b6bee2f0c08",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "bd8bd19ecd0ffb649f6d9cffafa45993596220e8bdda3ef1b111266c20cf717d"
+          ],
+          "block_file": "standard-maximum-time-nonfinal-block.block.hex"
+        },
+        {
+          "name": "standard-maximum-time-finalization",
+          "txid": "bdc59ba2939d0ab3e3f67c9d866e02329e06934b3158e711248bd2e61f44d51e",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "bdc59ba2939d0ab3e3f67c9d866e02329e06934b3158e711248bd2e61f44d51e",
+          "rpc_error": null,
+          "before": {
+            "regular": [],
+            "nonfinal": [
+              "bd8bd19ecd0ffb649f6d9cffafa45993596220e8bdda3ef1b111266c20cf717d"
+            ]
+          },
+          "after": {
+            "regular": [
+              "bdc59ba2939d0ab3e3f67c9d866e02329e06934b3158e711248bd2e61f44d51e"
+            ],
+            "nonfinal": []
+          },
+          "expected": "regular",
+          "tx_sha256": "de037a4ad7217c15ada6d507de7e4aae6dc780e228676b3ed90e3c421a25784a"
+        },
+        {
+          "name": "standard-maximum-time-finalization-mined",
+          "block": true,
+          "hash": "7dbeb06e5600f76063ea08cb1e7ebda78c2ccfb65acfd69e8048503030cb00d4",
+          "height": 608,
+          "txid": "bdc59ba2939d0ab3e3f67c9d866e02329e06934b3158e711248bd2e61f44d51e",
+          "confirmations": 1
+        },
+        {
+          "name": "standard-mtp-equality",
+          "txid": "bd501abe5374102236fd072c35c6c18ce6bd0ab9c4d88f38b4ba88f3a01ae0ec",
+          "height": 610,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "bd501abe5374102236fd072c35c6c18ce6bd0ab9c4d88f38b4ba88f3a01ae0ec",
+          "rpc_error": null,
+          "before": {
+            "regular": [],
+            "nonfinal": []
+          },
+          "after": {
+            "regular": [],
+            "nonfinal": [
+              "bd501abe5374102236fd072c35c6c18ce6bd0ab9c4d88f38b4ba88f3a01ae0ec"
+            ]
+          },
+          "expected": "nonfinal",
+          "tx_sha256": "624f13d5b87a1ed3ec1dc89279d81a90238ba4eefe0ca712e7f684690dacd383"
+        },
+        {
+          "name": "standard-mtp-equality-block",
+          "block": false,
+          "expected": false,
+          "height": 610,
+          "hash": "5993aa18ff7ae993296d9a5022a5f257b51e715c14d42d839f5d8ca09ef8521a",
+          "old_tip": "1078d6b016d87df9ecfbcfc9227e0f4a93d4d02adf2c8643acf8a39fd97c09c8",
+          "new_tip": "1078d6b016d87df9ecfbcfc9227e0f4a93d4d02adf2c8643acf8a39fd97c09c8",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "bd501abe5374102236fd072c35c6c18ce6bd0ab9c4d88f38b4ba88f3a01ae0ec"
+          ],
+          "block_file": "standard-mtp-equality-block.block.hex"
+        },
+        {
+          "name": "standard-mtp-finalization",
+          "txid": "179b5085dc1b533b01f2bb3b8313ff7d0efcdcff1c5816867d4767ce00350a13",
+          "height": 610,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "179b5085dc1b533b01f2bb3b8313ff7d0efcdcff1c5816867d4767ce00350a13",
+          "rpc_error": null,
+          "before": {
+            "regular": [],
+            "nonfinal": [
+              "bd501abe5374102236fd072c35c6c18ce6bd0ab9c4d88f38b4ba88f3a01ae0ec"
+            ]
+          },
+          "after": {
+            "regular": [
+              "179b5085dc1b533b01f2bb3b8313ff7d0efcdcff1c5816867d4767ce00350a13"
+            ],
+            "nonfinal": []
+          },
+          "expected": "regular",
+          "tx_sha256": "dd01fb8cb0f35bf815cedb4b45097374eb3c5699cbe6f4aa46869e861c313866"
+        },
+        {
+          "name": "standard-mtp-finalization-mined",
+          "block": true,
+          "hash": "63ee11582a78a4b15a935c008a72ffd80b54e3ca32a283626c705bf9236303f9",
+          "height": 610,
+          "txid": "179b5085dc1b533b01f2bb3b8313ff7d0efcdcff1c5816867d4767ce00350a13",
+          "confirmations": 1
+        },
+        {
+          "name": "standard-profile-rejects-op-true-output",
+          "txid": "72c991c0543a9967f462771974ce1c1d3bad570c61e8eed2dc0a2f8e2d08a34c",
+          "height": 612,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: scriptpubkey",
+          "before": {
+            "regular": [],
+            "nonfinal": []
+          },
+          "after": {
+            "regular": [],
+            "nonfinal": []
+          },
+          "expected": "rejected",
+          "tx_sha256": "6d5f229d475cd89d639374169dd6223beb6134a223a9c314e03d43ab92ceb0fc"
+        },
+        {
+          "name": "standard-profile-nonstandard-consensus",
+          "block": true,
+          "expected": true,
+          "height": 612,
+          "hash": "381270b1ec0208d723ffe6cbfa9bf4ecbe1ececb89e04a3fbc5ca1b252e6f565",
+          "old_tip": "0590f4a511d6414fd3dd66db463fde680989917ced0eb1516234c4ebeafde712",
+          "new_tip": "381270b1ec0208d723ffe6cbfa9bf4ecbe1ececb89e04a3fbc5ca1b252e6f565",
+          "submit_result": null,
+          "transactions": [
+            "72c991c0543a9967f462771974ce1c1d3bad570c61e8eed2dc0a2f8e2d08a34c"
+          ],
+          "block_file": "standard-profile-nonstandard-consensus.block.hex",
+          "confirmed": {
+            "72c991c0543a9967f462771974ce1c1d3bad570c61e8eed2dc0a2f8e2d08a34c": 1
+          }
+        }
+      ]
+    },
+    "default": {
+      "counts": {
+        "admissions": 2,
+        "mempool": 2,
+        "nonfinal_pool": 0,
+        "rejected": 0,
+        "block_checks": 2,
+        "block_accepted": 2,
+        "block_rejected": 0
+      },
+      "cases": [
+        {
+          "name": "default-policy-companion-63",
+          "txid": "ca278f329a5c5aa38fb226c5766d9f99b2c313864d7b07bc937776bd4a3e5501",
+          "height": 603,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "ca278f329a5c5aa38fb226c5766d9f99b2c313864d7b07bc937776bd4a3e5501",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "7d393407e7fc8d68a961fd9bafcb2bdff7152e86093ad482ae8f7770c0ba725d"
+        },
+        {
+          "name": "default-policy-companion-63-mined",
+          "block": true,
+          "hash": "3ab94e4809a40ab3d07c308eeea8e614d359e663b369c340a2c9506f954da007",
+          "height": 603,
+          "txid": "ca278f329a5c5aa38fb226c5766d9f99b2c313864d7b07bc937776bd4a3e5501",
+          "confirmations": 1
+        },
+        {
+          "name": "default-policy-companion-e3",
+          "txid": "17691faa09b33974f36247c0722a610ec1b90ce207ed3d32123ff5f4f9768e63",
+          "height": 606,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "17691faa09b33974f36247c0722a610ec1b90ce207ed3d32123ff5f4f9768e63",
+          "rpc_error": null,
+          "expected": "regular",
+          "tx_sha256": "9a5a1b56f15ca9d54e7d455836a7483baebd4deea81f37f07652055c9e38b103"
+        },
+        {
+          "name": "default-policy-companion-e3-mined",
+          "block": true,
+          "hash": "44c617cfe70e5b84c917bfd41a8a7bfd38a116092095ea8fc67a3f850cefc6ed",
+          "height": 606,
+          "txid": "17691faa09b33974f36247c0722a610ec1b90ce207ed3d32123ff5f4f9768e63",
+          "confirmations": 1
+        }
+      ]
+    },
+    "rate": {
+      "counts": {
+        "admissions": 4,
+        "mempool": 0,
+        "nonfinal_pool": 3,
+        "rejected": 1,
+        "block_checks": 1,
+        "block_accepted": 1,
+        "block_rejected": 0
+      },
+      "cases": [
+        {
+          "name": "rate-sequence-1",
+          "txid": "4a4f30492b835ab17118718ccf8e8440c107176a9109d47408eb2e16df6befb2",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "4a4f30492b835ab17118718ccf8e8440c107176a9109d47408eb2e16df6befb2",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "72b741ed078ede31008e7de43b95380545f398ce91b13b8725a2aebb07684159"
+        },
+        {
+          "name": "rate-sequence-2",
+          "txid": "86cd89cdad66b403e1f2eeaa945d94dd91ae6b87d5db74cb7814f50c5e38ceb6",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "86cd89cdad66b403e1f2eeaa945d94dd91ae6b87d5db74cb7814f50c5e38ceb6",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "69b7da5221d3512ff2109beea9cf4e37f1717197f60e9f0d9227fd496a57f5f5"
+        },
+        {
+          "name": "rate-sequence-3",
+          "txid": "6e7bb1bac32a4b0114ff2aa34e438a85e98059dd35c748a33cb5b2ebf1bb5654",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "6e7bb1bac32a4b0114ff2aa34e438a85e98059dd35c748a33cb5b2ebf1bb5654",
+          "rpc_error": null,
+          "expected": "nonfinal",
+          "tx_sha256": "1c01ac812a7cdd338e0ffb3706045fd08c19a5900f206254cc0b06f0d4e71018"
+        },
+        {
+          "name": "rate-third-update-rejected",
+          "txid": "233a7647d4e26feb273b89145b4c170529e696576d3974907483c4c5789e170e",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n69: non-final-txn-replacement-rate",
+          "expected": "rejected",
+          "tx_sha256": "c57206c9e0f0c809b13815bbea44e98154a97e6b838c94af2def161dd499287c"
+        },
+        {
+          "name": "rate-throttle-does-not-invalidate-final-block",
+          "block": true,
+          "expected": true,
+          "height": 602,
+          "hash": "78e5b4b66ef0958eeadcb7931b3054b997acd8278471a01485696ce1dac5eccf",
+          "old_tip": "7e3ffbe5726216ed2d70711d7ab120472053db1b3849ffc04168c845e7af478a",
+          "new_tip": "78e5b4b66ef0958eeadcb7931b3054b997acd8278471a01485696ce1dac5eccf",
+          "submit_result": null,
+          "transactions": [
+            "52190e1e90937f851167575ac3b94f424f7b3cf5807272aa9cdc250609064d06"
+          ],
+          "block_file": "rate-throttle-does-not-invalidate-final-block.block.hex",
+          "confirmed": {
+            "52190e1e90937f851167575ac3b94f424f7b3cf5807272aa9cdc250609064d06": 1
+          },
+          "block_sha256": "3805e422096524215b7c70536e7c728fc9d855ccac3c8f3a4deeb3be1e4ca88e"
+        },
+        {
+          "name": "rate-stale-nonfinal-entry-after-confirmed-conflict",
+          "result": "observed",
+          "pools": {
+            "regular": [],
+            "nonfinal": [
+              "6e7bb1bac32a4b0114ff2aa34e438a85e98059dd35c748a33cb5b2ebf1bb5654"
+            ]
+          },
+          "spent_outpoint": "4463080140295399c9a53c621ffb63abf0d74d8376855d6faa81251b41f7f4e8:0",
+          "utxo": null,
+          "note": "v1.2.3 non-final pool retains this entry; chain UTXO state is authoritative, not pool membership."
+        }
+      ]
+    }
+  },
+  "archive_sha256": "b34e817091f0d9fb152fe67aff91499bc0b9b2d8317e66eaba0ad1abf39df6d3"
+}

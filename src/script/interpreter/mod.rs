@@ -9,6 +9,7 @@ mod script_code;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use push::next_op_cursor;
 pub use push::{is_push_only, next_op};
 pub use rules::{max_script_num_length, uses_relaxed_malleability, uses_two_phase_eval};
 pub use script_code::{TwoPhaseEvalContext, TwoPhasePhase};

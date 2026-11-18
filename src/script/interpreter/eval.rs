@@ -13,7 +13,8 @@ use ripemd::{Digest, Ripemd160};
 
 use super::multisig::check_multisig;
 use super::push::{
-    check_canonical_push, check_pregenesis_push_size, check_stack_size, next_op, remains,
+    check_canonical_push, check_pregenesis_push_size, check_stack_size, next_op, next_op_cursor,
+    remains,
 };
 use super::rules::{
     count_pregenesis_op, enforces_policy_rules, max_script_num_length,
@@ -94,7 +95,9 @@ pub fn core_eval<T: Checker>(
                 OP_ENDIF => conditions.pop()?,
                 _ => {}
             }
-            i = next_op(i, script);
+            i = next_op_cursor(i, script).map_err(|_| {
+                ChainGangError::ScriptError("Truncated push in a skipped instruction".to_string())
+            })?;
             continue;
         }
         match opcode {

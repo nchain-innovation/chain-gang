@@ -10,7 +10,7 @@ use crate::{
     transaction::{
         generate_signature,
         p2pkh::create_unlock_script,
-        sighash::{sighash, sighash_checksig_index, SigHashCache},
+        sighash::{sighash, sighash_checksig_index, uses_constant_digest, SigHashCache},
     },
     util::{hash160, ChainGangError, Hash256},
     wallet::base58_checksum::{decode_base58_checksum, encode_base58_checksum},
@@ -216,6 +216,9 @@ impl Wallet {
     }
 
     /// Signs a precomputed sighash with this wallet's private key.
+    ///
+    /// Low-level escape hatch: the caller is responsible for avoiding
+    /// transaction-independent OTDA sentinel digests.
     pub fn sign_sighash(
         &self,
         sighash: Hash256,
@@ -235,6 +238,12 @@ impl Wallet {
         index: usize,
         sighash_flags: u8,
     ) -> Result<(), ChainGangError> {
+        // Wallet policy: never sign a digest that commits to no transaction.
+        if index >= tx.inputs.len() || uses_constant_digest(tx, index, u32::from(sighash_flags)) {
+            return Err(ChainGangError::BadArgument(
+                "refusing to sign an invalid input or OTDA constant digest".to_string(),
+            ));
+        }
         // Check correct input tx provided
         let prev_hash = tx.inputs[index].prev_output.hash;
         if prev_hash != tx_in.hash() {
@@ -270,6 +279,12 @@ impl Wallet {
         sighash_flags: u8,
         checksig_index: usize,
     ) -> Result<(), ChainGangError> {
+        // Wallet policy: never sign a digest that commits to no transaction.
+        if index >= tx.inputs.len() || uses_constant_digest(tx, index, u32::from(sighash_flags)) {
+            return Err(ChainGangError::BadArgument(
+                "refusing to sign an invalid input or OTDA constant digest".to_string(),
+            ));
+        }
         // Check correct input tx provided
         let prev_hash = tx.inputs[index].prev_output.hash;
         if prev_hash != tx_in.hash() {

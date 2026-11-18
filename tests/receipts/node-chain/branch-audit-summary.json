@@ -1,0 +1,1509 @@
+{
+  "metadata": {
+    "date": "2026-11-19",
+    "node_source": "6504a3aff65ba97c0f6c80962b033e35ecbfed4b",
+    "image": "docker.io/bitcoinsv/bitcoin-sv@sha256:d96fe4786a00e5fc10bc9e0e76a6006376f9472d4eb74d07e4c1e0d019493d33",
+    "library_snapshot": "e129e5a0a914614473556bab3f25906d55a4a680",
+    "lab_commit": "f8f184bb6a35139ce8d1971a6f514cffc666e4d3",
+    "runtime": "Apple Container / Rosetta",
+    "network": "isolated regtest",
+    "chronicle": 200,
+    "genesis": {
+      "legacy": 150,
+      "others": 1
+    },
+    "regtest_csv": 576,
+    "regtest_bip65": 1351,
+    "reproduction_sha256": {
+      "sequences.py": "d969ac437648cba91347e26b1f864c92a8e13d9464487a86019270e173243e56",
+      "disabled_nonfinal.py": "c724c91cdccf43fdeb0d1be09b7915ee4947eb2825ea24d05632b5e73edf4156",
+      "boundary.py": "f649e112069ce1333707f0663f88fd9116f1f7764acf7f44bfbfc0f1b7c7762d",
+      "harness.py": "9f6d65c0a4917e8d73c9a4dcbba2b4edbbf7f02895135ac0b1b54ed0895e9d85",
+      "replacement_rate.py": "521f2e1ef61b38a28ffc93ea3393c0af54adba674c71428ed093b5f38e76436c",
+      "complete_spends.py": "f19cb19b22b0cc6508dae5cb7271ea022ec4c8e3c085a4bf64dd96afcae4c197",
+      "standard_policy.py": "6ce92359a9176fa362bbbe0e5274b83c2aee16b911ba0ce4a4d91b27e9a389b4",
+      "branch_audit.py": "df6023fdebdb7aa26f87804e9c6cf233f653be40e402ff40c7b560f883a3aa67",
+      "signed_replacements.py": "bf8c4f67b6d61e3b0c6f2cf4057e05c9fed411964822a6ab85f7fd05851ac5b6",
+      "run_all.py": "6fa1ffc5e50bf1d12addbbb2f3880ddc6e3ec0ad67a2c10d1465a33f3bb44f04",
+      "legacy_locks.py": "03926a4906492c1f12e2cacfb7f00750d9e04b7b86bf184ab9aa5a943d682d48",
+      "default_policy.py": "5fc55997731d3459ba69ca1c2f15bc4166d0d28972f8a59b14f640ba23100e6a"
+    }
+  },
+  "totals": {
+    "admissions": 68,
+    "regular": 20,
+    "nonfinal": 14,
+    "rejected": 34,
+    "blocks": 44,
+    "accepted_blocks": 24,
+    "rejected_blocks": 20
+  },
+  "profiles": {
+    "audit": {
+      "counts": {
+        "admissions": 40,
+        "regular": 14,
+        "nonfinal": 10,
+        "rejected": 16,
+        "blocks": 20,
+        "accepted_blocks": 14,
+        "rejected_blocks": 6
+      },
+      "cases": [
+        {
+          "name": "before-boundary-parent",
+          "txid": "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60",
+          "height": 199,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "before-boundary-unconfirmed-child",
+          "txid": "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b",
+          "height": 199,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `disabled pre-Chronicle opcode`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: chronicle-script-verify-flag-failed (Attempted to use a disabled opcode)",
+          "expected": "rejected"
+        },
+        {
+          "name": "before-boundary-package-invalid",
+          "block": false,
+          "expected": false,
+          "height": 199,
+          "hash": "2be4ab2014d61eda1f6b5fc90f49c95944b4625fd40ffc5af342b12718c515b9",
+          "old_tip": "075c75f2d0f983cfe4165a84478b2bcea0bf949f322cdd369ebf82f16dc54951",
+          "new_tip": "075c75f2d0f983cfe4165a84478b2bcea0bf949f322cdd369ebf82f16dc54951",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60",
+            "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b"
+          ],
+          "block_file": "before-boundary-package-invalid.block.hex"
+        },
+        {
+          "name": "empty-block-199-clears-era-cache",
+          "block": true,
+          "expected": true,
+          "height": 199,
+          "hash": "5f3c73f7545972c4cf9d28a0bce9bd99dc5399e137241037dd6c6b4ff50b3375",
+          "old_tip": "075c75f2d0f983cfe4165a84478b2bcea0bf949f322cdd369ebf82f16dc54951",
+          "new_tip": "5f3c73f7545972c4cf9d28a0bce9bd99dc5399e137241037dd6c6b4ff50b3375",
+          "submit_result": null,
+          "transactions": [],
+          "block_file": "empty-block-199-clears-era-cache.block.hex",
+          "confirmed": {}
+        },
+        {
+          "name": "activation-parent-resubmitted",
+          "txid": "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60",
+          "height": 200,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "activation-unconfirmed-child",
+          "txid": "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b",
+          "height": 200,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "activation-child-before-parent-invalid",
+          "block": false,
+          "expected": false,
+          "height": 200,
+          "hash": "13f35d62008aaf5699a6b9ed3f22fd579b862376d06eb685d12bd3dba5d2a0ae",
+          "old_tip": "5f3c73f7545972c4cf9d28a0bce9bd99dc5399e137241037dd6c6b4ff50b3375",
+          "new_tip": "5f3c73f7545972c4cf9d28a0bce9bd99dc5399e137241037dd6c6b4ff50b3375",
+          "submit_result": "bad-txns-inputs-missingorspent",
+          "transactions": [
+            "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b",
+            "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60"
+          ],
+          "block_file": "activation-child-before-parent-invalid.block.hex"
+        },
+        {
+          "name": "activation-same-block-package",
+          "block": true,
+          "expected": true,
+          "height": 200,
+          "hash": "5bf439e965f5a7ff2068725249c5b0ad398c7dc86e8ea408de4e3d5fc44ce183",
+          "old_tip": "5f3c73f7545972c4cf9d28a0bce9bd99dc5399e137241037dd6c6b4ff50b3375",
+          "new_tip": "5bf439e965f5a7ff2068725249c5b0ad398c7dc86e8ea408de4e3d5fc44ce183",
+          "submit_result": null,
+          "transactions": [
+            "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60",
+            "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b"
+          ],
+          "block_file": "activation-same-block-package.block.hex",
+          "confirmed": {
+            "ec6099cfe611701eccf99a5bde63baf55dc83d01bfb5661318cd4c2e4719cf60": 1,
+            "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b": 1
+          }
+        },
+        {
+          "name": "rollback-child-rules-old",
+          "txid": "231c17bfef7284393ee196371e06ea5d525bc4f599dc599edcb4f3fd4b775d9b",
+          "height": 199,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `disabled pre-Chronicle opcode`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: chronicle-script-verify-flag-failed (Attempted to use a disabled opcode)",
+          "expected": "rejected"
+        },
+        {
+          "name": "reactivation-restores-package-chain",
+          "result": "passed",
+          "height": 200,
+          "hash": "5bf439e965f5a7ff2068725249c5b0ad398c7dc86e8ea408de4e3d5fc44ce183"
+        },
+        {
+          "name": "mixed-era-old-true-new-mul",
+          "txid": "85e8801aed576103e0c80366ebc6e7daa26038b44283b1048a8f4e43e5d62ee8",
+          "height": 202,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "85e8801aed576103e0c80366ebc6e7daa26038b44283b1048a8f4e43e5d62ee8",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "mixed-era-valid-mined",
+          "block": true,
+          "hash": "62f104e1377a29d8eabc2642689e659eb0193968d30685ecb5301c4c89542578",
+          "height": 202,
+          "txid": "85e8801aed576103e0c80366ebc6e7daa26038b44283b1048a8f4e43e5d62ee8",
+          "confirmations": 1
+        },
+        {
+          "name": "mixed-era-old-mul-order-0",
+          "txid": "36a9caefcab37b0ab44a07c2ef55449eb4c79b3f41d13ec31c27a24bc83550b0",
+          "height": 204,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `disabled pre-Chronicle opcode`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: chronicle-script-verify-flag-failed (Attempted to use a disabled opcode)",
+          "expected": "rejected"
+        },
+        {
+          "name": "mixed-era-old-mul-order-0-block",
+          "block": false,
+          "expected": false,
+          "height": 204,
+          "hash": "741fbe810d555ebb9d852ef1df6e468a6e6fd5c1d3c1776cdb2de53be7ae3cda",
+          "old_tip": "53b2e94c852350e3e9152e7858804aa2c830244d7a65945fd25c738e75d565d6",
+          "new_tip": "53b2e94c852350e3e9152e7858804aa2c830244d7a65945fd25c738e75d565d6",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "36a9caefcab37b0ab44a07c2ef55449eb4c79b3f41d13ec31c27a24bc83550b0"
+          ],
+          "block_file": "mixed-era-old-mul-order-0-block.block.hex"
+        },
+        {
+          "name": "mixed-era-old-mul-order-1",
+          "txid": "d434c1c580c2feb9a2846e406ef304c75531b370b99a06ddcb3bb04900a123cf",
+          "height": 204,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `disabled pre-Chronicle opcode`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: chronicle-script-verify-flag-failed (Attempted to use a disabled opcode)",
+          "expected": "rejected"
+        },
+        {
+          "name": "mixed-era-old-mul-order-1-block",
+          "block": false,
+          "expected": false,
+          "height": 204,
+          "hash": "63fc7991209b34c374cb6ada04748b2296e671535e25d6cecf719dd4661cb53a",
+          "old_tip": "53b2e94c852350e3e9152e7858804aa2c830244d7a65945fd25c738e75d565d6",
+          "new_tip": "53b2e94c852350e3e9152e7858804aa2c830244d7a65945fd25c738e75d565d6",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "d434c1c580c2feb9a2846e406ef304c75531b370b99a06ddcb3bb04900a123cf"
+          ],
+          "block_file": "mixed-era-old-mul-order-1-block.block.hex"
+        },
+        {
+          "name": "locktime-threshold-499999999",
+          "txid": "8ef760c70b51afa2eb80ccd51777798b61d8f5d28d50e058c72295fd42964bb6",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "8ef760c70b51afa2eb80ccd51777798b61d8f5d28d50e058c72295fd42964bb6",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "locktime-threshold-499999999-block",
+          "block": false,
+          "expected": false,
+          "height": 602,
+          "hash": "37be211a8a85c3f067dd10b60e7cccac8a0e3bcc3d85f77cb832e7a017c55dbb",
+          "old_tip": "47837893345fe58620e94a867e81b968986b1a51b8d64fc7c7bb33b9199729a9",
+          "new_tip": "47837893345fe58620e94a867e81b968986b1a51b8d64fc7c7bb33b9199729a9",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "8ef760c70b51afa2eb80ccd51777798b61d8f5d28d50e058c72295fd42964bb6"
+          ],
+          "block_file": "locktime-threshold-499999999-block.block.hex"
+        },
+        {
+          "name": "height-threshold-final-override",
+          "txid": "2b451ddb7a3600a7305675e5ae3ebdc888c9a4ef9e85068e6053394b5c4fb267",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "2b451ddb7a3600a7305675e5ae3ebdc888c9a4ef9e85068e6053394b5c4fb267",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "locktime-threshold-499999999-mined",
+          "block": true,
+          "hash": "2cf872daf0f25327581e49d8ba6bdf5b157fecb7f6a6594ff39201ea067450f9",
+          "height": 602,
+          "txid": "2b451ddb7a3600a7305675e5ae3ebdc888c9a4ef9e85068e6053394b5c4fb267",
+          "confirmations": 1
+        },
+        {
+          "name": "locktime-threshold-500000000",
+          "txid": "681ffce2321c41767d8157a3a8cd3e7f6d2f5746bfbaa90c9d719cefe4b589dd",
+          "height": 604,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "681ffce2321c41767d8157a3a8cd3e7f6d2f5746bfbaa90c9d719cefe4b589dd",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "locktime-threshold-500000000-mined",
+          "block": true,
+          "hash": "0189cbadb2e0e94009b047a993bf39e7ab7f4a45be4009aed0c705fc73c07c65",
+          "height": 604,
+          "txid": "681ffce2321c41767d8157a3a8cd3e7f6d2f5746bfbaa90c9d719cefe4b589dd",
+          "confirmations": 1
+        },
+        {
+          "name": "locktime-threshold-500000001",
+          "txid": "0339c00f8b90fc8fe865d3e4b7a4686580ffc73d11391d1d1064997a519a89c4",
+          "height": 606,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "0339c00f8b90fc8fe865d3e4b7a4686580ffc73d11391d1d1064997a519a89c4",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "locktime-threshold-500000001-mined",
+          "block": true,
+          "hash": "1b1947af91f5ed520a65e0a6699a67b4a0df0c4cca8ea4c2ba57b33363ca02d1",
+          "height": 606,
+          "txid": "0339c00f8b90fc8fe865d3e4b7a4686580ffc73d11391d1d1064997a519a89c4",
+          "confirmations": 1
+        },
+        {
+          "name": "locktime-update-initial",
+          "txid": "de8dd502953057bc97069da671f0a676d9df68315d2571bca21c18825cd5c015",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "de8dd502953057bc97069da671f0a676d9df68315d2571bca21c18825cd5c015",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "locktime-update-equal-sequence",
+          "txid": "3f71162ad244291b0280104ae3ea0c78d96fd4ad685ccc973766bb2593d7a343",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected"
+        },
+        {
+          "name": "locktime-update-increase-lock",
+          "txid": "7f0f5a58d43731607b4bb017abd31c14c5429a44959ab5a7fa858a408b802015",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected"
+        },
+        {
+          "name": "locktime-update-zero-lock",
+          "txid": "6f07c965caf9d7bba7f2851154b74153723066554a6aa6e73879bf1c362c9476",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n258: txn-mempool-conflict",
+          "expected": "rejected"
+        },
+        {
+          "name": "locktime-update-elapsed-lock",
+          "txid": "c3a4e69711c145f8679dc34f82f37ea616c448a3cc4fdf4c4fb4601cb735e27c",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n258: txn-mempool-conflict",
+          "expected": "rejected"
+        },
+        {
+          "name": "locktime-and-sequence-update",
+          "txid": "588efdedf529583cf8b9abe4a2ffdadcc4149af2c8f475f46e57b8094dfa6c01",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "588efdedf529583cf8b9abe4a2ffdadcc4149af2c8f475f46e57b8094dfa6c01",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "locktime-update-all-final",
+          "txid": "51a546f71b475b7b2e35176087ad7fa5a621e2a98ad9f73c621687da105212ef",
+          "height": 608,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "51a546f71b475b7b2e35176087ad7fa5a621e2a98ad9f73c621687da105212ef",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "locktime-update-final-mined",
+          "block": true,
+          "hash": "286273eb48331e06f21eaa7b8e30304d8e6588c2972d279d6ee87ef25a8ba91b",
+          "height": 608,
+          "txid": "51a546f71b475b7b2e35176087ad7fa5a621e2a98ad9f73c621687da105212ef",
+          "confirmations": 1
+        },
+        {
+          "name": "sequence-high-bit-before",
+          "txid": "5058eb6a4f6e87802b8bef8075e459aa888723644dba6a71487c351d5028d46a",
+          "height": 610,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "5058eb6a4f6e87802b8bef8075e459aa888723644dba6a71487c351d5028d46a",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "sequence-high-bit-forward",
+          "txid": "46178e36e3e3921b1eba7ddaa8c69376c1155fa045f364351433aaf3e742d82f",
+          "height": 610,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "46178e36e3e3921b1eba7ddaa8c69376c1155fa045f364351433aaf3e742d82f",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "sequence-high-bit-backward",
+          "txid": "8b1dd3f079500c7ecf9e03cadc30c5f131d79822e45caf1f501473061e410a25",
+          "height": 610,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected"
+        },
+        {
+          "name": "sequence-high-bit-finalized",
+          "txid": "2a36e0de1ba7ae97e2029bb3b00af223ec057abf0129b916097bb1adba0b0a35",
+          "height": 610,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "2a36e0de1ba7ae97e2029bb3b00af223ec057abf0129b916097bb1adba0b0a35",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "sequence-high-bit-final-mined",
+          "block": true,
+          "hash": "3b4a95c8e83b5a521086523c1c76b1ab7d65d02abd97482c23a7e4d59b38adeb",
+          "height": 610,
+          "txid": "2a36e0de1ba7ae97e2029bb3b00af223ec057abf0129b916097bb1adba0b0a35",
+          "confirmations": 1
+        },
+        {
+          "name": "final-shape-initial",
+          "txid": "584f5d2a711e18d5f79bfbb78f6b240ca2366da3f47c838a3b8e6d95b88a988e",
+          "height": 614,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "584f5d2a711e18d5f79bfbb78f6b240ca2366da3f47c838a3b8e6d95b88a988e",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "final-shape-subset",
+          "txid": "4d18046407bbe7652d13966793b73a2143ead2d6654de659e0b54378f35b2e69",
+          "height": 614,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected"
+        },
+        {
+          "name": "final-shape-reorder",
+          "txid": "29379e6bc125b5631ecc92e0c81fc639c51acaabfa9fe815365b7aae1bf7232e",
+          "height": 614,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected"
+        },
+        {
+          "name": "final-shape-superset",
+          "txid": "6cee0a60195640851da3ed613a401c9ea7404002807a5e8411a39f990b89e749",
+          "height": 614,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n258: txn-mempool-conflict",
+          "expected": "rejected"
+        },
+        {
+          "name": "final-shape-exact",
+          "txid": "a1d46fceeabf6446c430e47460470b8e5a2d550fa40b8b1d1df634ecac0397a1",
+          "height": 614,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "a1d46fceeabf6446c430e47460470b8e5a2d550fa40b8b1d1df634ecac0397a1",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "final-shape-exact-mined",
+          "block": true,
+          "hash": "5e15e7004d8467fb911cb61103512eaf40207432e1c3276897b480403a6fc017",
+          "height": 614,
+          "txid": "a1d46fceeabf6446c430e47460470b8e5a2d550fa40b8b1d1df634ecac0397a1",
+          "confirmations": 1
+        },
+        {
+          "name": "multi-update-old-0",
+          "txid": "7e910cedc315d45df3d4c17df4c5cf31bcda7093698fd8eb9ab4ea77638e45d1",
+          "height": 617,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "7e910cedc315d45df3d4c17df4c5cf31bcda7093698fd8eb9ab4ea77638e45d1",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "multi-update-old-1",
+          "txid": "a11e4c4ae30e57da9ac7c5fb4c95d06e9c99017456c427f34c2756fce1adb0b9",
+          "height": 617,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "a11e4c4ae30e57da9ac7c5fb4c95d06e9c99017456c427f34c2756fce1adb0b9",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "multi-update-nonfinal",
+          "txid": "030d0ce8272f522e88507cc88fc85c5a1a575490de8932974740dbee6b879dee",
+          "height": 617,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n16: bad-txn-update",
+          "expected": "rejected"
+        },
+        {
+          "name": "multi-update-final",
+          "txid": "5f02a845c66088a24463cff1e4a71933dddc5ca507ae2ce0c55fe4702cc57e1d",
+          "height": 617,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n258: txn-mempool-conflict",
+          "expected": "rejected"
+        },
+        {
+          "name": "multi-update-separate-final-0",
+          "txid": "5db957a251263980da342fba4036736aff0f82daa2da0e4116036f2d842b6cd7",
+          "height": 617,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "5db957a251263980da342fba4036736aff0f82daa2da0e4116036f2d842b6cd7",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "multi-update-separate-mined-0",
+          "block": true,
+          "hash": "6376829a960bbd395e2193c0a77399927caced1b3c99a1d6cf1d3e2cba7bb2c9",
+          "height": 617,
+          "txid": "5db957a251263980da342fba4036736aff0f82daa2da0e4116036f2d842b6cd7",
+          "confirmations": 1
+        },
+        {
+          "name": "multi-update-separate-final-1",
+          "txid": "f840ca8705f4e7e24796d1ee26b74fd44ca00276485cac83d4fc5ba363c9e845",
+          "height": 618,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "f840ca8705f4e7e24796d1ee26b74fd44ca00276485cac83d4fc5ba363c9e845",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "multi-update-separate-mined-1",
+          "block": true,
+          "hash": "518a03018b1b7f55a36fde49fba8d22be1f4afd36ac48836136f04d3243da207",
+          "height": 618,
+          "txid": "f840ca8705f4e7e24796d1ee26b74fd44ca00276485cac83d4fc5ba363c9e845",
+          "confirmations": 1
+        },
+        {
+          "name": "nonfinal-chain-parent",
+          "txid": "57a76c4e585f526751d54bcbab0ab4fc0c294d6a5bd910a6eb14a868324aa815",
+          "height": 620,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "57a76c4e585f526751d54bcbab0ab4fc0c294d6a5bd910a6eb14a868324aa815",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "nonfinal-chain-child",
+          "txid": "dd29e292e151b19bbcad8508756bf627e228e21040fc4157dcff84626eb89a58",
+          "height": 620,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: too-long-non-final-chain",
+          "expected": "rejected"
+        },
+        {
+          "name": "nonfinal-chain-final-child",
+          "txid": "e7445794456453062dd7265b8ecc0e8ff0e41161e6a78174ceb54a248d4f1098",
+          "height": 620,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -25\nerror message:\nMissing inputs",
+          "expected": "rejected"
+        },
+        {
+          "name": "nonfinal-chain-finalized-parent",
+          "txid": "2965c985d83b32a56503316a3e87a768d3ca2848229cc13749719c008b4b28a7",
+          "height": 620,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "2965c985d83b32a56503316a3e87a768d3ca2848229cc13749719c008b4b28a7",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "final-chain-child",
+          "txid": "2b1dd45bec5736e4abf2b070b075ec92d1e3acd6c97cc6ba2f56ecfc0b224baf",
+          "height": 620,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "2b1dd45bec5736e4abf2b070b075ec92d1e3acd6c97cc6ba2f56ecfc0b224baf",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "final-chain-package-mined",
+          "block": true,
+          "expected": true,
+          "height": 620,
+          "hash": "11fa5ace8e3bfc501421c9c0b4652b8ffc2ba12496e3f1a349a92225cc6cc72e",
+          "old_tip": "639c30fd71ad8c893937e7245ef8ae0f955ca801d30d57b1b638866a5a0224bc",
+          "new_tip": "11fa5ace8e3bfc501421c9c0b4652b8ffc2ba12496e3f1a349a92225cc6cc72e",
+          "submit_result": null,
+          "transactions": [
+            "2965c985d83b32a56503316a3e87a768d3ca2848229cc13749719c008b4b28a7",
+            "2b1dd45bec5736e4abf2b070b075ec92d1e3acd6c97cc6ba2f56ecfc0b224baf"
+          ],
+          "block_file": "final-chain-package-mined.block.hex",
+          "confirmed": {
+            "2965c985d83b32a56503316a3e87a768d3ca2848229cc13749719c008b4b28a7": 1,
+            "2b1dd45bec5736e4abf2b070b075ec92d1e3acd6c97cc6ba2f56ecfc0b224baf": 1
+          }
+        },
+        {
+          "name": "periodic-height-equality",
+          "txid": "46ed9ede74e776155a57554ea47d17eb65dcb304ee7b98889ca56d93e4edf7bb",
+          "height": 622,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "46ed9ede74e776155a57554ea47d17eb65dcb304ee7b98889ca56d93e4edf7bb",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "periodic-height-equality-block",
+          "block": false,
+          "expected": false,
+          "height": 622,
+          "hash": "05a9cf826eaf53fb9ecead2870e91c32006818b9d22f528ab1a62afd235de69a",
+          "old_tip": "43dc31c4e98f4719dc08205d1261d4a3ec1a5cda71fcf55ab152334093cf2574",
+          "new_tip": "43dc31c4e98f4719dc08205d1261d4a3ec1a5cda71fcf55ab152334093cf2574",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "46ed9ede74e776155a57554ea47d17eb65dcb304ee7b98889ca56d93e4edf7bb"
+          ],
+          "block_file": "periodic-height-equality-block.block.hex"
+        },
+        {
+          "name": "periodic-height-empty-advance",
+          "block": true,
+          "expected": true,
+          "height": 622,
+          "hash": "5561db856cc9f28fbb5a95f28d5405d82b78324809f2e3161917d44f6bc38a8a",
+          "old_tip": "43dc31c4e98f4719dc08205d1261d4a3ec1a5cda71fcf55ab152334093cf2574",
+          "new_tip": "5561db856cc9f28fbb5a95f28d5405d82b78324809f2e3161917d44f6bc38a8a",
+          "submit_result": null,
+          "transactions": [],
+          "block_file": "periodic-height-empty-advance.block.hex",
+          "confirmed": {}
+        },
+        {
+          "name": "periodic-height-promoted",
+          "result": "passed",
+          "txid": "46ed9ede74e776155a57554ea47d17eb65dcb304ee7b98889ca56d93e4edf7bb",
+          "pools": {
+            "regular": [
+              "46ed9ede74e776155a57554ea47d17eb65dcb304ee7b98889ca56d93e4edf7bb"
+            ],
+            "nonfinal": []
+          }
+        },
+        {
+          "name": "periodic-height-mined",
+          "block": true,
+          "hash": "358a88d649bf20944b6193f8a9df01785142cfe3d4c43558c3369e0616d607aa",
+          "height": 623,
+          "txid": "46ed9ede74e776155a57554ea47d17eb65dcb304ee7b98889ca56d93e4edf7bb",
+          "confirmations": 1
+        },
+        {
+          "name": "branch-audit-finished",
+          "result": "passed",
+          "pools": {
+            "regular": [],
+            "nonfinal": []
+          }
+        }
+      ]
+    },
+    "legacy": {
+      "counts": {
+        "admissions": 21,
+        "regular": 5,
+        "nonfinal": 1,
+        "rejected": 15,
+        "blocks": 20,
+        "accepted_blocks": 7,
+        "rejected_blocks": 13
+      },
+      "cases": [
+        {
+          "name": "legacy-cltv-insufficient",
+          "txid": "3f21e34f184a475fb7a3a3d9df1fee0a8c7a3a1fb2f725aa3472654a3e9f3eda",
+          "height": 1401,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `locktime greater than tx`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-cltv-insufficient-block",
+          "block": false,
+          "expected": false,
+          "height": 1401,
+          "hash": "4ecb388d34b3bfaaa2c54a2ff552c793ed484f67dc64d19015ea26f6ed30cbef",
+          "old_tip": "569ec28addcd391fdf5496c5cf58c33f8f7f58b965ba59bfbb8c6ac55bc94ce1",
+          "new_tip": "569ec28addcd391fdf5496c5cf58c33f8f7f58b965ba59bfbb8c6ac55bc94ce1",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "3f21e34f184a475fb7a3a3d9df1fee0a8c7a3a1fb2f725aa3472654a3e9f3eda"
+          ],
+          "block_file": "legacy-cltv-insufficient-block.block.hex"
+        },
+        {
+          "name": "legacy-cltv-final-sequence",
+          "txid": "c64c0c2d2bf936899d3e56f89b4014feeb0bbd1a286f6192766397a6b5621583",
+          "height": 1401,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `sequence is 0xffffffff`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-cltv-final-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 1401,
+          "hash": "3c8aaf96e41460f1f8c1075fd7404de859920f2414f0fe16b4455f09c237b3bd",
+          "old_tip": "569ec28addcd391fdf5496c5cf58c33f8f7f58b965ba59bfbb8c6ac55bc94ce1",
+          "new_tip": "569ec28addcd391fdf5496c5cf58c33f8f7f58b965ba59bfbb8c6ac55bc94ce1",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "c64c0c2d2bf936899d3e56f89b4014feeb0bbd1a286f6192766397a6b5621583"
+          ],
+          "block_file": "legacy-cltv-final-sequence-block.block.hex"
+        },
+        {
+          "name": "legacy-cltv-satisfied",
+          "txid": "04ab26449742a7441d39ae43af6e6e92630045c3e453319383eb91f46f631b45",
+          "height": 1401,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "04ab26449742a7441d39ae43af6e6e92630045c3e453319383eb91f46f631b45",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "legacy-cltv-satisfied-mined",
+          "block": true,
+          "hash": "469b149406547675bd81ff00b515e6aa56eb2bb74bcc1f196f82d9b37068300f",
+          "height": 1401,
+          "txid": "04ab26449742a7441d39ae43af6e6e92630045c3e453319383eb91f46f631b45",
+          "confirmations": 1
+        },
+        {
+          "name": "legacy-csv-insufficient",
+          "txid": "7359957091b0d340811862c5de18d38272f694332929fea2a1494663612fbbe4",
+          "height": 1402,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `sequence greater than tx`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-csv-insufficient-block",
+          "block": false,
+          "expected": false,
+          "height": 1402,
+          "hash": "2840c6b00b1b67215970dc8776e386ff33837a3553060fc1191345c391d1287e",
+          "old_tip": "469b149406547675bd81ff00b515e6aa56eb2bb74bcc1f196f82d9b37068300f",
+          "new_tip": "469b149406547675bd81ff00b515e6aa56eb2bb74bcc1f196f82d9b37068300f",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "7359957091b0d340811862c5de18d38272f694332929fea2a1494663612fbbe4"
+          ],
+          "block_file": "legacy-csv-insufficient-block.block.hex"
+        },
+        {
+          "name": "legacy-csv-final-sequence",
+          "txid": "28ad060bdc9932043065ea1fba739e4f321ee778418f7cc30b6826fba0ffee3e",
+          "height": 1402,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `tx sequence disable flag set`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-csv-final-sequence-block",
+          "block": false,
+          "expected": false,
+          "height": 1402,
+          "hash": "152263f23b5fcc2852baf80e023e2e59f33ff3dd287df0c24b6a3d2af401e4b4",
+          "old_tip": "469b149406547675bd81ff00b515e6aa56eb2bb74bcc1f196f82d9b37068300f",
+          "new_tip": "469b149406547675bd81ff00b515e6aa56eb2bb74bcc1f196f82d9b37068300f",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "28ad060bdc9932043065ea1fba739e4f321ee778418f7cc30b6826fba0ffee3e"
+          ],
+          "block_file": "legacy-csv-final-sequence-block.block.hex"
+        },
+        {
+          "name": "legacy-csv-satisfied",
+          "txid": "520bf52aa4129e9635635cb1afe9874079b8940874693310ac263832c52508d5",
+          "height": 1402,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "520bf52aa4129e9635635cb1afe9874079b8940874693310ac263832c52508d5",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "legacy-csv-satisfied-mined",
+          "block": true,
+          "hash": "1a56a8f3c0636bb76cd33becf6c8504017acca5d0cf806c19e9250f36cb574b2",
+          "height": 1402,
+          "txid": "520bf52aa4129e9635635cb1afe9874079b8940874693310ac263832c52508d5",
+          "confirmations": 1
+        },
+        {
+          "name": "legacy-negative-cltv",
+          "txid": "985b5a1ea3df32e9dfb9b9634f253d64e4f82bf42dbaed02b60be27fe8865209",
+          "height": 1403,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Negative lock time`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Negative locktime)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-negative-cltv-block",
+          "block": false,
+          "expected": false,
+          "height": 1403,
+          "hash": "5c3d192ef67befdf6355d1b481ab27de535728d7dd459828a5b8dee45373e277",
+          "old_tip": "1a56a8f3c0636bb76cd33becf6c8504017acca5d0cf806c19e9250f36cb574b2",
+          "new_tip": "1a56a8f3c0636bb76cd33becf6c8504017acca5d0cf806c19e9250f36cb574b2",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "985b5a1ea3df32e9dfb9b9634f253d64e4f82bf42dbaed02b60be27fe8865209"
+          ],
+          "block_file": "legacy-negative-cltv-block.block.hex"
+        },
+        {
+          "name": "new-negative-cltv-policy",
+          "txid": "71dd8597d72e3281d3113861a58f864167bd2ea4b703dd793dc227655ef43a66",
+          "height": 1404,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (NOPx reserved for soft-fork upgrades)",
+          "expected": "rejected"
+        },
+        {
+          "name": "new-negative-cltv-consensus",
+          "block": true,
+          "expected": true,
+          "height": 1404,
+          "hash": "7b0560596c2845b2ce8a8bb4609d3a8a768ee31efe87c590aa6b26380dcc9c62",
+          "old_tip": "040a6a57c2b4b66141a11e18deb86452cb65c508e026bcf35d88f16a077b2faf",
+          "new_tip": "7b0560596c2845b2ce8a8bb4609d3a8a768ee31efe87c590aa6b26380dcc9c62",
+          "submit_result": null,
+          "transactions": [
+            "71dd8597d72e3281d3113861a58f864167bd2ea4b703dd793dc227655ef43a66"
+          ],
+          "block_file": "new-negative-cltv-consensus.block.hex",
+          "confirmed": {
+            "71dd8597d72e3281d3113861a58f864167bd2ea4b703dd793dc227655ef43a66": 1
+          }
+        },
+        {
+          "name": "legacy-negative-csv",
+          "txid": "4401082ac9f1e35855f75d5be8dcf732e98a176fe6c677c21feffaf20fe86fdf",
+          "height": 1405,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `Negative lock time`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Negative locktime)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-negative-csv-block",
+          "block": false,
+          "expected": false,
+          "height": 1405,
+          "hash": "6d153e5e604bd3f3a24a01d4139c00761d181925b8f8925e8e487c0c937750a8",
+          "old_tip": "7b0560596c2845b2ce8a8bb4609d3a8a768ee31efe87c590aa6b26380dcc9c62",
+          "new_tip": "7b0560596c2845b2ce8a8bb4609d3a8a768ee31efe87c590aa6b26380dcc9c62",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "4401082ac9f1e35855f75d5be8dcf732e98a176fe6c677c21feffaf20fe86fdf"
+          ],
+          "block_file": "legacy-negative-csv-block.block.hex"
+        },
+        {
+          "name": "new-negative-csv-policy",
+          "txid": "933005e945e86873fc3bfbfbe71f0dbd3de66441a21fc044e5c53d0b9280cd14",
+          "height": 1406,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (NOPx reserved for soft-fork upgrades)",
+          "expected": "rejected"
+        },
+        {
+          "name": "new-negative-csv-consensus",
+          "block": true,
+          "expected": true,
+          "height": 1406,
+          "hash": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "old_tip": "17fd5806a06b785650441d756fb58a9c0118f9375734cfe6791b08d3d07b26e9",
+          "new_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "submit_result": null,
+          "transactions": [
+            "933005e945e86873fc3bfbfbe71f0dbd3de66441a21fc044e5c53d0b9280cd14"
+          ],
+          "block_file": "new-negative-csv-consensus.block.hex",
+          "confirmed": {
+            "933005e945e86873fc3bfbfbe71f0dbd3de66441a21fc044e5c53d0b9280cd14": 1
+          }
+        },
+        {
+          "name": "legacy-high-cltv-below",
+          "txid": "e71190f3e338393dd728678f8f48c6f975a5b7c64381ffd7399d290fa4e6e613",
+          "height": 1407,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `locktime greater than tx`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-high-cltv-equal",
+          "txid": "0498038321ffb721727dc189d741c8b2fccb26a27033a3d6294fe85f1f179363",
+          "height": 1407,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "0498038321ffb721727dc189d741c8b2fccb26a27033a3d6294fe85f1f179363",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "legacy-high-cltv-script-valid-not-final",
+          "block": false,
+          "expected": false,
+          "height": 1407,
+          "hash": "7ab5035bb09990bbbe24670cd5e4cae5de86d24a383d7a6df5caab45d8cd8fe2",
+          "old_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "new_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "0498038321ffb721727dc189d741c8b2fccb26a27033a3d6294fe85f1f179363"
+          ],
+          "block_file": "legacy-high-cltv-script-valid-not-final.block.hex"
+        },
+        {
+          "name": "legacy-wide-csv-wrong-type",
+          "txid": "b7deab44f33d8363234faca0da3de258149ac94677cce5723f3fcbe39280c158",
+          "height": 1407,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `sequence types different`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-wide-csv-wrong-type-block",
+          "block": false,
+          "expected": false,
+          "height": 1407,
+          "hash": "02d37615c07d500acdaf0455d5f2653d7c084b81e103fd9fd573235b90149721",
+          "old_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "new_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "b7deab44f33d8363234faca0da3de258149ac94677cce5723f3fcbe39280c158"
+          ],
+          "block_file": "legacy-wide-csv-wrong-type-block.block.hex"
+        },
+        {
+          "name": "legacy-wide-csv-version-one",
+          "txid": "e515673bb550d2cb8f0c1fa8a3e90850d72c5be6a329250ef3bc94ef67135a87",
+          "height": 1407,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `tx version less than 2`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-wide-csv-version-one-block",
+          "block": false,
+          "expected": false,
+          "height": 1407,
+          "hash": "4f83359ecc214b8cb7ec5bd4a6c5d2653c3b4690799ff2519f611a3605e7abc9",
+          "old_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "new_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "e515673bb550d2cb8f0c1fa8a3e90850d72c5be6a329250ef3bc94ef67135a87"
+          ],
+          "block_file": "legacy-wide-csv-version-one-block.block.hex"
+        },
+        {
+          "name": "legacy-wide-csv-disabled-input",
+          "txid": "cadeb1828a194a2ea1acf755978132ebe7b188c821f4ac3637ca93cf1f85d456",
+          "height": 1407,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `tx sequence disable flag set`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-wide-csv-disabled-input-block",
+          "block": false,
+          "expected": false,
+          "height": 1407,
+          "hash": "4c98cb6e587d44c20851906773ba155b83ab9212f76b250add5b54285120372d",
+          "old_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "new_tip": "0de7ab66056388c8eb4b1c4801e392a5ec0c524c32fc7c7b4ece5d8f840c2e1e",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "cadeb1828a194a2ea1acf755978132ebe7b188c821f4ac3637ca93cf1f85d456"
+          ],
+          "block_file": "legacy-wide-csv-disabled-input-block.block.hex"
+        },
+        {
+          "name": "legacy-wide-csv-satisfied",
+          "txid": "3638c574a96f0f2112e4cc3c381851b4f2d0f06803275ac9baad301d3468208d",
+          "height": 1407,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "3638c574a96f0f2112e4cc3c381851b4f2d0f06803275ac9baad301d3468208d",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "legacy-wide-csv-mined",
+          "block": true,
+          "hash": "6c6695badfeabc1251a423ebcf044aeee21f05225cf52efe95ca77509186b598",
+          "height": 1407,
+          "txid": "3638c574a96f0f2112e4cc3c381851b4f2d0f06803275ac9baad301d3468208d",
+          "confirmations": 1
+        },
+        {
+          "name": "legacy-time-csv-wrong-type",
+          "txid": "c1e87ba2ba8fb7512f55aa5b6ab27683c76217603dc7a77d693c80ab7746ed38",
+          "height": 1408,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `sequence types different`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-time-csv-wrong-type-block",
+          "block": false,
+          "expected": false,
+          "height": 1408,
+          "hash": "3d0a2ecfff4e357beff3ac821f727b79512d689919a03117b978eeae83ca0d8a",
+          "old_tip": "6c6695badfeabc1251a423ebcf044aeee21f05225cf52efe95ca77509186b598",
+          "new_tip": "6c6695badfeabc1251a423ebcf044aeee21f05225cf52efe95ca77509186b598",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "c1e87ba2ba8fb7512f55aa5b6ab27683c76217603dc7a77d693c80ab7746ed38"
+          ],
+          "block_file": "legacy-time-csv-wrong-type-block.block.hex"
+        },
+        {
+          "name": "legacy-time-csv-version-one",
+          "txid": "54bd44097559aacedeee4f000bb37ad5ceac26c60df18b475bd430cb3fb0ed6b",
+          "height": 1408,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `tx version less than 2`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-time-csv-version-one-block",
+          "block": false,
+          "expected": false,
+          "height": 1408,
+          "hash": "1b2eeaf97059f7d92b78a7aafcca6217513c6cad78c79689c5745b95392779b2",
+          "old_tip": "6c6695badfeabc1251a423ebcf044aeee21f05225cf52efe95ca77509186b598",
+          "new_tip": "6c6695badfeabc1251a423ebcf044aeee21f05225cf52efe95ca77509186b598",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "54bd44097559aacedeee4f000bb37ad5ceac26c60df18b475bd430cb3fb0ed6b"
+          ],
+          "block_file": "legacy-time-csv-version-one-block.block.hex"
+        },
+        {
+          "name": "legacy-time-csv-disabled-input",
+          "txid": "0212506d224162927363aecb6996c90085dc1ff167c564516f396f64bd67072b",
+          "height": 1408,
+          "library": {
+            "accepted": false,
+            "error": "Error evaluating the script `tx sequence disable flag set`"
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n64: non-mandatory-script-verify-flag (Locktime requirement not satisfied)",
+          "expected": "rejected"
+        },
+        {
+          "name": "legacy-time-csv-disabled-input-block",
+          "block": false,
+          "expected": false,
+          "height": 1408,
+          "hash": "25d3936f4044a180dcf48ee2416132c713085817eafe74fe51d5775053a738a7",
+          "old_tip": "6c6695badfeabc1251a423ebcf044aeee21f05225cf52efe95ca77509186b598",
+          "new_tip": "6c6695badfeabc1251a423ebcf044aeee21f05225cf52efe95ca77509186b598",
+          "submit_result": "blk-bad-inputs",
+          "transactions": [
+            "0212506d224162927363aecb6996c90085dc1ff167c564516f396f64bd67072b"
+          ],
+          "block_file": "legacy-time-csv-disabled-input-block.block.hex"
+        },
+        {
+          "name": "legacy-time-csv-satisfied",
+          "txid": "87bbbd0ba9c0f58303111bdec63da07fab818c36fb5130a5d806679efa1a3146",
+          "height": 1408,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "87bbbd0ba9c0f58303111bdec63da07fab818c36fb5130a5d806679efa1a3146",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "legacy-time-csv-mined",
+          "block": true,
+          "hash": "558fdafc84f1ac6c03df40942517f561f27f47974dbaca29fe80cb63393fe084",
+          "height": 1408,
+          "txid": "87bbbd0ba9c0f58303111bdec63da07fab818c36fb5130a5d806679efa1a3146",
+          "confirmations": 1
+        },
+        {
+          "name": "legacy-csv-disabled-operand-v1",
+          "txid": "92a650b44c4e955b45863c5a1dd99d4578d39c17e87611b4f1e084d575ecaeb5",
+          "height": 1409,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "92a650b44c4e955b45863c5a1dd99d4578d39c17e87611b4f1e084d575ecaeb5",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "legacy-csv-disabled-operand-mined",
+          "block": true,
+          "hash": "43173b8b9f6f796b434fa44fc578b2e4416bfbab19fb7774b0a1a58fd4f6f9cc",
+          "height": 1409,
+          "txid": "92a650b44c4e955b45863c5a1dd99d4578d39c17e87611b4f1e084d575ecaeb5",
+          "confirmations": 1
+        },
+        {
+          "name": "legacy-locks-finished",
+          "result": "passed"
+        }
+      ]
+    },
+    "disabled": {
+      "counts": {
+        "admissions": 2,
+        "regular": 1,
+        "nonfinal": 0,
+        "rejected": 1,
+        "blocks": 3,
+        "accepted_blocks": 2,
+        "rejected_blocks": 1
+      },
+      "cases": [
+        {
+          "name": "disabled-pool-nonfinal",
+          "txid": "e929f5f50b9706921acb76ca2c470002ced9cb7f6969d01a3826ed74965005a2",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n259: non-final-pool-full",
+          "expected": "rejected"
+        },
+        {
+          "name": "disabled-pool-unelapsed-block",
+          "block": false,
+          "expected": false,
+          "height": 602,
+          "hash": "245633ade88c8f1d4fb68f4d279a68038db934687c703625b54e30e6fd7d4d2a",
+          "old_tip": "582357669f088016e230a03376036c33f59f5b7a2eebf084416d2cf84256320f",
+          "new_tip": "582357669f088016e230a03376036c33f59f5b7a2eebf084416d2cf84256320f",
+          "submit_result": "bad-txns-nonfinal",
+          "transactions": [
+            "e929f5f50b9706921acb76ca2c470002ced9cb7f6969d01a3826ed74965005a2"
+          ],
+          "block_file": "disabled-pool-unelapsed-block.block.hex"
+        },
+        {
+          "name": "disabled-pool-empty-advance",
+          "block": true,
+          "expected": true,
+          "height": 602,
+          "hash": "0d9f7ea99851913f73dcdff76c511f49dadc3e3c276c05c0d324fb7a7b7a4c81",
+          "old_tip": "582357669f088016e230a03376036c33f59f5b7a2eebf084416d2cf84256320f",
+          "new_tip": "0d9f7ea99851913f73dcdff76c511f49dadc3e3c276c05c0d324fb7a7b7a4c81",
+          "submit_result": null,
+          "transactions": [],
+          "block_file": "disabled-pool-empty-advance.block.hex",
+          "confirmed": {}
+        },
+        {
+          "name": "disabled-pool-now-final",
+          "txid": "e929f5f50b9706921acb76ca2c470002ced9cb7f6969d01a3826ed74965005a2",
+          "height": 603,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "regular",
+          "rpc_result": "e929f5f50b9706921acb76ca2c470002ced9cb7f6969d01a3826ed74965005a2",
+          "rpc_error": null,
+          "expected": "regular"
+        },
+        {
+          "name": "disabled-pool-final-mined",
+          "block": true,
+          "hash": "38637cf201ac05f4ce0cb1e3fbb0a582df223aa7babc990784c2ec208dc0bfda",
+          "height": 603,
+          "txid": "e929f5f50b9706921acb76ca2c470002ced9cb7f6969d01a3826ed74965005a2",
+          "confirmations": 1
+        }
+      ]
+    },
+    "rate": {
+      "counts": {
+        "admissions": 5,
+        "regular": 0,
+        "nonfinal": 3,
+        "rejected": 2,
+        "blocks": 1,
+        "accepted_blocks": 1,
+        "rejected_blocks": 0
+      },
+      "cases": [
+        {
+          "name": "rate-sequence-1",
+          "txid": "9a357f15d240224b65620ca418c25eb688d4afb87b283338e39b5254b034eb6d",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "9a357f15d240224b65620ca418c25eb688d4afb87b283338e39b5254b034eb6d",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "rate-sequence-2",
+          "txid": "2dadbcae2d312404f2e41ec114deba3fdd625a8c9830742796dbee97b1411c7d",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "2dadbcae2d312404f2e41ec114deba3fdd625a8c9830742796dbee97b1411c7d",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "rate-sequence-3",
+          "txid": "7f3877dce00689471f825f152bc43c5bb40edeefc280cbb4669646d7020fc960",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "nonfinal",
+          "rpc_result": "7f3877dce00689471f825f152bc43c5bb40edeefc280cbb4669646d7020fc960",
+          "rpc_error": null,
+          "expected": "nonfinal"
+        },
+        {
+          "name": "rate-third-update-rejected",
+          "txid": "0129a94c610afc9fbe210687c1b4728db3255eb7e24b93b416b1c90a3f6ec072",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n69: non-final-txn-replacement-rate",
+          "expected": "rejected"
+        },
+        {
+          "name": "rate-finalization-still-throttled",
+          "txid": "c333c7ea4b0dae7deba1e1b6e02a9a0cc32042da9aa9a4bbdb1658bb35ecc97d",
+          "height": 602,
+          "library": {
+            "accepted": true
+          },
+          "mempool": "rejected",
+          "rpc_result": null,
+          "rpc_error": "error code: -26\nerror message:\n69: non-final-txn-replacement-rate",
+          "expected": "rejected"
+        },
+        {
+          "name": "rate-throttle-does-not-invalidate-final-block",
+          "block": true,
+          "expected": true,
+          "height": 602,
+          "hash": "5a2c7cc52b3b78c797da1a07f141d3f6f56e610690371d79360f470ff736a83f",
+          "old_tip": "08c082709e3fd58f9fb7bb70fbeb0e7bc0e6ee0ec74f19e933c3568e9dcf23b8",
+          "new_tip": "5a2c7cc52b3b78c797da1a07f141d3f6f56e610690371d79360f470ff736a83f",
+          "submit_result": null,
+          "transactions": [
+            "c333c7ea4b0dae7deba1e1b6e02a9a0cc32042da9aa9a4bbdb1658bb35ecc97d"
+          ],
+          "block_file": "rate-throttle-does-not-invalidate-final-block.block.hex",
+          "confirmed": {
+            "c333c7ea4b0dae7deba1e1b6e02a9a0cc32042da9aa9a4bbdb1658bb35ecc97d": 1
+          }
+        },
+        {
+          "name": "rate-stale-nonfinal-entry-after-confirmed-conflict",
+          "result": "observed",
+          "pools": {
+            "regular": [],
+            "nonfinal": [
+              "7f3877dce00689471f825f152bc43c5bb40edeefc280cbb4669646d7020fc960"
+            ]
+          },
+          "spent_outpoint": "aa4625c3e8ddbc81f2e1d79744cf00c4d0302165ce98641d4e94bccbe4cf5c3f:0",
+          "utxo": null,
+          "note": "v1.2.3 non-final pool retains this entry; chain UTXO state is authoritative, not pool membership."
+        }
+      ]
+    }
+  },
+  "archive_sha256": "15e9549c5e17b4279fbf49e9beedb958ea75aff5fcd32e57854271d0045c0ed1"
+}
