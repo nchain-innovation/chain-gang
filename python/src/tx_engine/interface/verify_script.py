@@ -1,9 +1,10 @@
 """Helpers for BSV node ``verifyscript`` RPC and Chronicle validation in chain-gang.
 
-**Local validation (chain-gang):** ``Tx.validate()`` and ``Context`` do **not** use
-``ScriptFlags``. Chronicle script rules (two-phase eval, malleability relaxation,
-32 MB script numbers, high-S verify) are gated on ``tx.version > 1``. Rust also
-supports height-aware checks via ``Tx.validate_at_height()`` on Python and Rust.
+**Local validation:** Tx validation does not consume ``ScriptFlags``. Use
+``validate_with_chronicle_context`` for separate spending height, configured
+activation, and UTXO creation heights. Context-free Tx validation assumes active
+Chronicle and post-Chronicle post-Genesis outputs; Context has legacy version-only
+assumptions. Version-dependent helpers below describe malleability, not opcode eras.
 
 **Node RPC:** ``ScriptFlags`` documents flag bits for ``verifyscript`` calls through
 ``RPCInterface`` to a bitcoin-sv node. The node applies its own Chronicle activation
@@ -13,8 +14,10 @@ from enum import Enum
 from typing import Any, Dict, Final, Optional
 
 # BSV Chronicle activation heights (consensus). See docs/Chronicle.md.
-CHRONICLE_ACTIVATION_MAINNET: Final = 943_835
-CHRONICLE_ACTIVATION_TESTNET: Final = 1_713_022
+CHRONICLE_ACTIVATION_MAINNET: Final = 943_816
+CHRONICLE_ACTIVATION_TESTNET: Final = 1_713_168
+CHRONICLE_ACTIVATION_STN: Final = 250
+CHRONICLE_ACTIVATION_REGTEST: Final = 15_000
 
 
 def activation_height(network: Optional[str]) -> Optional[int]:
@@ -24,8 +27,12 @@ def activation_height(network: Optional[str]) -> Optional[int]:
     normalized = network.lower().replace("_", "")
     if normalized in ("bsvmainnet", "mainnet", "main"):
         return CHRONICLE_ACTIVATION_MAINNET
-    if normalized in ("bsvtestnet", "testnet", "test", "bsvstn", "stn"):
+    if normalized in ("bsvtestnet", "testnet", "test"):
         return CHRONICLE_ACTIVATION_TESTNET
+    if normalized in ("bsvstn", "stn"):
+        return CHRONICLE_ACTIVATION_STN
+    if normalized in ("bsvregtest", "regtest"):
+        return CHRONICLE_ACTIVATION_REGTEST
     return None
 
 
@@ -34,12 +41,13 @@ def chronicle_rules_active(
     block_height: Optional[int] = None,
     network: Optional[str] = None,
 ) -> bool:
-    """Whether Chronicle script rules apply (mirrors ``chain_gang::chronicle``).
+    """Whether version-dependent malleability relaxation applies.
 
     When ``block_height`` and ``network`` are omitted, returns ``tx_version > 1``
-    (chain-gang ``Tx.validate()`` default). When both are set on a BSV network,
+    (legacy helper semantics). When both are set on a BSV network,
     activation height is enforced.
     """
+    tx_version = ((tx_version + 2**31) % 2**32) - 2**31
     if tx_version <= 1:
         return False
     if block_height is None and network is None:
@@ -60,7 +68,7 @@ def effective_chronicle_tx_version(
     """Script version for Chronicle rules after optional activation context."""
     if chronicle_rules_active(tx_version, block_height, network):
         return tx_version
-    if tx_version > 1:
+    if 1 < tx_version < 2**31:
         return 1
     return tx_version
 

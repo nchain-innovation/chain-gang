@@ -1,0 +1,251 @@
+{
+  "node_version": "Bitcoin SV version v1.2.3",
+  "image": "docker.io/bitcoinsv/bitcoin-sv@sha256:d96fe4786a00e5fc10bc9e0e76a6006376f9472d4eb74d07e4c1e0d019493d33",
+  "runtime": "Apple Container",
+  "cases": [
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newfalse-v1-length749999",
+      "request": {
+        "flags": 1835008,
+        "n": 0,
+        "reportflags": true,
+        "tx": "010000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0003ae710b80517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 1835008
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newfalse-v1-length750000",
+      "request": {
+        "flags": 1835008,
+        "n": 0,
+        "reportflags": true,
+        "tx": "010000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0003af710b80517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 1835008
+      },
+      "matches": true
+    },
+    {
+      "expected": false,
+      "library": false,
+      "name": "number-newfalse-v1-length750001",
+      "request": {
+        "flags": 1835008,
+        "n": 0,
+        "reportflags": true,
+        "tx": "010000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0003b0710b80517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "error",
+        "description": "Given operand is not a number within the valid range [-2^31...2^31]",
+        "flags": 1835008
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newfalse-v2-length749999",
+      "request": {
+        "flags": 1835008,
+        "n": 0,
+        "reportflags": true,
+        "tx": "020000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0003ae710b80517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 1835008
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newfalse-v2-length750000",
+      "request": {
+        "flags": 1835008,
+        "n": 0,
+        "reportflags": true,
+        "tx": "020000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0003af710b80517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 1835008
+      },
+      "matches": true
+    },
+    {
+      "expected": false,
+      "library": false,
+      "name": "number-newfalse-v2-length750001",
+      "request": {
+        "flags": 1835008,
+        "n": 0,
+        "reportflags": true,
+        "tx": "020000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0003b0710b80517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "error",
+        "description": "Given operand is not a number within the valid range [-2^31...2^31]",
+        "flags": 1835008
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newtrue-v1-length31999999",
+      "request": {
+        "flags": 3932160,
+        "n": 0,
+        "reportflags": true,
+        "tx": "010000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0004fe47e80180517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 3932160
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newtrue-v1-length32000000",
+      "request": {
+        "flags": 3932160,
+        "n": 0,
+        "reportflags": true,
+        "tx": "010000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0004ff47e80180517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 3932160
+      },
+      "matches": true
+    },
+    {
+      "expected": false,
+      "library": false,
+      "name": "number-newtrue-v1-length32000001",
+      "request": {
+        "flags": 3932160,
+        "n": 0,
+        "reportflags": true,
+        "tx": "010000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "00040048e80180517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "error",
+        "description": "Given operand is not a number within the valid range [-2^31...2^31]",
+        "flags": 3932160
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newtrue-v2-length31999999",
+      "request": {
+        "flags": 3932160,
+        "n": 0,
+        "reportflags": true,
+        "tx": "020000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0004fe47e80180517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 3932160
+      },
+      "matches": true
+    },
+    {
+      "expected": true,
+      "library": true,
+      "name": "number-newtrue-v2-length32000000",
+      "request": {
+        "flags": 3932160,
+        "n": 0,
+        "reportflags": true,
+        "tx": "020000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "0004ff47e80180517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "ok",
+        "flags": 3932160
+      },
+      "matches": true
+    },
+    {
+      "expected": false,
+      "library": false,
+      "name": "number-newtrue-v2-length32000001",
+      "request": {
+        "flags": 3932160,
+        "n": 0,
+        "reportflags": true,
+        "tx": "020000000103030303030303030303030303030303030303030303030303030303030303030000000000ffffffff010100000000000000015100000000",
+        "txo": {
+          "lock": "00040048e80180517e817551",
+          "value": 1
+        }
+      },
+      "node": {
+        "result": "error",
+        "description": "Given operand is not a number within the valid range [-2^31...2^31]",
+        "flags": 3932160
+      },
+      "matches": true
+    }
+  ]
+}

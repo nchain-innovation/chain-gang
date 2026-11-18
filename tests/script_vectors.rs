@@ -10,7 +10,7 @@
 //! chain-gang does not take the node's flags one by one. It has an era
 //! (pre- or post-Genesis, per output), a policy/consensus switch and the
 //! sighash FORKID requirement, so each row's flags are mapped onto those (see
-//! `Mode::from_flags`). Of the 1483 rows, 1379 agree with the node. The rest
+//! `Mode::from_flags`). Of the 1483 rows, 1386 agree with the node. The rest
 //! are listed, each under its reason, in one of two places:
 //!
 //! - `MODELLING_GAPS`: the verdict turns on a flag chain-gang does not take
@@ -374,17 +374,15 @@ fn chain_gang_verdict(row: &Row) -> Result<(), String> {
 /// so these are not faults in chain-gang, but they are rows it cannot check.
 const MODELLING_GAPS: &[(&str, &[usize])] = &[
     (
-        "Chronicle is always on in chain-gang. These rows predate it, when \
+        "The legacy vector adapter lacks post-Genesis/pre-Chronicle UTXO context. These rows predate it, when \
          OP_VER, OP_VERIF and OP_VERNOTIF were reserved and OP_2MUL and \
          OP_2DIV disabled.",
-        &[140, 142, 144, 165, 728, 883, 884, 885, 886, 1187, 1274],
+        &[140, 142, 144, 165],
     ),
     (
         "Without the node's CHECKLOCKTIMEVERIFY and CHECKSEQUENCEVERIFY \
-         flags, and before Chronicle, NOP2 to NOP8 do nothing. chain-gang \
-         always runs CLTV, CSV and Chronicle's SUBSTR, LEFT, RIGHT, LSHIFTNUM \
-         and RSHIFTNUM in those slots.",
-        &[332, 333, 506, 507, 508, 509, 510, 511, 512],
+         flags, and before Chronicle, NOP2 to NOP8 do nothing. chain-gang always runs CLTV and CSV in those slots.",
+        &[332, 333, 506, 507],
     ),
     (
         "chain-gang always spends a pre-Genesis P2SH output as P2SH. These \
@@ -415,7 +413,7 @@ const MODELLING_GAPS: &[(&str, &[usize])] = &[
     (
         "DISCOURAGE_UPGRADABLE_NOPS is a node policy flag chain-gang does \
          not model.",
-        &[1090, 1098, 1099, 1100, 1101],
+        &[1090, 1093, 1094, 1095, 1096, 1097, 1098, 1099, 1100, 1101],
     ),
     (
         "chain-gang always enforces strict signature and key encoding, low S \

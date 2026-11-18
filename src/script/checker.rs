@@ -37,6 +37,21 @@ const UNDEFINED_SIGHASH_TYPE: &str = "Signature hash type missing or not underst
 
 /// Checks that external values are correct in the script
 pub trait Checker {
+    /// Whether the spending block has activated Chronicle (independent of version).
+    fn chronicle_active(&self) -> bool {
+        true
+    }
+
+    /// Explicit UTXO era, or None for legacy context-free evaluation.
+    fn utxo_after_chronicle(&self) -> Option<bool> {
+        None
+    }
+
+    /// Numeric policy limit for this invocation; None uses consensus limits.
+    fn script_num_policy_limit(&self) -> Option<usize> {
+        None
+    }
+
     /// Checks that a signature and public key validate within a script
     ///
     /// `script` is the script code the interpreter built for this check: from
@@ -324,7 +339,7 @@ impl Checker for TransactionChecker<'_> {
         let der_sig = &sig[0..sig.len() - 1];
 
         let mut signature = Signature::from_der(der_sig)?;
-        if self.chronicle_script_version() > 1 {
+        if (self.chronicle_script_version() as i32) > 1 {
             // Chronicle lifts the low-S rule; normalize so k256 accepts high-S encodings.
             signature = signature.normalize_s();
         }
@@ -404,6 +419,46 @@ impl Checker for TransactionChecker<'_> {
             return Err(ChainGangError::ScriptError(msg));
         }
         Ok(true)
+    }
+}
+
+/// Carries independent chain and UTXO context without changing TransactionChecker's
+/// public struct fields or replacing the real transaction version.
+pub(crate) struct ContextualTransactionChecker<'a> {
+    pub inner: TransactionChecker<'a>,
+    pub active: bool,
+    pub post_chronicle_utxo: bool,
+    pub number_policy_limit: Option<usize>,
+}
+impl Checker for ContextualTransactionChecker<'_> {
+    fn chronicle_active(&self) -> bool {
+        self.active
+    }
+    fn utxo_after_chronicle(&self) -> Option<bool> {
+        Some(self.post_chronicle_utxo)
+    }
+    fn script_num_policy_limit(&self) -> Option<usize> {
+        self.number_policy_limit
+    }
+    fn tx_version(&self) -> Result<i32, ChainGangError> {
+        Ok(self.inner.tx.version as i32)
+    }
+    fn check_sig(&mut self, sig: &[u8], key: &[u8], script: &[u8]) -> Result<bool, ChainGangError> {
+        if !self.active
+            && self.inner.require_sighash_forkid
+            && sig.last().is_some_and(|f| f & SIGHASH_CHRONICLE != 0)
+        {
+            return Err(ChainGangError::ScriptError(
+                "SIGHASH_CHRONICLE before activation".to_string(),
+            ));
+        }
+        self.inner.check_sig(sig, key, script)
+    }
+    fn check_locktime(&self, n: i64) -> Result<bool, ChainGangError> {
+        self.inner.check_locktime(n)
+    }
+    fn check_sequence(&self, n: i64) -> Result<bool, ChainGangError> {
+        self.inner.check_sequence(n)
     }
 }
 

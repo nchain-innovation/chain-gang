@@ -15,12 +15,12 @@ use crate::script::op_codes::OP_16;
 
 /// Whether script inputs are evaluated in separate unlock/lock phases (Chronicle).
 pub fn uses_two_phase_eval(tx_version: u32) -> bool {
-    tx_version > 1
+    (tx_version as i32) > 1
 }
 
 /// Whether malleability-related script rules are relaxed (Chronicle).
 pub fn uses_relaxed_malleability(tx_version: u32) -> bool {
-    tx_version > 1
+    (tx_version as i32) > 1
 }
 
 /// Maximum encoded script number length for the current evaluation context.
@@ -28,12 +28,23 @@ pub fn max_script_num_length<T: Checker>(checker: &T, flags: u32) -> usize {
     if flags & PREGENESIS_RULES != 0 {
         return MAX_SCRIPT_NUM_LENGTH_PREGENESIS;
     }
-    if let Ok(version) = checker.tx_version() {
-        if version as u32 > 1 {
-            return MAX_SCRIPT_NUM_LENGTH_CHRONICLE;
+    let post_chronicle = checker
+        .utxo_after_chronicle()
+        .unwrap_or_else(|| checker.tx_version().is_ok_and(|version| version > 1));
+    let consensus_limit = if post_chronicle {
+        MAX_SCRIPT_NUM_LENGTH_CHRONICLE
+    } else {
+        MAX_SCRIPT_NUM_LENGTH_GENESIS
+    };
+    if flags & CONSENSUS_ONLY == 0 {
+        if let Some(limit) = checker
+            .script_num_policy_limit()
+            .filter(|limit| *limit != 0)
+        {
+            return limit;
         }
     }
-    MAX_SCRIPT_NUM_LENGTH_GENESIS
+    consensus_limit
 }
 
 /// Longest encoded result of a numeric opcode.
@@ -112,7 +123,7 @@ pub(crate) fn check_pregenesis_op_count(op_count: usize) -> Result<(), ChainGang
 
 pub(crate) fn tx_enforces_malleability_rules<T: Checker>(checker: &T) -> bool {
     match checker.tx_version() {
-        Ok(version) => !uses_relaxed_malleability(version as u32),
+        Ok(version) => !checker.chronicle_active() || version <= 1,
         Err(_) => false,
     }
 }

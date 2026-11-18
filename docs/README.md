@@ -52,9 +52,11 @@ Start with [Chronicle-Python.md](Chronicle-Python.md) (Python) or [Chronicle.md]
 
 | Goal | Python | Rust |
 |------|--------|------|
-| Offline / mempool-style check | `Tx.validate(utxos)` with `version > 1` | `tx.validate(...)` |
+| Offline / mempool-style check | `Tx.validate(utxos)` (assumes current-era outputs) | `tx.validate(...)` |
 | Consensus at known block height | `Tx.validate_at_height(utxos, height, "BSV_Mainnet")` | `tx.validate_at_height(..., height, Network::BSV_Mainnet)` |
 | Script debugger / partial eval | `Context(tx_version=2, lock_script=...)` | `TxVersionChecker` / `ZVersionChecker` |
 | Compare to live node rules | `verify_script.ScriptFlags` | N/A (use node RPC) |
 
-Activation heights: MainNet **943,835**, TestNet **1,713,022** — see [Chronicle.md#activation](Chronicle.md#activation).
+Activation heights: MainNet **943,816**, TestNet **1,713,168** — see [Chronicle.md](Chronicle.md).
+
+For historical or mixed-era outputs, use `validate_with_chronicle_context` with complete output creation heights and configured activation. See [context validation](chronicle-context-validation.md).

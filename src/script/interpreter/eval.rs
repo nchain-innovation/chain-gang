@@ -84,6 +84,40 @@ pub fn core_eval<T: Checker>(
             count_pregenesis_op(script[i], &mut op_count)?;
         }
         let opcode = script[i];
+        // Opcode activation follows the spent output, not spending tx.version.
+        if checker.utxo_after_chronicle() == Some(false) {
+            match opcode {
+                OP_2MUL | OP_2DIV => {
+                    return Err(ChainGangError::ScriptError(
+                        "disabled pre-Chronicle opcode".to_string(),
+                    ))
+                }
+                OP_VERIF | OP_VERNOTIF if pregenesis || conditions.active() => {
+                    return Err(ChainGangError::ScriptError(
+                        "reserved pre-Chronicle opcode".to_string(),
+                    ))
+                }
+                OP_VERIF | OP_VERNOTIF => {
+                    i = next_op(i, script);
+                    continue;
+                }
+                OP_VER if conditions.active() => {
+                    return Err(ChainGangError::ScriptError(
+                        "reserved pre-Chronicle opcode".to_string(),
+                    ))
+                }
+                OP_SUBSTR | OP_LEFT | OP_RIGHT | OP_LSHIFTNUM | OP_RSHIFTNUM => {
+                    if conditions.active() && flags & super::CONSENSUS_ONLY == 0 {
+                        return Err(ChainGangError::ScriptError(
+                            "discouraged upgradeable NOP".to_string(),
+                        ));
+                    }
+                    i = next_op(i, script);
+                    continue;
+                }
+                _ => {}
+            }
+        }
         let exec = conditions.active() && (!returned_in_branch || opcode == OP_RETURN);
         if !exec {
             // As the node: an opcode that does not execute is only read, unless

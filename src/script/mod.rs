@@ -20,6 +20,7 @@ use crate::util::ChainGangError;
 use std::fmt;
 
 mod checker;
+pub(crate) use checker::ContextualTransactionChecker;
 mod format;
 mod interpreter;
 #[allow(dead_code)]
