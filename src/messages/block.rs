@@ -53,7 +53,9 @@ impl Block {
         Ok(outputs)
     }
 
-    /// Checks that the block is valid
+    /// Checks the Merkle root, coinbase presence and transactions against supplied outputs.
+    /// Callers must check transaction finality separately. For a time-based
+    /// `nLockTime` under BIP113, that check needs the previous block's median time past.
     pub fn validate(
         &self,
         height: i32,

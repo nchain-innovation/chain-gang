@@ -30,6 +30,8 @@ pub struct Tx {
     /// Transaction outputs
     pub outputs: Vec<TxOut>,
     /// The block number or timestamp at which this transaction is unlocked
+    /// Stateless transaction validation accepts the full unsigned range.
+    /// Contextual finality depends on chain height, time and input sequences.
     pub lock_time: u32,
 }
 
@@ -173,11 +175,6 @@ impl Tx {
             {
                 return Err(ChainGangError::BadData("Unexpected coinbase".to_string()));
             }
-        }
-
-        // Check that lock_time <= INT_MAX because some clients interpret this differently
-        if self.lock_time > 2_147_483_647 {
-            return Err(ChainGangError::BadData("Lock time too large".to_string()));
         }
 
         // Check that all inputs are in the utxo set and are in legal money range
@@ -681,10 +678,10 @@ mod tests {
             .is_err());
 
         let mut tx_test = tx.clone();
-        tx_test.lock_time = 4294967295;
+        tx_test.lock_time = u32::MAX;
         assert!(tx_test
             .validate(true, true, &utxos, &HashSet::new())
-            .is_err());
+            .is_ok());
 
         let mut tx_test = tx.clone();
         tx_test.inputs[0].prev_output.hash = Hash256([8; 32]);
