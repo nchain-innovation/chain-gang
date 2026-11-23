@@ -1,5 +1,5 @@
 use crate::script::stack::Stack;
-use crate::script::Checker;
+use crate::script::{Checker, Script};
 use crate::transaction::sighash::SIGHASH_FORKID;
 use crate::util::ChainGangError;
 
@@ -64,7 +64,8 @@ pub(crate) fn check_multisig<T: Checker>(
         ));
     }
 
-    // Remove signature for pre-fork scripts
+    // Cleanup precedes key matching, including signatures never visited by
+    // early termination. Current BSV still applies this to entries without FORKID.
     let mut cleaned_script = script.to_vec();
     for sig in sigs.iter() {
         if prefork(sig) {
@@ -87,34 +88,37 @@ pub(crate) fn check_multisig<T: Checker>(
             success = false;
         }
     }
-    if !success && tx_enforces_malleability_rules(checker) {
-        for remaining in &sigs {
-            if !remaining.is_empty() {
-                return Err(ChainGangError::ScriptError(
-                    "OP_CHECKMULTISIG NULLFAIL".to_string(),
-                ));
-            }
-        }
+    if !success && tx_enforces_malleability_rules(checker) && sigs.iter().any(|sig| !sig.is_empty())
+    {
+        return Err(ChainGangError::ScriptError(
+            "OP_CHECKMULTISIG NULLFAIL".to_string(),
+        ));
     }
     Ok(success)
 }
 
+/// Whether this entry is eligible for legacy FindAndDelete cleanup.
 pub(crate) fn prefork(sig: &[u8]) -> bool {
-    !sig.is_empty() && sig[sig.len() - 1] & SIGHASH_FORKID == 0
+    match sig.last() {
+        None => true,
+        Some(flag) => flag & SIGHASH_FORKID == 0,
+    }
 }
 
-/// Removes any instances of the signature from the lock_script in pre-fork transactions
+/// Node FindAndDelete(CScript(sig)): remove the serialized data push at opcode
+/// boundaries, not raw signature bytes or matching bytes inside another push.
+/// The empty signature is encoded as OP_0 and is not a no-op here.
 pub(crate) fn remove_sig(sig: &[u8], script: &[u8]) -> Vec<u8> {
-    if sig.is_empty() {
-        return script.to_vec();
-    }
+    let mut pushed = Script::new();
+    pushed.append_data(sig);
+    let needle = &pushed.0;
     let mut result = Vec::with_capacity(script.len());
     let mut i = 0;
     let mut start = 0;
-    while i + sig.len() <= script.len() {
-        if script[i..i + sig.len()] == *sig {
+    while i + needle.len() <= script.len() {
+        if script[i..i + needle.len()] == **needle {
             result.extend_from_slice(&script[start..i]);
-            start = i + sig.len();
+            start = i + needle.len();
             i = start;
         } else {
             i = next_op(i, script);
