@@ -14,26 +14,13 @@ use super::MAX_SCRIPT_ELEMENT_SIZE_PREGENESIS;
 pub fn is_push_only(script: &[u8]) -> bool {
     let mut i = 0;
     while i < script.len() {
-        let end = match script[i] {
-            OP_0 | OP_1NEGATE | OP_1..=OP_16 => i + 1,
-            len @ 1..=75 => i + 1 + len as usize,
-            OP_PUSHDATA1 => match script.get(i + 1) {
-                Some(&len) => i + 2 + len as usize,
-                None => return false,
-            },
-            OP_PUSHDATA2 => match script.get(i + 1..i + 3) {
-                Some(len) => i + 3 + u16::from_le_bytes([len[0], len[1]]) as usize,
-                None => return false,
-            },
-            OP_PUSHDATA4 => match script.get(i + 1..i + 5) {
-                Some(len) => i + 5 + u32::from_le_bytes([len[0], len[1], len[2], len[3]]) as usize,
-                None => return false,
-            },
-            _ => return false,
-        };
-        if end > script.len() {
+        // IsPushOnly includes OP_RESERVED, although executing it fails.
+        if script[i] > OP_16 {
             return false;
         }
+        let Ok(end) = next_op_cursor(i, script) else {
+            return false;
+        };
         i = end;
     }
     true
@@ -149,39 +136,39 @@ pub(crate) fn remains(i: usize, len: usize, script: &[u8]) -> Result<(), ChainGa
 
 /// Gets the next operation index in the script, or the script length if at the end
 pub fn next_op(i: usize, script: &[u8]) -> usize {
-    if i >= script.len() {
-        return script.len();
-    }
-    let next = match script[i] {
-        len @ 1..=75 => i + 1 + len as usize,
+    next_op_cursor(i, script).unwrap_or(script.len())
+}
+
+/// Read an instruction like BSV GetOp. On a truncated push, return the
+/// cursor after the opcode and any complete length field, before its data.
+pub(crate) fn next_op_cursor(i: usize, script: &[u8]) -> Result<usize, usize> {
+    let Some(&opcode) = script.get(i) else {
+        return Err(script.len());
+    };
+    let header = i + 1;
+    let (cursor, len) = match opcode {
+        1..=75 => (header, usize::from(opcode)),
         OP_PUSHDATA1 => {
-            if i + 2 > script.len() {
-                return script.len();
-            }
-            i + 2 + script[i + 1] as usize
+            let len = *script.get(header).ok_or(header)?;
+            (header + 1, usize::from(len))
         }
         OP_PUSHDATA2 => {
-            if i + 3 > script.len() {
-                return script.len();
-            }
-            i + 3 + (script[i + 1] as usize) + ((script[i + 2] as usize) << 8)
+            let bytes = script.get(header..header + 2).ok_or(header)?;
+            (
+                header + 2,
+                usize::from(u16::from_le_bytes([bytes[0], bytes[1]])),
+            )
         }
         OP_PUSHDATA4 => {
-            if i + 5 > script.len() {
-                return script.len();
-            }
-            let len = (script[i + 1] as usize)
-                + ((script[i + 2] as usize) << 8)
-                + ((script[i + 3] as usize) << 16)
-                + ((script[i + 4] as usize) << 24);
-            i + 5 + len
+            let bytes = script.get(header..header + 4).ok_or(header)?;
+            let len = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+            (header + 4, len as usize)
         }
-        _ => i + 1,
+        _ => return Ok(header),
     };
-    let overflow = next > script.len();
-    if overflow {
-        script.len()
+    if len > script.len() - cursor {
+        Err(cursor)
     } else {
-        next
+        Ok(cursor + len)
     }
 }

@@ -695,7 +695,7 @@ fn truncated_pushes_are_not_push_only() {
 fn complete_pushes_are_push_only() {
     for script in [
         &[][..],
-        &[OP_0, OP_1NEGATE, OP_1, OP_16],
+        &[OP_0, OP_1NEGATE, OP_RESERVED, OP_1, OP_16],
         &[2, 0xaa, 0xbb],
         &[OP_PUSHDATA1, 0],
         &[OP_PUSHDATA1, 1, 0xaa],

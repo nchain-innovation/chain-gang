@@ -2,7 +2,7 @@
 
 use crate::messages::{OutPoint, Payload, Tx, TxOut};
 use crate::script::op_codes::{OP_CHECKSIG, OP_CODESEPARATOR};
-use crate::script::{next_op, op_codes, Script};
+use crate::script::{next_op, next_op_cursor, Script};
 use crate::util::{sha256d, var_int, ChainGangError, Hash256, Serializable};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::Write;
@@ -356,24 +356,40 @@ fn subscript_start(script_code: &[u8], checksig_index: usize) -> Result<usize, C
 /// The deletion is the node's: `CTransactionSignatureSerializer` skips
 /// separators while serializing the script code. It belongs to this algorithm
 /// only — BIP-143 keeps them.
-fn extract_subscript(script_code: &[u8], checksig_index: usize) -> Result<Vec<u8>, ChainGangError> {
+fn extract_subscript(
+    script_code: &[u8],
+    checksig_index: usize,
+) -> Result<(usize, Vec<u8>), ChainGangError> {
     let start_subscript = subscript_start(script_code, checksig_index)?;
-    Ok(delete_separators(&script_code[start_subscript..]))
+    Ok(otda_script_code(&script_code[start_subscript..]))
 }
 
-/// `script_code` with every `OP_CODESEPARATOR` removed, walking opcodes so a
-/// pushed byte equal to one is left alone. The node's `FindAndDelete`.
-fn delete_separators(script_code: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(script_code.len());
-    let mut i = 0;
-    while i < script_code.len() {
-        let next = next_op(i, script_code);
-        if script_code[i] != op_codes::OP_CODESEPARATOR {
-            out.extend_from_slice(&script_code[i..next]);
+/// BSV's OTDA serializer prefixes the original size less separator opcodes.
+/// GetOp can stop on a truncated push after a top-level OP_RETURN. The
+/// serializer writes only through that cursor but keeps the declared size.
+fn otda_script_code(script: &[u8]) -> (usize, Vec<u8>) {
+    let mut bytes = Vec::with_capacity(script.len());
+    let mut removed = 0;
+    let mut start = 0;
+    let mut cursor = 0;
+    while cursor < script.len() {
+        match next_op_cursor(cursor, script) {
+            Ok(next) => {
+                if script[cursor] == OP_CODESEPARATOR {
+                    bytes.extend_from_slice(&script[start..cursor]);
+                    removed += 1;
+                    start = next;
+                }
+                cursor = next;
+            }
+            Err(stop) => {
+                cursor = stop;
+                break;
+            }
         }
-        i = next;
     }
-    out
+    bytes.extend_from_slice(&script[start..cursor]);
+    (script.len() - removed, bytes)
 }
 
 /// The script code BIP-143 signs: from [`subscript_start`] to the end, byte for
@@ -431,11 +447,11 @@ fn otda_sighash_preimage(
 
     // The node's serializer deletes every OP_CODESEPARATOR from the script code
     // it is given; a signer's whole locking script is cut first.
-    let sub_script = match selection {
+    let (script_len, sub_script) = match selection {
         ScriptCode::FromLockScript { checksig_index } => {
             extract_subscript(script_code, checksig_index)?
         }
-        ScriptCode::AsGiven => delete_separators(script_code),
+        ScriptCode::AsGiven => otda_script_code(script_code),
     };
 
     // Serialize the version
@@ -446,17 +462,21 @@ fn otda_sighash_preimage(
     var_int::write(n_inputs as u64, &mut s)?;
     for i in 0..tx.inputs.len() {
         let i = if anyone_can_pay { n_input } else { i };
-        let mut tx_in = tx.inputs[i].clone();
-        if i == n_input {
-            tx_in.unlock_script = Script(Vec::with_capacity(4 + sub_script.len()));
-            tx_in.unlock_script.0.extend_from_slice(&sub_script);
+        let tx_in = &tx.inputs[i];
+        tx_in.prev_output.write(&mut s)?;
+        let sequence = if i == n_input {
+            var_int::write(script_len as u64, &mut s)?;
+            s.write_all(&sub_script)?;
+            tx_in.sequence
         } else {
-            tx_in.unlock_script = Script(vec![]);
+            var_int::write(0, &mut s)?;
             if base_type == SIGHASH_NONE || base_type == SIGHASH_SINGLE {
-                tx_in.sequence = 0;
+                0
+            } else {
+                tx_in.sequence
             }
-        }
-        tx_in.write(&mut s)?;
+        };
+        s.write_u32::<LittleEndian>(sequence)?;
         if anyone_can_pay {
             break;
         }
@@ -848,7 +868,7 @@ mod tests {
         // Drop leading OP_CODESEPARATOR
         let expected_subscript = script_code[1..].to_vec();
 
-        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap().1;
         assert_eq!(actual_subscript, expected_subscript);
     }
 
@@ -857,11 +877,12 @@ mod tests {
         let mut script_code: Vec<u8> = Vec::new();
         script_code.extend_from_slice(&[OP_DUP, OP_HASH160]);
         let decoded = hex::decode("e252b946e62e0802cfc1db8242cc842d53e2fe25").unwrap();
+        script_code.push(0x14);
         script_code.extend_from_slice(&decoded);
         script_code.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
         // No change
-        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap().1;
         assert_eq!(actual_subscript, script_code);
     }
 
@@ -889,7 +910,7 @@ mod tests {
             "test fixture should contain two 0xab bytes in the hash"
         );
 
-        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap().1;
         assert_eq!(
             actual_subscript, script_code,
             "pushed-data 0xab bytes must not be treated as OP_CODESEPARATOR"
@@ -909,7 +930,7 @@ mod tests {
                 .count(),
             1
         );
-        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap().1;
         assert_eq!(actual_subscript, script_code);
     }
 
@@ -934,7 +955,7 @@ mod tests {
         let expected_subscript = script_code[4..].to_vec();
 
         // assert_eq!(extract_subscript(&script_code), expected_subscript);
-        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap().1;
         assert_eq!(actual_subscript, expected_subscript);
     }
 
@@ -949,7 +970,7 @@ mod tests {
 
         // Drop the OP_CODESEPARATOR
         let expected_subscript = script_code[1..].to_vec();
-        let actual_subscript = extract_subscript(&script_code, 0).unwrap();
+        let actual_subscript = extract_subscript(&script_code, 0).unwrap().1;
 
         assert_eq!(actual_subscript, expected_subscript);
     }
@@ -1006,7 +1027,7 @@ mod tests {
         expected.extend_from_slice(&decoded);
         expected.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
-        let actual = extract_subscript(&script_code, 0).unwrap();
+        let actual = extract_subscript(&script_code, 0).unwrap().1;
         assert_eq!(actual, expected);
     }
 
@@ -1045,7 +1066,7 @@ mod tests {
         expected.extend_from_slice(&decoded);
         expected.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
-        let actual = extract_subscript(&script_code, 1).unwrap();
+        let actual = extract_subscript(&script_code, 1).unwrap().1;
         assert_eq!(actual, expected);
     }
 
@@ -1251,7 +1272,7 @@ mod tests {
         node.extend_from_slice(&hash);
         node.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
 
-        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
+        assert_eq!(extract_subscript(&script, 0).unwrap().1, node);
         assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
     }
 
@@ -1267,7 +1288,7 @@ mod tests {
         let node = script[1..].to_vec();
 
         assert_eq!(bip143_script_code(&script, 0).unwrap(), node);
-        assert_eq!(extract_subscript(&script, 0).unwrap(), node);
+        assert_eq!(extract_subscript(&script, 0).unwrap().1, node);
     }
 
     /// Records the script code the interpreter hands each signature check, and
