@@ -1125,6 +1125,9 @@ fn chronicle_nullfail_allows_failed_checksig_with_nonempty_sig() {
     assert!(eval(&script.0, &mut c, NO_FLAGS).is_ok());
 }
 
+// DER-canonical R=S=1 and SIGHASH_ALL | SIGHASH_FORKID reach the mock ECDSA failure.
+const NULLFAIL_SIGNATURE: &[u8] = &[0x30, 6, 2, 1, 1, 2, 1, 1, 0x41];
+
 #[test]
 fn strict_nullfail_rejects_failed_checksig_with_nonempty_sig() {
     let mut c = MockChecker {
@@ -1133,10 +1136,8 @@ fn strict_nullfail_rejects_failed_checksig_with_nonempty_sig() {
         sequence_checks: RefCell::new(vec![true; 32]),
         tx_version: Some(1),
     };
-    // Two-byte pushes: one-byte pushes of 1 and 2 are not minimal, and would
-    // fail MINIMALDATA before OP_CHECKSIG ran.
     let mut script = Script::new();
-    script.append_data(&[0xaa, 0xbb]);
+    script.append_data(NULLFAIL_SIGNATURE);
     script.append_data(&[0xcc, 0xdd]);
     script.append(OP_CHECKSIG);
     match eval(&script.0, &mut c, NO_FLAGS) {
@@ -1164,7 +1165,7 @@ fn strict_nullfail_rejects_failed_checkmultisig_when_keys_run_out() {
         sequence_checks: RefCell::new(vec![true; 32]),
         tx_version: Some(1),
     };
-    let script = one_of_two_multisig_not(&[0xaa, 0xbb]);
+    let script = one_of_two_multisig_not(NULLFAIL_SIGNATURE);
     match eval(&script.0, &mut c, NO_FLAGS) {
         Err(ChainGangError::ScriptError(e)) => assert!(e.contains("NULLFAIL"), "{e}"),
         r => panic!("expected NULLFAIL, got {r:?}"),

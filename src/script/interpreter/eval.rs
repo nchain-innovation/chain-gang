@@ -797,7 +797,7 @@ pub fn core_eval<T: Checker>(
                 let sig = stack.pop().unwrap();
                 let cleaned_script = checksig_script_code(script, check_index, &sig, two_phase);
 
-                let success = checker.check_sig(&sig, &pubkey, &cleaned_script)?;
+                let success = super::signature::check_sig(checker, &sig, &pubkey, &cleaned_script)?;
                 if tx_enforces_malleability_rules(checker) && !success && !sig.is_empty() {
                     return Err(ChainGangError::ScriptError(
                         "OP_CHECKSIG NULLFAIL".to_string(),
@@ -813,7 +813,7 @@ pub fn core_eval<T: Checker>(
                 let pubkey = stack.pop().unwrap();
                 let sig = stack.pop().unwrap();
                 let cleaned_script = checksig_script_code(script, check_index, &sig, two_phase);
-                let success = checker.check_sig(&sig, &pubkey, &cleaned_script)?;
+                let success = super::signature::check_sig(checker, &sig, &pubkey, &cleaned_script)?;
                 if tx_enforces_malleability_rules(checker) && !success && !sig.is_empty() {
                     return Err(ChainGangError::ScriptError(
                         "OP_CHECKSIG NULLFAIL".to_string(),

@@ -79,7 +79,7 @@ pub(crate) fn check_multisig<T: Checker>(
     let mut sig = 0;
     let mut success = true;
     while success && sig < sigs.len() {
-        if checker.check_sig(&sigs[sig], &keys[key], &cleaned_script)? {
+        if super::signature::check_sig(checker, &sigs[sig], &keys[key], &cleaned_script)? {
             sig += 1;
         }
         key += 1;

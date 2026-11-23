@@ -22,9 +22,8 @@
 //! The test fails if any other row disagrees, or if a listed row starts
 //! agreeing, so a fix shows up as a row to take off the list.
 //!
-//! Only accept/reject is compared. The node's rows also name the error, but
-//! chain-gang's errors are messages, not the node's error codes, so matching
-//! them is left for later.
+//! Rows compare acceptance. For SIG_HIGH_S we also check the node's specific
+//! rejection reason, so a generic signature failure cannot mask a regression.
 
 use chain_gang::messages::{OutPoint, Tx, TxIn, TxOut};
 use chain_gang::util::Hash256;
@@ -472,6 +471,13 @@ fn bitcoin_sv_script_tests() {
     let mut now_agree = Vec::new();
     for row in &rows {
         let verdict = chain_gang_verdict(row);
+        if row.expected == "SIG_HIGH_S" {
+            assert_eq!(
+                verdict.as_ref().unwrap_err(),
+                "Error evaluating the script `Non-canonical signature: S value is unnecessarily high`",
+                "node vector {} ({})", row.index, row.comment
+            );
+        }
         let agrees = verdict.is_ok() == (row.expected == "OK");
         let describe = || {
             format!(

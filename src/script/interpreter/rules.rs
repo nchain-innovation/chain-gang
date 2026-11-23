@@ -20,7 +20,7 @@ pub fn uses_two_phase_eval(tx_version: u32) -> bool {
 
 /// Whether malleability-related script rules are relaxed (Chronicle).
 pub fn uses_relaxed_malleability(tx_version: u32) -> bool {
-    tx_version > 1
+    (tx_version as i32) > 1
 }
 
 /// Maximum encoded script number length for the current evaluation context.

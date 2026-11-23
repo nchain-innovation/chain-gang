@@ -5,6 +5,7 @@ mod multisig;
 mod push;
 mod rules;
 mod script_code;
+mod signature;
 
 #[cfg(test)]
 mod tests;

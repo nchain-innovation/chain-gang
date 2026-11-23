@@ -253,3 +253,117 @@ fn chronicle_validate_at_height_rejects_pre_activation_spend() {
         )
         .is_err());
 }
+
+#[test]
+fn high_s_error_precedence_and_chronicle_relaxation() {
+    use crate::util::ChainGangError;
+
+    let key = SigningKey::from_slice(&[3; 32]).unwrap(); // Test-only signing key.
+    for opcode in [
+        OP_CHECKSIG,
+        OP_CHECKSIGVERIFY,
+        OP_CHECKMULTISIG,
+        OP_CHECKMULTISIGVERIFY,
+    ] {
+        let multi = matches!(opcode, OP_CHECKMULTISIG | OP_CHECKMULTISIGVERIFY);
+        let mut lock = Script::new();
+        if multi {
+            lock.append(OP_1);
+        }
+        lock.append_data(&key.verifying_key().to_sec1_bytes());
+        if multi {
+            lock.append(OP_1);
+        }
+        lock.append(opcode);
+        if matches!(opcode, OP_CHECKSIGVERIFY | OP_CHECKMULTISIGVERIFY) {
+            lock.append(OP_1);
+        }
+        let funding = Tx {
+            outputs: vec![TxOut {
+                satoshis: 10,
+                lock_script: lock.clone(),
+            }],
+            ..Tx::default()
+        };
+        let utxos = utxos_for_funding(&funding);
+        for version in [u32::MAX, 1, 2] {
+            let mut tx = Tx {
+                version,
+                inputs: vec![TxIn {
+                    prev_output: OutPoint {
+                        hash: funding.hash(),
+                        index: 0,
+                    },
+                    ..TxIn::default()
+                }],
+                outputs: vec![TxOut {
+                    satoshis: 9,
+                    lock_script: Script(vec![OP_1]),
+                }],
+                lock_time: 0,
+            };
+            let flag = SIGHASH_ALL | SIGHASH_FORKID;
+            let digest = sighash(&tx, 0, &lock.0, 10, flag, &mut SigHashCache::new()).unwrap();
+            let low = key.sign_prehash(&digest.0).unwrap();
+            let high = flip_to_high_s(&low);
+            let mut validate = |sig: &[u8], flag: u8, height: u64, amount: i64| {
+                let mut unlock = Script::new();
+                if multi {
+                    unlock.append(OP_0);
+                }
+                unlock.append_data(&[sig, &[flag]].concat());
+                tx.inputs[0].unlock_script = unlock;
+                tx.outputs[0].satoshis = amount;
+                tx.validate_at_height_consensus(
+                    true,
+                    true,
+                    &utxos,
+                    &HashSet::new(),
+                    height,
+                    Network::BSV_Mainnet,
+                )
+            };
+            let high_der = high.to_der();
+            for height in [
+                CHRONICLE_ACTIVATION_MAINNET - 1,
+                CHRONICLE_ACTIVATION_MAINNET,
+            ] {
+                validate(low.to_der().as_bytes(), flag, height, 9).unwrap();
+                if version == 2 && height == CHRONICLE_ACTIVATION_MAINNET {
+                    validate(high_der.as_bytes(), flag, height, 9).unwrap();
+                    let expected = match opcode {
+                        OP_CHECKSIGVERIFY => "OP_CHECKSIGVERIFY failed",
+                        OP_CHECKMULTISIGVERIFY => "OP_CHECKMULTISIGVERIFY failed",
+                        _ => "Top of stack is false",
+                    };
+                    let err = validate(high_der.as_bytes(), flag, height, 8).unwrap_err();
+                    assert!(
+                        matches!(&err, ChainGangError::ScriptError(s) if s == expected),
+                        "{err}"
+                    );
+                } else {
+                    for (sig, hash_type, expected) in [
+                        (
+                            high_der.as_bytes(),
+                            flag,
+                            "Non-canonical signature: S value is unnecessarily high",
+                        ),
+                        (
+                            high_der.as_bytes(),
+                            0x60,
+                            "Non-canonical signature: S value is unnecessarily high",
+                        ),
+                        (
+                            &high_der.as_bytes()[1..],
+                            0x60,
+                            "Non-canonical DER signature",
+                        ),
+                    ] {
+                        let err = validate(sig, hash_type, height, 9).unwrap_err();
+                        assert!(matches!(&err, ChainGangError::ScriptError(msg) if msg == expected), "opcode={opcode:#x} version={version} height={height} flag={hash_type:#x}: {err}");
+                    }
+                }
+            }
+        }
+    }
+}
