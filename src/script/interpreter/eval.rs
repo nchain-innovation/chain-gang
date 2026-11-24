@@ -85,6 +85,46 @@ pub fn core_eval<T: Checker>(
         }
         let opcode = script[i];
         let exec = conditions.active() && (!returned_in_branch || opcode == OP_RETURN);
+        // Opcode activation follows the spent output, not spending tx.version.
+        if checker.utxo_after_chronicle() == Some(false) {
+            match opcode {
+                OP_2MUL | OP_2DIV if pregenesis || exec => {
+                    return Err(ChainGangError::ScriptError(
+                        "disabled pre-Chronicle opcode".to_string(),
+                    ))
+                }
+                OP_VERIF | OP_VERNOTIF if pregenesis || exec => {
+                    return Err(ChainGangError::ScriptError(
+                        "reserved pre-Chronicle opcode".to_string(),
+                    ))
+                }
+                OP_VERIF | OP_VERNOTIF => {
+                    i = next_op(i, script);
+                    continue;
+                }
+                OP_VER if exec => {
+                    return Err(ChainGangError::ScriptError(
+                        "reserved pre-Chronicle opcode".to_string(),
+                    ))
+                }
+                OP_SUBSTR | OP_LEFT | OP_RIGHT | OP_LSHIFTNUM | OP_RSHIFTNUM => {
+                    let discourage = if flags & super::EXPLICIT_UPGRADABLE_NOPS_POLICY != 0 {
+                        flags & super::DISCOURAGE_UPGRADABLE_NOPS != 0
+                    } else {
+                        flags & super::CONSENSUS_ONLY == 0
+                            || flags & super::DISCOURAGE_UPGRADABLE_NOPS != 0
+                    };
+                    if exec && discourage {
+                        return Err(ChainGangError::ScriptError(
+                            "discouraged upgradeable NOP".to_string(),
+                        ));
+                    }
+                    i = next_op(i, script);
+                    continue;
+                }
+                _ => {}
+            }
+        }
         if !exec {
             // As the node: an opcode that does not execute is only read, unless
             // it opens, switches or closes a branch.
@@ -858,6 +898,10 @@ pub fn core_eval<T: Checker>(
                         let msg = "OP_CHECKLOCKTIMEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
                     }
+                } else if flags & super::DISCOURAGE_UPGRADABLE_NOPS != 0 {
+                    return Err(ChainGangError::ScriptError(
+                        "discouraged upgradeable NOP".into(),
+                    ));
                 }
             }
             OP_CHECKSEQUENCEVERIFY => {
@@ -870,9 +914,19 @@ pub fn core_eval<T: Checker>(
                         let msg = "OP_CHECKSEQUENCEVERIFY failed".to_string();
                         return Err(ChainGangError::ScriptError(msg));
                     }
+                } else if flags & super::DISCOURAGE_UPGRADABLE_NOPS != 0 {
+                    return Err(ChainGangError::ScriptError(
+                        "discouraged upgradeable NOP".into(),
+                    ));
                 }
             }
-            OP_NOP1 => {}
+            OP_NOP1 | OP_NOP9 | OP_NOP10 => {
+                if flags & super::DISCOURAGE_UPGRADABLE_NOPS != 0 {
+                    return Err(ChainGangError::ScriptError(
+                        "discouraged upgradeable NOP".into(),
+                    ));
+                }
+            }
             OP_LSHIFTNUM | OP_RSHIFTNUM => {
                 let n = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
                 let value = pop_bigint_for_eval(&mut stack, max_num_len, policy)?;
@@ -924,8 +978,6 @@ pub fn core_eval<T: Checker>(
                 };
                 push_bigint_checked(&mut stack, result, max_result_len)?;
             }
-            OP_NOP9 => {}
-            OP_NOP10 => {}
             _ => {
                 let msg = format!("Bad opcode: {}, index {}", script[i], i);
                 return Err(ChainGangError::ScriptError(msg));

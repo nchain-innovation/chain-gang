@@ -53,13 +53,49 @@ impl Block {
         Ok(outputs)
     }
 
-    /// Checks that the block is valid
+    /// Checks the Merkle root, coinbase presence and transactions against supplied outputs.
+    /// Callers must check transaction finality separately. For a time-based
+    /// `nLockTime` under BIP113, that check needs the previous block's median time past.
     pub fn validate(
         &self,
         height: i32,
         network: Network,
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
+    ) -> Result<(), ChainGangError> {
+        self.validate_contextual(height, network, utxos, pregenesis_outputs, None)
+    }
+
+    /// Validate with complete Chronicle UTXO metadata and configurable activation.
+    /// Use this for mixed-era or historical outputs. The height-only
+    /// [`Block::validate`] assumes post-Genesis outputs belong to the spending block's era.
+    /// Genesis and FORKID selection retain this library's existing network rules.
+    /// This selects script rules only; the partial-validation limitations on
+    /// [`Block::validate`] still apply. Chronicle context supplies neither a
+    /// previous-block MTP nor a stateful UTXO view.
+    pub fn validate_with_chronicle_context(
+        &self,
+        height: i32,
+        network: Network,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        context: &crate::chronicle::ChronicleValidationContext<'_>,
+    ) -> Result<(), ChainGangError> {
+        if u64::try_from(height).ok() != Some(context.block_height) {
+            return Err(ChainGangError::BadArgument(
+                "block height differs from Chronicle context".to_string(),
+            ));
+        }
+        self.validate_contextual(height, network, utxos, pregenesis_outputs, Some(context))
+    }
+
+    fn validate_contextual(
+        &self,
+        height: i32,
+        network: Network,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        context: Option<&crate::chronicle::ChronicleValidationContext<'_>>,
     ) -> Result<(), ChainGangError> {
         if self.txns.is_empty() {
             return Err(ChainGangError::BadData("Txn count is zero".to_string()));
@@ -97,19 +133,30 @@ impl Block {
         // the fork and Genesis rules. Without it, block validation applied
         // Chronicle rules to any version > 1 transaction whatever the height.
         // A negative height has no meaning on a chain, so treat it as 0, which
-        // is pre-activation everywhere except regtest.
+        // is pre-activation for all released-node defaults.
         let block_height = u64::try_from(height).unwrap_or(0);
         for txn in self.txns.iter() {
             if !txn.coinbase() {
                 // A block is held to consensus, not to the node's mempool policy.
-                txn.validate_at_height_consensus(
-                    require_sighash_forkid,
-                    use_genesis_rules,
-                    utxos,
-                    pregenesis_outputs,
-                    block_height,
-                    network,
-                )?;
+                if let Some(context) = context {
+                    txn.validate_with_chronicle_context(
+                        require_sighash_forkid,
+                        use_genesis_rules,
+                        utxos,
+                        pregenesis_outputs,
+                        context,
+                        true,
+                    )?;
+                } else {
+                    txn.validate_at_height_consensus(
+                        require_sighash_forkid,
+                        use_genesis_rules,
+                        utxos,
+                        pregenesis_outputs,
+                        block_height,
+                        network,
+                    )?;
+                }
             } else if has_coinbase {
                 return Err(ChainGangError::BadData("Multiple coinbases".to_string()));
             } else {
@@ -319,6 +366,66 @@ mod tests {
              reached the Chronicle gate"
         );
     }
+    #[test]
+    fn explicit_context_reaches_block_inputs() {
+        use crate::chronicle::ChronicleValidationContext;
+        use crate::script::op_codes::*;
+        use std::collections::HashMap;
+        let point = OutPoint {
+            hash: Hash256([7; 32]),
+            index: 0,
+        };
+        let spend = Tx {
+            version: 1,
+            inputs: vec![TxIn {
+                prev_output: point.clone(),
+                unlock_script: Script::new(),
+                sequence: u32::MAX,
+            }],
+            outputs: vec![TxOut {
+                satoshis: 1,
+                lock_script: Script(vec![OP_1]),
+            }],
+            lock_time: 0,
+        };
+        let block = block_containing(spend);
+        let mut utxos = LinkedHashMap::new();
+        utxos.insert(
+            point.clone(),
+            TxOut {
+                satoshis: 1,
+                lock_script: Script(vec![OP_1, OP_2MUL, OP_2, OP_EQUAL]),
+            },
+        );
+        for (created, expected) in [(100, false), (200, true)] {
+            let heights = HashMap::from([(point.clone(), created)]);
+            let context = ChronicleValidationContext::new(200, 200, &heights, None);
+            assert_eq!(
+                block
+                    .validate_with_chronicle_context(
+                        200,
+                        Network::BSV_Regtest,
+                        &utxos,
+                        &HashSet::new(),
+                        &context
+                    )
+                    .is_ok(),
+                expected
+            );
+            assert!(block
+                .validate_with_chronicle_context(
+                    201,
+                    Network::BSV_Regtest,
+                    &utxos,
+                    &HashSet::new(),
+                    &context
+                )
+                .unwrap_err()
+                .to_string()
+                .contains("block height differs"));
+        }
+    }
+
     /// A block can hold a transaction that breaks the node's policy rules;
     /// only its mempool refuses one (#205).
     ///

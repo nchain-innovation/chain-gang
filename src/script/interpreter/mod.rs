@@ -58,6 +58,13 @@ pub const PREGENESIS_RULES: u32 = 0x01;
 /// since the node's mempool would reject a policy failure anyway (#205).
 pub const CONSENSUS_ONLY: u32 = 0x02;
 
+/// Discourage executing upgradeable NOPs, independent of other policy rules.
+pub const DISCOURAGE_UPGRADABLE_NOPS: u32 = 0x04;
+
+/// Select an explicit upgradeable-NOP policy rather than legacy defaults.
+/// Combine with [`DISCOURAGE_UPGRADABLE_NOPS`] to enable the policy.
+pub const EXPLICIT_UPGRADABLE_NOPS_POLICY: u32 = 0x08;
+
 use crate::script::stack::Stack;
 use crate::script::Checker;
 use crate::util::ChainGangError;

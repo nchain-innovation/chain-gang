@@ -1,11 +1,11 @@
-use crate::chronicle::effective_chronicle_tx_version;
+use crate::chronicle::{activation_height, ChronicleValidationContext};
 use crate::messages::message::Payload;
 use crate::messages::{OutPoint, TxIn, TxOut, COINBASE_OUTPOINT_HASH, COINBASE_OUTPOINT_INDEX};
 use crate::network::Network;
 use crate::script::{
     eval_p2sh, eval_two_phase, eval_unlock_then_lock, is_push_only, op_codes,
-    uses_relaxed_malleability, uses_two_phase_eval, TransactionChecker, CONSENSUS_ONLY, NO_FLAGS,
-    PREGENESIS_RULES,
+    uses_relaxed_malleability, ContextualTransactionChecker, TransactionChecker, CONSENSUS_ONLY,
+    DISCOURAGE_UPGRADABLE_NOPS, EXPLICIT_UPGRADABLE_NOPS_POLICY, NO_FLAGS, PREGENESIS_RULES,
 };
 use crate::transaction::sighash::SigHashCache;
 use crate::util::{bounded_capacity, sha256d, var_int, ChainGangError, Hash256, Serializable};
@@ -33,6 +33,12 @@ pub struct Tx {
     pub lock_time: u32,
 }
 
+enum ValidationEra<'a> {
+    AssumeActive,
+    AtHeight(u64, Network),
+    Explicit(&'a ChronicleValidationContext<'a>),
+}
+
 impl Tx {
     /// Calculates the hash of the transaction also known as the txid
     pub fn hash(&self) -> Hash256 {
@@ -41,10 +47,18 @@ impl Tx {
         sha256d(&b)
     }
 
-    /// Validates a non-coinbase transaction using version-only Chronicle gating (`tx.version > 1`).
+    /// This is stateless value/script validation, not full node admission. It
+    /// does not decide contextual finality, coinbase maturity, fee policy,
+    /// mempool conflicts or non-final-pool replacement. Even a non-final
+    /// transaction can pass here and be valid for the node's non-final pool.
     ///
-    /// Checks what the node's mempool checks: consensus, plus the node's policy
-    /// rules for non-malleable transactions (minimal pushes and numbers, an
+    /// Validates a non-coinbase transaction assuming Chronicle is active and
+    /// post-Genesis outputs were created after Chronicle. Malleability still
+    /// depends on the signed transaction version. For historical or mixed-era
+    /// outputs, use `validate_with_chronicle_context`.
+    ///
+    /// Checks values/inputs and scripts, plus selected script policy rules for
+    /// non-malleable transactions (minimal pushes and numbers, an
     /// empty multisig dummy, a clean stack). That is the right check before
     /// broadcast, since the node rejects a policy failure there anyway. A
     /// transaction in a block is held to consensus only; use
@@ -61,8 +75,9 @@ impl Tx {
             use_genesis_rules,
             utxos,
             pregenesis_outputs,
-            None,
+            ValidationEra::AssumeActive,
             false,
+            None,
         )
     }
 
@@ -84,12 +99,16 @@ impl Tx {
             use_genesis_rules,
             utxos,
             pregenesis_outputs,
-            None,
+            ValidationEra::AssumeActive,
             true,
+            None,
         )
     }
 
     /// Validates a non-coinbase transaction with BSV Chronicle activation height enforcement.
+    /// Output creation heights are unavailable here: post-Genesis outputs are
+    /// assumed to belong to the current era. Use `validate_with_chronicle_context`
+    /// for historical or mixed-era outputs.
     ///
     /// Policy rules included, as [`Tx::validate`]; see
     /// [`Tx::validate_at_height_consensus`] for consensus only.
@@ -107,8 +126,9 @@ impl Tx {
             use_genesis_rules,
             utxos,
             pregenesis_outputs,
-            Some((block_height, network)),
+            ValidationEra::AtHeight(block_height, network),
             false,
+            None,
         )
     }
 
@@ -128,19 +148,93 @@ impl Tx {
             use_genesis_rules,
             utxos,
             pregenesis_outputs,
-            Some((block_height, network)),
+            ValidationEra::AtHeight(block_height, network),
             true,
+            None,
         )
     }
 
+    /// Validate with explicit activation and output creation heights. Use this
+    /// for historical/mixed-era spends or non-default private-chain activation.
+    #[allow(clippy::too_many_arguments)]
+    pub fn validate_with_chronicle_context(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        context: &ChronicleValidationContext<'_>,
+        consensus_only: bool,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            ValidationEra::Explicit(context),
+            consensus_only,
+            None,
+        )
+    }
+
+    /// Validate with a separately selected upgradeable-NOP policy.
+    ///
+    /// Output-era assumptions are the same as [`Tx::validate`]. Other policy
+    /// rules continue to be selected by `consensus_only`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn validate_with_nop_policy(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        consensus_only: bool,
+        discourage_upgradable_nops: bool,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            ValidationEra::AssumeActive,
+            consensus_only,
+            Some(discourage_upgradable_nops),
+        )
+    }
+
+    /// Validate with explicit output eras and upgradeable-NOP policy.
+    #[allow(clippy::too_many_arguments)]
+    pub fn validate_with_chronicle_context_and_nop_policy(
+        &self,
+        require_sighash_forkid: bool,
+        use_genesis_rules: bool,
+        utxos: &LinkedHashMap<OutPoint, TxOut>,
+        pregenesis_outputs: &HashSet<OutPoint>,
+        context: &ChronicleValidationContext<'_>,
+        consensus_only: bool,
+        discourage_upgradable_nops: bool,
+    ) -> Result<(), ChainGangError> {
+        self.validate_with_context(
+            require_sighash_forkid,
+            use_genesis_rules,
+            utxos,
+            pregenesis_outputs,
+            ValidationEra::Explicit(context),
+            consensus_only,
+            Some(discourage_upgradable_nops),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn validate_with_context(
         &self,
         require_sighash_forkid: bool,
         use_genesis_rules: bool,
         utxos: &LinkedHashMap<OutPoint, TxOut>,
         pregenesis_outputs: &HashSet<OutPoint>,
-        chronicle_context: Option<(u64, Network)>,
+        era: ValidationEra<'_>,
         consensus_only: bool,
+        discourage_upgradable_nops: Option<bool>,
     ) -> Result<(), ChainGangError> {
         // Make sure neither in or out lists are empty
         if self.inputs.is_empty() {
@@ -210,11 +304,22 @@ impl Tx {
 
         // Verify each script
         let mut sighash_cache = SigHashCache::new();
-        let (block_height, network) = match chronicle_context {
-            Some((height, net)) => (Some(height), Some(net)),
-            None => (None, None),
+        let (active, explicit_context) = match era {
+            ValidationEra::AssumeActive => (true, None),
+            ValidationEra::AtHeight(height, network) => (
+                activation_height(network).is_some_and(|activation| height >= activation),
+                None,
+            ),
+            ValidationEra::Explicit(ctx) => (ctx.block_height >= ctx.activation_height, Some(ctx)),
         };
-        let script_version = effective_chronicle_tx_version(self.version, block_height, network);
+        let number_policy_limit = explicit_context.and_then(|ctx| ctx.script_num_policy_limit);
+        if !consensus_only && number_policy_limit.is_some_and(|limit| limit != 0 && limit < 4) {
+            return Err(ChainGangError::BadArgument(
+                "numeric policy limit below 4".to_string(),
+            ));
+        }
+        // The inner signature checker uses this only for high-S acceptance.
+        let script_version = if active { self.version } else { 1 };
         for input in 0..self.inputs.len() {
             let tx_in = &self.inputs[input];
             let tx_out = utxos.get(&tx_in.prev_output).unwrap();
@@ -233,25 +338,58 @@ impl Tx {
                 ));
             }
 
-            let mut tx_checker = TransactionChecker {
+            let post_chronicle_utxo = if let Some(ctx) = explicit_context {
+                let height = ctx.utxo_heights.get(&tx_in.prev_output).ok_or_else(|| {
+                    ChainGangError::BadArgument("missing UTXO creation height".to_string())
+                })?;
+                if *height > ctx.block_height {
+                    return Err(ChainGangError::BadArgument(
+                        "UTXO creation height exceeds spending height".to_string(),
+                    ));
+                }
+                !pregenesis_utxo && *height >= ctx.activation_height
+            } else {
+                // Compatibility APIs lack creation heights. Documented assumption:
+                // post-Genesis UTXOs use the current era. Explicit API avoids it.
+                !pregenesis_utxo && active
+            };
+            let inner = TransactionChecker {
                 tx: self,
                 sig_hash_cache: &mut sighash_cache,
                 input,
                 satoshis: tx_out.satoshis,
                 require_sighash_forkid,
-                script_tx_version: Some(script_version),
+                // The inner checker uses this override for low-S policy.
+                // The outer checker exposes the actual signed version to opcodes.
+                script_tx_version: Some(if uses_relaxed_malleability(script_version) {
+                    script_version
+                } else {
+                    1
+                }),
+            };
+            let mut tx_checker = ContextualTransactionChecker {
+                inner,
+                active,
+                post_chronicle_utxo,
+                number_policy_limit,
             };
 
-            let era_flags = if !use_genesis_rules || is_pregenesis_input {
+            let era_flags = if pregenesis_utxo {
                 PREGENESIS_RULES
             } else {
                 NO_FLAGS
             };
-            let flags = if consensus_only {
+            let mut flags = if consensus_only {
                 era_flags | CONSENSUS_ONLY
             } else {
                 era_flags
             };
+            if let Some(discourage) = discourage_upgradable_nops {
+                flags |= EXPLICIT_UPGRADABLE_NOPS_POLICY;
+                if discourage {
+                    flags |= DISCOURAGE_UPGRADABLE_NOPS;
+                }
+            }
 
             if pregenesis_utxo && is_p2sh(&tx_out.lock_script.0) {
                 // BIP-16 gives a pre-Genesis P2SH output its meaning, in any
@@ -264,7 +402,7 @@ impl Tx {
                     &mut tx_checker,
                     flags,
                 )?;
-            } else if uses_two_phase_eval(script_version) {
+            } else if active {
                 eval_two_phase(
                     &tx_in.unlock_script.0,
                     &tx_out.lock_script.0,

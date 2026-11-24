@@ -353,8 +353,9 @@ impl PyTx {
     /// Validate with BSV Chronicle activation enforced at ``block_height`` on ``network``.
     ///
     /// ``network`` is one of ``BSV_Mainnet``, ``BSV_Testnet``, or ``BSV_STN``.
-    /// Unlike :meth:`validate`, this rejects ``tx.version > 1`` spends before the
-    /// documented Chronicle activation height on that network.
+    /// Before activation, Chronicle signature types and relaxed rules are disabled;
+    /// version > 1 by itself is not rejected. UTXO eras are assumed from spending
+    /// height; use validate_with_chronicle_context for complete metadata.
     fn validate_at_height(
         &self,
         utxos: Vec<PyTx>,
@@ -378,6 +379,74 @@ impl PyTx {
             block_height,
             network,
         )?)
+    }
+
+    /// Validate using explicit UTXO creation heights and activation configuration.
+    /// ``discourage_upgradable_nops`` selects that policy independently. ``None``
+    /// retains the existing default behavior.
+    #[pyo3(signature = (utxos, block_height, activation_height, utxo_heights, consensus_only=false, script_num_policy_limit=None, pregenesis_outpoints=None, discourage_upgradable_nops=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn validate_with_chronicle_context(
+        &self,
+        utxos: Vec<PyTx>,
+        block_height: u64,
+        activation_height: u64,
+        utxo_heights: Vec<(String, u32, u64)>,
+        consensus_only: bool,
+        script_num_policy_limit: Option<usize>,
+        pregenesis_outpoints: Option<Vec<(String, u32)>>,
+        discourage_upgradable_nops: Option<bool>,
+    ) -> PyResult<()> {
+        let tx = self.as_tx()?;
+        let processed = build_processed_utxos(&tx, &utxos)?;
+        let mut heights = HashMap::new();
+        for (hash, index, height) in utxo_heights {
+            let point = OutPoint {
+                hash: Hash256::decode(&hash)?,
+                index,
+            };
+            if heights
+                .insert(point, height)
+                .is_some_and(|prior| prior != height)
+            {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "Conflicting UTXO creation heights for {hash}:{index}"
+                )));
+            }
+        }
+        let mut pregenesis = HashSet::new();
+        for (hash, index) in pregenesis_outpoints.unwrap_or_default() {
+            pregenesis.insert(OutPoint {
+                hash: Hash256::decode(&hash)?,
+                index,
+            });
+        }
+        let context = crate::chronicle::ChronicleValidationContext::new(
+            block_height,
+            activation_height,
+            &heights,
+            script_num_policy_limit,
+        );
+        match discourage_upgradable_nops {
+            Some(discourage) => tx.validate_with_chronicle_context_and_nop_policy(
+                true,
+                true,
+                &processed,
+                &pregenesis,
+                &context,
+                consensus_only,
+                discourage,
+            )?,
+            None => tx.validate_with_chronicle_context(
+                true,
+                true,
+                &processed,
+                &pregenesis,
+                &context,
+                consensus_only,
+            )?,
+        }
+        Ok(())
     }
 
     /// Parse Bytes to produce Tx

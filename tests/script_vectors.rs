@@ -9,8 +9,9 @@
 //!
 //! chain-gang does not take the node's flags one by one. It has an era
 //! (pre- or post-Genesis, per output), a policy/consensus switch and the
-//! sighash FORKID requirement, so each row's flags are mapped onto those (see
-//! `Mode::from_flags`). Of the 1483 rows, 1379 agree with the node. The rest
+//! sighash FORKID requirement and independently selected upgradeable NOP
+//! policy, so each row's flags are mapped onto those (see
+//! `Mode::from_flags`). Of the 1483 rows, 1396 agree with the node. The rest
 //! are listed, each under its reason, in one of two places:
 //!
 //! - `MODELLING_GAPS`: the verdict turns on a flag chain-gang does not take
@@ -26,10 +27,12 @@
 //! chain-gang's errors are messages, not the node's error codes, so matching
 //! them is left for later.
 
+use chain_gang::chronicle::ChronicleValidationContext;
 use chain_gang::messages::{OutPoint, Tx, TxIn, TxOut};
+use chain_gang::util::ChainGangError;
 use chain_gang::util::Hash256;
 use linked_hash_map::LinkedHashMap;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 
@@ -226,6 +229,8 @@ struct Mode {
     /// Any of the node's policy flags (`MINIMALDATA`, `NULLDUMMY`,
     /// `CLEANSTACK`). chain-gang applies those three together or not at all.
     policy: bool,
+    /// The node's independent `DISCOURAGE_UPGRADABLE_NOPS` flag.
+    discourage_upgradable_nops: bool,
     /// `SIGHASH_FORKID`.
     require_forkid: bool,
 }
@@ -240,6 +245,7 @@ impl Mode {
             policy: ["MINIMALDATA", "NULLDUMMY", "CLEANSTACK"]
                 .iter()
                 .any(|f| set.contains(f)),
+            discourage_upgradable_nops: set.contains("DISCOURAGE_UPGRADABLE_NOPS"),
             require_forkid: set.contains("SIGHASH_FORKID"),
         }
     }
@@ -350,11 +356,14 @@ fn chain_gang_verdict(row: &Row) -> Result<(), String> {
     }
 
     let outcome = catch_unwind(AssertUnwindSafe(|| {
-        if mode.policy {
-            spend.validate(mode.require_forkid, mode.genesis_tx, &utxos, &pregenesis)
-        } else {
-            spend.validate_consensus(mode.require_forkid, mode.genesis_tx, &utxos, &pregenesis)
-        }
+        spend.validate_with_nop_policy(
+            mode.require_forkid,
+            mode.genesis_tx,
+            &utxos,
+            &pregenesis,
+            !mode.policy,
+            mode.discourage_upgradable_nops,
+        )
     }));
     match outcome {
         Ok(result) => result.map_err(|e| e.to_string()),
@@ -374,17 +383,15 @@ fn chain_gang_verdict(row: &Row) -> Result<(), String> {
 /// so these are not faults in chain-gang, but they are rows it cannot check.
 const MODELLING_GAPS: &[(&str, &[usize])] = &[
     (
-        "Chronicle is always on in chain-gang. These rows predate it, when \
+        "The legacy vector adapter lacks post-Genesis/pre-Chronicle UTXO context. These rows predate it, when \
          OP_VER, OP_VERIF and OP_VERNOTIF were reserved and OP_2MUL and \
          OP_2DIV disabled.",
-        &[140, 142, 144, 165, 728, 883, 884, 885, 886, 1187, 1274],
+        &[140, 142, 144, 165],
     ),
     (
         "Without the node's CHECKLOCKTIMEVERIFY and CHECKSEQUENCEVERIFY \
-         flags, and before Chronicle, NOP2 to NOP8 do nothing. chain-gang \
-         always runs CLTV, CSV and Chronicle's SUBSTR, LEFT, RIGHT, LSHIFTNUM \
-         and RSHIFTNUM in those slots.",
-        &[332, 333, 506, 507, 508, 509, 510, 511, 512],
+         flags, and before Chronicle, NOP2 to NOP8 do nothing. chain-gang always runs CLTV and CSV in those slots.",
+        &[332, 333, 506, 507],
     ),
     (
         "chain-gang always spends a pre-Genesis P2SH output as P2SH. These \
@@ -411,11 +418,6 @@ const MODELLING_GAPS: &[(&str, &[usize])] = &[
         "MINIMALIF: the node sets it in neither its mempool nor its blocks, \
          and chain-gang does not enforce it (#205).",
         &[1480, 1482, 1493, 1501, 1505, 1530, 1532],
-    ),
-    (
-        "DISCOURAGE_UPGRADABLE_NOPS is a node policy flag chain-gang does \
-         not model.",
-        &[1090, 1098, 1099, 1100, 1101],
     ),
     (
         "chain-gang always enforces strict signature and key encoding, low S \
@@ -494,4 +496,355 @@ fn bitcoin_sv_script_tests() {
         now_agree.len(),
         now_agree.join("\n")
     );
+}
+
+/// The node's five Chronicle opcode rows use this policy flag independently.
+#[test]
+fn discourage_nops_flag_is_independent() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/script_tests.json");
+    if !path.exists() {
+        assert!(
+            std::env::var(OPTIONAL_ENV).as_deref() == Ok("1"),
+            "{} is missing; set {OPTIONAL_ENV}=1 to skip vendored vectors",
+            path.display()
+        );
+        return;
+    }
+    let rows = load_rows(&path);
+    let mut mismatches = Vec::new();
+    for index in 1093..=1097 {
+        let row = rows.iter().find(|row| row.index == index).unwrap();
+        assert!(row
+            .flags
+            .split(',')
+            .any(|flag| flag == "DISCOURAGE_UPGRADABLE_NOPS"));
+        assert_eq!(row.expected, "DISCOURAGE_UPGRADABLE_NOPS");
+        if chain_gang_verdict(row).is_ok() {
+            mismatches.push(format!("row {index}: {}", row.lock));
+        }
+    }
+    assert!(
+        mismatches.is_empty(),
+        "unexpectedly accepted: {}",
+        mismatches.join(", ")
+    );
+}
+
+#[test]
+fn discourage_nops_flag_controls_only_executed_upgradable_nops() {
+    let run = |unlock: &str, lock: &str, flags: &str, version: u32| {
+        let row = Row {
+            index: 0,
+            satoshis: 0,
+            version,
+            unlock: unlock.to_string(),
+            lock: lock.to_string(),
+            flags: flags.to_string(),
+            expected: String::new(),
+            comment: String::new(),
+        };
+        chain_gang_verdict(&row)
+    };
+    for opcode in ["SUBSTR", "LEFT", "RIGHT", "LSHIFTNUM", "RSHIFTNUM"] {
+        let lock = format!("{opcode} 1");
+        let skipped = format!("0 IF {opcode} ENDIF 1");
+        assert!(run("", &lock, "P2SH", 1).is_ok(), "{opcode} flag off");
+        assert!(
+            run("", &lock, "P2SH,DISCOURAGE_UPGRADABLE_NOPS", 1).is_err(),
+            "{opcode} flag on"
+        );
+        assert!(
+            run("", &skipped, "P2SH,DISCOURAGE_UPGRADABLE_NOPS", 1).is_ok(),
+            "{opcode} skipped in lock"
+        );
+        assert!(
+            run(&skipped, "1", "P2SH,DISCOURAGE_UPGRADABLE_NOPS", 1).is_ok(),
+            "{opcode} skipped in unlock"
+        );
+        assert!(
+            run(&lock, "1", "P2SH,DISCOURAGE_UPGRADABLE_NOPS", 1).is_err(),
+            "{opcode} executed in unlock"
+        );
+    }
+    for lock in [
+        "0x0161 0 1 SUBSTR DROP 1",
+        "0x0161 1 LEFT DROP 1",
+        "0x0161 1 RIGHT DROP 1",
+        "1 1 LSHIFTNUM DROP 1",
+        "1 1 RSHIFTNUM DROP 1",
+    ] {
+        assert!(
+            run(
+                "",
+                lock,
+                "GENESIS,UTXO_AFTER_GENESIS,DISCOURAGE_UPGRADABLE_NOPS",
+                2
+            )
+            .is_ok(),
+            "post-Chronicle opcode {lock}"
+        );
+    }
+    for opcode in [
+        "NOP1",
+        "NOP9",
+        "NOP10",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY",
+    ] {
+        let lock = format!("{opcode} 1");
+        assert!(
+            run("", &lock, "GENESIS,UTXO_AFTER_GENESIS", 2).is_ok(),
+            "{opcode} with the flag disabled"
+        );
+        assert!(
+            run(
+                "",
+                &lock,
+                "GENESIS,UTXO_AFTER_GENESIS,DISCOURAGE_UPGRADABLE_NOPS",
+                2
+            )
+            .is_err(),
+            "{opcode} with the flag enabled"
+        );
+        assert!(
+            run("", &lock, "GENESIS,UTXO_AFTER_GENESIS,MINIMALDATA", 2).is_ok(),
+            "{opcode} under bundled policy with this flag disabled"
+        );
+    }
+    // Version 1 exercises the bundled policy rules while this individual flag
+    // is explicitly disabled or enabled.
+    assert!(run("", "NOP1 1", "P2SH,MINIMALDATA", 1).is_ok());
+    assert!(run(
+        "",
+        "NOP1 1",
+        "P2SH,MINIMALDATA,DISCOURAGE_UPGRADABLE_NOPS",
+        1
+    )
+    .is_err());
+    // Nonminimal data and an extra stack element are not disabled by this flag.
+    assert!(run("0x4c0101", "1", "P2SH,DISCOURAGE_UPGRADABLE_NOPS", 1).is_ok());
+    assert!(run(
+        "0x4c0101",
+        "1",
+        "P2SH,DISCOURAGE_UPGRADABLE_NOPS,MINIMALDATA",
+        1
+    )
+    .is_err());
+}
+
+#[test]
+fn discourage_nops_flag_uses_each_utxo_creation_height() {
+    let export = std::env::var_os("CHRONICLE_NOP_DIFF_OUTPUT");
+    let mut rows = Vec::new();
+    for lock in [
+        "0x0161 0 1 SUBSTR DROP 1",
+        "0x0161 1 LEFT DROP 1",
+        "0x0161 1 RIGHT DROP 1",
+        "1 1 LSHIFTNUM DROP 1",
+        "1 1 RSHIFTNUM DROP 1",
+    ] {
+        for version in [1, 2] {
+            let credit = crediting_tx(&parse_script(lock), 1000);
+            let tx = spending_tx(&credit, &[], version);
+            let outpoint = tx.inputs[0].prev_output.clone();
+            let utxos = LinkedHashMap::from_iter([(outpoint.clone(), credit.outputs[0].clone())]);
+            for (created, flag, expected) in [
+                (199, false, true),
+                (199, true, false),
+                (200, false, true),
+                (200, true, true),
+            ] {
+                let heights = HashMap::from([(outpoint.clone(), created)]);
+                let ctx = ChronicleValidationContext::new(200, 200, &heights, None);
+                let result = tx.validate_with_chronicle_context_and_nop_policy(
+                    true,
+                    true,
+                    &utxos,
+                    &HashSet::new(),
+                    &ctx,
+                    true,
+                    flag,
+                );
+                if export.is_some() {
+                    // Explicit flags select the UTXO era. A txo height would
+                    // make the node derive that flag from its local chain.
+                    let flags = (1 << 16)
+                        | (1 << 18)
+                        | (1 << 19)
+                        | (1 << 20)
+                        | (u32::from(created >= 200) << 21)
+                        | (u32::from(flag) << 7);
+                    rows.push(serde_json::json!({
+                        "name": format!("{lock}, version={version}, created={created}, flag={flag}"),
+                        "library": result.is_ok(), "expected": expected,
+                        "request": {
+                            "tx": tx.as_hexstr(), "n": 0, "flags": flags, "reportflags": true,
+                            "txo": {"lock": hex::encode(&credit.outputs[0].lock_script.0), "value": 1000}
+                        }
+                    }));
+                }
+                assert_eq!(
+                    result.is_ok(),
+                    expected,
+                    "{lock}, version={version}, created={created}, flag={flag}: {result:?}"
+                );
+            }
+        }
+    }
+    if let Some(path) = export {
+        let file = std::fs::File::create(path).unwrap();
+        serde_json::to_writer_pretty(file, &rows).unwrap();
+    }
+}
+
+#[test]
+fn raw_script_flags_do_not_bundle_nop_policy_with_other_rules() {
+    use chain_gang::script::{
+        Script, TransactionlessChecker, CONSENSUS_ONLY, DISCOURAGE_UPGRADABLE_NOPS,
+        EXPLICIT_UPGRADABLE_NOPS_POLICY, NO_FLAGS,
+    };
+
+    for other in [NO_FLAGS, CONSENSUS_ONLY] {
+        for explicit in [NO_FLAGS, EXPLICIT_UPGRADABLE_NOPS_POLICY] {
+            for discourage in [false, true] {
+                let flags = other
+                    | explicit
+                    | if discourage {
+                        DISCOURAGE_UPGRADABLE_NOPS
+                    } else {
+                        NO_FLAGS
+                    };
+                let result = Script(vec![0xb0, 0x51]).eval(&mut TransactionlessChecker {}, flags);
+                if discourage {
+                    assert!(
+                        matches!(result, Err(ChainGangError::ScriptError(ref message)) if message == "discouraged upgradeable NOP"),
+                        "flags={flags:#x}"
+                    );
+                } else {
+                    assert!(result.is_ok(), "flags={flags:#x}: {result:?}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn discourage_nops_flag_at_chronicle_activation_boundary() {
+    use serde_json::json;
+
+    const ACTIVATION: u64 = 200;
+    let export = std::env::var_os("CHRONICLE_NOP_BOUNDARY_DIFF_OUTPUT");
+    let mut rows = Vec::new();
+
+    for (opcode, operation, stack_error) in [
+        (
+            "SUBSTR",
+            "0x026162 1 1 SUBSTR 0x0162 EQUAL",
+            "Stack too small: 3",
+        ),
+        ("LEFT", "0x026162 1 LEFT 0x0161 EQUAL", "Stack too small: 2"),
+        (
+            "RIGHT",
+            "0x026162 1 RIGHT 0x0162 EQUAL",
+            "Stack too small: 2",
+        ),
+        (
+            "LSHIFTNUM",
+            "1 1 LSHIFTNUM 2 EQUAL",
+            "Cannot pop bigint, empty stack",
+        ),
+        (
+            "RSHIFTNUM",
+            "4 1 RSHIFTNUM 2 EQUAL",
+            "Cannot pop bigint, empty stack",
+        ),
+    ] {
+        for version in [1, 2] {
+            for (spent, created) in [
+                (199, 198),
+                (200, 199),
+                (200, 200),
+                (201, 199),
+                (201, 200),
+                (201, 201),
+            ] {
+                for flag in [false, true] {
+                    let mut verify = |lock: &str, node_error: Option<&str>| {
+                        let credit = crediting_tx(&parse_script(lock), 1000);
+                        let tx = spending_tx(&credit, &[], version);
+                        let outpoint = tx.inputs[0].prev_output.clone();
+                        let utxos = LinkedHashMap::from_iter([(
+                            outpoint.clone(),
+                            credit.outputs[0].clone(),
+                        )]);
+                        let heights = HashMap::from([(outpoint, created)]);
+                        let ctx =
+                            ChronicleValidationContext::new(spent, ACTIVATION, &heights, None);
+                        let result = tx.validate_with_chronicle_context_and_nop_policy(
+                            true,
+                            true,
+                            &utxos,
+                            &HashSet::new(),
+                            &ctx,
+                            true,
+                            flag,
+                        );
+                        if export.is_some() {
+                            let flags = (1 << 16)
+                                | (1 << 18)
+                                | (1 << 19)
+                                | (u32::from(spent >= ACTIVATION) << 20)
+                                | (u32::from(created >= ACTIVATION) << 21)
+                                | (u32::from(flag) << 7);
+                            rows.push(json!({
+                                "name": format!("{lock} version={version} spent={spent} created={created} flag={flag}"),
+                                "spending_height": spent,
+                                "library": result.is_ok(),
+                                "expected": node_error.is_none(),
+                                "expected_description": node_error,
+                                "request": {
+                                    "tx": tx.as_hexstr(), "n": 0, "flags": flags, "reportflags": true,
+                                    "txo": {"lock": hex::encode(&credit.outputs[0].lock_script.0), "value": 1000}
+                                }
+                            }));
+                        }
+                        result
+                    };
+                    let node_error = match (created >= ACTIVATION, flag) {
+                        (true, _) => Some("Operation not valid with the current stack size"),
+                        (false, true) => Some("NOPx reserved for soft-fork upgrades"),
+                        (false, false) => None,
+                    };
+                    let result = verify(&format!("{opcode} 1"), node_error);
+                    let expected_error = match (created >= ACTIVATION, flag) {
+                        (true, _) => Some(stack_error),
+                        (false, true) => Some("discouraged upgradeable NOP"),
+                        (false, false) => None,
+                    };
+                    assert!(
+                        match (&result, expected_error) {
+                            (Ok(()), None) => true,
+                            (Err(ChainGangError::ScriptError(actual)), Some(expected)) => {
+                                actual == expected
+                            }
+                            _ => false,
+                        },
+                        "{opcode}: version={version}, spent={spent}, created={created}, flag={flag}: expected {expected_error:?}, got {result:?}"
+                    );
+                    if created >= ACTIVATION {
+                        let result = verify(operation, None);
+                        assert!(
+                            result.is_ok(),
+                            "{operation}: version={version}, spent={spent}, created={created}, flag={flag}: {result:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+    if let Some(path) = export {
+        assert_eq!(rows.len(), 180);
+        let file = std::fs::File::create(path).unwrap();
+        serde_json::to_writer_pretty(file, &rows).unwrap();
+    }
 }

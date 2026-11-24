@@ -6,6 +6,43 @@ use crate::util::{ChainGangError, Hash256};
 
 use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 
+/// BIP66 checks the encoding of R and S independently of their scalar values.
+fn valid_script_signature_der(sig: &[u8]) -> bool {
+    if !(9..=73).contains(&sig.len()) || sig[0] != 0x30 || usize::from(sig[1]) != sig.len() - 3 {
+        return false;
+    }
+    let r = usize::from(sig[3]);
+    if 5 + r >= sig.len() {
+        return false;
+    }
+    let s = usize::from(sig[5 + r]);
+    if r + s + 7 != sig.len() || sig[2] != 2 || r == 0 || sig[4] & 0x80 != 0 {
+        return false;
+    }
+    if r > 1 && sig[4] == 0 && sig[5] & 0x80 == 0 {
+        return false;
+    }
+    if sig[r + 4] != 2 || s == 0 || sig[r + 6] & 0x80 != 0 {
+        return false;
+    }
+    !(s > 1 && sig[r + 6] == 0 && sig[r + 7] & 0x80 == 0)
+}
+
+/// Checks that precede activation and FORKID checks in CheckSignatureEncoding.
+fn check_der_and_hash_type(sig: &[u8], sighash_type: u8) -> Result<(), ChainGangError> {
+    if !valid_script_signature_der(sig) {
+        return Err(ChainGangError::ScriptError(
+            "Non-canonical DER signature".to_string(),
+        ));
+    }
+    if !is_defined_sighash_type(sighash_type) {
+        return Err(ChainGangError::ScriptError(
+            UNDEFINED_SIGHASH_TYPE.to_string(),
+        ));
+    }
+    Ok(())
+}
+
 /// Locktimes greater than or equal to this are interpreted as timestamps. Less then, block heights.
 const LOCKTIME_THRESHOLD: i64 = 500000000;
 
@@ -37,6 +74,21 @@ const UNDEFINED_SIGHASH_TYPE: &str = "Signature hash type missing or not underst
 
 /// Checks that external values are correct in the script
 pub trait Checker {
+    /// Whether the spending block has activated Chronicle (independent of version).
+    fn chronicle_active(&self) -> bool {
+        true
+    }
+
+    /// Explicit UTXO era, or None for legacy context-free evaluation.
+    fn utxo_after_chronicle(&self) -> Option<bool> {
+        None
+    }
+
+    /// Numeric policy limit for this invocation; None uses consensus limits.
+    fn script_num_policy_limit(&self) -> Option<usize> {
+        None
+    }
+
     /// Checks that a signature and public key validate within a script
     ///
     /// `script` is the script code the interpreter built for this check: from
@@ -404,6 +456,46 @@ impl Checker for TransactionChecker<'_> {
             return Err(ChainGangError::ScriptError(msg));
         }
         Ok(true)
+    }
+}
+
+/// Carries independent chain and UTXO context without changing TransactionChecker's
+/// public struct fields or replacing the real transaction version.
+pub(crate) struct ContextualTransactionChecker<'a> {
+    pub inner: TransactionChecker<'a>,
+    pub active: bool,
+    pub post_chronicle_utxo: bool,
+    pub number_policy_limit: Option<usize>,
+}
+impl Checker for ContextualTransactionChecker<'_> {
+    fn chronicle_active(&self) -> bool {
+        self.active
+    }
+    fn utxo_after_chronicle(&self) -> Option<bool> {
+        Some(self.post_chronicle_utxo)
+    }
+    fn script_num_policy_limit(&self) -> Option<usize> {
+        self.number_policy_limit
+    }
+    fn tx_version(&self) -> Result<i32, ChainGangError> {
+        Ok(self.inner.tx.version as i32)
+    }
+    fn check_sig(&mut self, sig: &[u8], key: &[u8], script: &[u8]) -> Result<bool, ChainGangError> {
+        if !self.active && self.inner.require_sighash_forkid {
+            if let Some(&flag) = sig.last().filter(|flag| **flag & SIGHASH_CHRONICLE != 0) {
+                check_der_and_hash_type(sig, flag)?;
+                return Err(ChainGangError::ScriptError(
+                    "SIGHASH_CHRONICLE before activation".to_string(),
+                ));
+            }
+        }
+        self.inner.check_sig(sig, key, script)
+    }
+    fn check_locktime(&self, n: i64) -> Result<bool, ChainGangError> {
+        self.inner.check_locktime(n)
+    }
+    fn check_sequence(&self, n: i64) -> Result<bool, ChainGangError> {
+        self.inner.check_sequence(n)
     }
 }
 

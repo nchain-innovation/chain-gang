@@ -1,8 +1,9 @@
 //! Chronicle (Bitcoin SV) helpers for transaction and script validation.
 //!
-//! By default this library gates Chronicle on **`tx.version > 1`** only. Pass block height
-//! and network to [`effective_chronicle_tx_version`] or [`Tx::validate_at_height`](crate::messages::Tx::validate_at_height) for
-//! consensus-faithful activation at documented BSV block heights.
+//! Chronicle activation, spending-transaction version, and UTXO creation era are
+//! independent inputs. Use [`ChronicleValidationContext`] with complete output
+//! heights for historical/mixed-era validation. Context-free helpers retain
+//! legacy assumptions and are not a replacement for chain context.
 //!
 //! See [docs/Chronicle.md](https://github.com/nchain-innovation/chain-gang/blob/main/docs/Chronicle.md)
 //! for sighash routing, opcodes, two-phase eval, malleability rules, and script number limits.
@@ -55,21 +56,21 @@ pub use crate::transaction::sighash::SIGHASH_CHRONICLE;
 pub use crate::transaction::uses_low_s_signing;
 
 /// Chronicle activation height on BSV mainnet.
-pub const CHRONICLE_ACTIVATION_MAINNET: u64 = 943_835;
-/// Chronicle activation height on BSV testnet (and STN).
-pub const CHRONICLE_ACTIVATION_TESTNET: u64 = 1_713_022;
-/// Chronicle activation height on BSV regtest: active from the first block.
-pub const CHRONICLE_ACTIVATION_REGTEST: u64 = 0;
+pub const CHRONICLE_ACTIVATION_MAINNET: u64 = 943_816;
+/// Chronicle activation height on BSV testnet.
+pub const CHRONICLE_ACTIVATION_TESTNET: u64 = 1_713_168;
+/// Default Chronicle activation height on BSV regtest (node-configurable).
+pub const CHRONICLE_ACTIVATION_REGTEST: u64 = 15_000;
+/// Default Chronicle activation height on STN.
+pub const CHRONICLE_ACTIVATION_STN: u64 = 250;
 
 /// Returns the Chronicle activation height for a BSV network, if defined.
 pub fn activation_height(network: Network) -> Option<u64> {
     match network {
         Network::BSV_Mainnet => Some(CHRONICLE_ACTIVATION_MAINNET),
-        Network::BSV_Testnet | Network::BSV_STN => Some(CHRONICLE_ACTIVATION_TESTNET),
-        // A private chain runs the rules from its first block, as it does for
-        // the fork and Genesis rules in `Block::validate`. Without this,
-        // supplying a height would switch Chronicle off on regtest while
-        // omitting one leaves it on, which is the wrong way round.
+        Network::BSV_Testnet => Some(CHRONICLE_ACTIVATION_TESTNET),
+        Network::BSV_STN => Some(CHRONICLE_ACTIVATION_STN),
+        // Private-chain overrides belong in ChronicleValidationContext.
         Network::BSV_Regtest => Some(CHRONICLE_ACTIVATION_REGTEST),
         // Chronicle is a BSV upgrade, so it has no height on the other chains.
         // Listed rather than caught, so a new network has to choose.
@@ -80,7 +81,7 @@ pub fn activation_height(network: Network) -> Option<u64> {
     }
 }
 
-/// Whether Chronicle script rules apply for the given transaction version and optional context.
+/// Whether Chronicle version-dependent malleability relaxation applies.
 ///
 /// When `block_height` and `network` are both omitted, Chronicle is enabled for `tx.version > 1`
 /// (library default). When both are provided on a BSV network, activation height is enforced.
@@ -89,7 +90,7 @@ pub fn chronicle_rules_active(
     block_height: Option<u64>,
     network: Option<Network>,
 ) -> bool {
-    if tx_version <= 1 {
+    if (tx_version as i32) <= 1 {
         return false;
     }
     match (block_height, network) {
@@ -111,10 +112,42 @@ pub fn effective_chronicle_tx_version(
 ) -> u32 {
     if chronicle_rules_active(tx_version, block_height, network) {
         tx_version
-    } else if tx_version > 1 {
+    } else if (tx_version as i32) > 1 {
         1
     } else {
         tx_version
+    }
+}
+
+/// Explicit Chronicle chain and UTXO context. Heights are mandatory for every
+/// spent output; missing metadata is an error, never guessed from tx.version.
+/// Genesis classification still comes from the existing pregenesis output set.
+#[non_exhaustive]
+pub struct ChronicleValidationContext<'a> {
+    /// Height of the block containing the spending transaction.
+    pub block_height: u64,
+    /// Network activation height, or an explicit private-chain override.
+    pub activation_height: u64,
+    /// Creation heights of spent outputs (including same-block outputs).
+    pub utxo_heights: &'a std::collections::HashMap<crate::messages::OutPoint, u64>,
+    /// Optional numeric policy bound in bytes; ignored by consensus validation.
+    pub script_num_policy_limit: Option<usize>,
+}
+
+impl<'a> ChronicleValidationContext<'a> {
+    /// Creates a validation context from the spending height and the supplied UTXO heights.
+    pub fn new(
+        block_height: u64,
+        activation_height: u64,
+        utxo_heights: &'a std::collections::HashMap<crate::messages::OutPoint, u64>,
+        script_num_policy_limit: Option<usize>,
+    ) -> Self {
+        Self {
+            block_height,
+            activation_height,
+            utxo_heights,
+            script_num_policy_limit,
+        }
     }
 }
 
@@ -158,36 +191,17 @@ mod tests {
     }
 
     #[test]
-    fn chronicle_is_active_from_the_first_block_on_regtest() {
-        // Supplying a height must not switch Chronicle off on a private chain.
-        // Before this, regtest fell into the catch-all and returned None, so
-        // passing a height disabled Chronicle at every height while omitting
-        // one left it enabled.
-        for height in [0, 1, 1_000_000] {
-            assert!(
-                chronicle_rules_active(2, Some(height), Some(Network::BSV_Regtest)),
-                "version 2 should use Chronicle rules at regtest height {height}"
-            );
-        }
-        // and the version gate still applies
+    fn regtest_uses_node_default_height() {
         assert!(!chronicle_rules_active(
-            1,
-            Some(0),
+            2,
+            Some(14999),
             Some(Network::BSV_Regtest)
         ));
-    }
-
-    #[test]
-    fn regtest_agrees_with_the_version_only_default() {
-        // With no context the library enables Chronicle for version > 1. On a
-        // private chain, adding the context should not change the answer.
-        for version in [1, 2, 3] {
-            assert_eq!(
-                chronicle_rules_active(version, None, None),
-                chronicle_rules_active(version, Some(0), Some(Network::BSV_Regtest)),
-                "regtest disagrees with the default for version {version}"
-            );
-        }
+        assert!(chronicle_rules_active(
+            2,
+            Some(15000),
+            Some(Network::BSV_Regtest)
+        ));
     }
 
     #[test]

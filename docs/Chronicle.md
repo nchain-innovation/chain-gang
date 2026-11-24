@@ -1,162 +1,89 @@
-# Chronicle Upgrade
+# Chronicle validation context
 
-Implementation plan and notes for [Chronicle Release](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) support.
+BSV Node v1.2.3 selects rules from three different facts. Transaction version alone is insufficient.
 
-**Python users:** see [Chronicle-Python.md](Chronicle-Python.md) for copy-paste examples (`Context`, `Tx.validate`, signing, activation helpers).
+| Rule | Selection |
+|---|---|
+| SIGHASH_CHRONICLE availability | Spending block has activated Chronicle |
+| Relaxed malleability/high-S | Chronicle active **and signed int32 transaction version > 1** |
+| Restored opcodes | Spent output created at/after Chronicle activation |
+| Script-number consensus limit | Spent output era: 4 bytes before Genesis, 750,000 after Genesis, **32,000,000** after Chronicle |
+| Script-number policy limit | Explicit node policy; 0 selects the era's consensus limit |
 
-## Activation
-
-| Network | Block height |
-|---------|--------------|
-| TestNet | 1,713,022 |
-| MainNet | 943,835 |
-
-**Library default:** `Tx::validate()` enables Chronicle script rules when **`tx.version > 1`**, without checking block height. This suits offline signing and mempool simulation where the confirming height is unknown.
-
-**Consensus-faithful validation:** use `Tx::validate_at_height(..., block_height, network)` or [`effective_chronicle_tx_version`](https://docs.rs/chain_gang/latest/chain_gang/chronicle/fn.effective_chronicle_tx_version.html) from `chain_gang::chronicle` to gate Chronicle rules on the documented BSV activation heights.
-
-Constants: `CHRONICLE_ACTIVATION_MAINNET`, `CHRONICLE_ACTIVATION_TESTNET`, `activation_height()`.
-
-## Library vs node
-
-This crate is a **transaction engine**, not a full BSV node. The distinction matters for Chronicle activation:
-
-| Concern | BSV node (consensus) | This library |
-|---------|----------------------|--------------|
-| When Chronicle activates | At documented block height on each network | **`Tx::validate()`:** when `tx.version > 1` (height ignored) |
-| Height-aware validation | Always uses confirming block height | **`Tx::validate_at_height()`:** height + `Network` required |
-| Mempool / offline signing | Height may be unknown | Use `validate()` or explicit `tx.version` opt-in |
-| Non-BSV networks | N/A | `activation_height()` returns `None`; height-aware path disables Chronicle script rules |
-
-**Practical guidance**
-
-- Building or checking a Chronicle spend **before activation** or **without knowing the block**: use `validate()` and set `version > 1` to exercise Chronicle script rules intentionally.
-- Validating a transaction **as a node would at a known height** (e.g. block 943,835 on mainnet): use `validate_at_height(..., block_height, Network::BSV_Mainnet)`.
-- Python `Tx.validate()` calls the Rust `validate()` path (version-only). Use `Tx.validate_at_height(utxos, block_height, network)` for consensus-faithful height gating (`BSV_Mainnet`, `BSV_Testnet`, or `BSV_STN`).
-
-Sighash routing (`SIGHASH_CHRONICLE`) and signing policy (`uses_low_s_signing`) follow the signature flags independent of block height.
-
-Per [bitcoin-sv `SignatureHash`](https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/interpreter.cpp):
-
-| Flags | Algorithm |
-|-------|-----------|
-| `SIGHASH_FORKID` without `SIGHASH_CHRONICLE` (`0x20`) | BIP143 |
-| `SIGHASH_CHRONICLE` set | OTDA (Original Transaction Digest Algorithm) |
-| Neither | OTDA (pre-fork legacy) |
-
-Constants and signing policy: `SIGHASH_CHRONICLE`, `uses_low_s_signing()` — re-exported from `chain_gang::chronicle` (also in `src/transaction/sighash.rs` and `src/transaction/mod.rs`).
-
-Python: `SIGHASH.CHRONICLE` and `SIGHASH.ALL_FORKID_CHRONICLE` in `python/src/tx_engine/tx/sighash.py`.
-
-## Signing (low-S policy)
-
-Per the Chronicle spec, the low-S requirement is removed for transactions with `version > 1`. For signing:
-
-| Flags | Behavior |
-|-------|----------|
-| Without `SIGHASH_CHRONICLE` | Signatures are normalized to low-S (BIP146) |
-| With `SIGHASH_CHRONICLE` | Raw signer output is preserved (high-S allowed) |
-
-Rust: `uses_low_s_signing()` and `generate_signature()` in `src/transaction/mod.rs` (see `chain_gang::chronicle`).
-
-Note: k256's deterministic signer currently returns low-S; the Chronicle path matters when encoding externally produced signatures or future signing backends.
-
-Verification for `tx.version > 1` normalizes S before the k256 prehash verify call so high-S encodings are accepted under Chronicle rules.
-
-## Opcodes
-
-Chronicle reinstates and reassigns opcodes per the [Chronicle spec](https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/chronicle-spec.md):
-
-| Opcode | Value | Description |
-|--------|-------|-------------|
-| `OP_VER` | 0x62 | Push executing transaction version |
-| `OP_VERIF` | 0x65 | Conditional on `tx.version >=` stack top |
-| `OP_VERNOTIF` | 0x66 | Inverse of `OP_VERIF` |
-| `OP_SUBSTR` | 0xb3 | Substring by start index and length (was NOP4) |
-| `OP_LEFT` | 0xb4 | Leftmost substring (was NOP5) |
-| `OP_RIGHT` | 0xb5 | Rightmost substring (was NOP6) |
-| `OP_LSHIFTNUM` | 0xb6 | Signed left shift (was NOP7) |
-| `OP_RSHIFTNUM` | 0xb7 | Signed right shift (was NOP8) |
-
-`OP_2MUL` and `OP_2DIV` were already implemented; `OP_VER` requires a transaction context (`Checker::tx_version()`).
-
-## Two-phase script evaluation
-
-For transactions with `version > 1`, unlock and lock scripts are evaluated separately per the [Chronicle spec](https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/chronicle-spec.md):
-
-1. Evaluate the **unlock script** first.
-2. Keep the **main stack**; clear **conditional** and **alt** stacks.
-3. Evaluate the **lock script** with the inherited main stack.
-
-Legacy transactions (`version == 1`) are evaluated as the node's `VerifyScript` evaluates them: the unlock script runs on its own, then the lock script runs on the stack it leaves, each with its own alt stack and branch balance (`eval_unlock_then_lock()`). Before 0.11.6 they were concatenated as `unlock + OP_CODESEPARATOR + lock` into a single script, which let a truncated push in the unlock script take the lock script as data.
-
-CHECKSIG `scriptCode` in the unlock phase spans from the last `OP_CODESEPARATOR` in the unlock script through the end of the lock script (code separators stripped). CHECKSIG in the lock phase uses only the lock script from its last `OP_CODESEPARATOR`.
-
-Rust: `uses_two_phase_eval()`, `eval_two_phase()` — re-exported from `chain_gang::chronicle`; routed from `Tx::validate()` in `src/messages/tx.rs`.
-
-## Malleability relaxation
-
-For transactions with `version > 1`, Chronicle relaxes malleability-related script rules per the [Chronicle spec](https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/chronicle-spec.md):
-
-| Rule | `version == 1` | `version > 1` |
-|------|----------------|---------------|
-| Clean stack (exactly one true item) | Enforced | Top item must be true; extra stack items allowed |
-| MINIMALIF (`OP_IF` / `OP_NOTIF` operands) | Empty or `0x01` only | Any valid bool encoding |
-| MINIMALDATA (push / number encoding) | Enforced | Relaxed |
-| NULLFAIL (`OP_CHECKSIG` failure) | Non-empty sig is an error | Pushes false |
-| NULLDUMMY (`OP_CHECKMULTISIG` dummy) | Must be empty | Any dummy value |
-| Push-only unlock script | Required | Functional opcodes allowed (two-phase eval) |
-| Low-S signatures | Enforced at verify | High-S accepted (Phase 2) |
-
-Rules apply when the checker provides a transaction version (`TransactionChecker`). Context-free script evaluation preserves prior behavior.
-
-Rust: `uses_relaxed_malleability()`, `is_push_only()` — re-exported from `chain_gang::chronicle`.
-
-## Script number limit
-
-The maximum encoded script number size increases from 750 KB to 32 MB for Chronicle transactions (`tx.version > 1`). Pre-genesis inputs (`PREGENESIS_RULES`) keep the 4-byte limit on numeric operands, though, as in the node, an arithmetic result may be longer and still be compared or cast to a boolean; post-genesis `version == 1` transactions keep 750 KB.
-
-Rust: `max_script_num_length()`, `MAX_SCRIPT_NUM_LENGTH_*` — re-exported from `chain_gang::chronicle`; enforced in `core_eval()` via `pop_bigint_checked()` and `OP_BIN2NUM` / `OP_NUM2BIN`.
-
-Python: `MAX_SCRIPT_NUM_LENGTH_CHRONICLE` in `python/src/tx_engine/engine/util.py`.
+The released node's defaults are mainnet **943,816**, testnet **1,713,168**, STN **250**, regtest **15,000**. Private chains may override activation. These replace obsolete draft-spec values; regtest is not automatically active at height zero. Sources: [chainparams](https://github.com/bitcoin-sv/bitcoin-sv/blob/v1.2.3/src/chainparams.cpp), [numeric policy](https://github.com/bitcoin-sv/bitcoin-sv/blob/v1.2.3/src/configscriptpolicy.cpp), [interpreter](https://github.com/bitcoin-sv/bitcoin-sv/blob/v1.2.3/src/script/interpreter.cpp).
 
 ## Rust API
 
-Import Chronicle helpers from one module:
+Use `chronicle::ChronicleValidationContext` with `Tx::validate_with_chronicle_context`. It contains the spending `block_height`, configured `activation_height`, complete `utxo_heights: &HashMap<OutPoint, u64>`, and optional `script_num_policy_limit`. Pass existing Genesis/FORKID selection and pre-Genesis output metadata separately. `consensus_only=true` ignores the numeric policy limit.
 
-```rust
-use chain_gang::chronicle::{
-    activation_height, effective_chronicle_tx_version, eval_two_phase, is_push_only,
-    max_script_num_length, uses_low_s_signing, uses_relaxed_malleability, uses_two_phase_eval,
-    SIGHASH_CHRONICLE, CHRONICLE_ACTIVATION_MAINNET, MAX_SCRIPT_NUM_LENGTH_CHRONICLE,
-    TxVersionChecker,
-};
-use chain_gang::messages::Tx;
-use chain_gang::network::Network;
+Missing output creation heights and heights later than the spending block are errors. A same-block output may have the spending height. `Block::validate_with_chronicle_context` forwards this context and checks that its spending height matches the supplied block height; the caller must include creation metadata for spent same-block outputs too. Existing block validation responsibilities and limitations are unchanged.
 
-// Version-only validation (default):
-// tx.validate(require_sighash_forkid, use_genesis_rules, &utxos, &pregenesis_outputs)?;
+The actual transaction version is preserved for OP_VER and signature hashing. Disabling Chronicle does not rewrite the serialized version, and does not reject a transaction solely because its version is 2.
 
-// Height-aware validation:
-// tx.validate_at_height(..., CHRONICLE_ACTIVATION_MAINNET, Network::BSV_Mainnet)?;
-```
+## Compatibility APIs
 
-Version-only script debugging without a full transaction: `TxVersionChecker` and `ZVersionChecker` (also in `chain_gang::chronicle`).
+- `Tx::validate` / `validate_consensus` assume Chronicle is active and post-Genesis outputs are post-Chronicle. Malleability still uses the signed transaction version.
+- `validate_at_height` and its consensus counterpart enforce the network activation default but assume post-Genesis outputs belong to the spending era. They cannot distinguish old/new outputs after activation.
+- Context-free `Context`, `TxVersionChecker`, `uses_two_phase_eval`, `chronicle_rules_active`, and `effective_chronicle_tx_version` retain legacy version-oriented helper behavior. They are not complete activation/UTXO-era selectors. The effective-version helper must not be used as a serialized OP_VER value.
+- `None` for numeric policy means consensus-sized numbers, not the running node's mempool default. Set the node's configured numeric policy explicitly when comparing policy behavior. Other node policies are not all modeled by this library.
 
-## Implementation status
+These assumptions are retained for callers without metadata; use the explicit API for historical or mixed-era spends. The node RPC `ScriptFlags` bitmask is separate from local interpreter flags.
 
-- [x] OTDA sighash routing (`SIGHASH_CHRONICLE`)
-- [x] OTDA preimage for Chronicle signatures
-- [x] Optional high-S signing when `SIGHASH_CHRONICLE` is set
-- [x] High-S acceptance during script verification for `tx.version > 1`
-- [x] Chronicle opcodes (OP_VER, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_LSHIFTNUM, OP_RSHIFTNUM)
-- [x] Two-phase unlock/lock script evaluation (`tx.version > 1`)
-- [x] Version-gated malleability relaxation (`tx.version > 1`)
-- [x] 32 MB script number limit (`tx.version > 1`)
-- [x] Python `Tx.validate_at_height()` binding
-- [x] Python `Context` two-phase eval (`tx_version`, `lock_script`)
+## Signature hashing and signing
+
+The signature hash type selects the digest algorithm. `SIGHASH_FORKID` without
+`SIGHASH_CHRONICLE` uses BIP143. A hash type with `SIGHASH_CHRONICLE` uses
+the Original Transaction Digest Algorithm (OTDA). The legacy no-FORKID path
+also uses the original algorithm. Chronicle signature-type availability depends
+on activation, so a digest helper alone does not establish that a spend is valid.
+
+Rust exposes `SIGHASH_CHRONICLE` and `uses_low_s_signing` through
+`chain_gang::chronicle`. Python exposes `SIGHASH.CHRONICLE` and
+`SIGHASH.ALL_FORKID_CHRONICLE`. See the [Python signing example](Chronicle-Python.md#signing-with-otda-chronicle-sighash).
+
+Signing normalization and verification are distinct. The signing helper uses
+the hash type to select its low-S policy. Verification applies the active
+transaction and output rules, including the signed transaction version. An
+external signature must satisfy the rules of the spending context.
+
+## Script execution and opcodes
+
+Unlock and lock scripts execute in separate phases, carrying the main stack
+from unlock to lock while each phase has its own alternate stack and conditional
+state. Functional unlocking scripts and malleability relaxations depend on the
+active rules and signed transaction version. The explicit context API selects
+the spent output era independently of the transaction version.
+
+Chronicle restores `OP_2MUL`, `OP_2DIV`, `OP_VER`, `OP_VERIF`,
+`OP_VERNOTIF`, `OP_SUBSTR`, `OP_LEFT`, `OP_RIGHT`, `OP_LSHIFTNUM`, and
+`OP_RSHIFTNUM` for outputs created in the appropriate era. `OP_VER` provides
+the transaction version as four little-endian bytes. The version conditionals
+compare those bytes to the stack operand, with `OP_VERNOTIF` inverting the
+result. The node and tests define the behavior of inactive branches and older
+outputs.
+
+`max_script_num_length`, `MAX_SCRIPT_NUM_LENGTH_GENESIS`, and
+`MAX_SCRIPT_NUM_LENGTH_CHRONICLE` are available from `chain_gang::chronicle`.
+For the explicit context API the consensus number limit is selected from the
+spent output era, rather than from the spending transaction version.
+
+## Activation helpers and debugging
+
+`activation_height` returns the configured library default for a BSV network.
+`chronicle_rules_active` and `effective_chronicle_tx_version` are legacy
+version-oriented helpers, useful to existing callers that understand their
+assumptions. Use the explicit validation context to evaluate a real spend with
+mixed output eras. `TxVersionChecker` and `ZVersionChecker` support script
+debugging without a complete transaction or UTXO history.
+
+## Verification and remaining work
+
+Regression cases cover active/inactive Chronicle, old/new outputs, versions 1/2/negative, signature-type activation and numeric boundaries. Live `verifyscript` receipts and reproduction are in [Chronicle context validation](chronicle-context-validation.md). The node was also advanced across a configurable regtest activation, so the activation checks use node-derived flags rather than only injected flags.
+
+This context change does not itself fix restored-opcode byte semantics (#242–#244, PR #248), scriptCode/complete OTDA execution (#239/#245, PR #250), or all historical interpreter/policy differences. Passing the tests does not establish full node equivalence.
 
 ## References
 
-- [Chronicle Release (docs)](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release)
-- [Chronicle spec (bitcoin-sv-specs)](https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/chronicle-spec.md)
+- [Chronicle release documentation](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release)
+- [Chronicle specification](https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/chronicle-spec.md)
+- [Python Chronicle guide](Chronicle-Python.md)

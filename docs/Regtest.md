@@ -130,7 +130,7 @@ before trying again.
 | Extended keys | `tpub` / `tprv` | the same as testnet |
 | WIF prefix | `0xef` | the same as testnet |
 | DNS seeds | none | a private chain has nothing to discover |
-| Chronicle activation | block 0 | as for STN, a private chain runs current rules from its first block |
+| Chronicle activation | block 15,000 | released-node default; explicit context supports private-chain overrides |
 
 Because the address and key prefixes are testnet's, anything you already have on
 disk for testnet — addresses, WIFs, extended keys — works unchanged on regtest.

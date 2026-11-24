@@ -13,7 +13,7 @@ pub const MAX_SCRIPT_NUM_LENGTH_PREGENESIS: usize = 4;
 pub const MAX_SCRIPT_NUM_LENGTH_GENESIS: usize = 750_000;
 
 /// Maximum script number size after Chronicle (32 MB).
-pub const MAX_SCRIPT_NUM_LENGTH_CHRONICLE: usize = 32 * 1024 * 1024;
+pub const MAX_SCRIPT_NUM_LENGTH_CHRONICLE: usize = 32_000_000;
 
 /// Returns an error when a script number exceeds the allowed byte length.
 #[inline]

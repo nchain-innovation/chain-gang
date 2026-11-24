@@ -1,183 +1,84 @@
-# Chronicle (Python)
+# Chronicle validation from Python
 
-Python guide for [Chronicle](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release) in **tx-engine**. For the full specification (sighash routing, opcode table, malleability matrix, Rust API), see [Chronicle.md](Chronicle.md).
-
-## Opt in
-
-Chronicle script rules apply when the spending transaction has **`version > 1`** (typically `version=2`). Set this on the tx you build and validate — not on the funding UTXO.
-
-Activation heights (consensus): MainNet **943,835**, TestNet **1,713,022**.
-
-## Which API to use
-
-| Goal | API | Notes |
-|------|-----|-------|
-| Debug a script step-by-step | `Context(...)` | Optional `tx_version`, `lock_script`; no block height |
-| Check a full spend offline | `Tx.validate(utxos)` | Chronicle when `version > 1`; height ignored |
-| Check as a node would at height *H* | `Tx.validate_at_height(utxos, H, network)` | Rejects `version > 1` before activation on that network |
-| Sign a Chronicle input | `Wallet.sign_tx_sighash(..., SIGHASH.ALL_FORKID_CHRONICLE)` | OTDA sighash; high-S allowed on verify for `version > 1` |
-| Compare to live node RPC | `verify_script.ScriptFlags` | Reference only — not used by local eval |
-
-`network` for height-aware validation: `BSV_Mainnet`, `BSV_Testnet`, or `BSV_STN`.
-
-## Two-phase unlock (functional scriptSig)
-
-Chronicle evaluates **scriptSig** and **scriptPubKey** in separate phases. The unlock script may leave items on the stack for the lock script — impossible under legacy single-phase eval.
+Use `Tx.validate_with_chronicle_context` when output creation era or activation matters. It wraps the same Rust validation as the explicit-context API.
 
 ```python
-from tx_engine import Context, Script, Tx, TxIn, TxOut
-
-
-def display_tx_hash(tx: Tx) -> str:
-    return bytes(reversed(bytes(tx.hash()))).hex()
-
-
-fund = Tx(
-    version=1,
-    tx_ins=[],
-    tx_outs=[TxOut(amount=1_000, script_pubkey=Script.parse_string("OP_5 OP_EQUAL"))],
+spending_tx.validate_with_chronicle_context(
+    parents,
+    block_height=200,
+    activation_height=200,  # match your node's configuration
+    utxo_heights=[(parent.id(), 0, 100) for parent in parents],
+    consensus_only=True,
 )
-spend = Tx(
-    version=2,
-    tx_ins=[
-        TxIn(
-            display_tx_hash(fund),
-            0,
-            Script.parse_string("OP_2 OP_3 OP_ADD"),  # unlock: pushes 5
-        )
-    ],
-    tx_outs=[TxOut(amount=900, script_pubkey=Script([]))],
-)
-
-spend.validate([fund])  # None on success
 ```
 
-Same script pair in the debugger:
+The height tuples are `(display_txid_hex, output_index, creation_height)` and must cover every spent outpoint. Missing/future heights raise `ValueError`. For pre-Genesis outputs also pass `pregenesis_outpoints=[(txid, index), ...]`. For policy checks use `consensus_only=False` and `script_num_policy_limit=<node configuration>`; 0 selects the era consensus limit. Other node policy settings are not all represented by this library.
 
-```python
-unlock = Script.parse_string("OP_2 OP_3 OP_ADD")
-lock = Script.parse_string("OP_5 OP_EQUAL")
+Activation, output era and version are independent. Chronicle signature types require activation; restored opcodes and the 32,000,000-byte numeric limit depend on output creation era; relaxed malleability additionally requires a **signed** version greater than 1. See [rule selection](Chronicle.md).
 
-Context(script=unlock, lock_script=lock, tx_version=2).evaluate()  # True
-```
+`Tx.validate(parents)` assumes active Chronicle and post-Chronicle post-Genesis outputs. `validate_at_height(parents, height, network)` uses the default activation but cannot infer historical output creation heights. `Context(tx_version=...)` remains a context-free debugging interface. None is a substitute for explicit historical metadata.
 
-With `version=1`, the same spend fails validation because legacy rules require the unlock script to be push-only and use single-phase eval.
+The helpers in `tx_engine.interface.verify_script` expose released-node default heights: mainnet 943,816; testnet 1,713,168; STN 250; regtest 15,000. Its `ScriptFlags` enum is for node RPC, not a local interpreter configuration. `chronicle_rules_active` describes the legacy version-dependent relaxation, not all Chronicle features.
 
-## Context and Chronicle opcodes
-
-Pass `tx_version` for opcodes that depend on the executing transaction version (e.g. `OP_VER`, `OP_VERIF`):
-
-```python
-from tx_engine import Context, Script
-
-script = Script.parse_string("OP_VER OP_2 OP_NUMEQUAL")
-Context(script=script, tx_version=2).evaluate()   # True
-Context(script=script, tx_version=1).evaluate()   # False
-```
-
-**Two-phase eval** requires both `tx_version > 1` and `lock_script`. **Relaxed clean stack** (multiple true stack items allowed) applies when `tx_version > 1` even without `lock_script`.
-
-`Context` does not enforce block-height activation — only transaction version and script pairing.
-
-## Height-aware validation
-
-Use `validate_at_height` when you know the confirming block and need consensus-faithful gating (e.g. reject a `version=2` spend before MainNet block 943,835):
-
-```python
-from tx_engine.interface.verify_script import CHRONICLE_ACTIVATION_MAINNET
-
-# Succeeds at or after activation
-spend.validate_at_height([fund], CHRONICLE_ACTIVATION_MAINNET, "BSV_Mainnet")
-
-# Raises ValueError before activation
-spend.validate_at_height([fund], CHRONICLE_ACTIVATION_MAINNET - 1, "BSV_Mainnet")
-```
-
-`Tx.validate([fund])` would accept the same spend at any height — use that only when height is unknown (signing, mempool simulation).
+Complete OTDA digest/preimage/safe-wallet behavior and companion-spend verification are tracked separately in PR #250. This API does not claim full mempool or block acceptance equivalence.
 
 ## Signing with OTDA (Chronicle sighash)
 
-Chronicle signatures use the Original Transaction Digest Algorithm (OTDA), selected by the `SIGHASH_CHRONICLE` flag (`0x20`):
+The wallet exposes transaction signing with an explicit sighash type. Given an
+existing wallet, a funding transaction `fund`, and a spending transaction
+`spend` whose input 0 references `fund`, the following selects OTDA.
 
 ```python
-from tx_engine import Script, Tx, TxIn, TxOut, Wallet
 from tx_engine.tx.sighash import SIGHASH
 
-wallet = Wallet.from_int("BSV_Mainnet", private_key_int)
-
-fund = Tx(
-    version=1,
-    tx_ins=[],
-    tx_outs=[TxOut(amount=10, script_pubkey=wallet.get_locking_script())],
-)
-spend = Tx(
-    version=2,
-    tx_ins=[TxIn(display_tx_hash(fund), 0, Script([]))],
-    tx_outs=[TxOut(amount=5, script_pubkey=Script([]))],
-)
-
 signed = wallet.sign_tx_sighash(
-    0,
-    fund,
-    spend,
-    int(SIGHASH.ALL_FORKID_CHRONICLE),
+    0, fund, spend, int(SIGHASH.ALL_FORKID_CHRONICLE)
 )
 signed.validate([fund])
 ```
 
-- **`SIGHASH.ALL_FORKID`** (no `CHRONICLE`) → BIP143 preimage  
-- **`SIGHASH.ALL_FORKID_CHRONICLE`** → OTDA preimage  
+`SIGHASH.ALL_FORKID` selects BIP143, while
+`SIGHASH.ALL_FORKID_CHRONICLE` selects OTDA. Signature-type availability and
+verification depend on the spending context. For mixed-era or historical
+outputs, validate with explicit activation and output creation heights.
 
-For `version > 1`, verification accepts high-S signatures when signed with the Chronicle sighash flag. Default `sign_tx()` uses `SIGHASH.ALL_FORKID` (low-S signing policy).
+## Debugging scripts and activation helpers
 
-## Activation helpers (no full tx required)
-
-`tx_engine.interface.verify_script` mirrors `chain_gang::chronicle` for tooling and RPC integration:
-
-```python
-from tx_engine.interface.verify_script import (
-    CHRONICLE_ACTIVATION_MAINNET,
-    activation_height,
-    chronicle_rules_active,
-    effective_chronicle_tx_version,
-)
-
-chronicle_rules_active(2)  # True (version-only)
-chronicle_rules_active(2, CHRONICLE_ACTIVATION_MAINNET - 1, "BSV_Mainnet")  # False
-chronicle_rules_active(2, CHRONICLE_ACTIVATION_MAINNET, "BSV_Mainnet")  # True
-
-activation_height("BSV_Mainnet")  # 943835
-effective_chronicle_tx_version(2, CHRONICLE_ACTIVATION_MAINNET - 1, "BSV_Mainnet")  # 1
-```
-
-## Node RPC vs local validation
-
-`ScriptFlags` documents bits for a **bitcoin-sv node** `verifyscript` call. Chain-gang does not take a flag bitmask for local eval — set `tx.version` and call `Tx.validate()` or `Context(tx_version=...)`.
-
-The node applies Chronicle at consensus heights automatically. Locally, use `validate_at_height` to match that behavior.
-
-## Script number limit
+`Context` is useful for debugging a pair of scripts with a transaction version.
+It does not infer the creation height of a spent output.
 
 ```python
-from tx_engine.engine.util import max_script_num_length, MAX_SCRIPT_NUM_LENGTH_CHRONICLE
+from tx_engine import Context, Script
 
-max_script_num_length(1)   # 750_000 (legacy post-genesis)
-max_script_num_length(2)   # 32_000_000 (Chronicle)
+unlock = Script.parse_string("OP_2 OP_3 OP_ADD")
+lock = Script.parse_string("OP_5 OP_EQUAL")
+assert Context(script=unlock, lock_script=lock, tx_version=2).evaluate()
 ```
 
-## Tests
+The activation helper reports the library's released-node default. Private
+chains can configure a different height and should pass it explicitly to the
+context API.
 
-Python Chronicle coverage lives under `python/src/tests/`:
+```python
+from tx_engine.interface.verify_script import activation_height
 
-- `test_chronicle_tx_validate.py` — `Tx.validate`, two-phase spends, clean stack  
-- `test_chronicle_context.py` — `Context`, `OP_VER`, script number limits  
-- `test_chronicle_opcodes.py` — Chronicle opcode behavior  
-- `test_verify_script.py` — activation helpers and `ScriptFlags`  
-- `test_sighash.py` — OTDA / `SIGHASH.ALL_FORKID_CHRONICLE`  
+assert activation_height("BSV_Mainnet") == 943_816
+```
 
-## See also
+For context-free inspection, `tx_engine.engine.util` provides
+`max_script_num_length` and `MAX_SCRIPT_NUM_LENGTH_CHRONICLE`. These helper
+results do not replace the spent output era needed by transaction validation.
 
-- [Chronicle.md](Chronicle.md) — full upgrade spec and Rust API  
-- [Python-API.md](Python-API.md) — Python class reference  
-- [README.md](../README.md) — install and quick start  
-- [Chronicle release (BSV docs)](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release)
+## Script number limits
+
+`max_script_num_length(1)` and `max_script_num_length(2)` in
+`tx_engine.engine.util` report the 750,000-byte post-Genesis and
+32,000,000-byte Chronicle limits for version-based debugging. With explicit
+transaction validation context, the spent output's era determines the
+consensus limit.
+
+## References
+
+- [Chronicle rule selection and Rust API](Chronicle.md)
+- [Python API](Python-API.md)
+- [Chronicle release documentation](https://docs.bsvblockchain.org/network-topology/nodes/sv-node/chronicle-release)

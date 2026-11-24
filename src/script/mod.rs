@@ -20,6 +20,7 @@ use crate::util::ChainGangError;
 use std::fmt;
 
 mod checker;
+pub(crate) use checker::ContextualTransactionChecker;
 mod format;
 mod interpreter;
 #[allow(dead_code)]
@@ -35,7 +36,7 @@ pub(crate) use self::interpreter::{eval_p2sh, next_op};
 pub use self::interpreter::{
     eval_two_phase, eval_two_phase_with_stack, eval_unlock_then_lock, is_push_only,
     max_script_num_length, uses_relaxed_malleability, uses_two_phase_eval, CONSENSUS_ONLY,
-    NO_FLAGS, PREGENESIS_RULES,
+    DISCOURAGE_UPGRADABLE_NOPS, EXPLICIT_UPGRADABLE_NOPS_POLICY, NO_FLAGS, PREGENESIS_RULES,
 };
 pub use self::stack::Stack;
 pub use self::stack::{
