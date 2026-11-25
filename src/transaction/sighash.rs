@@ -31,7 +31,11 @@ const FORK_ID: u32 = 0;
 //const NONE_ANYONECANPAY_FORKID: u8 = NONE_FORKID | SIGHASH_ANYONECANPAY;
 //const SINGLE_ANYONECANPAY_FORKID: u8 = SINGLE_FORKID | SIGHASH_ANYONECANPAY;
 
-/// Generates a transaction digest for signing
+/// Generates a consensus transaction digest.
+///
+/// OTDA returns the historical `uint256(1)` sentinel for an out-of-range input
+/// or a SINGLE input without a paired output. It commits to no transaction
+/// fields; callers signing transactions must reject this case as wallet policy.
 ///
 /// When `SIGHASH_FORKID` is set without `SIGHASH_CHRONICLE`, BIP-143 is used.
 /// When `SIGHASH_CHRONICLE` is set, the Original Transaction Digest Algorithm
@@ -176,6 +180,16 @@ fn sighash_u32(
 fn uses_bip143(sighash_type: u32) -> bool {
     sighash_type & u32::from(SIGHASH_FORKID) != 0
         && sighash_type & u32::from(SIGHASH_CHRONICLE) == 0
+}
+
+/// Whether the original algorithm returns its transaction-independent sentinel.
+pub(crate) fn uses_constant_digest(tx: &Tx, n_input: usize, sighash_type: u32) -> bool {
+    !uses_bip143(sighash_type) && original_returns_one(tx, n_input, sighash_type)
+}
+
+fn original_returns_one(tx: &Tx, n_input: usize, sighash_type: u32) -> bool {
+    n_input >= tx.inputs.len()
+        || (sighash_type & 31 == u32::from(SIGHASH_SINGLE) && n_input >= tx.outputs.len())
 }
 
 /// Cache for sighash intermediate values to avoid quadratic hashing
@@ -403,6 +417,12 @@ fn otda_sighash(
     selection: ScriptCode,
     sighash_type: u32,
 ) -> Result<Hash256, ChainGangError> {
+    if original_returns_one(tx, n_input, sighash_type) {
+        // uint256(1) in node memory order, not its reversed display hex.
+        let mut one = [0; 32];
+        one[0] = 1;
+        return Ok(Hash256(one));
+    }
     Ok(sha256d(&otda_sighash_preimage(
         tx,
         n_input,
@@ -419,9 +439,9 @@ fn otda_sighash_preimage(
     selection: ScriptCode,
     sighash_type: u32,
 ) -> Result<Vec<u8>, ChainGangError> {
-    if n_input >= tx.inputs.len() {
+    if original_returns_one(tx, n_input, sighash_type) {
         return Err(ChainGangError::BadArgument(
-            "input out of tx_in range".to_string(),
+            "OTDA constant digest has no serialized preimage".to_string(),
         ));
     }
 
@@ -466,11 +486,6 @@ fn otda_sighash_preimage(
     let tx_out_list = if base_type == SIGHASH_NONE {
         vec![]
     } else if base_type == SIGHASH_SINGLE {
-        if n_input >= tx.outputs.len() {
-            return Err(ChainGangError::BadArgument(
-                "input out of tx_out range".to_string(),
-            ));
-        }
         let mut truncated_out = tx.outputs.clone();
         truncated_out.truncate(n_input + 1);
         truncated_out
@@ -511,7 +526,10 @@ fn otda_sighash_preimage(
     Ok(s)
 }
 
-/// Returns the serialized sighash preimage (the bytes hashed to produce the digest) for signing
+/// Returns the serialized sighash preimage (the bytes hashed to produce the digest) for signing.
+///
+/// Returns `BadArgument` for OTDA's constant-digest cases: the protocol returns
+/// a sentinel directly, without hashing a serialized preimage.
 pub fn sig_hash_preimage(
     tx: &Tx,
     n_input: usize,

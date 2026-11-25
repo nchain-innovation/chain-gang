@@ -28,7 +28,9 @@ use crate::{
         eval_two_phase_with_stack, stack::Stack, Script, TransactionlessChecker, TxVersionChecker,
         ZChecker, ZVersionChecker, NO_FLAGS,
     },
-    transaction::sighash::{sig_hash_preimage, sig_hash_preimage_checksig_index, SigHashCache},
+    transaction::sighash::{
+        sig_hash_preimage, sig_hash_preimage_checksig_index, uses_constant_digest, SigHashCache,
+    },
     util::{hash160, sha256d, ChainGangError, Hash256},
     wallet::{
         create_sighash, create_sighash_checksig_index, public_key_to_address, MAIN_PRIVATE_KEY,
@@ -348,6 +350,11 @@ pub fn py_sig_hash(
     sighash_flags: u8,
 ) -> PyResult<Py<PyAny>> {
     let input_tx = tx.as_tx()?;
+    if uses_constant_digest(&input_tx, index, u32::from(sighash_flags)) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "refusing to return an OTDA constant digest for signing",
+        ));
+    }
     let prev_lock_script = script_pubkey.as_script();
 
     let full_sig_hash = create_sighash(
@@ -383,6 +390,11 @@ pub fn py_sig_hash_checksig_index(
     sighash_flags: u8,
 ) -> PyResult<Py<PyAny>> {
     let input_tx = tx.as_tx()?;
+    if uses_constant_digest(&input_tx, index, u32::from(sighash_flags)) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "refusing to return an OTDA constant digest for signing",
+        ));
+    }
     let prev_lock_script = script_pubkey.as_script();
 
     let full_sig_hash = create_sighash_checksig_index(

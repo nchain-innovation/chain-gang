@@ -1,5 +1,4 @@
 use super::multisig::remove_sig;
-use super::script_code::strip_code_separators;
 use super::*;
 use crate::script::op_codes::*;
 use crate::script::stack::{
@@ -1051,19 +1050,6 @@ fn chronicle_two_phase_unlock_checksig_script_code() {
     assert_eq!(scripts.len(), 2);
     assert_eq!(scripts[0], expected_unlock_code.0);
     assert_eq!(scripts[1], expected_lock_code.0);
-}
-
-#[test]
-fn strip_code_separators_removes_codesep_bytes() {
-    let mut script = Script::new();
-    script.append(OP_1);
-    script.append(OP_CODESEPARATOR);
-    script.append(OP_2);
-    script.append(OP_CODESEPARATOR);
-    script.append(OP_3);
-
-    let stripped = strip_code_separators(&script.0);
-    assert_eq!(stripped, [OP_1, OP_2, OP_3]);
 }
 
 #[test]

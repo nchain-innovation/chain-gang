@@ -1,7 +1,7 @@
 """ Transaction tests
 """
 import unittest
-from tx_engine import Tx, Script, Context, sig_hash, sig_hash_checksig_index, sig_hash_preimage, sig_hash_preimage_checksig_index, SIGHASH, hash256d
+from tx_engine import Tx, TxIn, Script, Context, sig_hash, sig_hash_checksig_index, sig_hash_preimage, sig_hash_preimage_checksig_index, SIGHASH, hash256d
 
 
 class SigHashTest(unittest.TestCase):
@@ -86,6 +86,22 @@ class SigHashTest(unittest.TestCase):
         for call in calls:
             with self.assertRaises(ValueError):
                 call()
+
+    def test_constant_digest_is_rejected_by_signing_helpers(self):
+        tx = Tx(version=2, tx_ins=[TxIn("11" * 32, 0)], tx_outs=[], locktime=0)
+        script = Script.parse_string("OP_CHECKSIG")
+        for flags in [SIGHASH.SINGLE, SIGHASH.SINGLE_FORKID_CHRONICLE]:
+            calls = [
+                lambda: sig_hash(tx, 0, script, 1000, flags),
+                lambda: sig_hash_checksig_index(tx, 0, script, 0, 1000, flags),
+            ]
+            for index, call in enumerate(calls):
+                with self.subTest(flags=flags, helper=index):
+                    with self.assertRaises(ValueError):
+                        call()
+
+        # BIP-143 SINGLE has a genuine preimage even with no paired output.
+        self.assertEqual(len(sig_hash(tx, 0, script, 1000, SIGHASH.SINGLE_FORKID)), 32)
 
 
 if __name__ == "__main__":

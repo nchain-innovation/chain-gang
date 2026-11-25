@@ -3,6 +3,10 @@
 //! # Examples
 //!
 //! Sign a transaction:
+//! [`sighash::sighash`] may return the transaction-independent OTDA sentinel.
+//! [`generate_signature`] rejects that digest with `BadArgument`; callers must
+//! handle the error instead of signing it, because the signature could be reused
+//! for other transactions with the same sentinel.
 //!
 //! ```rust
 //! use chain_gang::messages::{Tx, TxIn};
@@ -57,12 +61,28 @@ fn encode_signature(signature: Signature, sighash_type: u8) -> Vec<u8> {
     sig
 }
 
-/// Generates a signature for a transaction sighash
+/// Generates a signature for a transaction sighash.
+///
+/// Rejects the exact OTDA `uint256(1)` sentinel (raw bytes `01` followed by
+/// 31 zero bytes), regardless of `sighash_type`. It commits to no transaction
+/// fields, so its signature can be reused wherever that sentinel applies.
+/// This signing policy does not change consensus digest or verification rules.
+///
+/// # Errors
+///
+/// Returns [`ChainGangError::BadArgument`] for the reserved sentinel digest.
 pub fn generate_signature(
     private_key: &[u8; 32],
     sighash: &Hash256,
     sighash_type: u8,
 ) -> Result<Vec<u8>, ChainGangError> {
+    let mut sentinel = [0; 32];
+    sentinel[0] = 1;
+    if sighash.0 == sentinel {
+        return Err(ChainGangError::BadArgument(
+            "refusing to sign an OTDA constant digest".to_string(),
+        ));
+    }
     let signing_key = SigningKey::from_slice(private_key)?;
     let signature: Signature = signing_key.sign_prehash(&sighash.0)?;
     Ok(encode_signature(signature, sighash_type))

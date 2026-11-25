@@ -10,7 +10,7 @@ use crate::{
     transaction::{
         generate_signature,
         p2pkh::create_unlock_script,
-        sighash::{sighash, sighash_checksig_index, SigHashCache},
+        sighash::{sighash, sighash_checksig_index, uses_constant_digest, SigHashCache},
     },
     util::{hash160, ChainGangError, Hash256},
     wallet::base58_checksum::{decode_base58_checksum, encode_base58_checksum},
@@ -216,6 +216,14 @@ impl Wallet {
     }
 
     /// Signs a precomputed sighash with this wallet's private key.
+    ///
+    /// Uses [`generate_signature`], including its refusal of the exact OTDA
+    /// `uint256(1)` sentinel (raw bytes `01` followed by 31 zero bytes), for
+    /// every `sighash_flags` value. That digest commits to no transaction fields.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ChainGangError::BadArgument`] for the reserved sentinel digest.
     pub fn sign_sighash(
         &self,
         sighash: Hash256,
@@ -235,30 +243,7 @@ impl Wallet {
         index: usize,
         sighash_flags: u8,
     ) -> Result<(), ChainGangError> {
-        // Check correct input tx provided
-        let prev_hash = tx.inputs[index].prev_output.hash;
-        if prev_hash != tx_in.hash() {
-            return Err(ChainGangError::BadArgument(format!(
-                "Unable to find input tx {:?}",
-                prev_hash
-            )));
-        }
-        // Gather data for sighash
-        let prev_index: usize = tx.inputs[index]
-            .prev_output
-            .index
-            .try_into()
-            .expect("Unable to convert prev_index into usize");
-        let prev_amount = tx_in.outputs[prev_index].satoshis;
-        let prev_lock_script = &tx_in.outputs[prev_index].lock_script;
-
-        let sighash = create_sighash(tx, index, prev_lock_script, prev_amount, sighash_flags)?;
-        // Sign sighash
-        let signature = self.sign_sighash(sighash, sighash_flags)?;
-
-        // Create unlocking script for input
-        tx.inputs[index].unlock_script = self.create_unlock_script(&signature);
-        Ok(())
+        self.sign_tx_input_checksig_index(tx_in, tx, index, sighash_flags, 0)
     }
 
     /// Like `sign_tx_input`, but targets a specific `OP_CHECKSIG` via `checksig_index`.
@@ -270,6 +255,12 @@ impl Wallet {
         sighash_flags: u8,
         checksig_index: usize,
     ) -> Result<(), ChainGangError> {
+        // Wallet policy: never sign a digest that commits to no transaction.
+        if index >= tx.inputs.len() || uses_constant_digest(tx, index, u32::from(sighash_flags)) {
+            return Err(ChainGangError::BadArgument(
+                "refusing to sign an invalid input or OTDA constant digest".to_string(),
+            ));
+        }
         // Check correct input tx provided
         let prev_hash = tx.inputs[index].prev_output.hash;
         if prev_hash != tx_in.hash() {
@@ -278,21 +269,17 @@ impl Wallet {
                 prev_hash
             )));
         }
-        // Gather data for sighash
-        let prev_index: usize = tx.inputs[index]
-            .prev_output
-            .index
-            .try_into()
-            .expect("Unable to convert prev_index into usize");
-        let prev_amount = tx_in.outputs[prev_index].satoshis;
-        let prev_lock_script = &tx_in.outputs[prev_index].lock_script;
+        let prev_index = tx.inputs[index].prev_output.index;
+        let prev_output = tx_in.outputs.get(prev_index as usize).ok_or_else(|| {
+            ChainGangError::BadArgument(format!("Missing previous output {prev_index}"))
+        })?;
 
         let sighash = create_sighash_checksig_index(
             tx,
             index,
-            prev_lock_script,
+            &prev_output.lock_script,
             checksig_index,
-            prev_amount,
+            prev_output.satoshis,
             sighash_flags,
         )?;
         // Sign sighash
